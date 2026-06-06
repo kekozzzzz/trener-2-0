@@ -1,0 +1,12 @@
+// Prisma-схема базы данных
+//
+// Здесь должны появиться:
+// — datasource (provider: postgresql или sqlite на старте)
+// — generator client
+// — модели: User, Session, Hand, HandLevel, SessionMetrics,
+//   PlayerProfile, Dialogue, ChatMessage
+// — связи между моделями (один пользователь → много сессий,
+//   одна сессия → много рук, одна рука → один диалог)
+// — enum-ы: HandLevelType (CRITICAL / STRONG / MEDIUM),
+//   PlayerStyle (LOOSE / TIGHT / PASSIVE / AGGRESSIVE)
+// — поля с аннотациями @id, @default, @relation, @@index
