@@ -3,10 +3,10 @@
 // Здесь должны появиться:
 // — datasource (provider: postgresql или sqlite на старте)
 // — generator client
-// — модели: User, Session, Hand, HandLevel, SessionMetrics,
+// — модели: User, Tournament, Hand, HandLevel, TournamentMetrics,
 //   PlayerProfile, Dialogue, ChatMessage
-// — связи между моделями (один пользователь → много сессий,
-//   одна сессия → много рук, одна рука → один диалог)
+// — связи между моделями (один пользователь → много турниров,
+//   один турнир → много рук, одна рука → один диалог)
 // — enum-ы: HandLevelType (CRITICAL / STRONG / MEDIUM),
 //   PlayerStyle (LOOSE / TIGHT / PASSIVE / AGGRESSIVE)
 // — поля с аннотациями @id, @default, @relation, @@index
