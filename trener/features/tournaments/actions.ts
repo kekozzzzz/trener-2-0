@@ -25,17 +25,21 @@ export async function uploadTournament(input: UploadInput): Promise<UploadResult
 
   const { handsCount, vpipPercent, resultBuyins } = parsed.data;
 
-  const tournament = await prisma.tournament.create({
-    data: {
-      playerId,
-      playedAt: new Date(),
-      status: "UPLOADED",
-    },
-  });
+  const tournament = await prisma.$transaction(async (tx) => {
+    const t = await tx.tournament.create({
+      data: {
+        playerId,
+        playedAt: new Date(),
+        status: "UPLOADED",
+      },
+    });
 
-  await enqueue(prisma, {
-    type: "PARSE_TOURNAMENT",
-    payload: { tournamentId: tournament.id, handsCount, vpipPercent, resultBuyins },
+    await enqueue(tx, {
+      type: "PARSE_TOURNAMENT",
+      payload: { tournamentId: t.id, handsCount, vpipPercent, resultBuyins },
+    });
+
+    return t;
   });
 
   return { ok: true, tournamentId: tournament.id };

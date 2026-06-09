@@ -8,7 +8,7 @@ const DEMO_PLAYER_ID = "00000000-0000-0000-0000-000000000001";
 async function handleUpload(formData: FormData) {
   "use server";
   const file = formData.get("file") as File | null;
-  if (!file || file.size === 0) return;
+  if (!file || file.size === 0 || file.size > 5 * 1024 * 1024) return;
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const result = await uploadTournament({

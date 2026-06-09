@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 
 type Tournament = {
   id: string;
@@ -72,19 +72,30 @@ function time(iso: string) {
 export function StatusClient() {
   const [data, setData] = useState<{ tournaments: Tournament[]; tasks: Task[] } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [workerError, setWorkerError] = useState<string | null>(null);
+  const inFlight = useRef(false);
 
   const fetchStatus = useCallback(async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setLoading(true);
     try {
       const res = await fetch("/api/status");
       if (res.ok) setData(await res.json());
     } finally {
       setLoading(false);
+      inFlight.current = false;
     }
   }, []);
 
   async function triggerWorker() {
-    await fetch("/api/cron/run-tasks", { method: "POST" });
+    setWorkerError(null);
+    try {
+      const res = await fetch("/api/cron/run-tasks", { method: "POST" });
+      if (!res.ok) setWorkerError(`Воркер вернул ${res.status}`);
+    } catch {
+      setWorkerError("Не удалось запустить воркер");
+    }
     await fetchStatus();
   }
 
@@ -121,6 +132,9 @@ export function StatusClient() {
           >
             Запустить воркер
           </button>
+        )}
+        {workerError && (
+          <span style={{ color: "#991b1b", fontSize: "0.85em" }}>{workerError}</span>
         )}
       </div>
 

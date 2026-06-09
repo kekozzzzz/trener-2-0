@@ -1,7 +1,9 @@
 import type { PrismaClient, Prisma } from "@prisma/client";
 import type { TaskInput } from "./types";
 
-export async function enqueue(db: PrismaClient, input: TaskInput): Promise<string> {
+type DbWithTask = Pick<PrismaClient, "task">;
+
+export async function enqueue(db: DbWithTask, input: TaskInput): Promise<string> {
   const task = await db.task.create({
     data: {
       type: input.type,
