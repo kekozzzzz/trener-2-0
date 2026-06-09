@@ -184,6 +184,38 @@ model ChatMessage {
   @@map("chat_messages")
 }
 
+// ─────────────────────── Очередь фоновых задач ───────────────────────────────
+// Состояние ВСЕГДА в базе. Воркер берёт атомарно (FOR UPDATE SKIP LOCKED).
+// Переходы: PENDING → PROCESSING → DONE
+//                              ↘ PENDING (retry с задержкой, attempt < MAX)
+//                              ↘ POISONED (карантин, attempt >= MAX)
+//           PENDING → PROCESSING → FAILED (нет хендлера, повтор невозможен)
+
+enum TaskStatus {
+  PENDING
+  PROCESSING
+  DONE
+  FAILED
+  POISONED
+}
+
+model Task {
+  id        String     @id @default(uuid()) @db.Uuid
+  type      String
+  payload   Json
+  status    TaskStatus @default(PENDING)
+  attempt   Int        @default(0)
+  runAfter  DateTime   @default(now()) @map("run_after")
+  doneAt    DateTime?  @map("done_at")
+  error     String?
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+
+  // Горячий индекс: воркер ищет PENDING-задачи с run_after <= NOW() в порядке очереди
+  @@index([status, runAfter, createdAt], map: "idx_tasks_queue")
+  @@map("tasks")
+}
+
 // ─────────────────────────── Подписка ────────────────────────────────────────
 // Мягкое удаление (запрет 5). Цена НЕ хранится здесь — живёт в config/ (правило 3).
 

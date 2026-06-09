@@ -1,0 +1,30 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/infrastructure/db/client";
+import { runWorkerOnce } from "@/infrastructure/queue";
+
+// In-process блокировка: не даёт двум параллельным запросам к одному процессу
+// запустить воркер одновременно. Для multi-instance деплоя заменить на
+// PostgreSQL advisory lock (pg_try_advisory_lock) или Redis SETNX.
+let isRunning = false;
+
+export async function POST(): Promise<NextResponse> {
+  if (isRunning) {
+    return NextResponse.json({ status: "busy" }, { status: 429 });
+  }
+
+  isRunning = true;
+  let total = 0;
+
+  try {
+    // Гоняем воркер в цикле пока есть что делать.
+    let result;
+    do {
+      result = await runWorkerOnce(prisma);
+      total += result.tasksProcessed;
+    } while (result.tasksProcessed > 0);
+
+    return NextResponse.json({ status: "done", tasksProcessed: total });
+  } finally {
+    isRunning = false;
+  }
+}

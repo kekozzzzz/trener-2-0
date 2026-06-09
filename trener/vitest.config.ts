@@ -6,6 +6,8 @@ export default defineConfig({
     environment: "node",
     globals: true,
     testTimeout: 15000,
+    // Тесты используют общую БД — параллельное выполнение файлов вызывает интерференцию.
+    fileParallelism: false,
     env: {
       DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/trener_test",
     },
