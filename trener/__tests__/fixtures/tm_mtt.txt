@@ -1,0 +1,68 @@
+Poker Hand #TM9999990001: Tournament #123456789, Bounty Hunters Deepstack Turbo $2.50 Hold'em No Limit - Level I (100/200) - 2026/06/02 15:31:00
+Table '123456789 1' 9-max Seat #1 is the button
+Seat 1: Hero (20000 in chips)
+Seat 2: aabbccdd (20000 in chips)
+Seat 3: 11223344 (20000 in chips)
+aabbccdd: posts the ante 25
+11223344: posts the ante 25
+Hero: posts the ante 25
+aabbccdd: posts small blind 100
+11223344: posts big blind 200
+*** HOLE CARDS ***
+Dealt to Hero [Ac Kd]
+Hero: raises 200 to 400
+aabbccdd: folds
+11223344: folds
+Uncalled bet (200) returned to Hero
+Hero collected 625 from pot
+*** SUMMARY ***
+Total pot 625 | No rake
+Seat 1: Hero (button) collected (625)
+Seat 2: aabbccdd (small blind) folded before Flop
+Seat 3: 11223344 (big blind) folded before Flop
+
+Poker Hand #TM9999990002: Tournament #123456789, Bounty Hunters Deepstack Turbo $2.50 Hold'em No Limit - Level I (100/200) - 2026/06/02 15:32:00
+Table '123456789 1' 9-max Seat #2 is the button
+Seat 1: Hero (20425 in chips)
+Seat 2: aabbccdd (20375 in chips)
+Seat 3: 11223344 (19800 in chips)
+aabbccdd: posts the ante 25
+11223344: posts the ante 25
+Hero: posts the ante 25
+11223344: posts small blind 100
+Hero: posts big blind 200
+*** HOLE CARDS ***
+Dealt to Hero [2c 7d]
+aabbccdd: raises 200 to 400
+11223344: folds
+Hero: folds
+Uncalled bet (200) returned to aabbccdd
+aabbccdd collected 525 from pot
+*** SUMMARY ***
+Total pot 525 | No rake
+Seat 1: Hero (big blind) folded before Flop
+Seat 2: aabbccdd (button) collected (525)
+Seat 3: 11223344 (small blind) folded before Flop
+
+Poker Hand #TM9999990003: Tournament #123456789, Bounty Hunters Deepstack Turbo $2.50 Hold'em No Limit - Level I (100/200) - 2026/06/02 15:33:00
+Table '123456789 1' 9-max Seat #3 is the button
+Seat 1: Hero (20200 in chips)
+Seat 2: aabbccdd (20775 in chips)
+Seat 3: 11223344 (19625 in chips)
+aabbccdd: posts the ante 25
+11223344: posts the ante 25
+Hero: posts the ante 25
+Hero: posts small blind 100
+aabbccdd: posts big blind 200
+*** HOLE CARDS ***
+Dealt to Hero [Qh Qd]
+11223344: folds
+Hero: raises 200 to 400
+aabbccdd: folds
+Uncalled bet (200) returned to Hero
+Hero collected 525 from pot
+*** SUMMARY ***
+Total pot 525 | No rake
+Seat 1: Hero (small blind) collected (525)
+Seat 2: aabbccdd (big blind) folded before Flop
+Seat 3: 11223344 (button) folded before Flop

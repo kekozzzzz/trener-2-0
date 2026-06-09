@@ -1,7 +1,7 @@
 import type { ParseResult } from "../types";
 
-const HAND_HEADER = /^Poker Hand #RC-GGPoker-\d{8}-\d+: Tournament #/m;
-const HAND_SPLIT = /^(?=Poker Hand #RC-GGPoker-)/m;
+const HAND_HEADER = /^Poker Hand #(?:RC-GGPoker-\d{8}-\d+|TM\d+): Tournament #/m;
+const HAND_SPLIT = /^(?=Poker Hand #(?:RC-GGPoker-\d{8}-|TM\d+))/m;
 const HERO_SEAT = /^Seat \d+: Hero \((\d+) in chips\)/m;
 const DEALT_TO_HERO = /^\*\*\* HOLE CARDS \*\*\*/m;
 const PREFLOP_VOLUNTARY = /^Hero: (?:calls|raises|bets)/m;

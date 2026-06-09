@@ -1,4 +1,5 @@
 import { prisma } from "@/infrastructure/db/client";
+import { enqueue } from "@/infrastructure/queue";
 import { parseGGPokerMtt } from "@/parser/ggpoker";
 
 type UploadInput = {
@@ -12,8 +13,10 @@ type UploadResult =
   | { ok: false; error: "UNSUPPORTED_FORMAT" | "PARSE_FAILED" };
 
 export async function uploadTournament(input: UploadInput): Promise<UploadResult> {
-  const { fileBuffer, originalFilename, playerId } = input;
+  const { fileBuffer, originalFilename: _originalFilename, playerId } = input;
 
+  // Разбираем синхронно для валидации формата и получения метрик.
+  // Метрики кладём в payload задачи — воркер применит их к турниру.
   const parsed = parseGGPokerMtt(fileBuffer);
 
   if (!parsed.ok) {
@@ -26,11 +29,13 @@ export async function uploadTournament(input: UploadInput): Promise<UploadResult
     data: {
       playerId,
       playedAt: new Date(),
-      handsCount,
-      vpipPercent,
-      resultBuyins,
-      status: "PARSED",
+      status: "UPLOADED",
     },
+  });
+
+  await enqueue(prisma, {
+    type: "PARSE_TOURNAMENT",
+    payload: { tournamentId: tournament.id, handsCount, vpipPercent, resultBuyins },
   });
 
   return { ok: true, tournamentId: tournament.id };

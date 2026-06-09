@@ -1,10 +1,11 @@
 /**
  * Приёмочный тест вертикального среза.
- * Сценарий: вызываем uploadTournament с буфером GGPoker MTT-файла →
- * в БД появляется одна строка Tournament со статусом PARSED и тремя метриками.
+ * Сценарий:
+ *   1. uploadTournament сохраняет турнир в статусе UPLOADED и ставит задачу в очередь.
+ *   2. runWorkerOnce обрабатывает задачу PARSE_TOURNAMENT — турнир переходит в PARSED с метриками.
  *
  * Бьёт в реальную тестовую базу (trener_test).
- * beforeEach чистит таблицу tournaments и создаёт тестового игрока.
+ * beforeEach чистит tournaments и tasks тестового игрока.
  */
 
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
@@ -12,6 +13,7 @@ import { PrismaClient } from "@prisma/client";
 import fs from "fs";
 import path from "path";
 import { uploadTournament } from "@/features/tournaments/actions";
+import { runWorkerOnce } from "@/infrastructure/queue";
 
 const TEST_PLAYER_ID = "aaaaaaaa-0000-0000-0000-000000000001";
 
@@ -33,16 +35,18 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await prisma.tournament.deleteMany({ where: { playerId: TEST_PLAYER_ID } });
+  await prisma.task.deleteMany({ where: { type: "PARSE_TOURNAMENT" } });
 });
 
 afterAll(async () => {
   await prisma.tournament.deleteMany({ where: { playerId: TEST_PLAYER_ID } });
+  await prisma.task.deleteMany({ where: { type: "PARSE_TOURNAMENT" } });
   await prisma.player.delete({ where: { id: TEST_PLAYER_ID } }).catch(() => {});
   await prisma.$disconnect();
 });
 
 describe("uploadTournament — главный путь", () => {
-  it("создаёт запись Tournament в БД со статусом PARSED и тремя метриками", async () => {
+  it("создаёт турнир UPLOADED, воркер переводит в PARSED с тремя метриками", async () => {
     const result = await uploadTournament({
       fileBuffer: fixtureBuffer,
       originalFilename: "sample_mtt.txt",
@@ -52,15 +56,21 @@ describe("uploadTournament — главный путь", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
-    const tournament = await prisma.tournament.findUnique({
-      where: { id: result.tournamentId },
-    });
+    // После загрузки — UPLOADED, метрик ещё нет
+    const before = await prisma.tournament.findUnique({ where: { id: result.tournamentId } });
+    expect(before!.status).toBe("UPLOADED");
+    expect(before!.handsCount).toBeNull();
 
-    expect(tournament).not.toBeNull();
-    expect(tournament!.status).toBe("PARSED");
-    expect(tournament!.handsCount).toBeGreaterThan(0);
-    expect(tournament!.vpipPercent).not.toBeNull();
-    expect(tournament!.resultBuyins).not.toBeNull();
+    // Воркер обрабатывает задачу PARSE_TOURNAMENT
+    const { tasksProcessed } = await runWorkerOnce(prisma);
+    expect(tasksProcessed).toBe(1);
+
+    // Теперь PARSED с тремя метриками
+    const after = await prisma.tournament.findUnique({ where: { id: result.tournamentId } });
+    expect(after!.status).toBe("PARSED");
+    expect(after!.handsCount).toBeGreaterThan(0);
+    expect(after!.vpipPercent).not.toBeNull();
+    expect(after!.resultBuyins).not.toBeNull();
   });
 
   it("считает ровно 3 раздачи для трёхручного файла", async () => {
@@ -73,10 +83,9 @@ describe("uploadTournament — главный путь", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
-    const tournament = await prisma.tournament.findUnique({
-      where: { id: result.tournamentId },
-    });
+    await runWorkerOnce(prisma);
 
+    const tournament = await prisma.tournament.findUnique({ where: { id: result.tournamentId } });
     expect(tournament!.handsCount).toBe(3);
   });
 

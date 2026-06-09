@@ -4,5 +4,7 @@
 
 import { registerStep } from "./registry";
 import { noopStep } from "./steps/noop";
+import { parseTournamentStep } from "./steps/parse-tournament";
 
 registerStep("NOOP", noopStep);
+registerStep("PARSE_TOURNAMENT", parseTournamentStep);

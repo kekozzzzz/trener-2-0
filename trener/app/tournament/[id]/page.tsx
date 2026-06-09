@@ -11,6 +11,33 @@ export default async function TournamentPage({
 
   if (!tournament || tournament.deletedAt) notFound();
 
+  if (tournament.status === "UPLOADED" || tournament.status === "PARSING") {
+    return (
+      <main style={{ padding: "2rem", fontFamily: "monospace" }}>
+        <h1>Разбираем файл...</h1>
+        <p>Файл принят. Парсер считает метрики — займёт несколько секунд.</p>
+        <p>
+          <a href="/status">Смотреть статус →</a>
+        </p>
+        <p style={{ marginTop: "1rem" }}>
+          <a href="/">← Загрузить ещё</a>
+        </p>
+      </main>
+    );
+  }
+
+  if (tournament.status === "FAILED") {
+    return (
+      <main style={{ padding: "2rem", fontFamily: "monospace" }}>
+        <h1>Ошибка разбора</h1>
+        <p>Файл не удалось разобрать. Убедись, что это MTT-турнир GGPoker.</p>
+        <p>
+          <a href="/">← Попробовать снова</a>
+        </p>
+      </main>
+    );
+  }
+
   const vpip = tournament.vpipPercent ? Number(tournament.vpipPercent).toFixed(1) : "—";
   const hands = tournament.handsCount ?? "—";
   const result = tournament.resultBuyins ? Number(tournament.resultBuyins).toFixed(2) : "—";
@@ -42,6 +69,8 @@ export default async function TournamentPage({
       </table>
       <p style={{ marginTop: "2rem" }}>
         <a href="/">← Загрузить ещё</a>
+        {" · "}
+        <a href="/status">Статус загрузок →</a>
       </p>
     </main>
   );
