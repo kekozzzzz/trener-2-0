@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/infrastructure/db/client";
 import { runWorkerOnce } from "@/infrastructure/queue";
 
@@ -7,7 +7,12 @@ import { runWorkerOnce } from "@/infrastructure/queue";
 // PostgreSQL advisory lock (pg_try_advisory_lock) или Redis SETNX.
 let isRunning = false;
 
-export async function POST(): Promise<NextResponse> {
+export async function POST(req: NextRequest): Promise<NextResponse> {
+  const secret = process.env.CRON_SECRET;
+  if (!secret || req.headers.get("authorization") !== `Bearer ${secret}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   if (isRunning) {
     return NextResponse.json({ status: "busy" }, { status: 429 });
   }

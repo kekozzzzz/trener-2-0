@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { triggerWorkerAction } from "./actions";
 
 type Tournament = {
   id: string;
@@ -91,8 +92,8 @@ export function StatusClient() {
   async function triggerWorker() {
     setWorkerError(null);
     try {
-      const res = await fetch("/api/cron/run-tasks", { method: "POST" });
-      if (!res.ok) setWorkerError(`Воркер вернул ${res.status}`);
+      const result = await triggerWorkerAction();
+      if (!result.ok) setWorkerError("Воркер занят или вернул ошибку");
     } catch {
       setWorkerError("Не удалось запустить воркер");
     }

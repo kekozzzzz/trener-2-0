@@ -1,6 +1,8 @@
 import { prisma } from "@/infrastructure/db/client";
 import { notFound } from "next/navigation";
 
+const DEMO_PLAYER_ID = "00000000-0000-0000-0000-000000000001";
+
 export default async function TournamentPage({
   params,
 }: {
@@ -9,7 +11,7 @@ export default async function TournamentPage({
   const { id } = await params;
   const tournament = await prisma.tournament.findUnique({ where: { id } });
 
-  if (!tournament || tournament.deletedAt) notFound();
+  if (!tournament || tournament.deletedAt || tournament.playerId !== DEMO_PLAYER_ID) notFound();
 
   if (tournament.status === "UPLOADED" || tournament.status === "PARSING") {
     return (
