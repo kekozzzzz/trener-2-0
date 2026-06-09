@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(rm -rf*)",
+      "Bash(git push *--force*)",
+      "Bash(git push * -f *)",
+      "Bash(git push -f *)",
+      "Bash(git reset --hard*)",
+      "Bash(git checkout -- .)",
+      "Bash(git restore .)",
+      "Bash(curl * export *)",
+      "Bash(wget * $*)",
+      "Bash(cat .env*)",
+      "Bash(npx prisma migrate reset*)",
+      "Bash(npx prisma db push --force-reset*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'if [ ! -f package.json ]; then exit 0; fi; RC=0; echo \"\\n=== tsc ===\"; npx tsc --noEmit 2>&1 | tail -20; RC=$((RC + $?)); echo \"=== lint ===\"; npm run lint --if-present 2>&1 | tail -20; RC=$((RC + $?)); echo \"=== tests ===\"; npm test -- --passWithNoTests --bail 1 2>&1 | tail -20; RC=$((RC + $?)); exit $RC'"
+          }
+        ]
+      }
+    ]
+  }
+}
