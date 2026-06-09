@@ -1,0 +1,240 @@
+// Схема базы данных — Тренер 2.0
+// Источник правды: architecture/03-база-данных.md
+// Стек: PostgreSQL + Prisma (TypeScript/Next.js)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────── Игрок ───────────────────────────────────────────
+
+model Player {
+  id           String    @id @default(uuid()) @db.Uuid
+  email        String?   @unique                // NULL после анонимизации при закрытии аккаунта
+  passwordHash String?   @map("password_hash")  // NULL после анонимизации; хэш, никогда не открытый пароль
+  closedAt     DateTime? @map("closed_at")       // момент закрытия и анонимизации
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  profile      PlayerProfile?
+  tournaments  Tournament[]
+  subscription Subscription?
+
+  @@map("players")
+}
+
+// ─────────────────── Профиль игрока (1:1, создаётся с первым турниром) ────────
+
+model PlayerProfile {
+  id                 String    @id @default(uuid()) @db.Uuid
+  playerId           String    @unique @map("player_id") @db.Uuid
+  avgVpip            Decimal?  @map("avg_vpip") @db.Decimal(5, 2)
+  avgResultBuyins    Decimal?  @map("avg_result_buyins") @db.Decimal(8, 2)
+  avgHandsCount      Decimal?  @map("avg_hands_count") @db.Decimal(8, 2)
+  tournamentsCounted Int       @default(0) @map("tournaments_counted")
+  recalculatedAt     DateTime? @map("recalculated_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@map("player_profiles")
+}
+
+// ─────────────────────────── Турнир ──────────────────────────────────────────
+// Один загруженный МТТ-турнир = главный агрегат.
+// (в черновиках назывался «сессией» — переименован, см. журнал решений 02-сущности)
+
+enum TournamentStatus {
+  UPLOADED   // файл принят, ещё не в работе парсера
+  PARSING    // парсер взял задачу
+  PARSED     // парсер закончил, LLM ещё не генерировала анализ
+  CARD_READY // карточка готова, игрок может смотреть
+  FAILED     // файл нечитаемый или неподдерживаемый формат
+}
+
+enum PlayerStyle {
+  LOOSE
+  TIGHT
+  PASSIVE
+  AGGRESSIVE
+}
+
+model Tournament {
+  id             String           @id @default(uuid()) @db.Uuid
+  playerId       String           @map("player_id") @db.Uuid
+  playedAt       DateTime         @map("played_at")
+  vpipPercent    Decimal?         @map("vpip_percent") @db.Decimal(5, 2)
+  handsCount     Int?             @map("hands_count")
+  resultBuyins   Decimal?         @map("result_buyins") @db.Decimal(8, 2)  // НЕ деньги — единица «бай-ин», может быть дробной
+  styleDiagnosis PlayerStyle?     @map("style_diagnosis")
+  status         TournamentStatus @default(UPLOADED)
+  deletedAt      DateTime?        @map("deleted_at")  // мягкое удаление (запрет 5)
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  player Player   @relation(fields: [playerId], references: [id], onDelete: Restrict)
+  hhFile HhFile?
+  hands  Hand[]
+
+  // Горячие индексы из architecture/03-база-данных.md раздел 2
+  // WHERE deleted_at IS NULL — добавлено вручную в SQL миграции (Prisma не поддерживает partial index в DSL)
+  @@index([status, createdAt], map: "idx_tournaments_pending_parse")
+  @@index([playerId, playedAt], map: "idx_tournaments_player_timeline")
+  @@index([playerId, createdAt], map: "idx_tournaments_player_monthly_count")
+  @@map("tournaments")
+}
+
+// ──────────────────── Ссылка на HH-файл (1:1 с турниром) ─────────────────────
+
+model HhFile {
+  id               String    @id @default(uuid()) @db.Uuid
+  tournamentId     String    @unique @map("tournament_id") @db.Uuid
+  storageKey       String    @map("storage_key")        // путь/ключ в хранилище
+  originalFilename String    @map("original_filename")
+  sizeBytes        Int       @map("size_bytes")
+  purgedAt         DateTime? @map("purged_at")           // момент физической чистки файла
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  // WHERE purged_at IS NULL — добавлено вручную в SQL миграции
+  @@index([purgedAt], map: "idx_hh_files_purge_candidates")
+  @@map("hh_files")
+}
+
+// ─────────────────────────── Раздача ─────────────────────────────────────────
+// Одна игровая ситуация, отобранная парсером для разбора.
+// Удаляется каскадом вместе с турниром — отдельного deleted_at нет.
+
+enum HandImportance {
+  CRITICAL // крупная потеря фишек — диалог обязателен
+  STRONG   // значимая ситуация — короткое подтверждение
+  MEDIUM   // средняя — разбор по запросу игрока
+}
+
+model Hand {
+  id              String        @id @default(uuid()) @db.Uuid
+  tournamentId    String        @map("tournament_id") @db.Uuid
+  importanceLevel HandImportance @map("importance_level")
+  chipResult      Int           @map("chip_result")    // потеря/выигрыш фишек — посчитал парсер
+  tableData       Json          @map("table_data")     // JSONB: карты, действия, позиции — снимок парсера
+  analysis        Json                                 // JSONB: что сделано / что было бы оптимально
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  tournament   Tournament    @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  dialogue     Dialogue?
+  chatMessages ChatMessage[]
+
+  @@index([tournamentId, importanceLevel], map: "idx_hands_tournament_card")
+  @@map("hands")
+}
+
+// ─────────────── Диалог (не более 1 на раздачу) ──────────────────────────────
+// Сократовский обмен: вопрос → ответ игрока → вердикт.
+// state — единственная вещь, которая физически не даёт показать вердикт раньше ответа (правило 2).
+
+enum DialogueState {
+  QUESTION_ASKED   // вопрос задан, ждём ответа игрока
+  ANSWER_RECEIVED  // ответ получен, вердикт ещё не показан
+  VERDICT_SHOWN    // вердикт показан игроку
+}
+
+model Dialogue {
+  id        String        @id @default(uuid()) @db.Uuid
+  handId    String        @unique @map("hand_id") @db.Uuid
+  question  String        // сократовский вопрос («почему ты так сделал?»)
+  answer    String?       // ответ игрока, изначально NULL
+  verdict   String?       // разбор, изначально NULL; заполняется только после answer
+  state     DialogueState @default(QUESTION_ASKED)
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  hand Hand @relation(fields: [handId], references: [id], onDelete: Cascade)
+
+  @@map("dialogues")
+}
+
+// ─────────────────────── Сообщение чата ──────────────────────────────────────
+// Свободные вопросы игрока по конкретной раздаче.
+
+enum MessageAuthor {
+  PLAYER
+  SYSTEM
+}
+
+model ChatMessage {
+  id        String        @id @default(uuid()) @db.Uuid
+  handId    String        @map("hand_id") @db.Uuid
+  author    MessageAuthor
+  text      String
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  hand Hand @relation(fields: [handId], references: [id], onDelete: Cascade)
+
+  @@index([handId, createdAt], map: "idx_chat_messages_thread")
+  @@map("chat_messages")
+}
+
+// ─────────────────────────── Подписка ────────────────────────────────────────
+// Мягкое удаление (запрет 5). Цена НЕ хранится здесь — живёт в config/ (правило 3).
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  EXPIRED
+}
+
+model Subscription {
+  id                     String             @id @default(uuid()) @db.Uuid
+  playerId               String             @unique @map("player_id") @db.Uuid
+  status                 SubscriptionStatus
+  planCode               String             @map("plan_code")               // ссылка на тариф в конфиге; цена не хранится здесь
+  currentPeriodStart     DateTime           @map("current_period_start")
+  nextPaymentAt          DateTime?          @map("next_payment_at")
+  externalSubscriptionId String             @unique @map("external_subscription_id")
+  deletedAt              DateTime?          @map("deleted_at")
+  createdAt              DateTime           @default(now()) @map("created_at")
+  updatedAt              DateTime           @updatedAt @map("updated_at")
+
+  player   Player    @relation(fields: [playerId], references: [id], onDelete: Restrict)
+  payments Payment[]
+
+  @@index([status, nextPaymentAt], map: "idx_subscriptions_renewal_check")
+  @@map("subscriptions")
+}
+
+// ──────────────── Журнал платежей (append-only) ───────────────────────────────
+// Никогда не удаляется и не изменяется — это финансовая лента.
+// Уникальный external_payment_id защищает от двойного списания (правило проекта).
+// Деньги — только INTEGER в минимальных единицах (копейки/центы) — правило 3.
+
+enum PaymentStatus {
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+model Payment {
+  id                String        @id @default(uuid()) @db.Uuid
+  subscriptionId    String        @map("subscription_id") @db.Uuid
+  externalPaymentId String        @unique @map("external_payment_id") // один id = одна проводка
+  amountCents       Int           @map("amount_cents")                 // целое число, никогда не Decimal
+  currency          String
+  status            PaymentStatus
+  occurredAt        DateTime      @map("occurred_at")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Restrict)
+
+  @@map("payments")
+}

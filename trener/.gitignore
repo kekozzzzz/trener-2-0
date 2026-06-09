@@ -1,0 +1,28 @@
+# Секреты — никогда в репозиторий
+.env
+.env.local
+.env.production
+*.key
+*.pem
+
+# Зависимости
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# HH-файлы пользователей — никогда в репозиторий
+uploads/
+storage/
+
+# Prisma — migrations в git! Они источник правды схемы.
+# (Ничего не исключаем из prisma/)
+
+# TypeScript build artifacts
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# OS
+.DS_Store
+Thumbs.db
