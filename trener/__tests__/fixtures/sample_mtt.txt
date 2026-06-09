@@ -1,0 +1,60 @@
+Poker Hand #RC-GGPoker-20260608-0001: Tournament #12345678, $1+$0.10 NL Hold'em - Level I (10/20) - 2026/06/08 18:00:00
+Table '12345678 1' 9-max Seat #1 is the button
+Seat 1: Hero (1000 in chips)
+Seat 2: Player2 (1000 in chips)
+Seat 3: Player3 (1000 in chips)
+Hero: posts small blind 10
+Player2: posts big blind 20
+*** HOLE CARDS ***
+Dealt to Hero [Ah Kd]
+Player3: folds
+Hero: raises 40 to 60
+Player2: folds
+Hero collected 40 from pot
+*** SUMMARY ***
+Total pot 40 | Rake 0
+Seat 1: Hero (button) (small blind) collected (40)
+Seat 2: Player2 (big blind) folded before Flop
+Seat 3: Player3 folded before Flop (didn't bet)
+
+Poker Hand #RC-GGPoker-20260608-0002: Tournament #12345678, $1+$0.10 NL Hold'em - Level I (10/20) - 2026/06/08 18:05:00
+Table '12345678 1' 9-max Seat #2 is the button
+Seat 1: Hero (1040 in chips)
+Seat 2: Player2 (960 in chips)
+Seat 3: Player3 (1000 in chips)
+Player3: posts small blind 10
+Hero: posts big blind 20
+*** HOLE CARDS ***
+Dealt to Hero [Qh Jd]
+Player2: raises 40 to 60
+Player3: folds
+Hero: calls 40
+*** FLOP *** [2c 7h Kd]
+Hero: checks
+Player2: bets 60
+Hero: folds
+Player2 collected 130 from pot
+*** SUMMARY ***
+Total pot 130 | Rake 0
+Seat 1: Hero (big blind) folded on the Flop
+Seat 2: Player2 (button) collected (130)
+Seat 3: Player3 (small blind) folded before Flop
+
+Poker Hand #RC-GGPoker-20260608-0003: Tournament #12345678, $1+$0.10 NL Hold'em - Level I (10/20) - 2026/06/08 18:10:00
+Table '12345678 1' 9-max Seat #3 is the button
+Seat 1: Hero (940 in chips)
+Seat 2: Player2 (1090 in chips)
+Seat 3: Player3 (970 in chips)
+Player2: posts small blind 10
+Player3: posts big blind 20
+*** HOLE CARDS ***
+Dealt to Hero [5s 2d]
+Hero: folds
+Player2: raises 60 to 80
+Player3: folds
+Player2 collected 40 from pot
+*** SUMMARY ***
+Total pot 40 | Rake 0
+Seat 1: Hero (button) folded before Flop (didn't bet)
+Seat 2: Player2 (small blind) collected (40)
+Seat 3: Player3 (big blind) folded before Flop
