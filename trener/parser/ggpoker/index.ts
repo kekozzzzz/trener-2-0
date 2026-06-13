@@ -1,4 +1,5 @@
 import type { ParseResult } from "../types";
+import { parseHand } from "./hand";
 
 const HAND_HEADER = /^Poker Hand #(?:RC-GGPoker-\d{8}-\d+|TM\d+): Tournament #/m;
 const HAND_SPLIT = /^(?=Poker Hand #(?:RC-GGPoker-\d{8}-|TM\d+))/m;
@@ -58,6 +59,8 @@ export function parseGGPokerMtt(buffer: Buffer): ParseResult {
   const vpipHands = dealtHands.filter(heroPlayedPreflop).length;
   const vpipPercent = Math.round((vpipHands / handsCount) * 10000) / 100;
 
+  const parsedHands = dealtHands.map(parseHand);
+
   const firstStack = heroStack(dealtHands[0]);
   const lastStack = heroStack(dealtHands[dealtHands.length - 1]);
   const startingStack = firstStack ?? 1;
@@ -68,6 +71,6 @@ export function parseGGPokerMtt(buffer: Buffer): ParseResult {
 
   return {
     ok: true,
-    data: { handsCount, vpipPercent, resultBuyins },
+    data: { handsCount, vpipPercent, resultBuyins, hands: parsedHands },
   };
 }
