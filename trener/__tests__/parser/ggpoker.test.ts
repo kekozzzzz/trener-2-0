@@ -55,6 +55,22 @@ describe("снимок раздачи (hands[])", () => {
     expect(result.data.vpipPercent).toBe(83.33);
   });
 
+  it("считает PFR и стилевой диагноз", () => {
+    expect(result.data.pfrPercent).toBe(66.67);
+    expect(result.data.styleDiagnosis).toBe("LOOSE");
+  });
+
+  it("размечает раздачи по важности: спорные минусы — критические, спорный плюс — сильная", () => {
+    expect(hands.map((h) => h.importanceLevel)).toEqual([
+      "CRITICAL", // TM6064778428: олл-ин над коллерами, -51807
+      "CRITICAL", // TM6064778413: колл рейза, фолд на флопе, -4400
+      "MEDIUM", // TM6064778399: открытие в пустоту, фолд на флопе
+      "MEDIUM", // TM6064778368: фолд префлоп без чужого вложения
+      "MEDIUM", // TM6064778283: открытие в пустоту, выигрыш без вскрытия
+      "STRONG", // TM6064778230: ре-рейз олл-ин над чужим шоувом, +26762
+    ]);
+  });
+
   it("обезличивает игроков — реальные никнеймы не попадают в снимок", () => {
     const json = JSON.stringify(hands);
     for (const nickname of REAL_NICKNAMES) {

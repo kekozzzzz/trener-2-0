@@ -21,15 +21,26 @@ export type TableSnapshot = {
   potTotal: number;
 };
 
-export type ParsedHand = {
+export type HandImportance = "CRITICAL" | "STRONG" | "MEDIUM";
+
+export type PlayerStyle = "LOOSE" | "TIGHT" | "PASSIVE" | "AGGRESSIVE";
+
+export type ParsedHandSnapshot = {
   chipResult: number;
   tableSnapshot: TableSnapshot;
+};
+
+export type ParsedHand = ParsedHandSnapshot & {
+  importanceLevel: HandImportance;
 };
 
 export type ParsedTournament = {
   handsCount: number;
   vpipPercent: number;
+  pfrPercent: number;
+  postflopAggressionFactor: number;
   resultBuyins: number;
+  styleDiagnosis: PlayerStyle;
   hands: ParsedHand[];
 };
 

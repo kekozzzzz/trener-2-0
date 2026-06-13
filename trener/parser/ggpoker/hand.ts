@@ -1,4 +1,4 @@
-import type { ParsedHand, Seat, Street, TableAction, TableSnapshot } from "../types";
+import type { ParsedHandSnapshot, Seat, Street, TableAction, TableSnapshot } from "../types";
 
 const SEAT_LINE = /^Seat (\d+): (\S+) \(([\d,]+) in chips\)$/gm;
 const BUTTON_SEAT = /Seat #(\d+) is the button/;
@@ -142,7 +142,7 @@ function computeHeroChipResult(handText: string): number {
   return collected + uncalledReturned - ante - totalInvested;
 }
 
-export function parseHand(handText: string): ParsedHand {
+export function parseHand(handText: string): ParsedHandSnapshot {
   const seatRows = parseSeats(handText);
   const buttonSeat = BUTTON_SEAT.exec(handText)?.[1];
   const buttonSeatNum = buttonSeat ? parseInt(buttonSeat, 10) : null;

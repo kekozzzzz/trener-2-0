@@ -1,4 +1,5 @@
 import type { ParseResult } from "../types";
+import { assignImportanceLevels, computePostflopAggressionFactor, diagnoseStyle } from "./classify";
 import { parseHand } from "./hand";
 
 const HAND_HEADER = /^Poker Hand #(?:RC-GGPoker-\d{8}-\d+|TM\d+): Tournament #/m;
@@ -6,6 +7,7 @@ const HAND_SPLIT = /^(?=Poker Hand #(?:RC-GGPoker-\d{8}-|TM\d+))/m;
 const HERO_SEAT = /^Seat \d+: Hero \((\d+) in chips\)/m;
 const DEALT_TO_HERO = /^\*\*\* HOLE CARDS \*\*\*/m;
 const PREFLOP_VOLUNTARY = /^Hero: (?:calls|raises|bets)/m;
+const PREFLOP_RAISE = /^Hero: raises/m;
 const FLOP_START = /^\*\*\* FLOP \*\*\*/m;
 const BUY_IN_FROM_HEADER = /\$(\d+(?:\.\d+)?)\+\$/;
 
@@ -22,12 +24,20 @@ function heroStack(hand: string): number | null {
   return m ? parseInt(m[1], 10) : null;
 }
 
-function heroPlayedPreflop(hand: string): boolean {
-  if (!DEALT_TO_HERO.test(hand)) return false;
+function preflopSegment(hand: string): string {
   const flopIdx = hand.search(FLOP_START);
   const holeIdx = hand.search(DEALT_TO_HERO);
-  const preflop = flopIdx === -1 ? hand.slice(holeIdx) : hand.slice(holeIdx, flopIdx);
-  return PREFLOP_VOLUNTARY.test(preflop);
+  return flopIdx === -1 ? hand.slice(holeIdx) : hand.slice(holeIdx, flopIdx);
+}
+
+function heroPlayedPreflop(hand: string): boolean {
+  if (!DEALT_TO_HERO.test(hand)) return false;
+  return PREFLOP_VOLUNTARY.test(preflopSegment(hand));
+}
+
+function heroRaisedPreflop(hand: string): boolean {
+  if (!DEALT_TO_HERO.test(hand)) return false;
+  return PREFLOP_RAISE.test(preflopSegment(hand));
 }
 
 function buyInSize(text: string): number {
@@ -45,8 +55,8 @@ export function parseGGPokerMtt(buffer: Buffer): ParseResult {
     };
   }
 
-  const hands = parseHands(text);
-  const dealtHands = hands.filter((h) => DEALT_TO_HERO.test(h));
+  const rawHands = parseHands(text);
+  const dealtHands = rawHands.filter((h) => DEALT_TO_HERO.test(h));
   const handsCount = dealtHands.length;
 
   if (handsCount === 0) {
@@ -59,7 +69,18 @@ export function parseGGPokerMtt(buffer: Buffer): ParseResult {
   const vpipHands = dealtHands.filter(heroPlayedPreflop).length;
   const vpipPercent = Math.round((vpipHands / handsCount) * 10000) / 100;
 
-  const parsedHands = dealtHands.map(parseHand);
+  const pfrHands = dealtHands.filter(heroRaisedPreflop).length;
+  const pfrPercent = Math.round((pfrHands / handsCount) * 10000) / 100;
+
+  const snapshots = dealtHands.map(parseHand);
+  const importanceLevels = assignImportanceLevels(snapshots);
+  const hands = snapshots.map((snapshot, index) => ({
+    ...snapshot,
+    importanceLevel: importanceLevels[index],
+  }));
+
+  const postflopAggressionFactor = Math.round(computePostflopAggressionFactor(snapshots) * 100) / 100;
+  const styleDiagnosis = diagnoseStyle(vpipPercent, pfrPercent, postflopAggressionFactor);
 
   const firstStack = heroStack(dealtHands[0]);
   const lastStack = heroStack(dealtHands[dealtHands.length - 1]);
@@ -71,6 +92,14 @@ export function parseGGPokerMtt(buffer: Buffer): ParseResult {
 
   return {
     ok: true,
-    data: { handsCount, vpipPercent, resultBuyins, hands: parsedHands },
+    data: {
+      handsCount,
+      vpipPercent,
+      pfrPercent,
+      postflopAggressionFactor,
+      resultBuyins,
+      styleDiagnosis,
+      hands,
+    },
   };
 }
