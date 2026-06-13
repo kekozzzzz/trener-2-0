@@ -25,6 +25,10 @@ const fixtureBuffer = fs.readFileSync(
   path.join(__dirname, "../fixtures/sample_mtt.txt")
 );
 
+const richBuffer = fs.readFileSync(
+  path.join(__dirname, "../fixtures/ggpoker_mtt_rich.txt")
+);
+
 beforeAll(async () => {
   await prisma.player.upsert({
     where: { id: TEST_PLAYER_ID },
@@ -35,12 +39,12 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await prisma.tournament.deleteMany({ where: { playerId: TEST_PLAYER_ID } });
-  await prisma.task.deleteMany({ where: { type: "PARSE_TOURNAMENT" } });
+  await prisma.task.deleteMany({ where: { type: { in: ["PARSE_TOURNAMENT", "GENERATE_HAND_ANALYSIS"] } } });
 });
 
 afterAll(async () => {
   await prisma.tournament.deleteMany({ where: { playerId: TEST_PLAYER_ID } });
-  await prisma.task.deleteMany({ where: { type: "PARSE_TOURNAMENT" } });
+  await prisma.task.deleteMany({ where: { type: { in: ["PARSE_TOURNAMENT", "GENERATE_HAND_ANALYSIS"] } } });
   await prisma.player.delete({ where: { id: TEST_PLAYER_ID } }).catch(() => {});
   await prisma.$disconnect();
 });
@@ -101,5 +105,41 @@ describe("uploadTournament — главный путь", () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error).toBe("UNSUPPORTED_FORMAT");
+  });
+});
+
+describe("карточка после полного цикла — PARSE_TOURNAMENT → GENERATE_HAND_ANALYSIS → CARD_READY", () => {
+  it("сохраняет все размеченные раздачи, отмечает карточку и переводит турнир в CARD_READY", async () => {
+    const result = await uploadTournament({
+      fileBuffer: richBuffer,
+      originalFilename: "ggpoker_mtt_rich.txt",
+      playerId: TEST_PLAYER_ID,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    // Гоняем воркер, пока очередь не опустеет: PARSE_TOURNAMENT + 6x GENERATE_HAND_ANALYSIS
+    for (let i = 0; i < 10; i++) {
+      const { tasksProcessed } = await runWorkerOnce(prisma);
+      if (tasksProcessed === 0) break;
+    }
+
+    const tournament = await prisma.tournament.findUnique({ where: { id: result.tournamentId } });
+    expect(tournament!.status).toBe("CARD_READY");
+    expect(tournament!.handsCount).toBe(6);
+
+    const hands = await prisma.hand.findMany({ where: { tournamentId: result.tournamentId } });
+    expect(hands).toHaveLength(6);
+    expect(hands.every((h) => h.selectedForCard)).toBe(true);
+    expect(hands.every((h) => h.analysis !== null)).toBe(true);
+
+    // 2 раздачи CRITICAL в фикстуре ggpoker_mtt_rich.txt — каждой соответствует Dialogue
+    const dialogues = await prisma.dialogue.findMany({
+      where: { hand: { tournamentId: result.tournamentId } },
+    });
+    expect(dialogues).toHaveLength(2);
+    expect(dialogues.every((d) => d.state === "QUESTION_ASKED")).toBe(true);
+    expect(dialogues.every((d) => d.verdict === null)).toBe(true);
   });
 });

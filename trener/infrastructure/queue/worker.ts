@@ -54,10 +54,13 @@ async function claimTask(db: PrismaClient): Promise<RawTask | null> {
   return db.$transaction(async (tx) => {
     // AT TIME ZONE 'UTC' явно говорит PostgreSQL, что значение хранится в UTC,
     // независимо от timezone текущей сессии.
+    // NOW()::timestamp(3) — run_after хранится с точностью до миллисекунды
+    // (округление при записи), без приведения NOW() к той же точности
+    // свежепоставленная задача может на долю миллисекунды не пройти условие.
     const rows = await tx.$queryRaw<RawTask[]>`
       SELECT * FROM tasks
       WHERE status = 'PENDING'
-        AND (run_after AT TIME ZONE 'UTC') <= NOW()
+        AND (run_after AT TIME ZONE 'UTC') <= NOW()::timestamp(3)
       ORDER BY created_at
       LIMIT 1
       FOR UPDATE SKIP LOCKED
