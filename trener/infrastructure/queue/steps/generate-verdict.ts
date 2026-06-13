@@ -2,12 +2,13 @@ import type { StepHandler } from "../types";
 import type { TableSnapshot } from "@/parser/types";
 import type { VerdictRequest } from "@/infrastructure/adapters/llm/types";
 import { getLlmAdapter } from "@/infrastructure/adapters/llm";
+import { getDialogueRoundsPerHand } from "@/config/dialogue";
 
 type GenerateVerdictPayload = {
   handId: string;
 };
 
-// Финальный шаг сократовского диалога: разбирает ответ игрока на вопрос и
+// Финальный шаг сократовского диалога: разбирает всю историю раундов и
 // сохраняет итог. Идемпотентно — если verdict уже сохранён, платный вызов
 // пропускается (architecture/04-потоки-данных.md, раздел 4).
 export const generateVerdictStep: StepHandler = async (task, db) => {
@@ -15,19 +16,29 @@ export const generateVerdictStep: StepHandler = async (task, db) => {
 
   const dialogue = await db.dialogue.findUnique({
     where: { handId },
-    include: { hand: { include: { tournament: true } } },
+    include: {
+      hand: { include: { tournament: true } },
+      rounds: { orderBy: { roundNumber: "asc" } },
+    },
   });
 
   if (!dialogue || dialogue.hand.tournament.deletedAt) return; // удалено до того, как воркер взял задачу
 
   if (dialogue.verdict !== null) return; // уже выполнено (идемпотентность)
 
-  // Правило 2: итог не формируется раньше ответа игрока. submitAnswer ставит
-  // эту задачу только после перехода в ANSWER_RECEIVED — состояние
-  // QUESTION_ASKED здесь означает нарушение инварианта, а не штатный путь.
-  if (dialogue.state === "QUESTION_ASKED") {
+  // Правило 2: итог не формируется раньше ответа игрока на последний раунд.
+  // submitAnswer ставит эту задачу только после перехода в ANSWER_RECEIVED на
+  // последнем раунде — любое другое состояние здесь означает нарушение инварианта.
+  if (dialogue.state !== "ANSWER_RECEIVED") {
     throw new Error(
-      "GENERATE_VERDICT поставлена до ответа игрока (state=QUESTION_ASKED) — нарушение правила 2"
+      "GENERATE_VERDICT поставлена до ответа игрока на последний раунд — нарушение правила 2"
+    );
+  }
+
+  const lastRound = dialogue.rounds[dialogue.rounds.length - 1];
+  if (!lastRound || lastRound.roundNumber !== getDialogueRoundsPerHand()) {
+    throw new Error(
+      "GENERATE_VERDICT поставлена до последнего раунда диалога — нарушение правила 2"
     );
   }
 
@@ -53,9 +64,12 @@ export const generateVerdictStep: StepHandler = async (task, db) => {
   }
 
   const request: VerdictRequest = {
-    question: dialogue.question,
-    // ANSWER_RECEIVED гарантирует, что answer записан (submitAnswer).
-    answer: dialogue.answer as string,
+    // ANSWER_RECEIVED гарантирует, что answer записан на каждом раунде (submitAnswer).
+    history: dialogue.rounds.map((round) => ({
+      roundNumber: round.roundNumber,
+      question: round.question,
+      answer: round.answer as string,
+    })),
     draftVerdict: analysis.draftVerdict,
     chipResult: hand.chipResult,
     tableSnapshot: hand.tableData as unknown as TableSnapshot,

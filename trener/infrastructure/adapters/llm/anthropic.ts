@@ -1,8 +1,17 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { getAnthropicApiKey, getAnthropicModel } from "@/config/llm";
 import { buildHandAnalysisPrompt, HAND_ANALYSIS_SYSTEM_PROMPT } from "@/config/prompts/hand-analysis";
+import { buildDialogueQuestionPrompt, DIALOGUE_QUESTION_SYSTEM_PROMPT } from "@/config/prompts/dialogue-question";
 import { buildVerdictPrompt, VERDICT_SYSTEM_PROMPT } from "@/config/prompts/verdict";
-import type { HandAnalysisRequest, HandAnalysisResult, LlmPort, VerdictRequest, VerdictResult } from "./types";
+import type {
+  HandAnalysisRequest,
+  HandAnalysisResult,
+  LlmPort,
+  NextQuestionRequest,
+  NextQuestionResult,
+  VerdictRequest,
+  VerdictResult,
+} from "./types";
 
 const MAX_TOKENS = 1024;
 
@@ -37,6 +46,13 @@ function validateVerdict(result: Partial<VerdictResult>): VerdictResult {
   return { verdict: result.verdict };
 }
 
+function validateNextQuestion(result: Partial<NextQuestionResult>): NextQuestionResult {
+  if (typeof result.question !== "string") {
+    throw new Error("Claude вернул ответ без поля question");
+  }
+  return { question: result.question };
+}
+
 async function callClaude(system: string, prompt: string): Promise<unknown> {
   const client = new Anthropic({ apiKey: getAnthropicApiKey() });
 
@@ -63,6 +79,11 @@ export const anthropicLlmAdapter: LlmPort = {
   async generateHandAnalysis(request: HandAnalysisRequest): Promise<HandAnalysisResult> {
     const parsed = await callClaude(HAND_ANALYSIS_SYSTEM_PROMPT, buildHandAnalysisPrompt(request));
     return validate(parsed as Partial<HandAnalysisResult>, request);
+  },
+
+  async generateNextQuestion(request: NextQuestionRequest): Promise<NextQuestionResult> {
+    const parsed = await callClaude(DIALOGUE_QUESTION_SYSTEM_PROMPT, buildDialogueQuestionPrompt(request));
+    return validateNextQuestion(parsed as Partial<NextQuestionResult>);
   },
 
   async generateVerdict(request: VerdictRequest): Promise<VerdictResult> {

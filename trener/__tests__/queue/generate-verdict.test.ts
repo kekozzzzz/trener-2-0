@@ -2,10 +2,12 @@
  * Тесты шага GENERATE_VERDICT.
  *
  * Покрывают:
- *  1. ANSWER_RECEIVED + draftVerdict — сохраняет verdict, переводит в VERDICT_SHOWN.
+ *  1. ANSWER_RECEIVED + draftVerdict — сохраняет verdict (по истории всех раундов),
+ *     переводит в VERDICT_SHOWN.
  *  2. Идемпотентность: повторный вызов после VERDICT_SHOWN не переписывает verdict.
  *  3. Правило 2: state=QUESTION_ASKED (ответа нет) — бросает ошибку, verdict не пишется.
- *  4. Без draftVerdict в analysis — понятная ошибка (GENERATE_HAND_ANALYSIS должен идти раньше).
+ *  4. Правило 2: последний раунд диалога ещё не достигнут — бросает ошибку.
+ *  5. Без draftVerdict в analysis — понятная ошибка (GENERATE_HAND_ANALYSIS должен идти раньше).
  *
  * Бьёт в реальную тестовую базу (trener_test).
  */
@@ -63,16 +65,22 @@ type DialogueOverrides = {
   state?: "QUESTION_ASKED" | "ANSWER_RECEIVED" | "VERDICT_SHOWN";
   answer?: string | null;
   verdict?: string | null;
+  roundNumber?: number;
 };
 
 async function createDialogue(handId: string, overrides: DialogueOverrides = {}): Promise<void> {
   await db.dialogue.create({
     data: {
       handId,
-      question: "Почему так?",
-      answer: overrides.answer ?? "Потому что у меня был сильный диапазон.",
       verdict: overrides.verdict ?? null,
       state: overrides.state ?? "ANSWER_RECEIVED",
+      rounds: {
+        create: {
+          roundNumber: overrides.roundNumber ?? 1,
+          question: "Почему так?",
+          answer: overrides.answer ?? "Потому что у меня был сильный диапазон.",
+        },
+      },
     },
   });
 }
@@ -157,5 +165,22 @@ describe("GENERATE_VERDICT", () => {
     await createDialogue(handId, { state: "ANSWER_RECEIVED" });
 
     await expect(generateVerdictStep(makeRawTask({ handId }), db)).rejects.toThrow(/draftVerdict/);
+  });
+
+  it("правило 2: последний раунд диалога ещё не достигнут — бросает ошибку, verdict не пишется", async () => {
+    const original = process.env.DIALOGUE_ROUNDS_PER_HAND;
+    process.env.DIALOGUE_ROUNDS_PER_HAND = "3";
+    try {
+      const tournamentId = await createTournament();
+      const handId = await createHand(tournamentId);
+      await createDialogue(handId, { state: "ANSWER_RECEIVED", roundNumber: 1 });
+
+      await expect(generateVerdictStep(makeRawTask({ handId }), db)).rejects.toThrow(/правила 2/);
+
+      const dialogue = await db.dialogue.findUnique({ where: { handId } });
+      expect(dialogue!.verdict).toBeNull();
+    } finally {
+      process.env.DIALOGUE_ROUNDS_PER_HAND = original;
+    }
   });
 });

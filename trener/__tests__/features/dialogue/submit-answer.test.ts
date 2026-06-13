@@ -2,10 +2,12 @@
  * Тесты submitAnswer (architecture/04-потоки-данных.md, раздел 2, событие №4).
  *
  * Покрывают:
- *  1. Записывает ответ, переводит QUESTION_ASKED → ANSWER_RECEIVED, ставит GENERATE_VERDICT.
+ *  1. Записывает ответ, переводит QUESTION_ASKED → ANSWER_RECEIVED, ставит GENERATE_VERDICT
+ *     (последний раунд — по умолчанию DIALOGUE_ROUNDS_PER_HAND=1, см. vitest.config.ts).
  *  2. Повторная отправка формы (уже ANSWER_RECEIVED) — не меняет ответ, не дублирует задачу.
  *  3. Пустой ответ — ошибка EMPTY_ANSWER, без изменений.
  *  4. Диалог не найден — ошибка DIALOGUE_NOT_FOUND.
+ *  5. Раунд < DIALOGUE_ROUNDS_PER_HAND — ставит GENERATE_DIALOGUE_QUESTION вместо GENERATE_VERDICT.
  *
  * Бьёт в реальную тестовую базу (trener_test).
  */
@@ -60,21 +62,32 @@ async function createHand(tournamentId: string): Promise<string> {
 type DialogueOverrides = {
   state?: "QUESTION_ASKED" | "ANSWER_RECEIVED" | "VERDICT_SHOWN";
   answer?: string | null;
+  roundNumber?: number;
 };
 
 async function createDialogue(handId: string, overrides: DialogueOverrides = {}): Promise<void> {
   await db.dialogue.create({
     data: {
       handId,
-      question: "Почему так?",
-      answer: overrides.answer ?? null,
       state: overrides.state ?? "QUESTION_ASKED",
+      rounds: {
+        create: {
+          roundNumber: overrides.roundNumber ?? 1,
+          question: "Почему так?",
+          answer: overrides.answer ?? null,
+        },
+      },
     },
   });
 }
 
 async function findVerdictTasks(handId: string) {
   const tasks = await db.task.findMany({ where: { type: "GENERATE_VERDICT" } });
+  return tasks.filter((task) => (task.payload as { handId?: string }).handId === handId);
+}
+
+async function findDialogueQuestionTasks(handId: string) {
+  const tasks = await db.task.findMany({ where: { type: "GENERATE_DIALOGUE_QUESTION" } });
   return tasks.filter((task) => (task.payload as { handId?: string }).handId === handId);
 }
 
@@ -88,12 +101,12 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await db.tournament.deleteMany({ where: { playerId: TEST_PLAYER_ID } });
-  await db.task.deleteMany({ where: { type: "GENERATE_VERDICT" } });
+  await db.task.deleteMany({ where: { type: { in: ["GENERATE_VERDICT", "GENERATE_DIALOGUE_QUESTION"] } } });
 });
 
 afterAll(async () => {
   await db.tournament.deleteMany({ where: { playerId: TEST_PLAYER_ID } });
-  await db.task.deleteMany({ where: { type: "GENERATE_VERDICT" } });
+  await db.task.deleteMany({ where: { type: { in: ["GENERATE_VERDICT", "GENERATE_DIALOGUE_QUESTION"] } } });
   await db.player.delete({ where: { id: TEST_PLAYER_ID } }).catch(() => {});
   await db.$disconnect();
   await prisma.$disconnect();
@@ -109,9 +122,9 @@ describe("submitAnswer", () => {
 
     expect(result).toEqual({ ok: true, state: "ANSWER_RECEIVED" });
 
-    const dialogue = await db.dialogue.findUnique({ where: { handId } });
+    const dialogue = await db.dialogue.findUnique({ where: { handId }, include: { rounds: true } });
     expect(dialogue!.state).toBe("ANSWER_RECEIVED");
-    expect(dialogue!.answer).toBe("Думал, что у него блеф.");
+    expect(dialogue!.rounds[0].answer).toBe("Думал, что у него блеф.");
 
     const tasks = await findVerdictTasks(handId);
     expect(tasks).toHaveLength(1);
@@ -126,8 +139,8 @@ describe("submitAnswer", () => {
 
     expect(result).toEqual({ ok: true, state: "ANSWER_RECEIVED" });
 
-    const dialogue = await db.dialogue.findUnique({ where: { handId } });
-    expect(dialogue!.answer).toBe("Первый ответ.");
+    const dialogue = await db.dialogue.findUnique({ where: { handId }, include: { rounds: true } });
+    expect(dialogue!.rounds[0].answer).toBe("Первый ответ.");
 
     const tasks = await findVerdictTasks(handId);
     expect(tasks).toHaveLength(0);
@@ -142,9 +155,9 @@ describe("submitAnswer", () => {
 
     expect(result).toEqual({ ok: false, error: "EMPTY_ANSWER" });
 
-    const dialogue = await db.dialogue.findUnique({ where: { handId } });
+    const dialogue = await db.dialogue.findUnique({ where: { handId }, include: { rounds: true } });
     expect(dialogue!.state).toBe("QUESTION_ASKED");
-    expect(dialogue!.answer).toBeNull();
+    expect(dialogue!.rounds[0].answer).toBeNull();
 
     const tasks = await findVerdictTasks(handId);
     expect(tasks).toHaveLength(0);
@@ -154,5 +167,32 @@ describe("submitAnswer", () => {
     const result = await submitAnswer({ handId: "00000000-0000-0000-0000-000000000000", answer: "Что-то" });
 
     expect(result).toEqual({ ok: false, error: "DIALOGUE_NOT_FOUND" });
+  });
+
+  it("раунд < DIALOGUE_ROUNDS_PER_HAND ставит GENERATE_DIALOGUE_QUESTION, а не GENERATE_VERDICT", async () => {
+    const original = process.env.DIALOGUE_ROUNDS_PER_HAND;
+    process.env.DIALOGUE_ROUNDS_PER_HAND = "3";
+    try {
+      const tournamentId = await createTournament();
+      const handId = await createHand(tournamentId);
+      await createDialogue(handId, { roundNumber: 1 });
+
+      const result = await submitAnswer({ handId, answer: "Думал, что у него блеф." });
+
+      expect(result).toEqual({ ok: true, state: "ANSWER_RECEIVED" });
+
+      const dialogue = await db.dialogue.findUnique({ where: { handId }, include: { rounds: true } });
+      expect(dialogue!.state).toBe("ANSWER_RECEIVED");
+      expect(dialogue!.rounds[0].answer).toBe("Думал, что у него блеф.");
+
+      const verdictTasks = await findVerdictTasks(handId);
+      expect(verdictTasks).toHaveLength(0);
+
+      const questionTasks = await findDialogueQuestionTasks(handId);
+      expect(questionTasks).toHaveLength(1);
+      expect((questionTasks[0].payload as { roundNumber?: number }).roundNumber).toBe(1);
+    } finally {
+      process.env.DIALOGUE_ROUNDS_PER_HAND = original;
+    }
   });
 });

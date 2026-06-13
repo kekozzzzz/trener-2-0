@@ -126,12 +126,17 @@ describe("GENERATE_HAND_ANALYSIS — основной путь", () => {
 
     await runWorkerOnce(db);
 
-    const dialogue = await db.dialogue.findUnique({ where: { handId } });
+    const dialogue = await db.dialogue.findUnique({
+      where: { handId },
+      include: { rounds: true },
+    });
     expect(dialogue).not.toBeNull();
     expect(dialogue!.state).toBe("QUESTION_ASKED");
-    expect(dialogue!.question).toBeTruthy();
-    expect(dialogue!.answer).toBeNull();
     expect(dialogue!.verdict).toBeNull();
+    expect(dialogue!.rounds).toHaveLength(1);
+    expect(dialogue!.rounds[0].roundNumber).toBe(1);
+    expect(dialogue!.rounds[0].question).toBeTruthy();
+    expect(dialogue!.rounds[0].answer).toBeNull();
 
     const hand = await db.hand.findUnique({ where: { id: handId } });
     const analysis = hand!.analysis as { draftVerdict?: string };

@@ -139,28 +139,47 @@ model Hand {
 }
 
 // ─────────────── Диалог (не более 1 на раздачу) ──────────────────────────────
-// Сократовский обмен: вопрос → ответ игрока → вердикт.
-// state — единственная вещь, которая физически не даёт показать вердикт раньше ответа (правило 2).
+// Многораундовый сократовский обмен: ~N раундов «вопрос → ответ игрока»
+// (config/dialogue.ts, getDialogueRoundsPerHand), затем вердикт.
+// state — единственная вещь, которая физически не даёт показать вердикт раньше
+// ответа на последний раунд (правило 2); описывает состояние ТЕКУЩЕГО открытого раунда.
 
 enum DialogueState {
-  QUESTION_ASKED   // вопрос задан, ждём ответа игрока
-  ANSWER_RECEIVED  // ответ получен, вердикт ещё не показан
-  VERDICT_SHOWN    // вердикт показан игроку
+  QUESTION_ASKED   // вопрос текущего раунда задан, ждём ответа игрока
+  ANSWER_RECEIVED  // ответ на текущий раунд получен, следующий шаг не сгенерирован
+  VERDICT_SHOWN    // финальный вердикт показан игроку
 }
 
 model Dialogue {
   id        String        @id @default(uuid()) @db.Uuid
   handId    String        @unique @map("hand_id") @db.Uuid
-  question  String        // сократовский вопрос («почему ты так сделал?»)
-  answer    String?       // ответ игрока, изначально NULL
-  verdict   String?       // разбор, изначально NULL; заполняется только после answer
+  verdict   String?       // финальный разбор, изначально NULL; заполняется после ответа на последний раунд
   state     DialogueState @default(QUESTION_ASKED)
   createdAt DateTime      @default(now()) @map("created_at")
   updatedAt DateTime      @updatedAt @map("updated_at")
 
-  hand Hand @relation(fields: [handId], references: [id], onDelete: Cascade)
+  hand   Hand            @relation(fields: [handId], references: [id], onDelete: Cascade)
+  rounds DialogueRound[]
 
   @@map("dialogues")
+}
+
+// ─────────────── Раунд диалога (N штук на диалог) ─────────────────────────────
+// Один цикл «вопрос системы → ответ игрока». roundNumber 1..N, N = getDialogueRoundsPerHand().
+
+model DialogueRound {
+  id          String   @id @default(uuid()) @db.Uuid
+  dialogueId  String   @map("dialogue_id") @db.Uuid
+  roundNumber Int      @map("round_number")
+  question    String   // наводящий вопрос этого раунда
+  answer      String?  // ответ игрока, изначально NULL
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  dialogue Dialogue @relation(fields: [dialogueId], references: [id], onDelete: Cascade)
+
+  @@unique([dialogueId, roundNumber])
+  @@map("dialogue_rounds")
 }
 
 // ─────────────────────── Сообщение чата ──────────────────────────────────────

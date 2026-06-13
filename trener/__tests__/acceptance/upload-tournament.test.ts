@@ -40,12 +40,12 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await prisma.tournament.deleteMany({ where: { playerId: TEST_PLAYER_ID } });
-  await prisma.task.deleteMany({ where: { type: { in: ["PARSE_TOURNAMENT", "GENERATE_HAND_ANALYSIS", "GENERATE_VERDICT"] } } });
+  await prisma.task.deleteMany({ where: { type: { in: ["PARSE_TOURNAMENT", "GENERATE_HAND_ANALYSIS", "GENERATE_VERDICT", "GENERATE_DIALOGUE_QUESTION"] } } });
 });
 
 afterAll(async () => {
   await prisma.tournament.deleteMany({ where: { playerId: TEST_PLAYER_ID } });
-  await prisma.task.deleteMany({ where: { type: { in: ["PARSE_TOURNAMENT", "GENERATE_HAND_ANALYSIS", "GENERATE_VERDICT"] } } });
+  await prisma.task.deleteMany({ where: { type: { in: ["PARSE_TOURNAMENT", "GENERATE_HAND_ANALYSIS", "GENERATE_VERDICT", "GENERATE_DIALOGUE_QUESTION"] } } });
   await prisma.player.delete({ where: { id: TEST_PLAYER_ID } }).catch(() => {});
   await prisma.$disconnect();
 });
@@ -161,5 +161,72 @@ describe("карточка после полного цикла — PARSE_TOURNA
     const untouchedAfter = await prisma.dialogue.findUnique({ where: { handId: untouched.handId } });
     expect(untouchedAfter!.state).toBe("QUESTION_ASKED");
     expect(untouchedAfter!.verdict).toBeNull();
+  });
+});
+
+describe("многораундовый диалог — N раундов до вердикта", () => {
+  it("каждый ответ < N открывает новый раунд, вердикт появляется только после ответа на раунд N", async () => {
+    const original = process.env.DIALOGUE_ROUNDS_PER_HAND;
+    process.env.DIALOGUE_ROUNDS_PER_HAND = "3";
+
+    try {
+      const result = await uploadTournament({
+        fileBuffer: richBuffer,
+        originalFilename: "ggpoker_mtt_rich.txt",
+        playerId: TEST_PLAYER_ID,
+      });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+
+      for (let i = 0; i < 10; i++) {
+        const { tasksProcessed } = await runWorkerOnce(prisma);
+        if (tasksProcessed === 0) break;
+      }
+
+      const dialogues = await prisma.dialogue.findMany({
+        where: { hand: { tournamentId: result.tournamentId } },
+        include: { rounds: true },
+      });
+      expect(dialogues).toHaveLength(2);
+
+      const [target] = dialogues;
+      expect(target.rounds).toHaveLength(1);
+      expect(target.state).toBe("QUESTION_ASKED");
+
+      for (let round = 1; round <= 3; round++) {
+        const submitResult = await submitAnswer({
+          handId: target.handId,
+          answer: `Раунд ${round}: думал, что это правильное решение.`,
+        });
+        expect(submitResult).toEqual({ ok: true, state: "ANSWER_RECEIVED" });
+
+        for (let i = 0; i < 10; i++) {
+          const { tasksProcessed } = await runWorkerOnce(prisma);
+          if (tasksProcessed === 0) break;
+        }
+
+        const dialogue = await prisma.dialogue.findUnique({
+          where: { handId: target.handId },
+          include: { rounds: { orderBy: { roundNumber: "asc" } } },
+        });
+
+        if (round < 3) {
+          // Ещё не последний раунд — открыт следующий вопрос, вердикта нет
+          expect(dialogue!.state).toBe("QUESTION_ASKED");
+          expect(dialogue!.verdict).toBeNull();
+          expect(dialogue!.rounds).toHaveLength(round + 1);
+          expect(dialogue!.rounds[round].answer).toBeNull();
+        } else {
+          // Ответ на последний раунд — вердикт сформирован
+          expect(dialogue!.state).toBe("VERDICT_SHOWN");
+          expect(dialogue!.verdict).toBeTruthy();
+          expect(dialogue!.rounds).toHaveLength(3);
+          expect(dialogue!.rounds[2].answer).toBeTruthy();
+        }
+      }
+    } finally {
+      process.env.DIALOGUE_ROUNDS_PER_HAND = original;
+    }
   });
 });

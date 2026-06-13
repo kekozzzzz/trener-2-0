@@ -60,7 +60,11 @@ export const generateHandAnalysisStep: StepHandler = async (task, db) => {
       if (hand.importanceLevel === "CRITICAL" && result.question) {
         await tx.dialogue.upsert({
           where: { handId },
-          create: { handId, question: result.question, state: "QUESTION_ASKED" },
+          create: {
+            handId,
+            state: "QUESTION_ASKED",
+            rounds: { create: { roundNumber: 1, question: result.question } },
+          },
           update: {},
         });
       }

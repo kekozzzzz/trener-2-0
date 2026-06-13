@@ -28,12 +28,35 @@ export type HandAnalysisResult = {
   draftVerdict?: string;
 };
 
-// Вход GENERATE_VERDICT — вопрос и ответ игрока (правило 2: итог формируется
-// только после ответа) + черновик вердикта из GENERATE_HAND_ANALYSIS + те же
-// посчитанные метрики раздачи/турнира, что и в HandAnalysisRequest.
-export type VerdictRequest = {
+// Один отвеченный раунд сократовского диалога — вопрос системы + ответ игрока.
+export type DialogueRoundSummary = {
+  roundNumber: number;
   question: string;
   answer: string;
+};
+
+// Вход GENERATE_DIALOGUE_QUESTION — вся история отвеченных раундов (правило 2:
+// следующий вопрос формируется только после ответа на текущий) + черновик
+// вердикта из GENERATE_HAND_ANALYSIS (ориентир, куда ведёт диалог) + те же
+// посчитанные метрики раздачи/турнира, что и в HandAnalysisRequest.
+export type NextQuestionRequest = {
+  history: DialogueRoundSummary[];
+  draftVerdict: string;
+  chipResult: number;
+  tableSnapshot: TableSnapshot;
+  tournament: TournamentContext;
+};
+
+export type NextQuestionResult = {
+  question: string;
+};
+
+// Вход GENERATE_VERDICT — история всех раундов диалога (правило 2: итог
+// формируется только после ответа на последний раунд) + черновик вердикта из
+// GENERATE_HAND_ANALYSIS + те же посчитанные метрики раздачи/турнира, что и в
+// HandAnalysisRequest.
+export type VerdictRequest = {
+  history: DialogueRoundSummary[];
   draftVerdict: string;
   chipResult: number;
   tableSnapshot: TableSnapshot;
@@ -46,5 +69,6 @@ export type VerdictResult = {
 
 export interface LlmPort {
   generateHandAnalysis(request: HandAnalysisRequest): Promise<HandAnalysisResult>;
+  generateNextQuestion(request: NextQuestionRequest): Promise<NextQuestionResult>;
   generateVerdict(request: VerdictRequest): Promise<VerdictResult>;
 }
