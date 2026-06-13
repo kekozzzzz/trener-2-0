@@ -1,0 +1,44 @@
+import type { DialogueState } from "@prisma/client";
+import { prisma } from "@/infrastructure/db/client";
+import { enqueue } from "@/infrastructure/queue";
+
+type SubmitAnswerInput = {
+  handId: string;
+  answer: string;
+};
+
+type SubmitAnswerResult =
+  | { ok: true; state: DialogueState }
+  | { ok: false; error: "DIALOGUE_NOT_FOUND" | "EMPTY_ANSWER" };
+
+// Лёгкая операция (architecture/04-потоки-данных.md, раздел 2, событие №4):
+// записывает ответ игрока, переводит диалог QUESTION_ASKED → ANSWER_RECEIVED
+// и ставит GENERATE_VERDICT в фон. Переход возможен только из QUESTION_ASKED
+// (updateMany с условием в WHERE) — повторная отправка формы для диалога,
+// который уже не в QUESTION_ASKED, не создаёт второй переход и не ставит
+// вторую задачу, просто возвращает текущее состояние.
+export async function submitAnswer(input: SubmitAnswerInput): Promise<SubmitAnswerResult> {
+  const answer = input.answer.trim();
+
+  const dialogue = await prisma.dialogue.findUnique({ where: { handId: input.handId } });
+  if (!dialogue) return { ok: false, error: "DIALOGUE_NOT_FOUND" };
+
+  if (dialogue.state !== "QUESTION_ASKED") {
+    return { ok: true, state: dialogue.state };
+  }
+
+  if (!answer) return { ok: false, error: "EMPTY_ANSWER" };
+
+  await prisma.$transaction(async (tx) => {
+    const updated = await tx.dialogue.updateMany({
+      where: { handId: input.handId, state: "QUESTION_ASKED" },
+      data: { answer, state: "ANSWER_RECEIVED" },
+    });
+
+    if (updated.count > 0) {
+      await enqueue(tx, { type: "GENERATE_VERDICT", payload: { handId: input.handId } });
+    }
+  });
+
+  return { ok: true, state: "ANSWER_RECEIVED" };
+}

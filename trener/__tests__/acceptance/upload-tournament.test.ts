@@ -13,6 +13,7 @@ import { PrismaClient } from "@prisma/client";
 import fs from "fs";
 import path from "path";
 import { uploadTournament } from "@/features/tournaments/actions";
+import { submitAnswer } from "@/features/dialogue/actions";
 import { runWorkerOnce } from "@/infrastructure/queue";
 
 const TEST_PLAYER_ID = "aaaaaaaa-0000-0000-0000-000000000001";
@@ -39,12 +40,12 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await prisma.tournament.deleteMany({ where: { playerId: TEST_PLAYER_ID } });
-  await prisma.task.deleteMany({ where: { type: { in: ["PARSE_TOURNAMENT", "GENERATE_HAND_ANALYSIS"] } } });
+  await prisma.task.deleteMany({ where: { type: { in: ["PARSE_TOURNAMENT", "GENERATE_HAND_ANALYSIS", "GENERATE_VERDICT"] } } });
 });
 
 afterAll(async () => {
   await prisma.tournament.deleteMany({ where: { playerId: TEST_PLAYER_ID } });
-  await prisma.task.deleteMany({ where: { type: { in: ["PARSE_TOURNAMENT", "GENERATE_HAND_ANALYSIS"] } } });
+  await prisma.task.deleteMany({ where: { type: { in: ["PARSE_TOURNAMENT", "GENERATE_HAND_ANALYSIS", "GENERATE_VERDICT"] } } });
   await prisma.player.delete({ where: { id: TEST_PLAYER_ID } }).catch(() => {});
   await prisma.$disconnect();
 });
@@ -141,5 +142,24 @@ describe("карточка после полного цикла — PARSE_TOURNA
     expect(dialogues).toHaveLength(2);
     expect(dialogues.every((d) => d.state === "QUESTION_ASKED")).toBe(true);
     expect(dialogues.every((d) => d.verdict === null)).toBe(true);
+
+    // Игрок отвечает на вопрос по первому диалогу — submitAnswer ставит GENERATE_VERDICT
+    const [answered, untouched] = dialogues;
+    const submitResult = await submitAnswer({ handId: answered.handId, answer: "Думал, что у меня сильная рука." });
+    expect(submitResult).toEqual({ ok: true, state: "ANSWER_RECEIVED" });
+
+    for (let i = 0; i < 10; i++) {
+      const { tasksProcessed } = await runWorkerOnce(prisma);
+      if (tasksProcessed === 0) break;
+    }
+
+    const answeredAfter = await prisma.dialogue.findUnique({ where: { handId: answered.handId } });
+    expect(answeredAfter!.state).toBe("VERDICT_SHOWN");
+    expect(answeredAfter!.verdict).toBeTruthy();
+
+    // Второй диалог не трогали — остаётся в QUESTION_ASKED без вердикта
+    const untouchedAfter = await prisma.dialogue.findUnique({ where: { handId: untouched.handId } });
+    expect(untouchedAfter!.state).toBe("QUESTION_ASKED");
+    expect(untouchedAfter!.verdict).toBeNull();
   });
 });

@@ -1,7 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { getAnthropicApiKey, getAnthropicModel } from "@/config/llm";
 import { buildHandAnalysisPrompt, HAND_ANALYSIS_SYSTEM_PROMPT } from "@/config/prompts/hand-analysis";
-import type { HandAnalysisRequest, HandAnalysisResult, LlmPort } from "./types";
+import { buildVerdictPrompt, VERDICT_SYSTEM_PROMPT } from "@/config/prompts/verdict";
+import type { HandAnalysisRequest, HandAnalysisResult, LlmPort, VerdictRequest, VerdictResult } from "./types";
 
 const MAX_TOKENS = 1024;
 
@@ -29,29 +30,43 @@ function validate(result: Partial<HandAnalysisResult>, request: HandAnalysisRequ
   return { played: result.played, optimal: result.optimal, note: result.note };
 }
 
+function validateVerdict(result: Partial<VerdictResult>): VerdictResult {
+  if (typeof result.verdict !== "string") {
+    throw new Error("Claude вернул вердикт без поля verdict");
+  }
+  return { verdict: result.verdict };
+}
+
+async function callClaude(system: string, prompt: string): Promise<unknown> {
+  const client = new Anthropic({ apiKey: getAnthropicApiKey() });
+
+  const message = await client.messages.create({
+    model: getAnthropicModel(),
+    max_tokens: MAX_TOKENS,
+    system,
+    messages: [{ role: "user", content: prompt }],
+  });
+
+  const textBlock = message.content.find((block) => block.type === "text");
+  if (!textBlock || textBlock.type !== "text") {
+    throw new Error("Claude вернул ответ без текстового блока");
+  }
+
+  try {
+    return JSON.parse(extractJson(textBlock.text));
+  } catch {
+    throw new Error("Claude вернул невалидный JSON");
+  }
+}
+
 export const anthropicLlmAdapter: LlmPort = {
   async generateHandAnalysis(request: HandAnalysisRequest): Promise<HandAnalysisResult> {
-    const client = new Anthropic({ apiKey: getAnthropicApiKey() });
-
-    const message = await client.messages.create({
-      model: getAnthropicModel(),
-      max_tokens: MAX_TOKENS,
-      system: HAND_ANALYSIS_SYSTEM_PROMPT,
-      messages: [{ role: "user", content: buildHandAnalysisPrompt(request) }],
-    });
-
-    const textBlock = message.content.find((block) => block.type === "text");
-    if (!textBlock || textBlock.type !== "text") {
-      throw new Error("Claude вернул ответ без текстового блока");
-    }
-
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(extractJson(textBlock.text));
-    } catch {
-      throw new Error("Claude вернул невалидный JSON");
-    }
-
+    const parsed = await callClaude(HAND_ANALYSIS_SYSTEM_PROMPT, buildHandAnalysisPrompt(request));
     return validate(parsed as Partial<HandAnalysisResult>, request);
+  },
+
+  async generateVerdict(request: VerdictRequest): Promise<VerdictResult> {
+    const parsed = await callClaude(VERDICT_SYSTEM_PROMPT, buildVerdictPrompt(request));
+    return validateVerdict(parsed as Partial<VerdictResult>);
   },
 };

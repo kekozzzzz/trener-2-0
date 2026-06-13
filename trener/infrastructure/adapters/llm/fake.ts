@@ -1,4 +1,4 @@
-import type { HandAnalysisRequest, HandAnalysisResult, LlmPort } from "./types";
+import type { HandAnalysisRequest, HandAnalysisResult, LlmPort, VerdictRequest, VerdictResult } from "./types";
 
 // Детерминированный фейк — без сети и без расходов. Используется в тестах
 // и как дев-фоллбэк, когда ANTHROPIC_API_KEY не задан (config/llm.ts).
@@ -23,5 +23,11 @@ export const fakeLlmAdapter: LlmPort = {
     }
 
     return { played, optimal, note: "(фейк) Можно было сыграть немного иначе." };
+  },
+
+  async generateVerdict(request: VerdictRequest): Promise<VerdictResult> {
+    return {
+      verdict: `(фейк) ${request.draftVerdict} Ответ игрока учтён: «${request.answer}».`,
+    };
   },
 };

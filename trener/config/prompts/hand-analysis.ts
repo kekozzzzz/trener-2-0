@@ -5,6 +5,7 @@
 //  - «не вычисляй метрики самостоятельно» — числа уже посчитаны парсером;
 //  - «если не уверен — сформулируй уточняющий вопрос, а не категоричный совет».
 
+import type { TableSnapshot } from "@/parser/types";
 import type { HandAnalysisRequest } from "@/infrastructure/adapters/llm/types";
 
 export const HAND_ANALYSIS_SYSTEM_PROMPT = `Ты — сократовский тренер для микролимитного MTT-игрока в покер (GGPoker).
@@ -17,9 +18,9 @@ export const HAND_ANALYSIS_SYSTEM_PROMPT = `Ты — сократовский т
 - Никнеймы уже заменены на "Hero" (это игрок, которому ты отвечаешь, обращайся к нему на "ты") и "Player N" (оппоненты).
 - Ответ — ТОЛЬКО валидный JSON, без пояснений вокруг и без markdown-код-блоков.`;
 
-function renderTableSnapshot(request: HandAnalysisRequest): string {
-  const { tableSnapshot } = request;
-
+// Используется и в этом промпте, и в config/prompts/verdict.ts — снимок стола
+// передаётся LLM в одном и том же текстовом виде на обоих шагах диалога.
+export function renderTableSnapshot(tableSnapshot: TableSnapshot): string {
   const seats = tableSnapshot.seats
     .map((seat) => `${seat.label} (${seat.position}, стек ${seat.startingStack})`)
     .join("; ");
@@ -69,7 +70,7 @@ export function buildHandAnalysisPrompt(request: HandAnalysisRequest): string {
 
 Раздача отмечена парсером как ${importanceLevel}, результат Hero в этой раздаче — ${chipResult} фишек.
 
-${renderTableSnapshot(request)}
+${renderTableSnapshot(request.tableSnapshot)}
 
 Верни JSON строго такого вида:
 ${outputSchemaFor(request)}`;

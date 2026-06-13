@@ -28,6 +28,23 @@ export type HandAnalysisResult = {
   draftVerdict?: string;
 };
 
+// Вход GENERATE_VERDICT — вопрос и ответ игрока (правило 2: итог формируется
+// только после ответа) + черновик вердикта из GENERATE_HAND_ANALYSIS + те же
+// посчитанные метрики раздачи/турнира, что и в HandAnalysisRequest.
+export type VerdictRequest = {
+  question: string;
+  answer: string;
+  draftVerdict: string;
+  chipResult: number;
+  tableSnapshot: TableSnapshot;
+  tournament: TournamentContext;
+};
+
+export type VerdictResult = {
+  verdict: string;
+};
+
 export interface LlmPort {
   generateHandAnalysis(request: HandAnalysisRequest): Promise<HandAnalysisResult>;
+  generateVerdict(request: VerdictRequest): Promise<VerdictResult>;
 }
