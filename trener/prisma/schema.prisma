@@ -125,7 +125,8 @@ model Hand {
   importanceLevel HandImportance @map("importance_level")
   chipResult      Int           @map("chip_result")    // потеря/выигрыш фишек — посчитал парсер
   tableData       Json          @map("table_data")     // JSONB: карты, действия, позиции — снимок парсера
-  analysis        Json                                 // JSONB: что сделано / что было бы оптимально
+  selectedForCard Boolean       @default(false) @map("selected_for_card") // попала в ~10 раздач карточки этого турнира (selectHandsForCard)
+  analysis        Json?                                // JSONB: что сделано / что было бы оптимально — NULL, пока LLM не сгенерировала (только для selectedForCard; для остальных — по требованию, режим «Тренировка»)
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
@@ -133,7 +134,7 @@ model Hand {
   dialogue     Dialogue?
   chatMessages ChatMessage[]
 
-  @@index([tournamentId, importanceLevel], map: "idx_hands_tournament_card")
+  @@index([tournamentId, selectedForCard], map: "idx_hands_tournament_card")
   @@map("hands")
 }
 
