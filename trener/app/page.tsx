@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PricingCard } from "@/components/ui/pricing-card";
 import { SubmitButton } from "@/components/upload/submit-button";
 import { cn } from "@/lib/utils";
 
@@ -90,6 +91,29 @@ export default async function UploadPage({
           </form>
         </BlurFade>
       </section>
+
+      <BlurFade direction="up" offset={8} blur="0px" duration={0.3}>
+        <section className="space-y-6">
+          <h2 className="text-h2">Тариф</h2>
+          <PricingCard
+            title="Базовый"
+            description="Загружай турниры, разбирай раздачи, спрашивай «почему»"
+            price={12}
+            features={[
+              {
+                title: "Что входит",
+                items: [
+                  "До 20 турниров в месяц",
+                  "~10 адаптивных раздач за сессию",
+                  "Парсер VPIP, потерь в фишках, SPR",
+                  "Сократовский диалог по каждой раздаче",
+                ],
+              },
+            ]}
+            buttonText="Загрузить турнир"
+          />
+        </section>
+      </BlurFade>
     </main>
   );
 }
