@@ -91,6 +91,29 @@
     /* Анимации — раздел 5 */
     --shadow-focus: 0 0 0 3px rgba(212, 255, 51, 0.15);
     --shadow-glow: 0 0 24px rgba(212, 255, 51, 0.25);
+    --animate-shine: shine var(--duration) infinite linear;
+  @keyframes shine {
+  0% {
+    background-position: 0% 0%;
+        }
+  50% {
+    background-position: 100% 100%;
+        }
+  to {
+    background-position: 0% 0%;
+        }
+    }
+
+    /* Индикатор загрузки — раздел 5, единственное допустимое исключение из запрета на бесконечные анимации */
+    --animate-loading-dot: loading-dot 1.4s ease-in-out infinite;
+  @keyframes loading-dot {
+  0%, 80%, 100% {
+    opacity: 0.2;
+        }
+  40% {
+    opacity: 1;
+        }
+    }
 }
 
 :root {

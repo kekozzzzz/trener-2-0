@@ -23,6 +23,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.18.0",
+    "motion": "^12.40.0",
     "next": "^15.0.0",
     "postcss": "^8.5.15",
     "react": "^19.0.0",
@@ -35,6 +36,7 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.2.3",
     "@vitest/coverage-v8": "^4.1.8",
     "prisma": "^6.0.0",
     "ts-node": "^10.9.2",

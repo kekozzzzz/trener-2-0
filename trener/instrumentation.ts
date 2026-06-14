@@ -5,7 +5,7 @@ export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
   if (process.env.NODE_ENV !== "production") return;
 
-  const { execSync } = await import("node:child_process");
+  const { execSync } = await import(/* webpackIgnore: true */ "node:child_process");
   try {
     execSync("npx prisma migrate deploy", { stdio: "inherit" });
   } catch (error) {

@@ -2,6 +2,11 @@
 
 import { redirect } from "next/navigation";
 import { uploadTournament } from "@/features/tournaments/actions";
+import { BlurFade } from "@/components/ui/blur-fade";
+import { ShineBorder } from "@/components/ui/shine-border";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { SubmitButton } from "@/components/upload/submit-button";
 
 const DEMO_PLAYER_ID = "00000000-0000-0000-0000-000000000001";
 
@@ -31,24 +36,48 @@ export default async function UploadPage({
 }) {
   const { error } = await searchParams;
   return (
-    <main style={{ padding: "2rem", fontFamily: "monospace" }}>
-      <h1>Тренер 2.0</h1>
-      <p>Загрузи HH-файл GGPoker MTT — получишь три числа.</p>
+    <main className="mx-auto max-w-2xl space-y-8 px-8 py-16">
+      <BlurFade direction="up" offset={8} blur="0px" duration={0.3}>
+        <div className="space-y-3">
+          <h1 className="text-display">Тренер 2.0</h1>
+          <p className="text-body text-muted-foreground">
+            Загрузи HH-файл GGPoker MTT — получишь три числа.
+          </p>
+        </div>
+      </BlurFade>
 
       {error && (
-        <p style={{ color: "red" }}>
-          {error === "UNSUPPORTED_FORMAT"
-            ? "Загрузи MTT-турнир GGPoker"
-            : "Ошибка разбора файла"}
-        </p>
+        <BlurFade key={error} direction="up" offset={8} blur="0px" duration={0.3}>
+          <div className="relative border border-destructive p-4">
+            <ShineBorder
+              shineColor="#FF5C5C"
+              borderWidth={1}
+              duration={1}
+              style={{ animationIterationCount: 1 }}
+            />
+            <p className="text-small text-destructive">
+              {error === "UNSUPPORTED_FORMAT"
+                ? "Загрузи MTT-турнир GGPoker"
+                : "Ошибка разбора файла"}
+            </p>
+          </div>
+        </BlurFade>
       )}
 
-      <form action={handleUpload} encType="multipart/form-data">
-        <input type="file" name="file" accept=".txt" required />
-        <button type="submit" style={{ marginLeft: "1rem" }}>
-          Загрузить
-        </button>
-      </form>
+      <BlurFade direction="up" offset={8} blur="0px" duration={0.3} delay={0.05}>
+        <form action={handleUpload} encType="multipart/form-data" className="space-y-4">
+          <div className="space-y-2">
+            <Label
+              htmlFor="file"
+              className="font-mono text-label uppercase tracking-label text-muted-foreground"
+            >
+              HH-файл (.txt)
+            </Label>
+            <Input id="file" type="file" name="file" accept=".txt" required />
+          </div>
+          <SubmitButton />
+        </form>
+      </BlurFade>
     </main>
   );
 }
