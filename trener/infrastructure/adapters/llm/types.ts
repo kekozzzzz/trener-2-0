@@ -67,8 +67,31 @@ export type VerdictResult = {
   verdict: string;
 };
 
+// Одно сообщение треда «Чат по раздаче» — свободные вопросы игрока после вердикта.
+export type ChatMessageSummary = {
+  author: "PLAYER" | "SYSTEM";
+  text: string;
+};
+
+// Вход GENERATE_CHAT_REPLY — вся история треда (включая последнее сообщение
+// игрока, на которое нужен ответ) + краткая сводка уже готового разбора
+// раздачи (played/optimal/verdict) + те же посчитанные метрики, что и в
+// HandAnalysisRequest/VerdictRequest (правило 1).
+export type ChatReplyRequest = {
+  history: ChatMessageSummary[];
+  analysisSummary: string;
+  chipResult: number;
+  tableSnapshot: TableSnapshot;
+  tournament: TournamentContext;
+};
+
+export type ChatReplyResult = {
+  reply: string;
+};
+
 export interface LlmPort {
   generateHandAnalysis(request: HandAnalysisRequest): Promise<HandAnalysisResult>;
   generateNextQuestion(request: NextQuestionRequest): Promise<NextQuestionResult>;
   generateVerdict(request: VerdictRequest): Promise<VerdictResult>;
+  generateChatReply(request: ChatReplyRequest): Promise<ChatReplyResult>;
 }

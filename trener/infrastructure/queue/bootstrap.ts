@@ -8,9 +8,11 @@ import { parseTournamentStep } from "./steps/parse-tournament";
 import { generateHandAnalysisStep } from "./steps/generate-hand-analysis";
 import { generateDialogueQuestionStep } from "./steps/generate-dialogue-question";
 import { generateVerdictStep } from "./steps/generate-verdict";
+import { generateChatReplyStep } from "./steps/generate-chat-reply";
 
 registerStep("NOOP", noopStep);
 registerStep("PARSE_TOURNAMENT", parseTournamentStep);
 registerStep("GENERATE_HAND_ANALYSIS", generateHandAnalysisStep);
 registerStep("GENERATE_DIALOGUE_QUESTION", generateDialogueQuestionStep);
 registerStep("GENERATE_VERDICT", generateVerdictStep);
+registerStep("GENERATE_CHAT_REPLY", generateChatReplyStep);

@@ -1,4 +1,6 @@
 import type {
+  ChatReplyRequest,
+  ChatReplyResult,
   HandAnalysisRequest,
   HandAnalysisResult,
   LlmPort,
@@ -44,6 +46,13 @@ export const fakeLlmAdapter: LlmPort = {
     const answers = request.history.map((round) => `«${round.answer}»`).join(", ");
     return {
       verdict: `(фейк) ${request.draftVerdict} Ответы игрока учтены: ${answers}.`,
+    };
+  },
+
+  async generateChatReply(request: ChatReplyRequest): Promise<ChatReplyResult> {
+    const lastQuestion = request.history[request.history.length - 1]?.text ?? "";
+    return {
+      reply: `(фейк) Ответ на вопрос «${lastQuestion}» с учётом разбора: ${request.analysisSummary}`,
     };
   },
 };

@@ -2,10 +2,14 @@ import { prisma } from "@/infrastructure/db/client";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getDialogue } from "@/features/dialogue/queries";
+import { getChat } from "@/features/chat/queries";
 import { requireSession } from "@/features/auth/session";
 import { AuthNav } from "@/components/auth-nav";
 import { AnswerForm } from "./answer-form";
 import { WaitClient } from "./wait-client";
+import { ChatThread } from "./chat-thread";
+import { ChatForm } from "./chat-form";
+import { ChatWaitClient } from "./chat-wait-client";
 import { cn } from "@/lib/utils";
 
 export default async function HandDialoguePage({
@@ -32,6 +36,8 @@ export default async function HandDialoguePage({
 
   const dialogue = await getDialogue(handId);
   if (!dialogue) notFound();
+
+  const chat = await getChat(handId);
 
   const openRound = dialogue.state === "QUESTION_ASKED" ? dialogue.rounds[dialogue.rounds.length - 1] : null;
   const historyRounds = openRound ? dialogue.rounds.slice(0, -1) : dialogue.rounds;
@@ -105,6 +111,14 @@ export default async function HandDialoguePage({
             </div>
           )}
         </div>
+
+        {chat?.available && (
+          <div className="mt-16 space-y-4">
+            <h2 className="text-h2">Чат</h2>
+            {chat.messages.length > 0 && <ChatThread messages={chat.messages} />}
+            {chat.awaitingReply ? <ChatWaitClient handId={handId} /> : <ChatForm tournamentId={id} handId={handId} />}
+          </div>
+        )}
 
         <div className="mt-16 border-t border-border pt-8 font-mono text-label uppercase tracking-label">
           <Link href={`/tournament/${id}`} className="text-muted-foreground transition-colors hover:text-foreground">

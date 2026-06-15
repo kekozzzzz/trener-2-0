@@ -3,7 +3,10 @@ import { getAnthropicApiKey, getAnthropicModel } from "@/config/llm";
 import { buildHandAnalysisPrompt, HAND_ANALYSIS_SYSTEM_PROMPT } from "@/config/prompts/hand-analysis";
 import { buildDialogueQuestionPrompt, DIALOGUE_QUESTION_SYSTEM_PROMPT } from "@/config/prompts/dialogue-question";
 import { buildVerdictPrompt, VERDICT_SYSTEM_PROMPT } from "@/config/prompts/verdict";
+import { buildChatReplyPrompt, CHAT_REPLY_SYSTEM_PROMPT } from "@/config/prompts/chat-reply";
 import type {
+  ChatReplyRequest,
+  ChatReplyResult,
   HandAnalysisRequest,
   HandAnalysisResult,
   LlmPort,
@@ -53,6 +56,13 @@ function validateNextQuestion(result: Partial<NextQuestionResult>): NextQuestion
   return { question: result.question };
 }
 
+function validateChatReply(result: Partial<ChatReplyResult>): ChatReplyResult {
+  if (typeof result.reply !== "string") {
+    throw new Error("Claude вернул ответ без поля reply");
+  }
+  return { reply: result.reply };
+}
+
 async function callClaude(system: string, prompt: string): Promise<unknown> {
   const client = new Anthropic({ apiKey: getAnthropicApiKey() });
 
@@ -89,5 +99,10 @@ export const anthropicLlmAdapter: LlmPort = {
   async generateVerdict(request: VerdictRequest): Promise<VerdictResult> {
     const parsed = await callClaude(VERDICT_SYSTEM_PROMPT, buildVerdictPrompt(request));
     return validateVerdict(parsed as Partial<VerdictResult>);
+  },
+
+  async generateChatReply(request: ChatReplyRequest): Promise<ChatReplyResult> {
+    const parsed = await callClaude(CHAT_REPLY_SYSTEM_PROMPT, buildChatReplyPrompt(request));
+    return validateChatReply(parsed as Partial<ChatReplyResult>);
   },
 };

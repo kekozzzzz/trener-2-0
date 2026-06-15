@@ -1,0 +1,82 @@
+import type { StepHandler } from "../types";
+import type { TableSnapshot } from "@/parser/types";
+import type { ChatReplyRequest } from "@/infrastructure/adapters/llm/types";
+import { getLlmAdapter } from "@/infrastructure/adapters/llm";
+import { buildAnalysisSummary } from "@/features/chat/analysis-summary";
+
+type GenerateChatReplyPayload = {
+  handId: string;
+};
+
+// Шаг «Чат по раздаче»: отвечает на последний свободный вопрос игрока в треде.
+// Идемпотентность: если сообщений нет или последнее не от PLAYER — ответ уже
+// дан (или нечего отвечать), платный вызов пропускается
+// (architecture/04-потоки-данных.md, раздел 4).
+export const generateChatReplyStep: StepHandler = async (task, db) => {
+  const { handId } = task.payload as GenerateChatReplyPayload;
+
+  const hand = await db.hand.findUnique({
+    where: { id: handId },
+    include: {
+      tournament: true,
+      dialogue: true,
+      chatMessages: { orderBy: { createdAt: "asc" } },
+    },
+  });
+
+  if (!hand || hand.tournament.deletedAt) return; // удалено до того, как воркер взял задачу
+
+  const messages = hand.chatMessages;
+  const lastMessage = messages[messages.length - 1];
+  if (!lastMessage || lastMessage.author !== "PLAYER") return; // идемпотентность
+
+  // Чат открывается только после VERDICT_SHOWN (sendChatMessage гарантирует это
+  // на входе) — любое другое состояние здесь означает нарушение инварианта.
+  if (hand.dialogue?.state !== "VERDICT_SHOWN") {
+    throw new Error(
+      "GENERATE_CHAT_REPLY поставлена до завершения сократовского диалога (VERDICT_SHOWN) — нарушение гейта чата"
+    );
+  }
+
+  const { tournament } = hand;
+
+  if (
+    tournament.handsCount === null ||
+    tournament.vpipPercent === null ||
+    tournament.resultBuyins === null ||
+    tournament.styleDiagnosis === null
+  ) {
+    throw new Error(
+      "Метрики турнира не посчитаны — PARSE_TOURNAMENT должен выполниться раньше GENERATE_CHAT_REPLY"
+    );
+  }
+
+  const analysis = hand.analysis as { played?: string; optimal?: string } | null;
+  if (!analysis?.played || !analysis?.optimal) {
+    throw new Error(
+      "В analysis раздачи нет played/optimal — GENERATE_HAND_ANALYSIS должен выполниться раньше GENERATE_CHAT_REPLY"
+    );
+  }
+
+  const request: ChatReplyRequest = {
+    history: messages.map((message) => ({ author: message.author, text: message.text })),
+    analysisSummary: buildAnalysisSummary(
+      { played: analysis.played, optimal: analysis.optimal },
+      hand.dialogue.verdict
+    ),
+    chipResult: hand.chipResult,
+    tableSnapshot: hand.tableData as unknown as TableSnapshot,
+    tournament: {
+      handsCount: tournament.handsCount,
+      vpipPercent: tournament.vpipPercent.toNumber(),
+      resultBuyins: tournament.resultBuyins.toNumber(),
+      styleDiagnosis: tournament.styleDiagnosis,
+    },
+  };
+
+  const result = await getLlmAdapter().generateChatReply(request);
+
+  await db.chatMessage.create({
+    data: { handId, author: "SYSTEM", text: result.reply },
+  });
+};
