@@ -7,9 +7,9 @@ import { BlurFade } from "@/components/ui/blur-fade";
 import { ShineBorder } from "@/components/ui/shine-border";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PricingCard } from "@/components/ui/pricing-card";
+import { FileInput } from "@/components/upload/file-input";
 import { SubmitButton } from "@/components/upload/submit-button";
 import { cn } from "@/lib/utils";
 
@@ -85,7 +85,7 @@ export default async function UploadPage({
               >
                 HH-файл (.txt)
               </Label>
-              <Input id="file" type="file" name="file" accept=".txt" required />
+              <FileInput id="file" name="file" accept=".txt" required />
             </div>
             <SubmitButton />
           </form>
