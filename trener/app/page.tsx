@@ -1,8 +1,12 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { uploadTournament } from "@/features/tournaments/actions";
+import { requireSession } from "@/features/auth/session";
+import { getCurrentPlayer } from "@/features/auth/queries";
+import { AuthNav } from "@/components/auth-nav";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { ShineBorder } from "@/components/ui/shine-border";
 import { Badge } from "@/components/ui/badge";
@@ -12,8 +16,6 @@ import { PricingCard } from "@/components/ui/pricing-card";
 import { FileInput } from "@/components/upload/file-input";
 import { SubmitButton } from "@/components/upload/submit-button";
 import { cn } from "@/lib/utils";
-
-const DEMO_PLAYER_ID = "00000000-0000-0000-0000-000000000001";
 
 const STEPS = [
   {
@@ -38,6 +40,8 @@ const STEPS = [
 
 async function handleUpload(formData: FormData) {
   "use server";
+  const { playerId } = await requireSession();
+
   const file = formData.get("file") as File | null;
   if (!file || file.size === 0 || file.size > 5 * 1024 * 1024) return;
 
@@ -45,7 +49,7 @@ async function handleUpload(formData: FormData) {
   const result = await uploadTournament({
     fileBuffer: buffer,
     originalFilename: file.name,
-    playerId: DEMO_PLAYER_ID,
+    playerId,
   });
 
   if (!result.ok) {
@@ -61,6 +65,7 @@ export default async function UploadPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const { error } = await searchParams;
+  const player = await getCurrentPlayer();
   return (
     <main>
       <BlurFade direction="up" offset={8} blur="0px" duration={0.3}>
@@ -69,9 +74,12 @@ export default async function UploadPage({
             <span className="font-mono text-label uppercase tracking-label text-foreground">
               Тренер 2.0
             </span>
-            <span className="font-mono text-label uppercase tracking-label text-muted-foreground">
-              GGPoker MTT
-            </span>
+            <div className="flex items-center gap-4">
+              <span className="hidden font-mono text-label uppercase tracking-label text-muted-foreground sm:inline">
+                GGPoker MTT
+              </span>
+              <AuthNav />
+            </div>
           </div>
         </header>
       </BlurFade>
@@ -142,18 +150,34 @@ export default async function UploadPage({
               </div>
             )}
 
-            <form action={handleUpload} encType="multipart/form-data" className="space-y-4">
-              <div className="space-y-2">
-                <Label
-                  htmlFor="file"
-                  className="font-mono text-label uppercase tracking-label text-muted-foreground"
-                >
-                  HH-файл (.txt)
-                </Label>
-                <FileInput id="file" name="file" accept=".txt" required />
+            {player ? (
+              <form action={handleUpload} encType="multipart/form-data" className="space-y-4">
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="file"
+                    className="font-mono text-label uppercase tracking-label text-muted-foreground"
+                  >
+                    HH-файл (.txt)
+                  </Label>
+                  <FileInput id="file" name="file" accept=".txt" required />
+                </div>
+                <SubmitButton />
+              </form>
+            ) : (
+              <div className="space-y-4 border border-border bg-card p-6">
+                <p className="text-body text-foreground">
+                  Чтобы загрузить турнир, войди или зарегистрируйся — это бесплатно и займёт минуту.
+                </p>
+                <div className="flex flex-wrap gap-4">
+                  <Link href="/register" className={cn(buttonVariants())}>
+                    Зарегистрироваться
+                  </Link>
+                  <Link href="/login" className={cn(buttonVariants({ variant: "outline" }))}>
+                    Войти
+                  </Link>
+                </div>
               </div>
-              <SubmitButton />
-            </form>
+            )}
           </div>
         </BlurFade>
       </section>

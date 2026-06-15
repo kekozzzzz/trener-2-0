@@ -13,6 +13,7 @@ export default defineConfig({
       // По умолчанию 1 раунд — тесты без явного интереса к многораундовому
       // диалогу остаются написаны "как для одного раунда" (round 1 = последний).
       DIALOGUE_ROUNDS_PER_HAND: "1",
+      SESSION_SECRET: "test-session-secret-for-tests-only",
     },
   },
   resolve: {

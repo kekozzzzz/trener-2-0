@@ -23,9 +23,11 @@ fi
 red()   { printf "\033[31m%s\033[0m\n" "$*" >&2; }
 yellow(){ printf "\033[33m%s\033[0m\n" "$*" >&2; }
 
-# 1. .env файлы не коммитим никогда
+# 1. .env файлы не коммитим никогда (кроме .env.example — шаблон с плейсхолдерами)
 for file in $STAGED; do
   case "$file" in
+    *.env.example|*/\.env.example)
+      ;;
     .env|.env.*|*/\.env|*/\.env.*)
       red "BLOCKED: попытка закоммитить $file"
       red "  Ключи из .env не должны попадать в git."
@@ -38,8 +40,9 @@ done
 # 2. Формальные паттерны секретов в содержимом
 for file in $STAGED; do
   if [ -f "$file" ]; then
-    # API keys в парах key=value
-    if git diff --cached "$file" | grep -qE "^\+.*(api[_-]?key|secret|password|token|bearer)\s*[:=]\s*[\"'][^\"']{16,}" -i; then
+    # API keys в парах key=value (кроме явных тестовых плейсхолдеров со словом "test")
+    MATCHES=$(git diff --cached "$file" | grep -iE "^\+.*(api[_-]?key|secret|password|token|bearer)\s*[:=]\s*[\"'][^\"']{16,}")
+    if [ -n "$MATCHES" ] && echo "$MATCHES" | grep -qviE "test"; then
       yellow "WARN: в $file найден паттерн API-ключа в коде. Проверь что это не реальный ключ."
       yellow "  Секреты должны быть в .env, не в коде."
       FAIL=1

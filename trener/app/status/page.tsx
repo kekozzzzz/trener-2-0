@@ -1,6 +1,9 @@
+import { requireSession } from "@/features/auth/session";
 import { StatusClient } from "./status-client";
 
-export default function StatusPage() {
+export default async function StatusPage() {
+  await requireSession();
+
   return (
     <main style={{ padding: "2rem", fontFamily: "monospace", maxWidth: "800px" }}>
       <h1>Статус загрузок</h1>

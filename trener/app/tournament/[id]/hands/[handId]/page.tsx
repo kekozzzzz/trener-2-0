@@ -1,10 +1,9 @@
 import { prisma } from "@/infrastructure/db/client";
 import { notFound } from "next/navigation";
 import { getDialogue } from "@/features/dialogue/queries";
+import { requireSession } from "@/features/auth/session";
 import { AnswerForm } from "./answer-form";
 import { WaitClient } from "./wait-client";
-
-const DEMO_PLAYER_ID = "00000000-0000-0000-0000-000000000001";
 
 export default async function HandDialoguePage({
   params,
@@ -12,6 +11,7 @@ export default async function HandDialoguePage({
   params: Promise<{ id: string; handId: string }>;
 }) {
   const { id, handId } = await params;
+  const session = await requireSession();
 
   const hand = await prisma.hand.findUnique({
     where: { id: handId },
@@ -21,7 +21,7 @@ export default async function HandDialoguePage({
   if (
     !hand ||
     hand.tournamentId !== id ||
-    hand.tournament.playerId !== DEMO_PLAYER_ID ||
+    hand.tournament.playerId !== session.playerId ||
     hand.tournament.deletedAt
   ) {
     notFound();

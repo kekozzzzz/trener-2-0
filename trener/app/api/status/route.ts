@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/infrastructure/db/client";
-
-const DEMO_PLAYER_ID = "00000000-0000-0000-0000-000000000001";
+import { requireSession } from "@/features/auth/session";
 
 export async function GET(): Promise<NextResponse> {
+  const { playerId } = await requireSession();
+
   const tournaments = await prisma.tournament.findMany({
-    where: { playerId: DEMO_PLAYER_ID, deletedAt: null },
+    where: { playerId, deletedAt: null },
     orderBy: { createdAt: "desc" },
     take: 20,
     select: {

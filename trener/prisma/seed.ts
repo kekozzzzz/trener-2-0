@@ -4,8 +4,12 @@
 // Идемпотентный: повторный запуск не создаёт дублей (upsert по фиксированным email/id).
 
 import { PrismaClient, TournamentStatus, PlayerStyle, HandImportance, DialogueState, MessageAuthor } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
+
+// Дев-логин для seed-игрока: demo@trener.local / demo12345
+const SEED_PASSWORD_HASH = bcrypt.hashSync("demo12345", 10);
 
 // Фиксированные UUID для идемпотентности — никогда не менять между запусками
 const SEED_PLAYER_ID       = "00000000-0000-0000-0000-000000000001";
@@ -26,7 +30,8 @@ async function main() {
     create: {
       id: SEED_PLAYER_ID,
       email: "demo@trener.local",
-      passwordHash: "$2b$10$placeholder_hash_for_seed_only", // bcrypt-заглушка, не для продакшна
+      passwordHash: SEED_PASSWORD_HASH,
+      termsAcceptedAt: new Date("2026-06-08T18:00:00Z"),
     },
   });
   console.log(`  Игрок: ${player.email}`);

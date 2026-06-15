@@ -14,12 +14,13 @@ datasource db {
 // ─────────────────────────── Игрок ───────────────────────────────────────────
 
 model Player {
-  id           String    @id @default(uuid()) @db.Uuid
-  email        String?   @unique                // NULL после анонимизации при закрытии аккаунта
-  passwordHash String?   @map("password_hash")  // NULL после анонимизации; хэш, никогда не открытый пароль
-  closedAt     DateTime? @map("closed_at")       // момент закрытия и анонимизации
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  id              String    @id @default(uuid()) @db.Uuid
+  email           String?   @unique                  // NULL после анонимизации при закрытии аккаунта
+  passwordHash    String?   @map("password_hash")    // NULL после анонимизации; хэш, никогда не открытый пароль
+  termsAcceptedAt DateTime? @map("terms_accepted_at") // момент согласия на обработку данных при регистрации (07-безопасность.md)
+  closedAt        DateTime? @map("closed_at")         // момент закрытия и анонимизации
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
   profile      PlayerProfile?
   tournaments  Tournament[]

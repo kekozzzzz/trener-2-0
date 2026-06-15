@@ -1,8 +1,7 @@
 import { prisma } from "@/infrastructure/db/client";
 import { notFound } from "next/navigation";
 import { getDialogueRoundsPerHand } from "@/config/dialogue";
-
-const DEMO_PLAYER_ID = "00000000-0000-0000-0000-000000000001";
+import { requireSession } from "@/features/auth/session";
 
 const DIALOGUE_STATE_LABEL: Record<string, string> = {
   QUESTION_ASKED: "вопрос задан",
@@ -22,9 +21,10 @@ export default async function TournamentPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const session = await requireSession();
   const tournament = await prisma.tournament.findUnique({ where: { id } });
 
-  if (!tournament || tournament.deletedAt || tournament.playerId !== DEMO_PLAYER_ID) notFound();
+  if (!tournament || tournament.deletedAt || tournament.playerId !== session.playerId) notFound();
 
   if (tournament.status === "UPLOADED" || tournament.status === "PARSING") {
     return (
