@@ -12,7 +12,6 @@ import { ShineBorder } from "@/components/ui/shine-border";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { PricingCard } from "@/components/ui/pricing-card";
 import { FileInput } from "@/components/upload/file-input";
 import { SubmitButton } from "@/components/upload/submit-button";
 import { cn } from "@/lib/utils";
@@ -180,33 +179,6 @@ export default async function UploadPage({
             )}
           </div>
         </BlurFade>
-      </section>
-
-      <section className="border-t border-border">
-        <div className="mx-auto max-w-5xl px-8 py-16">
-          <BlurFade direction="up" offset={8} blur="0px" duration={0.3} delay={0.25}>
-            <div className="max-w-2xl space-y-6">
-              <h2 className="text-h2">Тариф</h2>
-              <PricingCard
-                title="Базовый"
-                description="Загружай турниры, разбирай раздачи, спрашивай «почему»"
-                price={12}
-                features={[
-                  {
-                    title: "Что входит",
-                    items: [
-                      "До 20 турниров в месяц",
-                      "~10 адаптивных раздач за сессию",
-                      "Парсер VPIP, потерь в фишках, SPR",
-                      "Сократовский диалог по каждой раздаче",
-                    ],
-                  },
-                ]}
-                buttonText="Загрузить турнир"
-              />
-            </div>
-          </BlurFade>
-        </div>
       </section>
 
       <footer className="border-t border-border">

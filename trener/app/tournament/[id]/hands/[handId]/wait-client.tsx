@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { triggerWorkerAction } from "@/app/status/actions";
+import { Button } from "@/components/ui/button";
+import { LoadingDots } from "@/components/ui/loading-dots";
 
 type DialogueResponse = {
   state: "QUESTION_ASKED" | "ANSWER_RECEIVED" | "VERDICT_SHOWN";
@@ -48,25 +50,15 @@ export function WaitClient({ handId }: { handId: string }) {
   }
 
   return (
-    <div style={{ marginTop: "1rem" }}>
-      <p style={{ color: "#92400e" }}>Ответ принят, готовим следующий шаг...</p>
-      <button
-        onClick={triggerWorker}
-        disabled={running}
-        style={{
-          fontFamily: "monospace",
-          padding: "4px 12px",
-          cursor: "pointer",
-          border: "1px solid #374151",
-          borderRadius: "4px",
-          background: "#f9fafb",
-        }}
-      >
+    <div className="flex flex-wrap items-center gap-4">
+      <p className="flex items-center gap-2 font-mono text-label uppercase tracking-label text-muted-foreground">
+        Ответ принят, готовим следующий шаг
+        <LoadingDots />
+      </p>
+      <Button variant="outline" onClick={triggerWorker} disabled={running}>
         Запустить воркер
-      </button>
-      {workerError && (
-        <span style={{ color: "#991b1b", fontSize: "0.85em", marginLeft: "0.5rem" }}>{workerError}</span>
-      )}
+      </Button>
+      {workerError && <span className="text-small text-destructive">{workerError}</span>}
     </div>
   );
 }

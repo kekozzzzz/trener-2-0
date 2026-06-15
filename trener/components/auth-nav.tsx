@@ -10,6 +10,9 @@ export async function AuthNav() {
   if (!player) {
     return (
       <nav className="flex items-center gap-4 font-mono text-label uppercase tracking-label">
+        <Link href="/pricing" className="text-muted-foreground transition-colors hover:text-foreground">
+          Тарифы
+        </Link>
         <Link href="/login" className="text-muted-foreground transition-colors hover:text-foreground">
           Войти
         </Link>
@@ -22,7 +25,10 @@ export async function AuthNav() {
 
   return (
     <nav className="flex items-center gap-4 font-mono text-label uppercase tracking-label">
-      <span className="text-muted-foreground">{player.email}</span>
+      <Link href="/pricing" className="text-muted-foreground transition-colors hover:text-foreground">
+        Тарифы
+      </Link>
+      <span className="hidden text-muted-foreground sm:inline">{player.email}</span>
       <form action={logoutAction}>
         <button type="submit" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
           Выйти
