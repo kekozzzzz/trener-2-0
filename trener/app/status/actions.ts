@@ -2,10 +2,15 @@
 
 import { prisma } from "@/infrastructure/db/client";
 import { runWorkerOnce } from "@/infrastructure/queue";
+import { getSession } from "@/features/auth/session";
 
 let isRunning = false;
 
 export async function triggerWorkerAction(): Promise<{ ok: boolean; tasksProcessed?: number }> {
+  // Прогон очереди — только для вошедшего игрока (architecture/07-безопасность.md,
+  // раздел 2). Чужих данных не отдаёт, но не даём анониму дёргать конвейер.
+  if (!(await getSession())) return { ok: false };
+
   if (isRunning) return { ok: false };
 
   isRunning = true;

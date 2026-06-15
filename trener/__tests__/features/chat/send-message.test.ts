@@ -139,6 +139,22 @@ describe("sendChatMessage", () => {
     expect(messages).toHaveLength(0);
   });
 
+  it("сообщение длиннее лимита → MESSAGE_TOO_LONG, без изменений", async () => {
+    const tournamentId = await createTournament();
+    const handId = await createHand(tournamentId);
+    await createDialogue(handId, "VERDICT_SHOWN");
+
+    const result = await sendChatMessage({ handId, text: "a".repeat(501) });
+
+    expect(result).toEqual({ ok: false, error: "MESSAGE_TOO_LONG" });
+
+    const messages = await db.chatMessage.findMany({ where: { handId } });
+    expect(messages).toHaveLength(0);
+
+    const tasks = await findChatReplyTasks(handId);
+    expect(tasks).toHaveLength(0);
+  });
+
   it("последнее сообщение от PLAYER без ответа → AWAITING_REPLY, не дублирует задачу", async () => {
     const tournamentId = await createTournament();
     const handId = await createHand(tournamentId);

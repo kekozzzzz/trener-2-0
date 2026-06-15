@@ -1,7 +1,7 @@
 import type { DialogueState } from "@prisma/client";
 import { prisma } from "@/infrastructure/db/client";
 import { enqueue } from "@/infrastructure/queue";
-import { getDialogueRoundsPerHand } from "@/config/dialogue";
+import { getDialogueRoundsPerHand, getDialogueAnswerMaxLength } from "@/config/dialogue";
 
 type SubmitAnswerInput = {
   handId: string;
@@ -10,7 +10,7 @@ type SubmitAnswerInput = {
 
 type SubmitAnswerResult =
   | { ok: true; state: DialogueState }
-  | { ok: false; error: "DIALOGUE_NOT_FOUND" | "EMPTY_ANSWER" };
+  | { ok: false; error: "DIALOGUE_NOT_FOUND" | "EMPTY_ANSWER" | "ANSWER_TOO_LONG" };
 
 // Лёгкая операция (architecture/04-потоки-данных.md, раздел 2, событие №4):
 // записывает ответ игрока на текущий раунд, переводит диалог
@@ -34,6 +34,10 @@ export async function submitAnswer(input: SubmitAnswerInput): Promise<SubmitAnsw
   }
 
   if (!answer) return { ok: false, error: "EMPTY_ANSWER" };
+
+  // Защитный потолок длины — ответ уходит в Claude (config/dialogue.ts,
+  // architecture/07-безопасность.md, раздел 2): тормоз для платных токенов.
+  if (answer.length > getDialogueAnswerMaxLength()) return { ok: false, error: "ANSWER_TOO_LONG" };
 
   const currentRound = dialogue.rounds[0];
   const isLastRound = currentRound.roundNumber >= getDialogueRoundsPerHand();

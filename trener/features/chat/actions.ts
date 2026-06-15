@@ -1,5 +1,6 @@
 import { prisma } from "@/infrastructure/db/client";
 import { enqueue } from "@/infrastructure/queue";
+import { getChatMessageMaxLength } from "@/config/chat";
 
 type SendChatMessageInput = {
   handId: string;
@@ -8,7 +9,10 @@ type SendChatMessageInput = {
 
 type SendChatMessageResult =
   | { ok: true }
-  | { ok: false; error: "HAND_NOT_FOUND" | "CHAT_NOT_AVAILABLE" | "EMPTY_MESSAGE" | "AWAITING_REPLY" };
+  | {
+      ok: false;
+      error: "HAND_NOT_FOUND" | "CHAT_NOT_AVAILABLE" | "EMPTY_MESSAGE" | "MESSAGE_TOO_LONG" | "AWAITING_REPLY";
+    };
 
 // Свободный вопрос игрока по разобранной раздаче (architecture/04-потоки-данных.md,
 // раздел 4). Гейт: чат открыт только после VERDICT_SHOWN (правило 2, план
@@ -36,6 +40,10 @@ export async function sendChatMessage(input: SendChatMessageInput): Promise<Send
   }
 
   if (!text) return { ok: false, error: "EMPTY_MESSAGE" };
+
+  // Лимит длины (config/chat.ts, architecture/07-безопасность.md, раздел 2):
+  // тормоз для платных токенов и злоупотреблений — проверяем после trim.
+  if (text.length > getChatMessageMaxLength()) return { ok: false, error: "MESSAGE_TOO_LONG" };
 
   await prisma.$transaction(async (tx) => {
     await tx.chatMessage.create({
