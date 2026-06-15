@@ -44,13 +44,15 @@ export default async function UploadPage({
     <main className="mx-auto max-w-2xl space-y-16 px-8 py-16">
       <BlurFade direction="up" offset={8} blur="0px" duration={0.3}>
         <div className="space-y-6">
-          <Badge variant="outline">Сократовский AI-тренер · GGPoker MTT</Badge>
+          <Badge variant="outline" className="hidden sm:inline-flex">
+            Сократовский AI-тренер · GGPoker MTT
+          </Badge>
           <h1 className="text-display">Тренер 2.0</h1>
           <p className="text-body text-muted-foreground">
             Загрузи HH-файл GGPoker MTT — парсер посчитает VPIP, потери в фишках и SPR, а
             тренер спросит «почему», прежде чем дать оценку.
           </p>
-          <a href="#upload" className={cn(buttonVariants(), "gap-2")}>
+          <a href="#upload" className={cn(buttonVariants(), "hidden gap-2 sm:inline-flex")}>
             Загрузить турнир
             <ArrowRight className="size-4" />
           </a>

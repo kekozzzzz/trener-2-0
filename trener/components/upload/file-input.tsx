@@ -18,7 +18,7 @@ export function FileInput({ id, name, accept, required }: FileInputProps) {
   return (
     <label
       htmlFor={id}
-      className="flex cursor-pointer items-center justify-between gap-4 border border-border bg-card px-4 py-3 transition-[border-color] duration-100 ease-out has-focus-visible:border-primary has-focus-visible:shadow-focus"
+      className="flex cursor-pointer flex-col items-stretch gap-3 border border-border bg-card px-4 py-3 transition-[border-color] duration-100 ease-out has-focus-visible:border-primary has-focus-visible:shadow-focus sm:flex-row sm:items-center sm:justify-between sm:gap-4"
     >
       <span
         className={cn(
@@ -28,7 +28,9 @@ export function FileInput({ id, name, accept, required }: FileInputProps) {
       >
         {fileName ?? "Файл не выбран"}
       </span>
-      <span className={cn(buttonVariants({ variant: "outline", size: "sm" }), "shrink-0")}>
+      <span
+        className={cn(buttonVariants({ variant: "outline", size: "sm" }), "w-full sm:w-auto sm:shrink-0")}
+      >
         Выбрать файл
       </span>
       <input
