@@ -66,7 +66,7 @@ export default function DesignPreviewPage() {
         <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
           Design Preview
         </p>
-        <h1 className="text-display">Тренер 2.0</h1>
+        <h1 className="text-display">Whygrid</h1>
         <p className="max-w-2xl text-body text-muted-foreground">
           Витрина компонентов shadcn/ui на токенах из{" "}
           <span className="font-mono text-small">design/design-system.md</span>. Сверяем стиль

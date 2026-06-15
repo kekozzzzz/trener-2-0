@@ -5,6 +5,7 @@ import { ArrowRight } from "lucide-react";
 import { getDialogueRoundsPerHand } from "@/config/dialogue";
 import { requireSession } from "@/features/auth/session";
 import { AuthNav } from "@/components/auth-nav";
+import { Wordmark } from "@/components/ui/wordmark";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -20,8 +21,8 @@ function PageHeader() {
   return (
     <header className="border-b border-border">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-8 py-6">
-        <Link href="/" className="font-mono text-label uppercase tracking-label text-foreground">
-          Тренер 2.0
+        <Link href="/">
+          <Wordmark />
         </Link>
         <AuthNav />
       </div>

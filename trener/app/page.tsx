@@ -4,9 +4,13 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { uploadTournament } from "@/features/tournaments/actions";
+import { recentTournaments } from "@/features/tournaments/queries";
 import { requireSession } from "@/features/auth/session";
 import { getCurrentPlayer } from "@/features/auth/queries";
 import { AuthNav } from "@/components/auth-nav";
+import { Wordmark } from "@/components/ui/wordmark";
+import { PageHeader } from "@/components/page-header";
+import { TournamentRow } from "@/components/tournaments/tournament-row";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { ShineBorder } from "@/components/ui/shine-border";
 import { Badge } from "@/components/ui/badge";
@@ -58,6 +62,28 @@ async function handleUpload(formData: FormData) {
   }
 }
 
+function UploadError({ error }: { error: string }) {
+  return (
+    <div className="relative border border-destructive p-4">
+      <ShineBorder shineColor="#FF5C5C" borderWidth={1} duration={1} style={{ animationIterationCount: 1 }} />
+      <p className="text-small text-destructive">
+        {error === "UNSUPPORTED_FORMAT" ? "Загрузи MTT-турнир GGPoker" : "Ошибка разбора файла"}
+      </p>
+    </div>
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="border-t border-border">
+      <div className="mx-auto flex max-w-5xl items-center justify-between px-8 py-8 font-mono text-label uppercase tracking-label text-muted-foreground">
+        <Wordmark />
+        <span>© {new Date().getFullYear()}</span>
+      </div>
+    </footer>
+  );
+}
+
 export default async function UploadPage({
   searchParams,
 }: {
@@ -65,18 +91,76 @@ export default async function UploadPage({
 }) {
   const { error } = await searchParams;
   const player = await getCurrentPlayer();
+
+  // Залогиненный игрок видит дашборд: форма загрузки + последние турниры.
+  if (player) {
+    const recent = await recentTournaments(player.id, 5);
+    return (
+      <main>
+        <PageHeader />
+
+        <section className="mx-auto max-w-5xl px-8 py-16">
+          <div className="max-w-2xl space-y-8">
+            <div className="space-y-2">
+              <h1 className="text-h1">Загрузить турнир</h1>
+              <p className="text-small text-muted-foreground">HH-файл GGPoker MTT в формате .txt, до 5 МБ.</p>
+            </div>
+
+            {error && <UploadError error={error} />}
+
+            <form action={handleUpload} encType="multipart/form-data" className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="file" className="font-mono text-label uppercase tracking-label text-muted-foreground">
+                  HH-файл (.txt)
+                </Label>
+                <FileInput id="file" name="file" accept=".txt" required />
+              </div>
+              <SubmitButton />
+            </form>
+          </div>
+        </section>
+
+        <section className="border-t border-border">
+          <div className="mx-auto max-w-5xl px-8 py-16">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <h2 className="text-h2">Последние турниры</h2>
+              {recent.length > 0 && (
+                <Link
+                  href="/tournaments"
+                  className="font-mono text-label uppercase tracking-label text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  Все турниры →
+                </Link>
+              )}
+            </div>
+
+            {recent.length === 0 ? (
+              <p className="mt-8 text-body text-muted-foreground">
+                Пока ни одного турнира. Загрузи первый — он появится здесь.
+              </p>
+            ) : (
+              <div className="mt-8 space-y-4">
+                {recent.map((tournament) => (
+                  <TournamentRow key={tournament.id} tournament={tournament} />
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        <Footer />
+      </main>
+    );
+  }
+
+  // Гость видит витрину: hero, «как это работает», приглашение войти/зарегистрироваться.
   return (
     <main>
       <BlurFade direction="up" offset={8} blur="0px" duration={0.3}>
         <header className="border-b border-border">
           <div className="mx-auto flex max-w-5xl items-center justify-between px-8 py-6">
-            <span className="font-mono text-label uppercase tracking-label text-foreground">
-              Тренер 2.0
-            </span>
+            <Wordmark />
             <div className="flex items-center gap-4">
-              <span className="hidden font-mono text-label uppercase tracking-label text-muted-foreground sm:inline">
-                GGPoker MTT
-              </span>
               <AuthNav />
             </div>
           </div>
@@ -133,60 +217,26 @@ export default async function UploadPage({
               </p>
             </div>
 
-            {error && (
-              <div className="relative border border-destructive p-4">
-                <ShineBorder
-                  shineColor="#FF5C5C"
-                  borderWidth={1}
-                  duration={1}
-                  style={{ animationIterationCount: 1 }}
-                />
-                <p className="text-small text-destructive">
-                  {error === "UNSUPPORTED_FORMAT"
-                    ? "Загрузи MTT-турнир GGPoker"
-                    : "Ошибка разбора файла"}
-                </p>
-              </div>
-            )}
+            {error && <UploadError error={error} />}
 
-            {player ? (
-              <form action={handleUpload} encType="multipart/form-data" className="space-y-4">
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="file"
-                    className="font-mono text-label uppercase tracking-label text-muted-foreground"
-                  >
-                    HH-файл (.txt)
-                  </Label>
-                  <FileInput id="file" name="file" accept=".txt" required />
-                </div>
-                <SubmitButton />
-              </form>
-            ) : (
-              <div className="space-y-4 border border-border bg-card p-6">
-                <p className="text-body text-foreground">
-                  Чтобы загрузить турнир, войди или зарегистрируйся — это бесплатно и займёт минуту.
-                </p>
-                <div className="flex flex-wrap gap-4">
-                  <Link href="/register" className={cn(buttonVariants())}>
-                    Зарегистрироваться
-                  </Link>
-                  <Link href="/login" className={cn(buttonVariants({ variant: "outline" }))}>
-                    Войти
-                  </Link>
-                </div>
+            <div className="space-y-4 border border-border bg-card p-6">
+              <p className="text-body text-foreground">
+                Чтобы загрузить турнир, войди или зарегистрируйся — это бесплатно и займёт минуту.
+              </p>
+              <div className="flex flex-wrap gap-4">
+                <Link href="/register" className={cn(buttonVariants())}>
+                  Зарегистрироваться
+                </Link>
+                <Link href="/login" className={cn(buttonVariants({ variant: "outline" }))}>
+                  Войти
+                </Link>
               </div>
-            )}
+            </div>
           </div>
         </BlurFade>
       </section>
 
-      <footer className="border-t border-border">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-8 py-8 font-mono text-label uppercase tracking-label text-muted-foreground">
-          <span>Тренер 2.0</span>
-          <span>© {new Date().getFullYear()}</span>
-        </div>
-      </footer>
+      <Footer />
     </main>
   );
 }

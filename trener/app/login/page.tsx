@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BlurFade } from "@/components/ui/blur-fade";
+import { Wordmark } from "@/components/ui/wordmark";
 import { LoginForm } from "./login-form";
 
 export default function LoginPage() {
@@ -7,8 +8,8 @@ export default function LoginPage() {
     <main>
       <header className="border-b border-border">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-8 py-6">
-          <Link href="/" className="font-mono text-label uppercase tracking-label text-foreground">
-            Тренер 2.0
+          <Link href="/">
+            <Wordmark />
           </Link>
         </div>
       </header>

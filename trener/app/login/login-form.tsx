@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useFormStatus } from "react-dom";
 import { loginAction, type AuthFormState } from "@/features/auth/actions";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { LoadingDots } from "@/components/ui/loading-dots";
@@ -44,7 +45,7 @@ export function LoginForm() {
         <Label htmlFor="password" className="font-mono text-label uppercase tracking-label text-muted-foreground">
           Пароль
         </Label>
-        <Input id="password" name="password" type="password" required autoComplete="current-password" />
+        <PasswordInput id="password" name="password" required autoComplete="current-password" />
       </div>
 
       {state.error && <p className="text-small text-destructive">{state.error}</p>}

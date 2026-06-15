@@ -26,7 +26,7 @@ const jetbrainsMono = localFont({
   display: "swap",
 });
 
-export const metadata = { title: "Тренер 2.0" };
+export const metadata = { title: "Whygrid" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

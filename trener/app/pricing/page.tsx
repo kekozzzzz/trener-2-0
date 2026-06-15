@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AuthNav } from "@/components/auth-nav";
+import { Wordmark } from "@/components/ui/wordmark";
 import { PricingCard } from "@/components/ui/pricing-card";
 
 export default function PricingPage() {
@@ -7,8 +8,8 @@ export default function PricingPage() {
     <main>
       <header className="border-b border-border">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-8 py-6">
-          <Link href="/" className="font-mono text-label uppercase tracking-label text-foreground">
-            Тренер 2.0
+          <Link href="/">
+            <Wordmark />
           </Link>
           <AuthNav />
         </div>

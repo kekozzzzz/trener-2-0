@@ -3,8 +3,11 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getDialogue } from "@/features/dialogue/queries";
 import { getChat } from "@/features/chat/queries";
+import { bigBlindFromSnapshot } from "@/parser/big-blind";
+import type { TableSnapshot } from "@/parser/types";
 import { requireSession } from "@/features/auth/session";
 import { AuthNav } from "@/components/auth-nav";
+import { Wordmark } from "@/components/ui/wordmark";
 import { AnswerForm } from "./answer-form";
 import { WaitClient } from "./wait-client";
 import { ChatThread } from "./chat-thread";
@@ -43,13 +46,15 @@ export default async function HandDialoguePage({
   const historyRounds = openRound ? dialogue.rounds.slice(0, -1) : dialogue.rounds;
   const chipResult = dialogue.hand.chipResult;
   const chipSign = chipResult >= 0 ? "+" : "";
+  const bigBlind = bigBlindFromSnapshot(hand.tableData as unknown as TableSnapshot);
+  const bbResult = bigBlind ? chipResult / bigBlind : null;
 
   return (
     <main>
       <header className="border-b border-border">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-8 py-6">
-          <Link href="/" className="font-mono text-label uppercase tracking-label text-foreground">
-            Тренер 2.0
+          <Link href="/">
+            <Wordmark />
           </Link>
           <AuthNav />
         </div>
@@ -70,6 +75,12 @@ export default async function HandDialoguePage({
             {chipResult}
           </p>
           <p className="mt-1 font-mono text-label uppercase tracking-label text-muted-foreground">фишек</p>
+          {bbResult !== null && (
+            <p className="mt-2 font-mono text-small text-muted-foreground">
+              {chipSign}
+              {bbResult.toFixed(1)} BB
+            </p>
+          )}
         </div>
 
         {historyRounds.length > 0 && (

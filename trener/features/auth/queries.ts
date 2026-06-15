@@ -5,8 +5,9 @@ export async function getCurrentPlayer(): Promise<{ id: string; email: string | 
   const session = await getSession();
   if (!session) return null;
 
-  const player = await prisma.player.findUnique({
-    where: { id: session.playerId },
+  // closedAt: null — закрытый (анонимизированный) аккаунт не считается залогиненным.
+  const player = await prisma.player.findFirst({
+    where: { id: session.playerId, closedAt: null },
     select: { id: true, email: true },
   });
 

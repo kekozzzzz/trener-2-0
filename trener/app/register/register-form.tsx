@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useFormStatus } from "react-dom";
 import { registerAction, type AuthFormState } from "@/features/auth/actions";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { LoadingDots } from "@/components/ui/loading-dots";
@@ -45,14 +46,14 @@ export function RegisterForm() {
         <Label htmlFor="password" className="font-mono text-label uppercase tracking-label text-muted-foreground">
           Пароль
         </Label>
-        <Input id="password" name="password" type="password" required minLength={8} autoComplete="new-password" />
+        <PasswordInput id="password" name="password" required minLength={8} autoComplete="new-password" />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="passwordConfirm" className="font-mono text-label uppercase tracking-label text-muted-foreground">
           Повтори пароль
         </Label>
-        <Input id="passwordConfirm" name="passwordConfirm" type="password" required minLength={8} autoComplete="new-password" />
+        <PasswordInput id="passwordConfirm" name="passwordConfirm" required minLength={8} autoComplete="new-password" />
       </div>
 
       <label className="flex items-start gap-3 text-small text-muted-foreground">

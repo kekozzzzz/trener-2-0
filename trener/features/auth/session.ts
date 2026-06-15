@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createHmac, timingSafeEqual } from "crypto";
+import { prisma } from "@/infrastructure/db/client";
 
 const COOKIE_NAME = "session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 дней
@@ -69,5 +70,15 @@ export async function destroySession(): Promise<void> {
 export async function requireSession(): Promise<{ playerId: string }> {
   const session = await getSession();
   if (!session) redirect("/login");
+
+  // Cookie-сессия валидна криптографически, но аккаунт мог быть закрыт
+  // (анонимизирован) — тогда живая сессия на другом устройстве не должна
+  // пускать. Cookie здесь не трогаем: его нельзя менять при рендере страницы.
+  const player = await prisma.player.findFirst({
+    where: { id: session.playerId, closedAt: null },
+    select: { id: true },
+  });
+  if (!player) redirect("/login");
+
   return session;
 }
