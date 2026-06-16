@@ -1,18 +1,48 @@
 {
   "permissions": {
+    "defaultMode": "acceptEdits",
     "deny": [
       "Bash(rm -rf*)",
       "Bash(git push *--force*)",
+      "Bash(git push --force*)",
       "Bash(git push * -f *)",
-      "Bash(git push -f *)",
+      "Bash(git push -f*)",
       "Bash(git reset --hard*)",
       "Bash(git checkout -- .)",
       "Bash(git restore .)",
+      "Bash(git clean*)",
       "Bash(curl * export *)",
       "Bash(wget * $*)",
       "Bash(cat .env*)",
-      "Bash(npx prisma migrate reset*)",
-      "Bash(npx prisma db push --force-reset*)"
+      "Bash(*prisma migrate reset*)",
+      "Bash(*prisma db push*)",
+      "Bash(dropdb*)",
+      "Bash(psql*production*)",
+      "Bash(yc * delete*)",
+      "Bash(*DROP DATABASE*)",
+      "Bash(*DROP TABLE*)",
+      "Bash(*TRUNCATE*)",
+      "Read(./.env*)",
+      "Edit(./.env*)",
+      "Write(./.env*)"
+    ],
+    "allow": [
+      "Bash(npm run build*)",
+      "Bash(npm run dev*)",
+      "Bash(npm run lint*)",
+      "Bash(npm test*)",
+      "Bash(npx vitest*)",
+      "Bash(npx tsc*)",
+      "Bash(npx prisma generate*)",
+      "Bash(npm ci)",
+      "Bash(npm install)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "Bash(git branch)",
+      "Bash(git fetch*)",
+      "Bash(git add*)"
     ]
   },
   "hooks": {
