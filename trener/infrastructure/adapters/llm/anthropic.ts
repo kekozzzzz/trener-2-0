@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { getAnthropicApiKey, getAnthropicModel } from "@/config/llm";
+import { ProxyAgent } from "undici";
+import { getAnthropicApiKey, getAnthropicModel, getAnthropicProxyUrl } from "@/config/llm";
 import { buildHandAnalysisPrompt, HAND_ANALYSIS_SYSTEM_PROMPT } from "@/config/prompts/hand-analysis";
 import { buildDialogueQuestionPrompt, DIALOGUE_QUESTION_SYSTEM_PROMPT } from "@/config/prompts/dialogue-question";
 import { buildVerdictPrompt, VERDICT_SYSTEM_PROMPT } from "@/config/prompts/verdict";
@@ -63,8 +64,41 @@ function validateChatReply(result: Partial<ChatReplyResult>): ChatReplyResult {
   return { reply: result.reply };
 }
 
+// CONNECT-прокси для обхода гео-блокировки Claude (см. getAnthropicProxyUrl).
+// Логин/пароль (если заданы в URL) уходят в заголовок Proxy-Authorization;
+// сам uri передаём без них, чтобы не зависеть от того, как разбирает userinfo undici.
+function buildProxyDispatcher(proxyUrl: string): ProxyAgent {
+  const url = new URL(proxyUrl);
+  const uri = `${url.protocol}//${url.host}`;
+  if (url.username || url.password) {
+    const creds = `${decodeURIComponent(url.username)}:${decodeURIComponent(url.password)}`;
+    const token = `Basic ${Buffer.from(creds).toString("base64")}`;
+    return new ProxyAgent({ uri, token });
+  }
+  return new ProxyAgent({ uri });
+}
+
+// Клиент строим один раз: ключ и адрес прокси берутся из окружения процесса
+// и в рантайме не меняются. ProxyAgent тоже переиспользуем (пул соединений).
+let cachedClient: Anthropic | null = null;
+
+function getClient(): Anthropic {
+  if (cachedClient) return cachedClient;
+
+  const options: ConstructorParameters<typeof Anthropic>[0] = { apiKey: getAnthropicApiKey() };
+  const proxyUrl = getAnthropicProxyUrl();
+  if (proxyUrl) {
+    options.fetchOptions = {
+      dispatcher: buildProxyDispatcher(proxyUrl),
+    } as unknown as typeof options.fetchOptions;
+  }
+
+  cachedClient = new Anthropic(options);
+  return cachedClient;
+}
+
 async function callClaude(system: string, prompt: string): Promise<unknown> {
-  const client = new Anthropic({ apiKey: getAnthropicApiKey() });
+  const client = getClient();
 
   const message = await client.messages.create({
     model: getAnthropicModel(),
