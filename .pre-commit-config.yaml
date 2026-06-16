@@ -1,0 +1,11 @@
+# Pre-commit: сканирование секретов перед каждым коммитом.
+# Используется уже установленный бинарник gitleaks (хук gitleaks-system),
+# поэтому Go-компилятор не нужен.
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks-system
+        # gitleaks сам сканирует staged-дифф; имена файлов ему передавать нельзя —
+        # иначе он принимает их за путь к репозиторию и молча ничего не проверяет.
+        pass_filenames: false
