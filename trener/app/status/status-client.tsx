@@ -18,7 +18,6 @@ type Task = {
   status: string;
   payload: Record<string, unknown>;
   createdAt: string;
-  error: string | null;
   attempt: number;
 };
 
@@ -202,7 +201,7 @@ export function StatusClient() {
                   )}
                 </td>
                 <td style={{ padding: "6px 0", color: "#991b1b", fontSize: "0.85em" }}>
-                  {t.error ?? ""}
+                  {t.status === "FAILED" || t.status === "POISONED" ? "не удалось обработать" : ""}
                 </td>
               </tr>
             ))}

@@ -25,13 +25,16 @@ export async function GET(): Promise<NextResponse> {
     where: { type: "PARSE_TOURNAMENT" },
     orderBy: { createdAt: "desc" },
     take: 100,
+    // Технический текст ошибки (task.error) наружу не отдаём — он может содержать
+    // внутренние сообщения парсера/LLM. Клиенту довольно статуса задачи; полный
+    // текст остаётся в БД для владельца продукта (architecture/07-безопасность.md,
+    // раздел 2 — журнал с причиной доступен администратору, не пользователю).
     select: {
       id: true,
       type: true,
       status: true,
       payload: true,
       createdAt: true,
-      error: true,
       attempt: true,
     },
   });
