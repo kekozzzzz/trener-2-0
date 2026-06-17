@@ -60,7 +60,7 @@ export function PricingCard({
             <h4 className="mb-4 font-mono text-label uppercase tracking-label text-muted-foreground">
               {group.title}
             </h4>
-            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <ul className="grid grid-cols-1 gap-3">
               {group.items.map((item) => (
                 <li key={item} className="flex items-center gap-2 text-body">
                   <Check className="size-4 shrink-0 text-primary" />
