@@ -3,11 +3,12 @@
  *
  * Покрывают:
  *  1. Раздача не найдена → null.
- *  2. Нет Dialogue (STRONG/MEDIUM раздача) → available === false.
- *  3. Dialogue есть, но state !== VERDICT_SHOWN → available === false.
- *  4. VERDICT_SHOWN, сообщений нет → available === true, awaitingReply === false, messages === [].
- *  5. VERDICT_SHOWN, последнее сообщение от PLAYER → awaitingReply === true.
- *  6. VERDICT_SHOWN, последнее сообщение от SYSTEM → awaitingReply === false, messages в порядке создания.
+ *  2. Нет Dialogue, но есть разбор (простая STRONG/MEDIUM раздача) → available === true (план 2026-06-17).
+ *  3. Нет Dialogue и нет разбора (раздача ещё не разобрана) → available === false.
+ *  4. Dialogue есть, но state !== VERDICT_SHOWN → available === false (правило 2 не сломано).
+ *  5. VERDICT_SHOWN, сообщений нет → available === true, awaitingReply === false, messages === [].
+ *  6. VERDICT_SHOWN, последнее сообщение от PLAYER → awaitingReply === true.
+ *  7. VERDICT_SHOWN, последнее сообщение от SYSTEM → awaitingReply === false, messages в порядке создания.
  *
  * Бьёт в реальную тестовую базу (trener_test).
  */
@@ -40,15 +41,19 @@ async function createTournament(): Promise<string> {
   return tournament.id;
 }
 
-async function createHand(tournamentId: string): Promise<string> {
+async function createHand(
+  tournamentId: string,
+  opts: { importanceLevel?: "CRITICAL" | "STRONG" | "MEDIUM"; analysis?: boolean } = {}
+): Promise<string> {
+  const { importanceLevel = "CRITICAL", analysis = true } = opts;
   const hand = await db.hand.create({
     data: {
       tournamentId,
-      importanceLevel: "CRITICAL",
+      importanceLevel,
       chipResult: -100,
       tableData: EMPTY_SNAPSHOT as unknown as Prisma.InputJsonValue,
       selectedForCard: true,
-      analysis: { played: "...", optimal: "..." } as unknown as Prisma.InputJsonValue,
+      analysis: analysis ? ({ played: "...", optimal: "..." } as unknown as Prisma.InputJsonValue) : undefined,
     },
   });
   return hand.id;
@@ -96,9 +101,18 @@ describe("getChat", () => {
     expect(result).toBeNull();
   });
 
-  it("нет Dialogue (STRONG/MEDIUM раздача) → available === false", async () => {
+  it("нет Dialogue, но есть разбор (простая STRONG раздача) → available === true", async () => {
     const tournamentId = await createTournament();
-    const handId = await createHand(tournamentId);
+    const handId = await createHand(tournamentId, { importanceLevel: "STRONG" });
+
+    const result = await getChat(handId);
+
+    expect(result).toEqual({ available: true, awaitingReply: false, messages: [] });
+  });
+
+  it("нет Dialogue и нет разбора (раздача ещё не разобрана) → available === false", async () => {
+    const tournamentId = await createTournament();
+    const handId = await createHand(tournamentId, { importanceLevel: "MEDIUM", analysis: false });
 
     const result = await getChat(handId);
 

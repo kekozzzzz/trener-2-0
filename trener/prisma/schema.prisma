@@ -70,10 +70,14 @@ model Tournament {
   id             String           @id @default(uuid()) @db.Uuid
   playerId       String           @map("player_id") @db.Uuid
   playedAt       DateTime         @map("played_at")
+  room           String?          @map("room")                    // площадка из HH-файла (пока только "GGPoker")
+  name           String?          @map("name")                    // название турнира из заголовка HH
+  externalTournamentId String?    @map("external_tournament_id")  // номер турнира из HH — ключ дедупликации (по игроку+площадке)
   vpipPercent    Decimal?         @map("vpip_percent") @db.Decimal(5, 2)
   handsCount     Int?             @map("hands_count")
   resultBuyins   Decimal?         @map("result_buyins") @db.Decimal(8, 2)  // НЕ деньги — единица «бай-ин», может быть дробной
   styleDiagnosis PlayerStyle?     @map("style_diagnosis")
+  summary        Json?            @map("summary")  // обзор турнира: { overview, moments: [{ handId, label }] } — GENERATE_TOURNAMENT_SUMMARY
   status         TournamentStatus @default(UPLOADED)
   deletedAt      DateTime?        @map("deleted_at")  // мягкое удаление (запрет 5)
   createdAt      DateTime         @default(now()) @map("created_at")
@@ -88,6 +92,8 @@ model Tournament {
   @@index([status, createdAt], map: "idx_tournaments_pending_parse")
   @@index([playerId, playedAt], map: "idx_tournaments_player_timeline")
   @@index([playerId, createdAt], map: "idx_tournaments_player_monthly_count")
+  // Поиск дубля при загрузке: тот же игрок + площадка + номер турнира из файла
+  @@index([playerId, room, externalTournamentId], map: "idx_tournaments_dedup")
   @@map("tournaments")
 }
 

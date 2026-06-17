@@ -3,6 +3,7 @@ import type { TableSnapshot } from "@/parser/types";
 import type { ChatReplyRequest } from "@/infrastructure/adapters/llm/types";
 import { getLlmAdapter } from "@/infrastructure/adapters/llm";
 import { buildAnalysisSummary } from "@/features/chat/analysis-summary";
+import { isChatAvailable } from "@/features/chat/availability";
 
 type GenerateChatReplyPayload = {
   handId: string;
@@ -30,11 +31,12 @@ export const generateChatReplyStep: StepHandler = async (task, db) => {
   const lastMessage = messages[messages.length - 1];
   if (!lastMessage || lastMessage.author !== "PLAYER") return; // идемпотентность
 
-  // Чат открывается только после VERDICT_SHOWN (sendChatMessage гарантирует это
-  // на входе) — любое другое состояние здесь означает нарушение инварианта.
-  if (hand.dialogue?.state !== "VERDICT_SHOWN") {
+  // Гейт чата (isChatAvailable, sendChatMessage гарантирует его на входе):
+  // простая раздача — нужен готовый analysis; критическая — ещё и VERDICT_SHOWN.
+  // Любое другое состояние здесь означает нарушение инварианта.
+  if (!isChatAvailable(hand)) {
     throw new Error(
-      "GENERATE_CHAT_REPLY поставлена до завершения сократовского диалога (VERDICT_SHOWN) — нарушение гейта чата"
+      "GENERATE_CHAT_REPLY поставлена с нарушением гейта чата (нет analysis, либо сократовский диалог не дошёл до VERDICT_SHOWN)"
     );
   }
 
@@ -62,7 +64,7 @@ export const generateChatReplyStep: StepHandler = async (task, db) => {
     history: messages.map((message) => ({ author: message.author, text: message.text })),
     analysisSummary: buildAnalysisSummary(
       { played: analysis.played, optimal: analysis.optimal },
-      hand.dialogue.verdict
+      hand.dialogue?.verdict ?? null // у простых раздач (STRONG/MEDIUM) диалога и вердикта нет
     ),
     chipResult: hand.chipResult,
     tableSnapshot: hand.tableData as unknown as TableSnapshot,

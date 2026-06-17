@@ -31,6 +31,10 @@ function makeHand(importanceLevel: ParsedHand["importanceLevel"], chipResult: nu
 // 12 раздач: 2 CRITICAL + 6 STRONG + 4 MEDIUM → selectHandsForCard отбирает 10
 // (2 критических + топ-5 сильных + топ-3 средних).
 const PARSED: ParsedTournament = {
+  room: "GGPoker",
+  externalTournamentId: "999999",
+  name: "Test MTT",
+  playedAt: "2026-06-11T20:00:00.000Z",
   handsCount: 12,
   vpipPercent: 40,
   pfrPercent: 20,

@@ -1,5 +1,6 @@
 import type { MessageAuthor } from "@prisma/client";
 import { prisma } from "@/infrastructure/db/client";
+import { isChatAvailable } from "./availability";
 
 export type ChatMessageView = { author: MessageAuthor; text: string; createdAt: Date };
 
@@ -10,7 +11,8 @@ export type ChatView = {
 };
 
 // Чтение состояния чата (architecture/04-потоки-данных.md, раздел 4):
-// available — чат открыт только после VERDICT_SHOWN (правило 2, раздел 0 плана);
+// available — гейт isChatAvailable (раздел 0 плана 2026-06-17): простые раздачи
+// сразу, критические только после VERDICT_SHOWN;
 // awaitingReply — последнее сообщение от игрока, ответ ещё не сгенерирован.
 export async function getChat(handId: string): Promise<ChatView | null> {
   const hand = await prisma.hand.findUnique({
@@ -26,7 +28,7 @@ export async function getChat(handId: string): Promise<ChatView | null> {
   const lastMessage = messages[messages.length - 1];
 
   return {
-    available: hand.dialogue?.state === "VERDICT_SHOWN",
+    available: isChatAvailable(hand),
     awaitingReply: lastMessage?.author === "PLAYER",
     messages: messages.map((message) => ({
       author: message.author,

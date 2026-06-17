@@ -1,6 +1,7 @@
 import { prisma } from "@/infrastructure/db/client";
 import { enqueue } from "@/infrastructure/queue";
 import { getChatMessageMaxLength } from "@/config/chat";
+import { isChatAvailable } from "./availability";
 
 type SendChatMessageInput = {
   handId: string;
@@ -15,9 +16,9 @@ type SendChatMessageResult =
     };
 
 // Свободный вопрос игрока по разобранной раздаче (architecture/04-потоки-данных.md,
-// раздел 4). Гейт: чат открыт только после VERDICT_SHOWN (правило 2, план
-// 2026-06-15-чат-по-раздаче.md, раздел 0). Один открытый вопрос за раз —
-// если последнее сообщение уже от PLAYER без ответа, новое не принимается
+// раздел 4). Гейт: isChatAvailable (план 2026-06-17, раздел 0) — простые раздачи
+// сразу, критические только после VERDICT_SHOWN (правило 2). Один открытый вопрос
+// за раз — если последнее сообщение уже от PLAYER без ответа, новое не принимается
 // (та же идемпотентная защита, что в generate-chat-reply.ts).
 export async function sendChatMessage(input: SendChatMessageInput): Promise<SendChatMessageResult> {
   const text = input.text.trim();
@@ -31,7 +32,7 @@ export async function sendChatMessage(input: SendChatMessageInput): Promise<Send
   });
   if (!hand) return { ok: false, error: "HAND_NOT_FOUND" };
 
-  if (hand.dialogue?.state !== "VERDICT_SHOWN") {
+  if (!isChatAvailable(hand)) {
     return { ok: false, error: "CHAT_NOT_AVAILABLE" };
   }
 

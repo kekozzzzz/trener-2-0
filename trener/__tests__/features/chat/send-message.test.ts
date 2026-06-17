@@ -3,11 +3,12 @@
  *
  * Покрывают:
  *  1. Раздача не найдена → HAND_NOT_FOUND.
- *  2. Нет Dialogue (STRONG/MEDIUM раздача) → CHAT_NOT_AVAILABLE.
- *  3. Dialogue есть, но state !== VERDICT_SHOWN → CHAT_NOT_AVAILABLE.
+ *  2. Нет Dialogue и нет разбора (раздача ещё не разобрана) → CHAT_NOT_AVAILABLE.
+ *  3. Dialogue есть, но state !== VERDICT_SHOWN → CHAT_NOT_AVAILABLE (правило 2 не сломано).
  *  4. Пустое сообщение → EMPTY_MESSAGE, без изменений.
  *  5. Последнее сообщение от PLAYER без ответа → AWAITING_REPLY, не дублирует задачу.
- *  6. Успешная отправка → создаёт ChatMessage{PLAYER} и ставит GENERATE_CHAT_REPLY.
+ *  6. Успешная отправка (критическая после VERDICT_SHOWN) → ChatMessage{PLAYER} + GENERATE_CHAT_REPLY.
+ *  7. Успешная отправка на простой раздаче (без диалога, с разбором) → то же (план 2026-06-17).
  *
  * Бьёт в реальную тестовую базу (trener_test).
  */
@@ -40,15 +41,19 @@ async function createTournament(): Promise<string> {
   return tournament.id;
 }
 
-async function createHand(tournamentId: string): Promise<string> {
+async function createHand(
+  tournamentId: string,
+  opts: { importanceLevel?: "CRITICAL" | "STRONG" | "MEDIUM"; analysis?: boolean } = {}
+): Promise<string> {
+  const { importanceLevel = "CRITICAL", analysis = true } = opts;
   const hand = await db.hand.create({
     data: {
       tournamentId,
-      importanceLevel: "CRITICAL",
+      importanceLevel,
       chipResult: -100,
       tableData: EMPTY_SNAPSHOT as unknown as Prisma.InputJsonValue,
       selectedForCard: true,
-      analysis: { played: "...", optimal: "..." } as unknown as Prisma.InputJsonValue,
+      analysis: analysis ? ({ played: "...", optimal: "..." } as unknown as Prisma.InputJsonValue) : undefined,
     },
   });
   return hand.id;
@@ -104,13 +109,16 @@ describe("sendChatMessage", () => {
     expect(result).toEqual({ ok: false, error: "HAND_NOT_FOUND" });
   });
 
-  it("нет Dialogue (STRONG/MEDIUM раздача) → CHAT_NOT_AVAILABLE", async () => {
+  it("нет Dialogue и нет разбора (раздача ещё не разобрана) → CHAT_NOT_AVAILABLE", async () => {
     const tournamentId = await createTournament();
-    const handId = await createHand(tournamentId);
+    const handId = await createHand(tournamentId, { importanceLevel: "MEDIUM", analysis: false });
 
     const result = await sendChatMessage({ handId, text: "Вопрос" });
 
     expect(result).toEqual({ ok: false, error: "CHAT_NOT_AVAILABLE" });
+
+    const tasks = await findChatReplyTasks(handId);
+    expect(tasks).toHaveLength(0);
   });
 
   it("Dialogue есть, но state !== VERDICT_SHOWN → CHAT_NOT_AVAILABLE", async () => {
@@ -172,7 +180,7 @@ describe("sendChatMessage", () => {
     expect(tasks).toHaveLength(0);
   });
 
-  it("успешная отправка → создаёт ChatMessage{PLAYER} и ставит GENERATE_CHAT_REPLY", async () => {
+  it("успешная отправка (критическая после VERDICT_SHOWN) → создаёт ChatMessage{PLAYER} и ставит GENERATE_CHAT_REPLY", async () => {
     const tournamentId = await createTournament();
     const handId = await createHand(tournamentId);
     await createDialogue(handId, "VERDICT_SHOWN");
@@ -185,6 +193,22 @@ describe("sendChatMessage", () => {
     expect(messages).toHaveLength(1);
     expect(messages[0].author).toBe("PLAYER");
     expect(messages[0].text).toBe("А что если бы он рейзил?");
+
+    const tasks = await findChatReplyTasks(handId);
+    expect(tasks).toHaveLength(1);
+  });
+
+  it("успешная отправка на простой раздаче (без диалога, с разбором) → ChatMessage{PLAYER} + GENERATE_CHAT_REPLY", async () => {
+    const tournamentId = await createTournament();
+    const handId = await createHand(tournamentId, { importanceLevel: "STRONG" });
+
+    const result = await sendChatMessage({ handId, text: "Тут точно не стоило коллировать?" });
+
+    expect(result).toEqual({ ok: true });
+
+    const messages = await db.chatMessage.findMany({ where: { handId } });
+    expect(messages).toHaveLength(1);
+    expect(messages[0].author).toBe("PLAYER");
 
     const tasks = await findChatReplyTasks(handId);
     expect(tasks).toHaveLength(1);

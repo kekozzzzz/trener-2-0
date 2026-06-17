@@ -22,7 +22,13 @@ const STATUS: Record<TournamentStatus, { label: string; ready: boolean; failed: 
   FAILED: { label: "ошибка", ready: false, failed: true },
 };
 
-const dateFormat = new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
+// timeZone UTC — playedAt хранится в UTC из компонентов HH-файла, показываем дату ровно как в файле.
+const dateFormat = new Intl.DateTimeFormat("ru-RU", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  timeZone: "UTC",
+});
 
 function Metric({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -43,19 +49,25 @@ export function TournamentRow({ tournament }: { tournament: TournamentListItem }
       href={`/tournament/${tournament.id}`}
       className="group flex items-center justify-between gap-4 border border-border bg-card p-6 transition-colors duration-150 ease-out hover:border-primary"
     >
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+      <div className="flex min-w-0 flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="truncate text-body text-foreground">
+            {tournament.name ?? "Турнир"}
+          </span>
+          {status.ready ? (
+            tournament.styleDiagnosis && (
+              <Badge variant="outline">{STYLE_LABEL[tournament.styleDiagnosis]}</Badge>
+            )
+          ) : (
+            <Badge variant="outline" className={cn(status.failed && "border-destructive text-destructive")}>
+              {status.label}
+            </Badge>
+          )}
+        </div>
         <span className="font-mono text-label uppercase tracking-label text-muted-foreground">
           {dateFormat.format(tournament.playedAt)}
+          {tournament.room && ` · ${tournament.room}`}
         </span>
-        {status.ready ? (
-          tournament.styleDiagnosis && (
-            <Badge variant="outline">{STYLE_LABEL[tournament.styleDiagnosis]}</Badge>
-          )
-        ) : (
-          <Badge variant="outline" className={cn(status.failed && "border-destructive text-destructive")}>
-            {status.label}
-          </Badge>
-        )}
       </div>
 
       <div className="flex items-center gap-6">

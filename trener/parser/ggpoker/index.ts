@@ -11,8 +11,28 @@ const PREFLOP_RAISE = /^Hero: raises/m;
 const FLOP_START = /^\*\*\* FLOP \*\*\*/m;
 const BUY_IN_FROM_HEADER = /\$(\d+(?:\.\d+)?)\+\$/;
 
+// Номер турнира и его название из заголовка раздачи: "... Tournament #289598162, <название> - Level..."
+const TOURNAMENT_META = /Tournament #(\d+), (.+?) - Level/;
+// Момент раздачи в конце заголовка: "... - 2026/06/11 20:20:56" (все раздачи турнира, берём минимум)
+const HAND_TIMESTAMP = /(\d{4})\/(\d{2})\/(\d{2}) (\d{2}):(\d{2}):(\d{2})/g;
+
+const ROOM = "GGPoker";
+
 function isMttFile(text: string): boolean {
   return HAND_HEADER.test(text);
+}
+
+// Самый ранний таймстемп среди всех раздач = момент, когда турнир игрался.
+// Строим Date в UTC из компонентов файла — без сдвига часовым поясом сервера
+// (на экране показываем тоже в UTC, чтобы дата совпадала с файлом).
+function earliestPlayedAt(text: string): string | null {
+  let min = Infinity;
+  for (const m of text.matchAll(HAND_TIMESTAMP)) {
+    const [, y, mo, d, h, mi, s] = m;
+    const ts = Date.UTC(+y, +mo - 1, +d, +h, +mi, +s);
+    if (ts < min) min = ts;
+  }
+  return min === Infinity ? null : new Date(min).toISOString();
 }
 
 function parseHands(text: string): string[] {
@@ -55,6 +75,17 @@ export function parseGGPokerMtt(buffer: Buffer): ParseResult {
     };
   }
 
+  const metaMatch = TOURNAMENT_META.exec(text);
+  if (!metaMatch) {
+    return {
+      ok: false,
+      error: { type: "PARSE_FAILED", message: "Не удалось прочитать номер и название турнира" },
+    };
+  }
+  const externalTournamentId = metaMatch[1];
+  const name = metaMatch[2].trim();
+  const playedAt = earliestPlayedAt(text);
+
   const rawHands = parseHands(text);
   const dealtHands = rawHands.filter((h) => DEALT_TO_HERO.test(h));
   const handsCount = dealtHands.length;
@@ -93,6 +124,10 @@ export function parseGGPokerMtt(buffer: Buffer): ParseResult {
   return {
     ok: true,
     data: {
+      room: ROOM,
+      externalTournamentId,
+      name,
+      playedAt: playedAt ?? new Date().toISOString(),
       handsCount,
       vpipPercent,
       pfrPercent,

@@ -56,6 +56,10 @@ async function handleUpload(formData: FormData) {
   });
 
   if (!result.ok) {
+    if (result.error === "DUPLICATE") {
+      // Повтор: ведём к уже существующему разбору с пометкой.
+      redirect(`/tournament/${result.existingTournamentId}?duplicate=1`);
+    }
     redirect(`/?error=${result.error}`);
   } else {
     redirect(`/tournament/${result.tournamentId}`);

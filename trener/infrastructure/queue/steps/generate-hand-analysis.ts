@@ -4,6 +4,7 @@ import type { StepHandler } from "../types";
 import type { TableSnapshot } from "@/parser/types";
 import type { HandAnalysisRequest } from "@/infrastructure/adapters/llm/types";
 import { getLlmAdapter } from "@/infrastructure/adapters/llm";
+import { enqueue } from "../enqueue";
 
 type GenerateHandAnalysisPayload = {
   handId: string;
@@ -93,8 +94,15 @@ async function markCardReadyIfComplete(db: PrismaClient, tournamentId: string): 
     if (pending.some((h) => !poisonedIds.has(h.id))) return; // ещё есть необработанные раздачи
   }
 
-  await db.tournament.updateMany({
+  const { count } = await db.tournament.updateMany({
     where: { id: tournamentId, deletedAt: null, status: { not: "CARD_READY" } },
     data: { status: "CARD_READY" },
   });
+
+  // Карточка только что стала готовой (count > 0 — переход случается ровно один раз;
+  // конкурентные завершения раздач получат count 0) — ставим обзор турнира.
+  // Сам GENERATE_TOURNAMENT_SUMMARY дополнительно идемпотентен (пропустит, если summary уже есть).
+  if (count > 0) {
+    await enqueue(db, { type: "GENERATE_TOURNAMENT_SUMMARY", payload: { tournamentId } });
+  }
 }

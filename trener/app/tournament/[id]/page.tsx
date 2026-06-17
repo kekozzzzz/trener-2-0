@@ -1,4 +1,5 @@
 import { prisma } from "@/infrastructure/db/client";
+import { Prisma } from "@prisma/client";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
@@ -16,6 +17,19 @@ const DIALOGUE_STATE_LABEL: Record<string, string> = {
   ANSWER_RECEIVED: "обрабатываем",
   VERDICT_SHOWN: "вердикт готов",
 };
+
+const IMPORTANCE_LABEL: Record<string, string> = {
+  STRONG: "Сильная",
+  MEDIUM: "Средняя",
+};
+
+// timeZone UTC — playedAt хранится в UTC из HH-файла, показываем дату ровно как в файле.
+const dateFormat = new Intl.DateTimeFormat("ru-RU", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  timeZone: "UTC",
+});
 
 function PageHeader() {
   return (
@@ -41,10 +55,13 @@ function StatCard({ label, children }: { label: string; children: React.ReactNod
 
 export default async function TournamentPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ duplicate?: string }>;
 }) {
   const { id } = await params;
+  const { duplicate } = await searchParams;
   const session = await requireSession();
   const tournament = await prisma.tournament.findUnique({ where: { id } });
 
@@ -99,13 +116,43 @@ export default async function TournamentPage({
     orderBy: { createdAt: "asc" },
   });
 
+  // Остальные раздачи карточки (STRONG/MEDIUM): без сократовского диалога, но с
+  // готовым разбором — их можно открыть и задать прямой вопрос (план 2026-06-17).
+  const simpleHands = await prisma.hand.findMany({
+    where: {
+      tournamentId: id,
+      selectedForCard: true,
+      dialogue: { is: null },
+      analysis: { not: Prisma.DbNull },
+    },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, importanceLevel: true, chipResult: true },
+  });
+
   const totalRounds = getDialogueRoundsPerHand();
+
+  // Обзор турнира (GENERATE_TOURNAMENT_SUMMARY) — может быть ещё не готов (null).
+  const summary = tournament.summary as
+    | { overview?: string; moments?: { handId: string; label: string }[] }
+    | null;
 
   return (
     <main>
       <PageHeader />
       <section className="mx-auto max-w-5xl px-8 py-16">
-        <h1 className="text-h1">Результаты турнира</h1>
+        {duplicate && (
+          <div className="mb-8 border border-border bg-card p-4">
+            <p className="text-small text-muted-foreground">
+              Этот турнир уже был загружен — вот его разбор. Повторно он не добавляется.
+            </p>
+          </div>
+        )}
+
+        <h1 className="text-h1">{tournament.name ?? "Результаты турнира"}</h1>
+        <p className="mt-2 font-mono text-label uppercase tracking-label text-muted-foreground">
+          {dateFormat.format(tournament.playedAt)}
+          {tournament.room && ` · ${tournament.room}`}
+        </p>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-3">
           <StatCard label="VPIP">
@@ -124,6 +171,27 @@ export default async function TournamentPage({
             </p>
           </StatCard>
         </div>
+
+        {summary?.overview && (
+          <div className="mt-16">
+            <h2 className="text-h2">Общая картина</h2>
+            <p className="mt-4 max-w-3xl text-body text-foreground">{summary.overview}</p>
+            {summary.moments && summary.moments.length > 0 && (
+              <div className="mt-6 space-y-2">
+                {summary.moments.map((moment) => (
+                  <Link
+                    key={moment.handId}
+                    href={`/tournament/${id}/hands/${moment.handId}`}
+                    className="group flex items-center justify-between gap-4 border border-border bg-card p-4 transition-colors duration-150 ease-out hover:border-primary"
+                  >
+                    <span className="text-small text-foreground">{moment.label}</span>
+                    <ArrowRight className="size-4 shrink-0 text-muted-foreground transition-colors duration-150 ease-out group-hover:text-primary" />
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {handsForDialogue.length > 0 && (
           <div className="mt-16">
@@ -149,6 +217,43 @@ export default async function TournamentPage({
                     <div className="flex items-center gap-4">
                       <span className="font-mono text-small text-muted-foreground">
                         раунд {progress}/{totalRounds}
+                      </span>
+                      <ArrowRight className="size-4 text-muted-foreground transition-colors duration-150 ease-out group-hover:text-primary" />
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {simpleHands.length > 0 && (
+          <div className="mt-16">
+            <h2 className="text-h2">Остальные раздачи</h2>
+            <p className="mt-2 text-small text-muted-foreground">
+              Загляни в любую и спроси, если по ней есть вопрос.
+            </p>
+            <div className="mt-8 space-y-4">
+              {simpleHands.map((hand) => {
+                const sign = hand.chipResult >= 0 ? "+" : "";
+                return (
+                  <Link
+                    key={hand.id}
+                    href={`/tournament/${id}/hands/${hand.id}`}
+                    className="group flex items-center justify-between gap-4 border border-border bg-card p-6 transition-colors duration-150 ease-out hover:border-primary"
+                  >
+                    <Badge variant="outline">
+                      {IMPORTANCE_LABEL[hand.importanceLevel] ?? hand.importanceLevel}
+                    </Badge>
+                    <div className="flex items-center gap-4">
+                      <span
+                        className={cn(
+                          "font-mono text-body",
+                          hand.chipResult >= 0 ? "text-primary" : "text-foreground"
+                        )}
+                      >
+                        {sign}
+                        {hand.chipResult}
                       </span>
                       <ArrowRight className="size-4 text-muted-foreground transition-colors duration-150 ease-out group-hover:text-primary" />
                     </div>

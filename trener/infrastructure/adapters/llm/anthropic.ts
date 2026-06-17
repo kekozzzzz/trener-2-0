@@ -11,6 +11,7 @@ import { buildHandAnalysisPrompt, HAND_ANALYSIS_SYSTEM_PROMPT } from "@/config/p
 import { buildDialogueQuestionPrompt, DIALOGUE_QUESTION_SYSTEM_PROMPT } from "@/config/prompts/dialogue-question";
 import { buildVerdictPrompt, VERDICT_SYSTEM_PROMPT } from "@/config/prompts/verdict";
 import { buildChatReplyPrompt, CHAT_REPLY_SYSTEM_PROMPT } from "@/config/prompts/chat-reply";
+import { buildTournamentSummaryPrompt, TOURNAMENT_SUMMARY_SYSTEM_PROMPT } from "@/config/prompts/tournament-summary";
 import type {
   ChatReplyRequest,
   ChatReplyResult,
@@ -19,6 +20,8 @@ import type {
   LlmPort,
   NextQuestionRequest,
   NextQuestionResult,
+  TournamentSummaryRequest,
+  TournamentSummaryResult,
   VerdictRequest,
   VerdictResult,
 } from "./types";
@@ -68,6 +71,19 @@ function validateChatReply(result: Partial<ChatReplyResult>): ChatReplyResult {
     throw new Error("Claude вернул ответ без поля reply");
   }
   return { reply: result.reply };
+}
+
+function validateTournamentSummary(result: Partial<TournamentSummaryResult>): TournamentSummaryResult {
+  if (typeof result.overview !== "string" || !Array.isArray(result.moments)) {
+    throw new Error("Claude вернул обзор турнира без overview/moments");
+  }
+  // Берём только корректные моменты (число hand + строка label); индекс в диапазон
+  // раздач проверяет шаг очереди при мапинге index→handId.
+  const moments = result.moments.filter(
+    (m): m is { hand: number; label: string } =>
+      typeof m?.hand === "number" && Number.isInteger(m.hand) && typeof m?.label === "string"
+  );
+  return { overview: result.overview, moments };
 }
 
 // CONNECT-прокси для обхода гео-блокировки Claude (см. getAnthropicProxyUrl).
@@ -165,5 +181,10 @@ export const anthropicLlmAdapter: LlmPort = {
   async generateChatReply(request: ChatReplyRequest): Promise<ChatReplyResult> {
     const parsed = await callClaude(CHAT_REPLY_SYSTEM_PROMPT, buildChatReplyPrompt(request));
     return validateChatReply(parsed as Partial<ChatReplyResult>);
+  },
+
+  async generateTournamentSummary(request: TournamentSummaryRequest): Promise<TournamentSummaryResult> {
+    const parsed = await callClaude(TOURNAMENT_SUMMARY_SYSTEM_PROMPT, buildTournamentSummaryPrompt(request));
+    return validateTournamentSummary(parsed as Partial<TournamentSummaryResult>);
   },
 };

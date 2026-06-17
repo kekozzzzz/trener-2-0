@@ -10,7 +10,8 @@ type UploadInput = {
 
 type UploadResult =
   | { ok: true; tournamentId: string }
-  | { ok: false; error: "UNSUPPORTED_FORMAT" | "PARSE_FAILED" };
+  | { ok: false; error: "UNSUPPORTED_FORMAT" | "PARSE_FAILED" }
+  | { ok: false; error: "DUPLICATE"; existingTournamentId: string };
 
 export async function uploadTournament(input: UploadInput): Promise<UploadResult> {
   const { fileBuffer, originalFilename: _originalFilename, playerId } = input;
@@ -23,11 +24,28 @@ export async function uploadTournament(input: UploadInput): Promise<UploadResult
     return { ok: false, error: parsed.error.type };
   }
 
+  const { room, externalTournamentId, name, playedAt } = parsed.data;
+
+  // Дедупликация: тот же игрок уже загрузил турнир с этим номером с той же площадки.
+  // Повтор не создаём — отдаём ссылку на существующий разбор (deletedAt: null — удалённый
+  // можно загрузить заново).
+  const duplicate = await prisma.tournament.findFirst({
+    where: { playerId, room, externalTournamentId, deletedAt: null },
+    select: { id: true },
+  });
+
+  if (duplicate) {
+    return { ok: false, error: "DUPLICATE", existingTournamentId: duplicate.id };
+  }
+
   const tournament = await prisma.$transaction(async (tx) => {
     const t = await tx.tournament.create({
       data: {
         playerId,
-        playedAt: new Date(),
+        playedAt: new Date(playedAt), // реальная дата турнира из HH, не момент загрузки
+        room,
+        name,
+        externalTournamentId,
         status: "UPLOADED",
       },
     });

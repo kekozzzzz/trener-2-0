@@ -42,6 +42,25 @@ describe("parseGGPokerMtt", () => {
     if (result.ok) return;
     expect(result.error.type).toBe("UNSUPPORTED_FORMAT");
   });
+
+  it("извлекает метаданные турнира из заголовка (номер, название, дата, площадка)", () => {
+    const result = parseGGPokerMtt(richBuffer);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.room).toBe("GGPoker");
+    expect(result.data.externalTournamentId).toBe("289598162");
+    expect(result.data.name).toBe("Bounty Hunters Deepstack Turbo $5.40 Hold'em No Limit");
+    // Самая ранняя раздача файла (файл идёт от свежих к старым), момент в UTC.
+    expect(result.data.playedAt).toBe("2026-06-11T20:09:30.000Z");
+  });
+
+  it("извлекает метаданные для RC-формата", () => {
+    const result = parseGGPokerMtt(rcBuffer);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.externalTournamentId).toBe("12345678");
+    expect(result.data.name).toBe("$1+$0.10 NL Hold'em");
+  });
 });
 
 describe("снимок раздачи (hands[])", () => {

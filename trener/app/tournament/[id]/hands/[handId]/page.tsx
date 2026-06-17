@@ -38,13 +38,22 @@ export default async function HandDialoguePage({
   }
 
   const dialogue = await getDialogue(handId);
-  if (!dialogue) notFound();
+
+  // Разбор раздачи (played / optimal / note). У критических часть полей дублирует
+  // диалог; у простых (STRONG/MEDIUM) — единственный источник для страницы.
+  const analysis = hand.analysis as { played?: string; optimal?: string; note?: string } | null;
+
+  // Страница доступна, если есть диалог (критическая) ИЛИ готовый разбор простой
+  // раздачи карточки. Иначе раздача не входит в карточку / ещё не разобрана.
+  if (!dialogue && !analysis) notFound();
 
   const chat = await getChat(handId);
 
-  const openRound = dialogue.state === "QUESTION_ASKED" ? dialogue.rounds[dialogue.rounds.length - 1] : null;
-  const historyRounds = openRound ? dialogue.rounds.slice(0, -1) : dialogue.rounds;
-  const chipResult = dialogue.hand.chipResult;
+  const openRound =
+    dialogue?.state === "QUESTION_ASKED" ? dialogue.rounds[dialogue.rounds.length - 1] : null;
+  const historyRounds = dialogue ? (openRound ? dialogue.rounds.slice(0, -1) : dialogue.rounds) : [];
+  const played = dialogue?.hand.played ?? analysis?.played ?? null;
+  const chipResult = hand.chipResult;
   const chipSign = chipResult >= 0 ? "+" : "";
   const bigBlind = bigBlindFromSnapshot(hand.tableData as unknown as TableSnapshot);
   const bbResult = bigBlind ? chipResult / bigBlind : null;
@@ -64,7 +73,7 @@ export default async function HandDialoguePage({
         <h1 className="text-h1">Разбор раздачи</h1>
 
         <div className="mt-8 border border-border bg-card p-6">
-          {dialogue.hand.played && <p className="text-body text-muted-foreground">{dialogue.hand.played}</p>}
+          {played && <p className="text-body text-muted-foreground">{played}</p>}
           <p
             className={cn(
               "mt-4 font-mono text-display",
@@ -100,28 +109,50 @@ export default async function HandDialoguePage({
           </div>
         )}
 
-        <div className="mt-16">
-          {dialogue.state === "QUESTION_ASKED" && openRound && (
-            <div className="space-y-2">
-              <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
-                Вопрос {openRound.roundNumber}
-              </p>
-              <p className="text-h3 text-foreground">{openRound.question}</p>
-              <AnswerForm tournamentId={id} handId={handId} />
-            </div>
-          )}
-
-          {dialogue.state === "ANSWER_RECEIVED" && <WaitClient handId={handId} />}
-
-          {dialogue.state === "VERDICT_SHOWN" && (
-            <div className="space-y-4">
-              <h2 className="text-h2">Вердикт</h2>
-              <div className="border border-primary bg-card p-6">
-                <p className="text-body text-foreground">{dialogue.verdict}</p>
+        {dialogue && (
+          <div className="mt-16">
+            {dialogue.state === "QUESTION_ASKED" && openRound && (
+              <div className="space-y-2">
+                <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
+                  Вопрос {openRound.roundNumber}
+                </p>
+                <p className="text-h3 text-foreground">{openRound.question}</p>
+                <AnswerForm tournamentId={id} handId={handId} />
               </div>
-            </div>
-          )}
-        </div>
+            )}
+
+            {dialogue.state === "ANSWER_RECEIVED" && <WaitClient handId={handId} />}
+
+            {dialogue.state === "VERDICT_SHOWN" && (
+              <div className="space-y-4">
+                <h2 className="text-h2">Вердикт</h2>
+                <div className="border border-primary bg-card p-6">
+                  <p className="text-body text-foreground">{dialogue.verdict}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Простая раздача (без сократовского диалога): показываем разбор сразу. */}
+        {!dialogue && analysis && (
+          <div className="mt-16 space-y-4">
+            <h2 className="text-h2">Разбор</h2>
+            {analysis.optimal && (
+              <div className="space-y-2">
+                <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
+                  Как можно было
+                </p>
+                <p className="text-body text-foreground">{analysis.optimal}</p>
+              </div>
+            )}
+            {analysis.note && (
+              <div className="border border-border bg-card p-6">
+                <p className="text-body text-muted-foreground">{analysis.note}</p>
+              </div>
+            )}
+          </div>
+        )}
 
         {chat?.available && (
           <div className="mt-16 space-y-4">

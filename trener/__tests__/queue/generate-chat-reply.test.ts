@@ -164,6 +164,19 @@ describe("GENERATE_CHAT_REPLY", () => {
     expect(messages[1].text).toContain("А что если бы он рейзил?");
   });
 
+  it("успех на простой раздаче (без диалога, verdict null) — создаёт ChatMessage{SYSTEM}", async () => {
+    const tournamentId = await createTournament();
+    const handId = await createHand(tournamentId, { analysis: { played: "...", optimal: "..." } });
+    // диалога нет — простая STRONG/MEDIUM раздача (план 2026-06-17)
+    await createChatMessage(handId, "PLAYER", "Тут точно стоило фолдить?");
+
+    await generateChatReplyStep(makeRawTask({ handId }), db);
+
+    const messages = await db.chatMessage.findMany({ where: { handId }, orderBy: { createdAt: "asc" } });
+    expect(messages).toHaveLength(2);
+    expect(messages[1].author).toBe("SYSTEM");
+  });
+
   it("без played/optimal в analysis — понятная ошибка (GENERATE_HAND_ANALYSIS должен идти раньше)", async () => {
     const tournamentId = await createTournament();
     const handId = await createHand(tournamentId, { analysis: { note: "..." } });

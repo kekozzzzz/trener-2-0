@@ -5,6 +5,8 @@ import { prisma } from "@/infrastructure/db/client";
 // чтобы вид для экрана был чистым (как в features/dialogue/queries.ts).
 export type TournamentListItem = {
   id: string;
+  name: string | null;
+  room: string | null;
   playedAt: Date;
   status: TournamentStatus;
   vpipPercent: number | null;
@@ -23,6 +25,8 @@ async function queryTournaments(playerId: string, limit?: number): Promise<Tourn
     ...(limit != null ? { take: limit } : {}),
     select: {
       id: true,
+      name: true,
+      room: true,
       playedAt: true,
       status: true,
       vpipPercent: true,
@@ -34,6 +38,8 @@ async function queryTournaments(playerId: string, limit?: number): Promise<Tourn
 
   return rows.map((t) => ({
     id: t.id,
+    name: t.name,
+    room: t.room,
     playedAt: t.playedAt,
     status: t.status,
     vpipPercent: t.vpipPercent != null ? Number(t.vpipPercent) : null,

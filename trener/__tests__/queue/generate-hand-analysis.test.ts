@@ -88,14 +88,16 @@ beforeAll(async () => {
   });
 });
 
+const TASK_TYPES = ["GENERATE_HAND_ANALYSIS", "GENERATE_TOURNAMENT_SUMMARY"];
+
 beforeEach(async () => {
   await db.tournament.deleteMany({ where: { playerId: TEST_PLAYER_ID } });
-  await db.task.deleteMany({ where: { type: "GENERATE_HAND_ANALYSIS" } });
+  await db.task.deleteMany({ where: { type: { in: TASK_TYPES } } });
 });
 
 afterAll(async () => {
   await db.tournament.deleteMany({ where: { playerId: TEST_PLAYER_ID } });
-  await db.task.deleteMany({ where: { type: "GENERATE_HAND_ANALYSIS" } });
+  await db.task.deleteMany({ where: { type: { in: TASK_TYPES } } });
   await db.player.delete({ where: { id: TEST_PLAYER_ID } }).catch(() => {});
   await db.$disconnect();
 });
@@ -117,6 +119,11 @@ describe("GENERATE_HAND_ANALYSIS — основной путь", () => {
 
     const tournament = await db.tournament.findUnique({ where: { id: tournamentId } });
     expect(tournament!.status).toBe("CARD_READY");
+
+    // При переходе в CARD_READY ставится обзор турнира (план 2026-06-17-обзор-турнира).
+    const summaryTasks = await db.task.findMany({ where: { type: "GENERATE_TOURNAMENT_SUMMARY" } });
+    const forThis = summaryTasks.filter((t) => (t.payload as { tournamentId?: string }).tournamentId === tournamentId);
+    expect(forThis).toHaveLength(1);
   });
 
   it("CRITICAL-раздача создаёт Dialogue с вопросом, вердикт скрыт до ответа игрока", async () => {

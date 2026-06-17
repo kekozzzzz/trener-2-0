@@ -6,6 +6,8 @@ import type {
   LlmPort,
   NextQuestionRequest,
   NextQuestionResult,
+  TournamentSummaryRequest,
+  TournamentSummaryResult,
   VerdictRequest,
   VerdictResult,
 } from "./types";
@@ -53,6 +55,18 @@ export const fakeLlmAdapter: LlmPort = {
     const lastQuestion = request.history[request.history.length - 1]?.text ?? "";
     return {
       reply: `(фейк) Ответ на вопрос «${lastQuestion}» с учётом разбора: ${request.analysisSummary}`,
+    };
+  },
+
+  async generateTournamentSummary(request: TournamentSummaryRequest): Promise<TournamentSummaryResult> {
+    // Детерминированно: берём до 3 раздач карточки как «ключевые моменты».
+    const moments = request.hands.slice(0, 3).map((h) => ({
+      hand: h.index,
+      label: `(фейк) Момент по раздаче ${h.index}: ${h.chipResult} фишек.`,
+    }));
+    return {
+      overview: `(фейк) Общая картина: стиль ${request.tournament.styleDiagnosis}, VPIP ${request.tournament.vpipPercent}%, итог ${request.tournament.resultBuyins} бай-инов.`,
+      moments,
     };
   },
 };

@@ -89,9 +89,40 @@ export type ChatReplyResult = {
   reply: string;
 };
 
+// Одна раздача карточки для обзора турнира — индекс (LLM ссылается на момент по
+// нему, шаг детерминированно мапит index→handId) + уже готовый разбор (правило 1:
+// числа и разбор посчитаны раньше, LLM их не пересчитывает).
+export type TournamentSummaryHand = {
+  index: number;
+  importanceLevel: HandImportance;
+  chipResult: number;
+  played: string;
+  optimal: string;
+  note?: string;
+  verdict?: string;
+};
+
+// Вход GENERATE_TOURNAMENT_SUMMARY — метрики турнира + разобранные раздачи карточки.
+export type TournamentSummaryRequest = {
+  tournament: TournamentContext;
+  hands: TournamentSummaryHand[];
+};
+
+// Ключевой момент: ссылка на раздачу по индексу из запроса + короткая подпись.
+export type TournamentSummaryMoment = {
+  hand: number;
+  label: string;
+};
+
+export type TournamentSummaryResult = {
+  overview: string;
+  moments: TournamentSummaryMoment[];
+};
+
 export interface LlmPort {
   generateHandAnalysis(request: HandAnalysisRequest): Promise<HandAnalysisResult>;
   generateNextQuestion(request: NextQuestionRequest): Promise<NextQuestionResult>;
   generateVerdict(request: VerdictRequest): Promise<VerdictResult>;
   generateChatReply(request: ChatReplyRequest): Promise<ChatReplyResult>;
+  generateTournamentSummary(request: TournamentSummaryRequest): Promise<TournamentSummaryResult>;
 }

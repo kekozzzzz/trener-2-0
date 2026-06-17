@@ -35,6 +35,10 @@ export type ParsedHand = ParsedHandSnapshot & {
 };
 
 export type ParsedTournament = {
+  room: string; // площадка, напр. "GGPoker" — пока единственная поддерживаемая
+  externalTournamentId: string; // номер турнира из заголовка HH (Tournament #...) — ключ дедупликации
+  name: string; // название турнира из заголовка, напр. "Bounty Hunters Deepstack Turbo $5.40 Hold'em No Limit"
+  playedAt: string; // момент самой ранней раздачи турнира, ISO-строка (JSON-safe для payload очереди)
   handsCount: number;
   vpipPercent: number;
   pfrPercent: number;
