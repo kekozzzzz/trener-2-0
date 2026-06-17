@@ -18,3 +18,25 @@ export function getAnthropicModel(): string {
 export function getAnthropicProxyUrl(): string {
   return process.env.ANTHROPIC_PROXY_URL ?? "";
 }
+
+// Базовый адрес для запросов к Claude. Когда задан — SDK шлёт запросы сюда вместо
+// api.anthropic.com (наш HTTPS-релей, nginx-шлюз на VPS в Казахстане, который пересылает
+// их к Anthropic с не-российского IP — снимает гео-блок 403; прод в РФ напрямую не пускают).
+// Пусто — ходим на api.anthropic.com напрямую.
+export function getAnthropicBaseUrl(): string {
+  return process.env.ANTHROPIC_BASE_URL ?? "";
+}
+
+// Общий секрет, которым сервер подписывает запросы к релею (заголовок x-proxy-secret).
+// Не даёт посторонним использовать наш релей к Anthropic. Пусто —
+// заголовок не отправляется (релей тогда тоже не должен его требовать).
+export function getAnthropicProxySecret(): string {
+  return process.env.ANTHROPIC_PROXY_SECRET ?? "";
+}
+
+// Путь к сертификату релея (самоподписанный cert nginx-шлюза в Казахстане). Когда задан —
+// клиент доверяет именно этому сертификату при обращении к ANTHROPIC_BASE_URL (пиннинг),
+// а не отключает проверку TLS целиком. Пусто — обычная системная проверка сертификата.
+export function getAnthropicProxyCa(): string {
+  return process.env.ANTHROPIC_PROXY_CA ?? "";
+}

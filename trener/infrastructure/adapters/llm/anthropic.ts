@@ -1,6 +1,14 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { ProxyAgent } from "undici";
-import { getAnthropicApiKey, getAnthropicModel, getAnthropicProxyUrl } from "@/config/llm";
+import { readFileSync } from "node:fs";
+import { Agent, ProxyAgent } from "undici";
+import {
+  getAnthropicApiKey,
+  getAnthropicBaseUrl,
+  getAnthropicModel,
+  getAnthropicProxyCa,
+  getAnthropicProxySecret,
+  getAnthropicProxyUrl,
+} from "@/config/llm";
 import { buildHandAnalysisPrompt, HAND_ANALYSIS_SYSTEM_PROMPT } from "@/config/prompts/hand-analysis";
 import { buildDialogueQuestionPrompt, DIALOGUE_QUESTION_SYSTEM_PROMPT } from "@/config/prompts/dialogue-question";
 import { buildVerdictPrompt, VERDICT_SYSTEM_PROMPT } from "@/config/prompts/verdict";
@@ -86,6 +94,27 @@ function getClient(): Anthropic {
   if (cachedClient) return cachedClient;
 
   const options: ConstructorParameters<typeof Anthropic>[0] = { apiKey: getAnthropicApiKey() };
+
+  // Вариант 1 — наш HTTPS-релей (nginx-шлюз на VPS в Казахстане): SDK шлёт запросы на
+  // baseURL, релей пересылает их к Anthropic с не-российского IP (снимает гео-блок 403).
+  // Секрет подписывает запрос, чтобы релей не был открытым. Сертификат релея самоподписанный —
+  // доверяем именно ему (пиннинг через ANTHROPIC_PROXY_CA), не отключая проверку TLS.
+  const baseUrl = getAnthropicBaseUrl();
+  if (baseUrl) {
+    options.baseURL = baseUrl;
+    const caPath = getAnthropicProxyCa();
+    if (caPath) {
+      options.fetchOptions = {
+        dispatcher: new Agent({ connect: { ca: readFileSync(caPath, "utf8") } }),
+      } as unknown as typeof options.fetchOptions;
+    }
+    const proxySecret = getAnthropicProxySecret();
+    if (proxySecret) {
+      options.defaultHeaders = { "x-proxy-secret": proxySecret };
+    }
+  }
+
+  // Вариант 2 — CONNECT-прокси (туннель к зарубежному VPS). Оставлен как запасной путь.
   const proxyUrl = getAnthropicProxyUrl();
   if (proxyUrl) {
     options.fetchOptions = {
