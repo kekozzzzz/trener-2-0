@@ -102,12 +102,23 @@ function getClient(): Anthropic {
   const baseUrl = getAnthropicBaseUrl();
   if (baseUrl) {
     options.baseURL = baseUrl;
+    // Канал РФ→релей капризен: переиспользование keepalive-соединений даёт случайные
+    // "Connection error" — путь/NAT тихо роняет простаивающее соединение между запросами,
+    // undici этого не видит и шлёт по дохлому. Поэтому почти сразу закрываем простаивающие
+    // соединения (keepAliveTimeout) и не пайплайним — каждый запрос идёт по свежему
+    // соединению, как одиночный curl (он 100% надёжен). Плюс ретраи на стороне SDK.
     const caPath = getAnthropicProxyCa();
     if (caPath) {
       options.fetchOptions = {
-        dispatcher: new Agent({ connect: { ca: readFileSync(caPath, "utf8") } }),
+        dispatcher: new Agent({
+          connect: { ca: readFileSync(caPath, "utf8") },
+          pipelining: 0,
+          keepAliveTimeout: 10,
+          keepAliveMaxTimeout: 10,
+        }),
       } as unknown as typeof options.fetchOptions;
     }
+    options.maxRetries = 5;
     const proxySecret = getAnthropicProxySecret();
     if (proxySecret) {
       options.defaultHeaders = { "x-proxy-secret": proxySecret };
