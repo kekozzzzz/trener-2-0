@@ -1,11 +1,9 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { readFileSync } from "node:fs";
-import { Agent, ProxyAgent } from "undici";
+import { ProxyAgent } from "undici";
 import {
   getAnthropicApiKey,
   getAnthropicBaseUrl,
   getAnthropicModel,
-  getAnthropicProxyCa,
   getAnthropicProxySecret,
   getAnthropicProxyUrl,
 } from "@/config/llm";
@@ -102,22 +100,11 @@ function getClient(): Anthropic {
   const baseUrl = getAnthropicBaseUrl();
   if (baseUrl) {
     options.baseURL = baseUrl;
-    // Канал РФ→релей капризен: переиспользование keepalive-соединений даёт случайные
-    // "Connection error" — путь/NAT тихо роняет простаивающее соединение между запросами,
-    // undici этого не видит и шлёт по дохлому. Поэтому почти сразу закрываем простаивающие
-    // соединения (keepAliveTimeout) и не пайплайним — каждый запрос идёт по свежему
-    // соединению, как одиночный curl (он 100% надёжен). Плюс ретраи на стороне SDK.
-    const caPath = getAnthropicProxyCa();
-    if (caPath) {
-      options.fetchOptions = {
-        dispatcher: new Agent({
-          connect: { ca: readFileSync(caPath, "utf8") },
-          pipelining: 0,
-          keepAliveTimeout: 10,
-          keepAliveMaxTimeout: 10,
-        }),
-      } as unknown as typeof options.fetchOptions;
-    }
+    // Доверие к самоподписанному сертификату релея задаётся переменной окружения
+    // NODE_EXTRA_CA_CERTS (путь к cert.pem) — её читает встроенный в Node fetch.
+    // Свой undici-Agent сюда НЕ передаём: версия пакета undici в проекте не совпадает
+    // со встроенной в Node, и передача Agent в глобальный fetch валит каждый вызов
+    // (UND_ERR_INVALID_ARG: invalid onRequestStart method).
     options.maxRetries = 5;
     const proxySecret = getAnthropicProxySecret();
     if (proxySecret) {
