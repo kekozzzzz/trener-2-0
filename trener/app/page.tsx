@@ -36,7 +36,7 @@ const ALTERNATIVES = [
   {
     tag: "Личный тренер",
     verdict: "Слишком дорого",
-    description: "$50/час — и мало кто возьмётся всерьёз разбирать микролимиты.",
+    description: "$50+ в час — и мало кто возьмётся всерьёз разбирать микролимиты.",
     accent: false,
   },
   {
@@ -52,6 +52,25 @@ const ALTERNATIVES = [
     description:
       "Твои собственные раздачи. Парсер считает математику точно, а тренер ведёт вопросами — пока ты сам не увидишь, где слил.",
     accent: true,
+  },
+];
+
+// Явные плюсы продукта — отдельный ряд на лендинге.
+const BENEFITS = [
+  {
+    label: "Точные числа",
+    title: "Парсер, а не угадайка",
+    description: "VPIP, потери в фишках, позиция — считает детерминированный парсер. Числа всегда верные, ИИ их не выдумывает.",
+  },
+  {
+    label: "Метод",
+    title: "Вопрос, а не готовый ответ",
+    description: "Тебя ведут к решению сократовскими вопросами — ты сам видишь ошибку и запоминаешь её, а не зубришь чужой совет.",
+  },
+  {
+    label: "Твоя игра",
+    title: "Разбор на твоих руках",
+    description: "Не абстрактные споты из учебника, а конкретно те раздачи, которые ты сыграл сам.",
   },
 ];
 
@@ -146,7 +165,28 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="border-y border-border">
+      <section className="border-t border-border">
+        <div className="mx-auto max-w-5xl px-8 py-16">
+          <BlurFade direction="up" offset={8} blur="0px" duration={0.3} delay={0.08}>
+            <h2 className="text-h2 text-center">Что ты получаешь</h2>
+          </BlurFade>
+          <BlurFade direction="up" offset={8} blur="0px" duration={0.3} delay={0.12}>
+            <div className="mt-8 grid divide-y divide-border border border-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+              {BENEFITS.map((benefit) => (
+                <div key={benefit.label} className="p-8 text-center">
+                  <p className="font-mono text-label uppercase tracking-label text-primary">
+                    {benefit.label}
+                  </p>
+                  <h3 className="mt-4 text-h3">{benefit.title}</h3>
+                  <p className="mt-2 text-small text-muted-foreground">{benefit.description}</p>
+                </div>
+              ))}
+            </div>
+          </BlurFade>
+        </div>
+      </section>
+
+      <section className="border-t border-border">
         <div className="mx-auto max-w-5xl px-8 py-16">
           <BlurFade direction="up" offset={8} blur="0px" duration={0.3} delay={0.1}>
             <h2 className="text-h2 text-center">Как это работает</h2>
@@ -165,6 +205,30 @@ export default async function HomePage() {
             </div>
           </BlurFade>
         </div>
+      </section>
+
+      <section className="border-t border-border">
+        <BlurFade direction="up" offset={8} blur="0px" duration={0.3} delay={0.1}>
+          <div className="mx-auto flex max-w-2xl flex-col items-center space-y-6 px-8 py-16 text-center sm:py-24">
+            <h2 className="text-h2">Всё это — от $12 в месяц</h2>
+            <p className="text-body text-muted-foreground">
+              Первый турнир разберём бесплатно. Это дешевле одного бай-ина, который ты теряешь
+              на повторной ошибке.
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
+              <Link
+                href={player ? "/analyze" : "/register"}
+                className={cn(buttonVariants(), "gap-2")}
+              >
+                Загрузить турнир
+                <ArrowRight className="size-4" />
+              </Link>
+              <Link href="/pricing" className={cn(buttonVariants({ variant: "outline" }))}>
+                Все тарифы
+              </Link>
+            </div>
+          </div>
+        </BlurFade>
       </section>
 
       <SiteFooter />

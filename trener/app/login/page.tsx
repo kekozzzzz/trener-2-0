@@ -17,7 +17,7 @@ export default function LoginPage() {
       <section className="mx-auto max-w-5xl px-8 py-16 sm:py-24">
         <BlurFade direction="up" offset={8} blur="0px" duration={0.3}>
           <div className="mx-auto max-w-md space-y-8">
-            <div className="space-y-2">
+            <div className="space-y-2 text-center">
               <h1 className="text-h1">Вход</h1>
               <p className="text-body text-muted-foreground">Войди, чтобы увидеть свои турниры.</p>
             </div>

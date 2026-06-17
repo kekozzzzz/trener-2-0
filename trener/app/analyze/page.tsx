@@ -63,7 +63,7 @@ export default async function AnalyzePage({
       <PageHeader />
 
       <section className="mx-auto max-w-5xl px-8 py-16">
-        <div className="max-w-2xl space-y-8">
+        <div className="mx-auto max-w-2xl space-y-8 text-center">
           <div className="space-y-2">
             <h1 className="text-h1">Загрузить турнир</h1>
             <p className="text-small text-muted-foreground">HH-файл GGPoker MTT в формате .txt, до 5 МБ.</p>
