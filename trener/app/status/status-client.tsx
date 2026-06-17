@@ -140,7 +140,7 @@ export function StatusClient() {
 
       <h2 style={{ marginTop: "1rem" }}>Турниры</h2>
       {tournaments.length === 0 ? (
-        <p style={{ color: "#6b7280" }}>Нет загруженных турниров. <a href="/">Загрузить файл →</a></p>
+        <p style={{ color: "#6b7280" }}>Нет загруженных турниров. <a href="/analyze">Загрузить файл →</a></p>
       ) : (
         <table style={{ borderCollapse: "collapse", width: "100%", marginTop: "0.5rem" }}>
           <thead>

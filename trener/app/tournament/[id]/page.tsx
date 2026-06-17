@@ -75,7 +75,7 @@ export default async function TournamentPage({
           <div className="max-w-2xl space-y-6">
             <h1 className="text-h1">Разбираем файл</h1>
             <ParsingWaitClient tournamentId={tournament.id} />
-            <Link href="/" className={cn(buttonVariants({ variant: "ghost" }))}>
+            <Link href="/analyze" className={cn(buttonVariants({ variant: "ghost" }))}>
               ← Загрузить ещё
             </Link>
           </div>
@@ -96,7 +96,7 @@ export default async function TournamentPage({
                 Файл не удалось разобрать. Убедись, что это MTT-турнир GGPoker.
               </p>
             </div>
-            <Link href="/" className={cn(buttonVariants())}>
+            <Link href="/analyze" className={cn(buttonVariants())}>
               ← Попробовать снова
             </Link>
           </div>
@@ -265,7 +265,7 @@ export default async function TournamentPage({
         )}
 
         <div className="mt-16 border-t border-border pt-8 font-mono text-label uppercase tracking-label">
-          <Link href="/" className="text-muted-foreground transition-colors hover:text-foreground">
+          <Link href="/analyze" className="text-muted-foreground transition-colors hover:text-foreground">
             ← Загрузить ещё
           </Link>
         </div>

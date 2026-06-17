@@ -25,6 +25,9 @@ export async function AuthNav() {
 
   return (
     <nav className="flex items-center gap-4 font-mono text-label uppercase tracking-label">
+      <Link href="/analyze" className="text-muted-foreground transition-colors hover:text-foreground">
+        Разбор
+      </Link>
       <Link href="/tournaments" className="text-muted-foreground transition-colors hover:text-foreground">
         Мои турниры
       </Link>

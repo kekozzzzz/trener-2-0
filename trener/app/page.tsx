@@ -1,23 +1,12 @@
-"use server";
-
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { uploadTournament } from "@/features/tournaments/actions";
-import { recentTournaments } from "@/features/tournaments/queries";
-import { requireSession } from "@/features/auth/session";
 import { getCurrentPlayer } from "@/features/auth/queries";
 import { AuthNav } from "@/components/auth-nav";
 import { Wordmark } from "@/components/ui/wordmark";
-import { PageHeader } from "@/components/page-header";
-import { TournamentRow } from "@/components/tournaments/tournament-row";
+import { SiteFooter } from "@/components/site-footer";
 import { BlurFade } from "@/components/ui/blur-fade";
-import { ShineBorder } from "@/components/ui/shine-border";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { FileInput } from "@/components/upload/file-input";
-import { SubmitButton } from "@/components/upload/submit-button";
 import { cn } from "@/lib/utils";
 
 const STEPS = [
@@ -41,7 +30,7 @@ const STEPS = [
   },
 ];
 
-// Сравнение с альтернативами для витрины гостя: почему сервис, а не тренер/самообучение.
+// Сравнение с альтернативами: почему сервис, а не тренер/самообучение.
 // Лайм-акцент (accent) — только на колонке сервиса (один сигнальный цвет, design-system.md §1).
 const ALTERNATIVES = [
   {
@@ -66,123 +55,11 @@ const ALTERNATIVES = [
   },
 ];
 
-async function handleUpload(formData: FormData) {
-  "use server";
-  const { playerId } = await requireSession();
-
-  const file = formData.get("file") as File | null;
-  if (!file || file.size === 0 || file.size > 5 * 1024 * 1024) return;
-
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const result = await uploadTournament({
-    fileBuffer: buffer,
-    originalFilename: file.name,
-    playerId,
-  });
-
-  if (!result.ok) {
-    if (result.error === "DUPLICATE") {
-      // Повтор: ведём к уже существующему разбору с пометкой.
-      redirect(`/tournament/${result.existingTournamentId}?duplicate=1`);
-    }
-    redirect(`/?error=${result.error}`);
-  } else {
-    redirect(`/tournament/${result.tournamentId}`);
-  }
-}
-
-function UploadError({ error }: { error: string }) {
-  return (
-    <div className="relative border border-destructive p-4">
-      <ShineBorder shineColor="#FF5C5C" borderWidth={1} duration={1} style={{ animationIterationCount: 1 }} />
-      <p className="text-small text-destructive">
-        {error === "UNSUPPORTED_FORMAT" ? "Загрузи MTT-турнир GGPoker" : "Ошибка разбора файла"}
-      </p>
-    </div>
-  );
-}
-
-function Footer() {
-  return (
-    <footer className="border-t border-border">
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-8 py-8 font-mono text-label uppercase tracking-label text-muted-foreground">
-        <Wordmark />
-        <span>© {new Date().getFullYear()}</span>
-      </div>
-    </footer>
-  );
-}
-
-export default async function UploadPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string }>;
-}) {
-  const { error } = await searchParams;
+// Лендинг видят все, включая залогиненных. Призыв адаптируется: гостя ведём в
+// регистрацию, залогиненного — сразу в инструмент «Разбор» (/analyze).
+export default async function HomePage() {
   const player = await getCurrentPlayer();
 
-  // Залогиненный игрок видит дашборд: форма загрузки + последние турниры.
-  if (player) {
-    const recent = await recentTournaments(player.id, 5);
-    return (
-      <main>
-        <PageHeader />
-
-        <section className="mx-auto max-w-5xl px-8 py-16">
-          <div className="max-w-2xl space-y-8">
-            <div className="space-y-2">
-              <h1 className="text-h1">Загрузить турнир</h1>
-              <p className="text-small text-muted-foreground">HH-файл GGPoker MTT в формате .txt, до 5 МБ.</p>
-            </div>
-
-            {error && <UploadError error={error} />}
-
-            <form action={handleUpload} encType="multipart/form-data" className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="file" className="font-mono text-label uppercase tracking-label text-muted-foreground">
-                  HH-файл (.txt)
-                </Label>
-                <FileInput id="file" name="file" accept=".txt" required />
-              </div>
-              <SubmitButton />
-            </form>
-          </div>
-        </section>
-
-        <section className="border-t border-border">
-          <div className="mx-auto max-w-5xl px-8 py-16">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <h2 className="text-h2">Последние турниры</h2>
-              {recent.length > 0 && (
-                <Link
-                  href="/tournaments"
-                  className="font-mono text-label uppercase tracking-label text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  Все турниры →
-                </Link>
-              )}
-            </div>
-
-            {recent.length === 0 ? (
-              <p className="mt-8 text-body text-muted-foreground">
-                Пока ни одного турнира. Загрузи первый — он появится здесь.
-              </p>
-            ) : (
-              <div className="mt-8 space-y-4">
-                {recent.map((tournament) => (
-                  <TournamentRow key={tournament.id} tournament={tournament} />
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
-
-        <Footer />
-      </main>
-    );
-  }
-
-  // Гость видит витрину: hero, «как это работает», приглашение войти/зарегистрироваться.
   return (
     <main>
       <BlurFade direction="up" offset={8} blur="0px" duration={0.3}>
@@ -210,18 +87,32 @@ export default async function UploadPage({
               в твоих собственных раздачах и доводит до того, чтобы ты сам понял, где
               ошибся, — а не просто запомнил чужой совет.
             </p>
-            <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
-              <Link href="/register" className={cn(buttonVariants(), "gap-2")}>
-                Загрузить турнир
-                <ArrowRight className="size-4" />
-              </Link>
-              <Link href="/login" className={cn(buttonVariants({ variant: "outline" }))}>
-                Войти
-              </Link>
-            </div>
-            <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
-              Попробуй бесплатно
-            </p>
+            {player ? (
+              <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
+                <Link href="/analyze" className={cn(buttonVariants(), "gap-2")}>
+                  Загрузить турнир
+                  <ArrowRight className="size-4" />
+                </Link>
+                <Link href="/tournaments" className={cn(buttonVariants({ variant: "outline" }))}>
+                  Мои турниры
+                </Link>
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
+                  <Link href="/register" className={cn(buttonVariants(), "gap-2")}>
+                    Загрузить турнир
+                    <ArrowRight className="size-4" />
+                  </Link>
+                  <Link href="/login" className={cn(buttonVariants({ variant: "outline" }))}>
+                    Войти
+                  </Link>
+                </div>
+                <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
+                  Попробуй бесплатно
+                </p>
+              </>
+            )}
           </div>
         </BlurFade>
       </section>
@@ -276,7 +167,7 @@ export default async function UploadPage({
         </div>
       </section>
 
-      <Footer />
+      <SiteFooter />
     </main>
   );
 }

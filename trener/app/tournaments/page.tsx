@@ -16,7 +16,7 @@ export default async function TournamentsPage() {
       <section className="mx-auto max-w-5xl px-8 py-16">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h1 className="text-h1">Мои турниры</h1>
-          <Link href="/" className={cn(buttonVariants())}>
+          <Link href="/analyze" className={cn(buttonVariants())}>
             Загрузить турнир
           </Link>
         </div>
