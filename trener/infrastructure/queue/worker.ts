@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@prisma/client";
 import type { RawTask, WorkerResult } from "./types";
 import { getHandler } from "./registry";
+import { safeNotifyAdmin } from "@/infrastructure/adapters/notify";
 
 // После MAX_ATTEMPTS неудач задача уходит в карантин (POISONED).
 const MAX_ATTEMPTS = 3;
@@ -43,6 +44,15 @@ export async function runWorkerOnce(db: PrismaClient): Promise<WorkerResult> {
             runAfter: new Date(Date.now() + RETRY_DELAY_BASE_MS * task.attempt),
           },
     });
+
+    // Карантин — событие, требующее реакции человека (architecture/06-внешние-сервисы.md,
+    // раздел 2.2): шлём тревогу администратору. Мягко — если бот недоступен, воркер
+    // не падает: статус POISONED уже сохранён выше, уведомление вторично.
+    if (poison) {
+      await safeNotifyAdmin(
+        `⚠️ Задача ${task.type} (id ${task.id}) ушла в карантин после ${MAX_ATTEMPTS} неудачных попыток.\nОшибка: ${String(err)}`
+      );
+    }
   }
 
   return { tasksProcessed: 1 };
