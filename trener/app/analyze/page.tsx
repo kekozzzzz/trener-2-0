@@ -3,6 +3,7 @@ import Link from "next/link";
 import { uploadTournament } from "@/features/tournaments/actions";
 import { recentTournaments } from "@/features/tournaments/queries";
 import { requireSession } from "@/features/auth/session";
+import { checkUploadQuota } from "@/features/usage/limit";
 import { PageHeader } from "@/components/page-header";
 import { SiteFooter } from "@/components/site-footer";
 import { TournamentRow } from "@/components/tournaments/tournament-row";
@@ -14,6 +15,12 @@ import { SubmitButton } from "@/components/upload/submit-button";
 async function handleUpload(formData: FormData) {
   "use server";
   const { playerId } = await requireSession();
+
+  // Лимит загрузок в час на игрока (защита баланса Anthropic: один файл = десятки
+  // платных вызовов). Проверяем ДО чтения файла и любой работы парсера/очереди.
+  if (!checkUploadQuota(playerId).ok) {
+    redirect(`/analyze?error=RATE_LIMITED`);
+  }
 
   const file = formData.get("file") as File | null;
   if (!file || file.size === 0 || file.size > 5 * 1024 * 1024) return;
@@ -41,7 +48,11 @@ function UploadError({ error }: { error: string }) {
     <div className="relative border border-destructive p-4">
       <ShineBorder shineColor="#FF5C5C" borderWidth={1} duration={1} style={{ animationIterationCount: 1 }} />
       <p className="text-small text-destructive">
-        {error === "UNSUPPORTED_FORMAT" ? "Загрузи MTT-турнир GGPoker" : "Ошибка разбора файла"}
+        {error === "UNSUPPORTED_FORMAT"
+          ? "Загрузи MTT-турнир GGPoker"
+          : error === "RATE_LIMITED"
+            ? "Слишком много загрузок за час. Подожди немного и попробуй снова."
+            : "Ошибка разбора файла"}
       </p>
     </div>
   );

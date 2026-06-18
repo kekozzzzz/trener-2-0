@@ -1,0 +1,50 @@
+// Часовые лимиты на действия, которые тянут за собой платные вызовы Claude —
+// защита кошелька от шторма (architecture/07-безопасность.md, раздел 2: «не
+// больше N файлов в час», «лимит сообщений в час»). Это бизнес-числа, поэтому
+// живут только в конфиге/.env (правило проекта №3), а не в коде логики.
+//
+// Зачем: один залогиненный аккаунт, дёргающий загрузку или чат в цикле, способен
+// сжечь весь баланс Anthropic ($20, auto-reload выключен) задолго до того, как
+// сработает месячный потолок воркспейса. Лимит на игрока в час режет такой цикл,
+// не мешая живому человеку (пороги заведомо выше реального ручного темпа).
+//
+// Загрузка турнира — самое дорогое действие: один файл = разбор многих раздач +
+// вердикты + сводка, десятки вызовов. Поэтому её потолок ниже, чем у сообщений
+// (одно сообщение = один вызов).
+
+const DEFAULT_UPLOAD_MAX_PER_HOUR = 15;
+const DEFAULT_UPLOAD_WINDOW_MS = 60 * 60 * 1000; // 1 час
+const DEFAULT_LLM_MESSAGE_MAX_PER_HOUR = 120;
+const DEFAULT_LLM_MESSAGE_WINDOW_MS = 60 * 60 * 1000; // 1 час
+
+function intFromEnv(raw: string | undefined, fallback: number): number {
+  const parsed = raw ? parseInt(raw, 10) : NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+// Сколько турниров один игрок может загрузить за окно.
+export function getUploadMaxPerHour(): number {
+  return intFromEnv(process.env.USAGE_UPLOAD_MAX_PER_HOUR, DEFAULT_UPLOAD_MAX_PER_HOUR);
+}
+
+export function getUploadWindowMs(): number {
+  return intFromEnv(process.env.USAGE_UPLOAD_WINDOW_MS, DEFAULT_UPLOAD_WINDOW_MS);
+}
+
+// Сколько сообщений к LLM (ответы в сократовском диалоге + чат по раздаче, общий
+// счётчик) один игрок может отправить за окно. Каждое = один вызов Claude.
+export function getLlmMessageMaxPerHour(): number {
+  return intFromEnv(process.env.USAGE_LLM_MESSAGE_MAX_PER_HOUR, DEFAULT_LLM_MESSAGE_MAX_PER_HOUR);
+}
+
+export function getLlmMessageWindowMs(): number {
+  return intFromEnv(process.env.USAGE_LLM_MESSAGE_WINDOW_MS, DEFAULT_LLM_MESSAGE_WINDOW_MS);
+}
+
+// Лимитер считает в памяти процесса. В тестах (vitest) выключен по той же причине,
+// что и лимитер аутентификации (см. config/auth.ts): весь прогон делит один
+// процесс, сквозной счётчик перелился бы между несвязанными кейсами. Чистое ядро
+// consumeQuota (features/usage/limit.ts) от флага не зависит и тестируется напрямую.
+export function isUsageLimitEnabled(): boolean {
+  return process.env.NODE_ENV !== "test" && !process.env.VITEST;
+}
