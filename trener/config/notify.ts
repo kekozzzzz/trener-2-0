@@ -37,3 +37,15 @@ export function getTelegramProxySecret(): string {
 export function isNotifyConfigured(): boolean {
   return getTelegramBotToken() !== "" && getTelegramAdminChatId() !== "";
 }
+
+// Порог «зависшей» задачи для дайджеста (architecture/06-внешние-сервисы.md, раздел 2.2:
+// «Очередь не разгребается > 15 мин»): задача PENDING, чьё время запуска прошло раньше
+// этого порога, считается зависшей — сигнал, что воркер не разгребает очередь.
+const DEFAULT_QUEUE_STUCK_MINUTES = 15;
+
+export function getQueueStuckThresholdMs(): number {
+  const raw = process.env.QUEUE_STUCK_THRESHOLD_MINUTES;
+  const parsed = raw ? parseInt(raw, 10) : NaN;
+  const minutes = Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_QUEUE_STUCK_MINUTES;
+  return minutes * 60 * 1000;
+}
