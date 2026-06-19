@@ -7,9 +7,14 @@ export type TableAction = {
   amount?: number;
 };
 
+// Позиция за столом. CO/HJ — однозначны по расстоянию от баттона; EARLY — общий
+// «ранний» кластер (UTG-группа), без ложной точности UTG vs UTG+1 vs MP.
+// OTHER — запасной вариант, когда баттон в раздаче не определён.
+export type Position = "BTN" | "SB" | "BB" | "CO" | "HJ" | "EARLY" | "OTHER";
+
 export type Seat = {
   label: string; // "Hero" | "Player <место>"
-  position: "BTN" | "SB" | "BB" | "OTHER";
+  position: Position;
   startingStack: number;
 };
 

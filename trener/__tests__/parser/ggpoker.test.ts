@@ -162,7 +162,12 @@ describe("снимок раздачи (hands[])", () => {
     const bb = hand.tableSnapshot.seats.find((s) => s.position === "BB");
     expect(bb?.label).toBe("Player 8");
 
+    // Позиция считается по кольцу занятых мест от баттона: Hero — HJ (за два места до баттона).
     const hero = hand.tableSnapshot.seats.find((s) => s.label === "Hero");
-    expect(hero?.position).toBe("OTHER");
+    expect(hero?.position).toBe("HJ");
+
+    // CO — место прямо перед баттоном, ранние места — EARLY.
+    expect(hand.tableSnapshot.seats.find((s) => s.position === "CO")?.label).toBe("Player 5");
+    expect(hand.tableSnapshot.seats.filter((s) => s.position === "EARLY")).toHaveLength(2);
   });
 });

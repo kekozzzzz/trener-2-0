@@ -1,4 +1,4 @@
-import type { ParsedHandSnapshot, Seat, Street, TableAction, TableSnapshot } from "../types";
+import type { ParsedHandSnapshot, Position, Seat, Street, TableAction, TableSnapshot } from "../types";
 
 const SEAT_LINE = /^Seat (\d+): (\S+) \(([\d,]+) in chips\)$/gm;
 const BUTTON_SEAT = /Seat #(\d+) is the button/;
@@ -142,6 +142,44 @@ function computeHeroChipResult(handText: string): number {
   return collected + uncalledReturned - ante - totalInvested;
 }
 
+// Позиция по расстоянию d от баттона в кольце ЗАНЯТЫХ мест (0 = баттон, дальше по
+// часовой). CO — место прямо перед баттоном, HJ — за ним; всё раньше — EARLY.
+function positionAtDistance(d: number, n: number): Position {
+  if (d === 0) return "BTN";
+  if (n === 2) return "BB"; // хедз-ап: баттон = SB, второй = BB
+  if (d === 1) return "SB";
+  if (d === 2) return "BB";
+  if (d === n - 1) return "CO";
+  if (d === n - 2) return "HJ";
+  return "EARLY";
+}
+
+// Карта место→позиция. Если баттон в раздаче не определён — запасной путь по
+// именам постящих блайнды (как раньше), остальные места — OTHER.
+function resolvePositions(
+  seatRows: { seatNum: number; name: string }[],
+  buttonSeatNum: number | null,
+  sbName: string | null,
+  bbName: string | null,
+): Map<string, Position> {
+  const byName = new Map<string, Position>();
+  if (buttonSeatNum == null || !seatRows.some((r) => r.seatNum === buttonSeatNum)) {
+    for (const row of seatRows) {
+      byName.set(row.name, row.name === sbName ? "SB" : row.name === bbName ? "BB" : "OTHER");
+    }
+    return byName;
+  }
+
+  const ring = [...seatRows].sort((a, b) => a.seatNum - b.seatNum);
+  const n = ring.length;
+  const buttonIdx = ring.findIndex((r) => r.seatNum === buttonSeatNum);
+  ring.forEach((row, i) => {
+    const d = (i - buttonIdx + n) % n;
+    byName.set(row.name, positionAtDistance(d, n));
+  });
+  return byName;
+}
+
 export function parseHand(handText: string): ParsedHandSnapshot {
   const seatRows = parseSeats(handText);
   const buttonSeat = BUTTON_SEAT.exec(handText)?.[1];
@@ -154,16 +192,11 @@ export function parseHand(handText: string): ParsedHandSnapshot {
     nameToLabel.set(row.name, row.name === "Hero" ? "Hero" : `Player ${row.seatNum}`);
   }
 
+  const positionByName = resolvePositions(seatRows, buttonSeatNum, sbName, bbName);
+
   const seats: Seat[] = seatRows.map((row) => ({
     label: nameToLabel.get(row.name)!,
-    position:
-      row.seatNum === buttonSeatNum
-        ? "BTN"
-        : row.name === sbName
-          ? "SB"
-          : row.name === bbName
-            ? "BB"
-            : "OTHER",
+    position: positionByName.get(row.name) ?? "OTHER",
     startingStack: row.stack,
   }));
 
