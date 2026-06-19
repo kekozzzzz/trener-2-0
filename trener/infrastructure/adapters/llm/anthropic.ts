@@ -3,6 +3,7 @@ import { ProxyAgent } from "undici";
 import {
   getAnthropicApiKey,
   getAnthropicBaseUrl,
+  getAnthropicMaxTokens,
   getAnthropicModel,
   getAnthropicProxySecret,
   getAnthropicProxyUrl,
@@ -25,8 +26,6 @@ import type {
   VerdictRequest,
   VerdictResult,
 } from "./types";
-
-const MAX_TOKENS = 1024;
 
 // Claude иногда оборачивает JSON в markdown-код-блок несмотря на инструкцию — снимаем его.
 function extractJson(text: string): string {
@@ -145,7 +144,7 @@ async function callClaude(system: string, prompt: string): Promise<unknown> {
 
   const message = await client.messages.create({
     model: getAnthropicModel(),
-    max_tokens: MAX_TOKENS,
+    max_tokens: getAnthropicMaxTokens(),
     system,
     messages: [{ role: "user", content: prompt }],
   });

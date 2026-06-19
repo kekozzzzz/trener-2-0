@@ -3,12 +3,24 @@
 
 const DEFAULT_MODEL = "claude-sonnet-4-6";
 
+// Потолок длины ответа модели. CRITICAL-разбор возвращает четыре текстовых поля
+// (played/optimal/question/draftVerdict) на русском — при 1024 токенах самые
+// длинные раздачи обрезались на полуслове, и JSON переставал парситься
+// («Claude вернул невалидный JSON»). 2048 даёт запас; значение вынесено в env,
+// чтобы при нужде поднять без передеплоя (правило проекта №3 — лимиты в конфиге).
+const DEFAULT_MAX_TOKENS = 2048;
+
 export function getAnthropicApiKey(): string {
   return process.env.ANTHROPIC_API_KEY ?? "";
 }
 
 export function getAnthropicModel(): string {
   return process.env.ANTHROPIC_MODEL || DEFAULT_MODEL;
+}
+
+export function getAnthropicMaxTokens(): number {
+  const raw = Number(process.env.ANTHROPIC_MAX_TOKENS);
+  return Number.isInteger(raw) && raw > 0 ? raw : DEFAULT_MAX_TOKENS;
 }
 
 // Прокси для вызовов Claude. Нужен, когда сервер стоит в регионе, который Anthropic
