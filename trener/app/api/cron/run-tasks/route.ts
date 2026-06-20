@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/infrastructure/db/client";
-import { runWorkerOnce } from "@/infrastructure/queue";
+import { runWorkerOnce, reapStuckTasks } from "@/infrastructure/queue";
 
 // In-process блокировка: не даёт двум параллельным запросам к одному процессу
 // запустить воркер одновременно. Для multi-instance деплоя заменить на
@@ -21,6 +21,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   let total = 0;
 
   try {
+    // Перед сливом очереди вернём в работу осиротевшие PROCESSING — задачи,
+    // на которых прошлый прогон оборвался (напр. рестарт процесса).
+    await reapStuckTasks(prisma);
+
     // Гоняем воркер в цикле пока есть что делать.
     let result;
     do {

@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/infrastructure/db/client";
-import { runWorkerOnce } from "@/infrastructure/queue";
+import { runWorkerOnce, reapStuckTasks } from "@/infrastructure/queue";
 import { getSession } from "@/features/auth/session";
 
 let isRunning = false;
@@ -17,6 +17,9 @@ export async function triggerWorkerAction(): Promise<{ ok: boolean; tasksProcess
   let total = 0;
 
   try {
+    // Вернуть в работу осиротевшие PROCESSING перед прогоном (см. cron/run-tasks).
+    await reapStuckTasks(prisma);
+
     let result;
     do {
       result = await runWorkerOnce(prisma);

@@ -7,6 +7,13 @@ import { safeNotifyAdmin } from "@/infrastructure/adapters/notify";
 const MAX_ATTEMPTS = 3;
 // Базовая задержка для retry: умножается на номер попытки.
 const RETRY_DELAY_BASE_MS = 30_000;
+// Сколько задача может «висеть» в PROCESSING, прежде чем считается осиротевшей.
+// Если процесс умер во время обработки (напр. pm2 restart), claimTask её больше
+// не возьмёт — он выбирает только PENDING. Reaper возвращает такие в очередь.
+// Порог должен быть заметно больше реального времени самого долгого шага (LLM-вызов).
+// Переопределяется из .env, чтобы тюнить без передеплоя.
+const STUCK_PROCESSING_TIMEOUT_MS =
+  Number(process.env.QUEUE_STUCK_TIMEOUT_MS) || 10 * 60_000;
 
 export async function runWorkerOnce(db: PrismaClient): Promise<WorkerResult> {
   const task = await claimTask(db);
@@ -56,6 +63,54 @@ export async function runWorkerOnce(db: PrismaClient): Promise<WorkerResult> {
   }
 
   return { tasksProcessed: 1 };
+}
+
+export type ReapResult = { requeued: number; poisoned: number };
+
+// Возвращает в очередь задачи, зависшие в PROCESSING дольше таймаута — процесс был
+// прерван во время обработки, и сама себя такая задача не починит (claimTask берёт
+// только PENDING). attempt уже инкрементирован при захвате, поэтому действуем как и
+// обычный poison-путь: исчерпавшие попытки уходят в карантин (с тревогой), остальные —
+// обратно в PENDING на немедленный повтор.
+//
+// Вызывать один раз в начале прогона очереди (не внутри runWorkerOnce — тот крутится
+// в цикле). Время «висения» считаем по updated_at: claimTask бьёт его при захвате.
+export async function reapStuckTasks(db: PrismaClient): Promise<ReapResult> {
+  const cutoff = new Date(Date.now() - STUCK_PROCESSING_TIMEOUT_MS);
+
+  // 1. Исчерпавшие попытки → карантин. Иначе при процессе, падающем именно на этой
+  // задаче, она крутилась бы вечно: краш минует catch в runWorkerOnce, poison не наступит.
+  const exhausted = await db.task.findMany({
+    where: { status: "PROCESSING", updatedAt: { lt: cutoff }, attempt: { gte: MAX_ATTEMPTS } },
+    select: { id: true, type: true },
+  });
+
+  if (exhausted.length > 0) {
+    await db.task.updateMany({
+      where: { id: { in: exhausted.map((t) => t.id) } },
+      data: {
+        status: "POISONED",
+        error: "Reaped: зависла в PROCESSING (процесс прерван), попытки исчерпаны",
+      },
+    });
+    for (const t of exhausted) {
+      await safeNotifyAdmin(
+        `⚠️ Задача ${t.type} (id ${t.id}) зависла в PROCESSING (процесс прерван) и ушла в карантин — попытки исчерпаны.`
+      );
+    }
+  }
+
+  // 2. Ещё есть попытки → обратно в очередь на немедленный повтор.
+  const requeued = await db.task.updateMany({
+    where: { status: "PROCESSING", updatedAt: { lt: cutoff }, attempt: { lt: MAX_ATTEMPTS } },
+    data: {
+      status: "PENDING",
+      runAfter: new Date(),
+      error: "Reaped: зависла в PROCESSING (процесс прерван), возвращена в очередь",
+    },
+  });
+
+  return { requeued: requeued.count, poisoned: exhausted.length };
 }
 
 // Атомарный захват задачи: SELECT ... FOR UPDATE SKIP LOCKED + UPDATE в одной транзакции.

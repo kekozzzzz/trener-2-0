@@ -3,5 +3,5 @@
 import "./bootstrap";
 
 export { enqueue } from "./enqueue";
-export { runWorkerOnce } from "./worker";
+export { runWorkerOnce, reapStuckTasks } from "./worker";
 export { registerStep } from "./registry";
