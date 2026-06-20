@@ -18,6 +18,8 @@ model Player {
   email           String?   @unique                  // NULL после анонимизации при закрытии аккаунта
   passwordHash    String?   @map("password_hash")    // NULL после анонимизации; хэш, никогда не открытый пароль
   termsAcceptedAt DateTime? @map("terms_accepted_at") // момент согласия на обработку данных при регистрации (07-безопасность.md)
+  passwordChangedAt DateTime? @map("password_changed_at") // момент последней смены пароля — для показа в кабинете
+  sessionsValidFrom DateTime  @default(now()) @map("sessions_valid_from") // сессии с cookie.iat раньше этой метки недействительны: смена пароля / выход на всех устройствах
   closedAt        DateTime? @map("closed_at")         // момент закрытия и анонимизации
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
@@ -25,8 +27,29 @@ model Player {
   profile      PlayerProfile?
   tournaments  Tournament[]
   subscription Subscription?
+  passwordResetTokens PasswordResetToken[]
 
   @@map("players")
+}
+
+// ─────────────── Одноразовый токен сброса пароля ───────────────
+// Сырой токен живёт только в ссылке из письма; в базе — лишь его SHA-256 (утечка
+// базы не даёт рабочих ссылок). Одноразовый (used_at) и с ограниченным сроком
+// (expires_at). architecture/07-безопасность.md: «сброс пароля — по одноразовой
+// ссылке с ограниченным временем жизни через email-адаптер».
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  playerId  String    @map("player_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash") // SHA-256 (hex) сырого токена
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")             // момент использования; NULL — ещё не использован
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([playerId])
+  @@map("password_reset_tokens")
 }
 
 // ─────────────────── Профиль игрока (1:1, создаётся с первым турниром) ────────
@@ -260,6 +283,8 @@ model Subscription {
   currentPeriodStart     DateTime           @map("current_period_start")
   nextPaymentAt          DateTime?          @map("next_payment_at")
   externalSubscriptionId String             @unique @map("external_subscription_id")
+  paymentMethodId        String?            @map("payment_method_id")       // сохранённый токен карты для автосписания (рекуррент)
+  paymentProvider        String             @default("yookassa") @map("payment_provider") // за каким адаптером закреплена подписка (роутинг ЮKassa/Stripe)
   deletedAt              DateTime?          @map("deleted_at")
   createdAt              DateTime           @default(now()) @map("created_at")
   updatedAt              DateTime           @updatedAt @map("updated_at")
