@@ -10,6 +10,9 @@ const DEFAULT_LOGIN_MAX_FAILURES_PER_IP = 20;
 const DEFAULT_LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 минут
 const DEFAULT_REGISTER_MAX_PER_IP = 5;
 const DEFAULT_REGISTER_WINDOW_MS = 60 * 60 * 1000; // 1 час
+const DEFAULT_PASSWORD_RESET_TTL_MS = 60 * 60 * 1000; // ссылка живёт 1 час
+const DEFAULT_PASSWORD_RESET_MAX_PER_IP = 5;
+const DEFAULT_PASSWORD_RESET_WINDOW_MS = 60 * 60 * 1000; // 1 час
 
 function intFromEnv(raw: string | undefined, fallback: number): number {
   const parsed = raw ? parseInt(raw, 10) : NaN;
@@ -39,6 +42,21 @@ export function getRegisterMaxPerIp(): number {
 
 export function getRegisterWindowMs(): number {
   return intFromEnv(process.env.AUTH_REGISTER_WINDOW_MS, DEFAULT_REGISTER_WINDOW_MS);
+}
+
+// Срок жизни ссылки сброса пароля (07-безопасность.md: «ограниченное время жизни»).
+export function getPasswordResetTtlMs(): number {
+  return intFromEnv(process.env.AUTH_PASSWORD_RESET_TTL_MS, DEFAULT_PASSWORD_RESET_TTL_MS);
+}
+
+// Сколько запросов сброса с одного IP / на один email допускается за окно (защита
+// от заваливания почтового ящика и от перебора существующих email).
+export function getPasswordResetMaxPerIp(): number {
+  return intFromEnv(process.env.AUTH_PASSWORD_RESET_MAX_PER_IP, DEFAULT_PASSWORD_RESET_MAX_PER_IP);
+}
+
+export function getPasswordResetWindowMs(): number {
+  return intFromEnv(process.env.AUTH_PASSWORD_RESET_WINDOW_MS, DEFAULT_PASSWORD_RESET_WINDOW_MS);
 }
 
 // Лимитер считает попытки в памяти процесса. В тестах (vitest) выключен: весь

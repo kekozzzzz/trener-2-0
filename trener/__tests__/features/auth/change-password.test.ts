@@ -36,6 +36,7 @@ vi.mock("next/navigation", () => ({
 import { prisma } from "@/infrastructure/db/client";
 import { registerAction, changePasswordAction, type AuthFormState } from "@/features/auth/actions";
 import { verifyPassword } from "@/features/auth/password";
+import { getCurrentPlayer } from "@/features/auth/queries";
 
 const initialState: AuthFormState = {};
 const TEST_EMAIL = "test-change-password@trener.local";
@@ -72,6 +73,38 @@ describe("changePasswordAction", () => {
     const player = await prisma.player.findUnique({ where: { email: TEST_EMAIL } });
     expect(await verifyPassword("brandnew456", player!.passwordHash!)).toBe(true);
     expect(await verifyPassword(CURRENT, player!.passwordHash!)).toBe(false);
+  });
+
+  it("выставляет passwordChangedAt и сдвигает sessionsValidFrom", async () => {
+    const before = await prisma.player.findUnique({ where: { email: TEST_EMAIL } });
+    expect(before!.passwordChangedAt).toBeNull();
+
+    await changePasswordAction(
+      initialState,
+      formData({ currentPassword: CURRENT, newPassword: "brandnew456", newPasswordConfirm: "brandnew456" })
+    );
+
+    const after = await prisma.player.findUnique({ where: { email: TEST_EMAIL } });
+    expect(after!.passwordChangedAt).not.toBeNull();
+    // метка сессий сдвинулась вперёд относительно момента регистрации
+    expect(after!.sessionsValidFrom.getTime()).toBeGreaterThan(before!.sessionsValidFrom.getTime());
+  });
+
+  it("гасит ранее выданную сессию, текущее устройство остаётся", async () => {
+    // Кука, выданная при регистрации, — «старое устройство».
+    const oldCookie = cookieStore.get("session")!;
+
+    await changePasswordAction(
+      initialState,
+      formData({ currentPassword: CURRENT, newPassword: "brandnew456", newPasswordConfirm: "brandnew456" })
+    );
+
+    // После смены в сторе лежит свежая кука текущего устройства — она пускает.
+    expect(await getCurrentPlayer()).not.toBeNull();
+
+    // Возвращаем старую куку — она выдана до смены пароля и больше не действительна.
+    cookieStore.set("session", oldCookie);
+    expect(await getCurrentPlayer()).toBeNull();
   });
 
   it("неверный текущий пароль → ошибка, хеш не меняется", async () => {

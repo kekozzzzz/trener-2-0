@@ -75,7 +75,7 @@ describe("registerAction", () => {
     expect(player!.termsAcceptedAt).not.toBeNull();
 
     const session = await getSession();
-    expect(session).toEqual({ playerId: player!.id });
+    expect(session?.playerId).toBe(player!.id);
   });
 
   it("занятый email → ошибка", async () => {
@@ -155,7 +155,7 @@ describe("loginAction", () => {
 
     const player = await prisma.player.findUnique({ where: { email: TEST_EMAIL } });
     const session = await getSession();
-    expect(session).toEqual({ playerId: player!.id });
+    expect(session?.playerId).toBe(player!.id);
   });
 
   it("неверный пароль → общая ошибка", async () => {

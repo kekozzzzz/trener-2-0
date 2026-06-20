@@ -15,12 +15,20 @@ export async function authorizeHand(handId: string): Promise<{ playerId: string 
   const session = await getSession();
   if (!session) return null;
 
-  const hand = await prisma.hand.findUnique({
-    where: { id: handId },
-    select: { tournament: { select: { playerId: true, deletedAt: true } } },
+  // Все условия отказа — в одном запросе (единый null наружу): раздача принадлежит
+  // этому игроку, её турнир не удалён, и сессия не старше последней смены пароля /
+  // выхода на всех устройствах владельца (sessionsValidFrom <= iat, см. session.ts).
+  const hand = await prisma.hand.findFirst({
+    where: {
+      id: handId,
+      tournament: {
+        deletedAt: null,
+        playerId: session.playerId,
+        player: { sessionsValidFrom: { lte: new Date(session.iat) } },
+      },
+    },
+    select: { id: true },
   });
-  if (!hand || hand.tournament.deletedAt || hand.tournament.playerId !== session.playerId) {
-    return null;
-  }
+  if (!hand) return null;
   return { playerId: session.playerId };
 }

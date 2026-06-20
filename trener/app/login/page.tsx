@@ -3,7 +3,13 @@ import { BlurFade } from "@/components/ui/blur-fade";
 import { Wordmark } from "@/components/ui/wordmark";
 import { LoginForm } from "./login-form";
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ reset?: string }>;
+}) {
+  const { reset } = await searchParams;
+
   return (
     <main>
       <header className="border-b border-border">
@@ -21,6 +27,11 @@ export default function LoginPage() {
               <h1 className="text-h1">Вход</h1>
               <p className="text-body text-muted-foreground">Войди, чтобы увидеть свои турниры.</p>
             </div>
+            {reset === "1" && (
+              <p className="rounded-md border border-border bg-muted/40 p-3 text-center text-small text-foreground">
+                Пароль обновлён. Войди с новым паролем.
+              </p>
+            )}
             <LoginForm />
           </div>
         </BlurFade>

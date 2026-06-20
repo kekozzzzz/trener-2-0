@@ -42,9 +42,14 @@ export function LoginForm() {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="password" className="font-mono text-label uppercase tracking-label text-muted-foreground">
-          Пароль
-        </Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="password" className="font-mono text-label uppercase tracking-label text-muted-foreground">
+            Пароль
+          </Label>
+          <Link href="/forgot-password" className="text-small text-muted-foreground underline">
+            Забыл пароль?
+          </Link>
+        </div>
         <PasswordInput id="password" name="password" required autoComplete="current-password" />
       </div>
 

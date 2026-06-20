@@ -6,12 +6,22 @@ import { hashPassword, verifyPassword } from "./password";
 import { createSession, destroySession, requireSession } from "./session";
 import { clientIp, hitCount, recordHit, clearHits } from "./rate-limit";
 import {
+  generateResetToken,
+  hashResetToken,
+  buildResetLink,
+  buildResetEmail,
+} from "./password-reset";
+import { safeSendEmail } from "@/infrastructure/adapters/email";
+import {
   isAuthRateLimitEnabled,
   getLoginMaxFailuresPerEmail,
   getLoginMaxFailuresPerIp,
   getLoginWindowMs,
   getRegisterMaxPerIp,
   getRegisterWindowMs,
+  getPasswordResetTtlMs,
+  getPasswordResetMaxPerIp,
+  getPasswordResetWindowMs,
 } from "@/config/auth";
 
 export type AuthFormState = { error?: string; success?: boolean };
@@ -51,8 +61,12 @@ export async function registerAction(
   }
 
   const passwordHash = await hashPassword(password);
+  // sessionsValidFrom ставим явно из JS-времени (а не DB-default now()): TIMESTAMP(3)
+  // в БД округляет до мс ВВЕРХ, а iat куки — JS-мс ВНИЗ, и в пределах одной мс метка
+  // могла бы оказаться больше iat → свежая сессия сразу отвергалась бы. createSession
+  // ниже возьмёт iat уже после create — он не меньше этой метки.
   const player = await prisma.player.create({
-    data: { email, passwordHash, termsAcceptedAt: new Date() },
+    data: { email, passwordHash, termsAcceptedAt: new Date(), sessionsValidFrom: new Date() },
   });
 
   if (limited) recordHit(registerIpKey, getRegisterWindowMs());
@@ -121,12 +135,132 @@ export async function changePasswordAction(
   const valid = player?.passwordHash ? await verifyPassword(currentPassword, player.passwordHash) : false;
   if (!valid) return { error: "Неверный текущий пароль" };
 
+  // Сдвигаем sessionsValidFrom — все ранее выданные куки (включая возможную
+  // угнанную) становятся недействительны. passwordChangedAt — для показа в кабинете.
+  const now = new Date();
+  const newHash = await hashPassword(newPassword);
   await prisma.player.update({
     where: { id: session.playerId },
-    data: { passwordHash: await hashPassword(newPassword) },
+    data: { passwordHash: newHash, passwordChangedAt: now, sessionsValidFrom: now },
   });
 
+  // Текущему устройству выдаём свежую сессию — сменивший пароль остаётся в системе,
+  // слетают только остальные. iat новой куки > sessionsValidFrom, поэтому она валидна.
+  await createSession(session.playerId);
+
   return { success: true };
+}
+
+// Запрос сброса пароля: шлём на email одноразовую ссылку. Ответ всегда одинаковый
+// (success), существует email или нет — чтобы форма не работала «прозвоном» чужих
+// почт (07-безопасность.md, раздел 2). Письмо шлём сразу (не через очередь): так
+// сырой токен нигде не сохраняется, кроме самого письма (в базе — только его SHA-256).
+export async function requestPasswordResetAction(
+  _prevState: AuthFormState,
+  formData: FormData
+): Promise<AuthFormState> {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  if (!EMAIL_RE.test(email)) return { error: "Введи правильный email" };
+
+  // Лимит запросов: по IP и по email — против заваливания ящика и перебора почт.
+  const limited = isAuthRateLimitEnabled();
+  const ipKey = limited ? `reset-ip:${await clientIp()}` : "";
+  const emailKey = `reset-email:${email}`;
+  const overLimit =
+    limited &&
+    (hitCount(ipKey) >= getPasswordResetMaxPerIp() || hitCount(emailKey) >= getPasswordResetMaxPerIp());
+
+  if (!overLimit) {
+    if (limited) {
+      recordHit(ipKey, getPasswordResetWindowMs());
+      recordHit(emailKey, getPasswordResetWindowMs());
+    }
+
+    const player = await prisma.player.findFirst({
+      where: { email, closedAt: null },
+      select: { id: true },
+    });
+    if (player) {
+      // Гасим прежние неиспользованные токены игрока — действительна только свежая ссылка.
+      await prisma.passwordResetToken.updateMany({
+        where: { playerId: player.id, usedAt: null },
+        data: { usedAt: new Date() },
+      });
+      const { raw, hash } = generateResetToken();
+      await prisma.passwordResetToken.create({
+        data: { playerId: player.id, tokenHash: hash, expiresAt: new Date(Date.now() + getPasswordResetTtlMs()) },
+      });
+      // Мягкая отправка: ошибку доставки наружу не выносим (не раскрываем, был ли email).
+      await safeSendEmail(buildResetEmail(email, buildResetLink(raw)));
+    }
+  }
+
+  // Одинаковый ответ при любом исходе (нет email / лимит / отправлено).
+  return { success: true };
+}
+
+// Установка нового пароля по одноразовой ссылке. Токен из письма проверяем по его
+// SHA-256, на годность (не использован, не истёк) и принадлежность живому аккаунту.
+// Смена пароля гасит все старые сессии (sessionsValidFrom) — на случай, если сброс
+// делают из-за того, что доступ увели.
+export async function resetPasswordAction(
+  _prevState: AuthFormState,
+  formData: FormData
+): Promise<AuthFormState> {
+  const token = String(formData.get("token") ?? "");
+  const newPassword = String(formData.get("newPassword") ?? "");
+  const newPasswordConfirm = String(formData.get("newPasswordConfirm") ?? "");
+
+  if (newPassword.length < MIN_PASSWORD_LENGTH) return { error: "Пароль должен быть не короче 8 символов" };
+  if (newPassword !== newPasswordConfirm) return { error: "Пароли не совпадают" };
+
+  const INVALID = "Ссылка недействительна или устарела. Запроси сброс пароля заново.";
+  if (!token) return { error: INVALID };
+
+  const row = await prisma.passwordResetToken.findUnique({
+    where: { tokenHash: hashResetToken(token) },
+    select: { playerId: true, usedAt: true, expiresAt: true },
+  });
+  if (!row || row.usedAt || row.expiresAt < new Date()) return { error: INVALID };
+
+  // Аккаунт мог быть закрыт (анонимизирован) после запроса — такой не восстанавливаем.
+  const player = await prisma.player.findFirst({
+    where: { id: row.playerId, closedAt: null },
+    select: { id: true },
+  });
+  if (!player) return { error: INVALID };
+
+  const now = new Date();
+  const newHash = await hashPassword(newPassword);
+  // Одной транзакцией: новый пароль (+ инвалидация старых сессий) и гашение всех
+  // токенов игрока (использованную ссылку и любые другие нельзя применить повторно).
+  await prisma.$transaction([
+    prisma.player.update({
+      where: { id: player.id },
+      data: { passwordHash: newHash, passwordChangedAt: now, sessionsValidFrom: now },
+    }),
+    prisma.passwordResetToken.updateMany({
+      where: { playerId: player.id, usedAt: null },
+      data: { usedAt: now },
+    }),
+  ]);
+
+  redirect("/login?reset=1");
+}
+
+// Выход на всех устройствах: сдвигаем sessionsValidFrom — гаснут ВСЕ сессии, включая
+// текущую (буквально «выйти на всех»), и уводим на вход. Подтверждения паролем не
+// требует — это безопасное действие (только разлогинивает), доступно вошедшему игроку.
+export async function logoutEverywhereAction(): Promise<void> {
+  const session = await requireSession();
+
+  await prisma.player.update({
+    where: { id: session.playerId },
+    data: { sessionsValidFrom: new Date() },
+  });
+
+  await destroySession();
+  redirect("/login");
 }
 
 // Закрытие аккаунта — мягкое (запрет 5): физического DELETE нет.

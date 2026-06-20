@@ -32,7 +32,7 @@ function sign(data: string): string {
   return createHmac("sha256", process.env.SESSION_SECRET!).update(data).digest("base64url");
 }
 
-function encode(payload: { playerId: string; exp: number }): string {
+function encode(payload: { playerId: string; iat: number; exp: number }): string {
   const data = Buffer.from(JSON.stringify(payload)).toString("base64url");
   return `${data}.${sign(data)}`;
 }
@@ -46,7 +46,8 @@ describe("session", () => {
     await createSession("player-1");
 
     const session = await getSession();
-    expect(session).toEqual({ playerId: "player-1" });
+    expect(session?.playerId).toBe("player-1");
+    expect(typeof session?.iat).toBe("number");
   });
 
   it("destroySession удаляет cookie", async () => {
@@ -57,13 +58,13 @@ describe("session", () => {
   });
 
   it("истёкший токен → null", async () => {
-    cookieStore.set("session", encode({ playerId: "player-1", exp: Date.now() - 1000 }));
+    cookieStore.set("session", encode({ playerId: "player-1", iat: Date.now() - 61_000, exp: Date.now() - 1000 }));
 
     expect(await getSession()).toBeNull();
   });
 
   it("подделанная подпись → null", async () => {
-    const token = encode({ playerId: "player-1", exp: Date.now() + 60_000 });
+    const token = encode({ playerId: "player-1", iat: Date.now(), exp: Date.now() + 60_000 });
     const [data] = token.split(".");
     cookieStore.set("session", `${data}.forged-signature`);
 

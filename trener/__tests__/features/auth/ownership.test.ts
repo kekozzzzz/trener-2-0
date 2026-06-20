@@ -21,7 +21,7 @@ const OWNER_ID = "11111111-0000-0000-0000-000000000003";
 const INTRUDER_ID = "11111111-0000-0000-0000-000000000004";
 
 const { sessionRef } = vi.hoisted(() => ({
-  sessionRef: { value: null as { playerId: string } | null },
+  sessionRef: { value: null as { playerId: string; iat: number } | null },
 }));
 
 vi.mock("@/features/auth/session", () => ({
@@ -86,27 +86,27 @@ describe("authorizeHand", () => {
 
   it("сессия чужого игрока → null", async () => {
     const handId = await createHand();
-    sessionRef.value = { playerId: INTRUDER_ID };
+    sessionRef.value = { playerId: INTRUDER_ID, iat: Date.now() };
 
     expect(await authorizeHand(handId)).toBeNull();
   });
 
   it("раздача не найдена → null", async () => {
-    sessionRef.value = { playerId: OWNER_ID };
+    sessionRef.value = { playerId: OWNER_ID, iat: Date.now() };
 
     expect(await authorizeHand("00000000-0000-0000-0000-000000000000")).toBeNull();
   });
 
   it("турнир мягко удалён → null", async () => {
     const handId = await createHand(true);
-    sessionRef.value = { playerId: OWNER_ID };
+    sessionRef.value = { playerId: OWNER_ID, iat: Date.now() };
 
     expect(await authorizeHand(handId)).toBeNull();
   });
 
   it("свой игрок, живая раздача → { playerId }", async () => {
     const handId = await createHand();
-    sessionRef.value = { playerId: OWNER_ID };
+    sessionRef.value = { playerId: OWNER_ID, iat: Date.now() };
 
     expect(await authorizeHand(handId)).toEqual({ playerId: OWNER_ID });
   });

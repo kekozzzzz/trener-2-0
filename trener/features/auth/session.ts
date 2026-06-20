@@ -6,7 +6,11 @@ import { prisma } from "@/infrastructure/db/client";
 const COOKIE_NAME = "session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 дней
 
-type SessionPayload = { playerId: string; exp: number };
+// iat — момент выдачи (ms epoch). По нему гасим старые сессии: если игрок сменил
+// пароль или вышел на всех устройствах, его sessionsValidFrom сдвигается вперёд, и
+// любая cookie с iat раньше этой метки перестаёт пускать (проверка в requireSession,
+// getCurrentPlayer, authorizeHand — встроена в их запросы к БД).
+type SessionPayload = { playerId: string; iat: number; exp: number };
 
 function getSecret(): string {
   const secret = process.env.SESSION_SECRET;
@@ -33,7 +37,13 @@ function decode(token: string): SessionPayload | null {
 
   try {
     const payload = JSON.parse(Buffer.from(data, "base64url").toString()) as SessionPayload;
-    if (typeof payload.playerId !== "string" || typeof payload.exp !== "number") return null;
+    if (
+      typeof payload.playerId !== "string" ||
+      typeof payload.iat !== "number" ||
+      typeof payload.exp !== "number"
+    ) {
+      return null;
+    }
     if (payload.exp < Date.now()) return null;
     return payload;
   } catch {
@@ -42,9 +52,10 @@ function decode(token: string): SessionPayload | null {
 }
 
 export async function createSession(playerId: string): Promise<void> {
-  const exp = Date.now() + SESSION_TTL_SECONDS * 1000;
+  const iat = Date.now();
+  const exp = iat + SESSION_TTL_SECONDS * 1000;
   const store = await cookies();
-  store.set(COOKIE_NAME, encode({ playerId, exp }), {
+  store.set(COOKIE_NAME, encode({ playerId, iat, exp }), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -53,13 +64,13 @@ export async function createSession(playerId: string): Promise<void> {
   });
 }
 
-export async function getSession(): Promise<{ playerId: string } | null> {
+export async function getSession(): Promise<{ playerId: string; iat: number } | null> {
   const store = await cookies();
   const token = store.get(COOKIE_NAME)?.value;
   if (!token) return null;
 
   const payload = decode(token);
-  return payload ? { playerId: payload.playerId } : null;
+  return payload ? { playerId: payload.playerId, iat: payload.iat } : null;
 }
 
 export async function destroySession(): Promise<void> {
@@ -71,14 +82,20 @@ export async function requireSession(): Promise<{ playerId: string }> {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  // Cookie-сессия валидна криптографически, но аккаунт мог быть закрыт
-  // (анонимизирован) — тогда живая сессия на другом устройстве не должна
-  // пускать. Cookie здесь не трогаем: его нельзя менять при рендере страницы.
+  // Cookie-сессия валидна криптографически, но: аккаунт мог быть закрыт
+  // (анонимизирован), либо сессия выдана до смены пароля / выхода на всех
+  // устройствах (sessionsValidFrom > iat) — тогда не пускаем. Проверка обоих
+  // условий встроена в WHERE, без отдельного обращения к БД. Cookie здесь не
+  // трогаем: его нельзя менять при рендере страницы.
   const player = await prisma.player.findFirst({
-    where: { id: session.playerId, closedAt: null },
+    where: {
+      id: session.playerId,
+      closedAt: null,
+      sessionsValidFrom: { lte: new Date(session.iat) },
+    },
     select: { id: true },
   });
   if (!player) redirect("/login");
 
-  return session;
+  return { playerId: session.playerId };
 }
