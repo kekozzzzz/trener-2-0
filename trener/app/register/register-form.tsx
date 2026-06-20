@@ -9,7 +9,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { LoadingDots } from "@/components/ui/loading-dots";
-import { TERMS_TEXT } from "@/config/legal";
+import { AI_PROCESSOR } from "@/config/legal";
 
 const initialState: AuthFormState = {};
 
@@ -58,7 +58,19 @@ export function RegisterForm() {
 
       <label className="flex items-start gap-3 text-small text-muted-foreground">
         <input type="checkbox" name="terms" required className="mt-1 size-4 accent-primary" />
-        <span>{TERMS_TEXT}</span>
+        <span>
+          Принимаю{" "}
+          <Link href="/legal/oferta" className="text-foreground underline">
+            оферту
+          </Link>{" "}
+          и{" "}
+          <Link href="/legal/privacy" className="text-foreground underline">
+            политику конфиденциальности
+          </Link>{" "}
+          и даю согласие на обработку моих данных, включая передачу обезличенных
+          данных для анализа во внешнюю ИИ-модель {AI_PROCESSOR.name} (
+          {AI_PROCESSOR.country}).
+        </span>
       </label>
 
       {state.error && <p className="text-small text-destructive">{state.error}</p>}
