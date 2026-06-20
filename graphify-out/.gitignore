@@ -1,0 +1,13 @@
+# Машинно-специфичные служебные файлы graphify — не коммитим
+.graphify_python
+.graphify_root
+.graphify_labels.json
+.needs_update
+.graphify_detect.json
+.graphify_extract.json
+
+# Крупные регенерируемые артефакты (gitleaks ложно срабатывает на ID узлов).
+# graph.html пересобирается из graph.json: graphify export html
+# cache/ ускоряет graphify update, но восстанавливается сам.
+graph.html
+cache/
