@@ -107,8 +107,6 @@ export default async function TournamentPage({
 
   const vpip = tournament.vpipPercent ? Number(tournament.vpipPercent).toFixed(1) : "—";
   const hands = tournament.handsCount ?? "—";
-  const result = tournament.resultBuyins ? Number(tournament.resultBuyins).toFixed(2) : "—";
-  const resultSign = tournament.resultBuyins && Number(tournament.resultBuyins) >= 0 ? "+" : "";
 
   const handsForDialogue = await prisma.hand.findMany({
     where: { tournamentId: id, dialogue: { isNot: null } },
@@ -154,21 +152,12 @@ export default async function TournamentPage({
           {tournament.room && ` · ${tournament.room}`}
         </p>
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-3">
+        <div className="mt-8 grid gap-4 sm:grid-cols-2">
           <StatCard label="VPIP">
             <p className="mt-2 font-mono text-h2 text-foreground">{vpip}%</p>
           </StatCard>
           <StatCard label="Рук сыграно">
             <p className="mt-2 font-mono text-h2 text-foreground">{hands}</p>
-          </StatCard>
-          <StatCard label="Итог">
-            <p className="mt-2 font-mono text-h1 text-primary">
-              {resultSign}
-              {result}
-            </p>
-            <p className="mt-1 font-mono text-label uppercase tracking-label text-muted-foreground">
-              бай-ина
-            </p>
           </StatCard>
         </div>
 

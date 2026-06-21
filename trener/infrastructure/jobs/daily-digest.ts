@@ -1,11 +1,12 @@
 import type { PrismaClient } from "@prisma/client";
 import { getQueueStuckThresholdMs } from "@/config/notify";
 import { safeNotifyAdmin } from "@/infrastructure/adapters/notify";
+import { buildCostReport, formatUsd, type CostReport } from "@/features/usage/cost-report";
 
 // Ежедневный дайджест администратору (architecture/06-внешние-сервисы.md, раздел 2.2):
-// одно сообщение в Telegram со сводкой за сутки — пользователи и состояние очереди.
-// Блоки «Подписки» и «Расходы Claude» отложены: первого нет (платежи не сделаны),
-// второй требует admin-ключа Anthropic Console — добавятся позже.
+// одно сообщение в Telegram со сводкой за сутки — пользователи, очередь и расходы Claude.
+// Расходы берём из таблицы llm_usage (пишется в anthropic-адаптере из message.usage) —
+// admin-ключ Anthropic Console НЕ нужен. Блок «Подписки» отложен (платежи не сделаны).
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -33,6 +34,8 @@ export async function buildDailyDigest(db: PrismaClient): Promise<string> {
   const avgSeconds = rawAvg == null ? null : Number(rawAvg);
   const avgText = avgSeconds == null || !Number.isFinite(avgSeconds) ? "—" : `${Math.round(avgSeconds)} с`;
 
+  const cost = await buildCostReport(db, 24);
+
   const lines = [
     "📊 Сводка за сутки — Whygrid",
     "",
@@ -46,6 +49,8 @@ export async function buildDailyDigest(db: PrismaClient): Promise<string> {
     `• Зависших (просрочены): ${stuck}`,
     `• В карантине: ${poisoned}`,
     `• Среднее время обработки: ${avgText}`,
+    "",
+    ...renderCostBlock(cost),
   ];
 
   if (stuck > 0 || poisoned > 0) {
@@ -53,6 +58,33 @@ export async function buildDailyDigest(db: PrismaClient): Promise<string> {
   }
 
   return lines.join("\n");
+}
+
+// Блок расходов Claude для дайджеста: всего запросов/$, эффект кэша и топ-3 по тратам.
+function renderCostBlock(cost: CostReport): string[] {
+  const cacheText =
+    cost.cacheNetUsd > 0.00005
+      ? `сэкономил ${formatUsd(cost.cacheNetUsd)}`
+      : cost.cacheNetUsd < -0.00005
+        ? `стоил лишних ${formatUsd(-cost.cacheNetUsd)}`
+        : "≈ $0";
+
+  const lines = [
+    "💸 Расходы Claude",
+    `• Запросов: ${cost.totalRequests}`,
+    `• Потрачено: ${formatUsd(cost.totalCostUsd)}`,
+    `• Кэш: ${cacheText}`,
+  ];
+
+  if (cost.topPlayers.length > 0) {
+    lines.push("• Топ по расходам:");
+    for (const p of cost.topPlayers.slice(0, 3)) {
+      const who = p.email ?? p.playerId.slice(0, 8);
+      lines.push(`   – ${who}: ${p.requests} зап., ${formatUsd(p.costUsd)}`);
+    }
+  }
+
+  return lines;
 }
 
 // Собирает и отправляет дайджест. Мягко: падение Telegram не роняет cron-запрос

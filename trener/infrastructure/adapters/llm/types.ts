@@ -119,10 +119,14 @@ export type TournamentSummaryResult = {
   moments: TournamentSummaryMoment[];
 };
 
+// Контекст вызова для учёта расходов: чей это запрос (атрибуция строки в llm_usage).
+// Опционален — фейковый адаптер и тесты его игнорируют; реальные шаги очереди передают.
+export type LlmCallMeta = { playerId: string };
+
 export interface LlmPort {
-  generateHandAnalysis(request: HandAnalysisRequest): Promise<HandAnalysisResult>;
-  generateNextQuestion(request: NextQuestionRequest): Promise<NextQuestionResult>;
-  generateVerdict(request: VerdictRequest): Promise<VerdictResult>;
-  generateChatReply(request: ChatReplyRequest): Promise<ChatReplyResult>;
-  generateTournamentSummary(request: TournamentSummaryRequest): Promise<TournamentSummaryResult>;
+  generateHandAnalysis(request: HandAnalysisRequest, meta?: LlmCallMeta): Promise<HandAnalysisResult>;
+  generateNextQuestion(request: NextQuestionRequest, meta?: LlmCallMeta): Promise<NextQuestionResult>;
+  generateVerdict(request: VerdictRequest, meta?: LlmCallMeta): Promise<VerdictResult>;
+  generateChatReply(request: ChatReplyRequest, meta?: LlmCallMeta): Promise<ChatReplyResult>;
+  generateTournamentSummary(request: TournamentSummaryRequest, meta?: LlmCallMeta): Promise<TournamentSummaryResult>;
 }

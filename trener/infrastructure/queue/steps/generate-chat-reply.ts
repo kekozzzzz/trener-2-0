@@ -76,7 +76,7 @@ export const generateChatReplyStep: StepHandler = async (task, db) => {
     },
   };
 
-  const result = await getLlmAdapter().generateChatReply(request);
+  const result = await getLlmAdapter().generateChatReply(request, { playerId: tournament.playerId });
 
   await db.chatMessage.create({
     data: { handId, author: "SYSTEM", text: result.reply },

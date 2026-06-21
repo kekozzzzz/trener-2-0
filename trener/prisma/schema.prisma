@@ -28,8 +28,33 @@ model Player {
   tournaments  Tournament[]
   subscription Subscription?
   passwordResetTokens PasswordResetToken[]
+  llmUsage     LlmUsage[]
 
   @@map("players")
+}
+
+// ─────────────────── Учёт расходов LLM ────────────────────────────────────────
+// Одна строка = один платный вызов Claude. Заполняется в anthropic-адаптере из
+// message.usage. Себестоимость — внутренняя ОЦЕНКА (не платёжный леджер Payment),
+// поэтому допустим Decimal. Нужна для отчёта «кто сколько запросов сделал и на
+// сколько наел» и для решения, оставлять ли кэширование промптов на дистанции.
+model LlmUsage {
+  id               String   @id @default(uuid()) @db.Uuid
+  playerId         String   @map("player_id") @db.Uuid
+  step             String                                  // HAND_ANALYSIS | TOURNAMENT_SUMMARY | DIALOGUE_QUESTION | VERDICT | CHAT_REPLY
+  model            String
+  inputTokens      Int      @map("input_tokens")           // вход полной ценой (не из кэша)
+  outputTokens     Int      @map("output_tokens")
+  cacheWriteTokens Int      @map("cache_write_tokens")      // записано в кэш (cache_creation_input_tokens)
+  cacheReadTokens  Int      @map("cache_read_tokens")       // прочитано из кэша (cache_read_input_tokens)
+  costUsd          Decimal  @map("cost_usd") @db.Decimal(10, 6)
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([playerId], map: "idx_llm_usage_player")
+  @@index([createdAt], map: "idx_llm_usage_created")
+  @@map("llm_usage")
 }
 
 // ─────────────── Одноразовый токен сброса пароля ───────────────

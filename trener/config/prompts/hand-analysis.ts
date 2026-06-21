@@ -124,7 +124,7 @@ function outputSchemaFor(request: HandAnalysisRequest): string {
 export function buildHandAnalysisPrompt(request: HandAnalysisRequest): string {
   const { tournament, importanceLevel, chipResult } = request;
 
-  return `Контекст турнира: ${tournament.handsCount} раздач, VPIP ${tournament.vpipPercent}%, итог ${tournament.resultBuyins} бай-инов, стиль игрока — ${tournament.styleDiagnosis}.
+  return `Контекст турнира: ${tournament.handsCount} раздач, VPIP ${tournament.vpipPercent}%, стиль игрока — ${tournament.styleDiagnosis}.
 
 Раздача отмечена парсером как ${importanceLevel}, результат Hero в этой раздаче — ${chipResult} фишек.
 

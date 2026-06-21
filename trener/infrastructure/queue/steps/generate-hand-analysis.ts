@@ -48,7 +48,7 @@ export const generateHandAnalysisStep: StepHandler = async (task, db) => {
       },
     };
 
-    const result = await getLlmAdapter().generateHandAnalysis(request);
+    const result = await getLlmAdapter().generateHandAnalysis(request, { playerId: tournament.playerId });
 
     await db.$transaction(async (tx) => {
       await tx.hand.update({

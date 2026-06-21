@@ -65,7 +65,7 @@ export const generateTournamentSummaryStep: StepHandler = async (task, db) => {
       styleDiagnosis: tournament.styleDiagnosis,
     },
     hands: summaryHands,
-  });
+  }, { playerId: tournament.playerId });
 
   // Мапим момент (индекс в cardHands) → handId. Индекс вне диапазона отбрасываем —
   // ссылка на несуществующую раздачу невозможна (надёжность ссылок, раздел 0 плана).

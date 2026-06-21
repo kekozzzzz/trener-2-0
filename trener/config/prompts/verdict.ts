@@ -28,7 +28,7 @@ function renderHistory(history: DialogueRoundSummary[]): string {
 export function buildVerdictPrompt(request: VerdictRequest): string {
   const { tournament, chipResult, history, draftVerdict } = request;
 
-  return `Контекст турнира: ${tournament.handsCount} раздач, VPIP ${tournament.vpipPercent}%, итог ${tournament.resultBuyins} бай-инов, стиль игрока — ${tournament.styleDiagnosis}.
+  return `Контекст турнира: ${tournament.handsCount} раздач, VPIP ${tournament.vpipPercent}%, стиль игрока — ${tournament.styleDiagnosis}.
 
 Результат Hero в этой раздаче — ${chipResult} фишек.
 

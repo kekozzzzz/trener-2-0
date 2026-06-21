@@ -33,7 +33,7 @@ function renderHistory(history: ChatMessageSummary[]): string {
 export function buildChatReplyPrompt(request: ChatReplyRequest): string {
   const { tournament, chipResult, history, analysisSummary } = request;
 
-  return `Контекст турнира: ${tournament.handsCount} раздач, VPIP ${tournament.vpipPercent}%, итог ${tournament.resultBuyins} бай-инов, стиль игрока — ${tournament.styleDiagnosis}.
+  return `Контекст турнира: ${tournament.handsCount} раздач, VPIP ${tournament.vpipPercent}%, стиль игрока — ${tournament.styleDiagnosis}.
 
 Результат Hero в этой раздаче — ${chipResult} фишек.
 

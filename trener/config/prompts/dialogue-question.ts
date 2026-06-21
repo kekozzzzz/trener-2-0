@@ -30,7 +30,7 @@ function renderHistory(history: NextQuestionRequest["history"]): string {
 export function buildDialogueQuestionPrompt(request: NextQuestionRequest): string {
   const { tournament, chipResult, draftVerdict, history } = request;
 
-  return `Контекст турнира: ${tournament.handsCount} раздач, VPIP ${tournament.vpipPercent}%, итог ${tournament.resultBuyins} бай-инов, стиль игрока — ${tournament.styleDiagnosis}.
+  return `Контекст турнира: ${tournament.handsCount} раздач, VPIP ${tournament.vpipPercent}%, стиль игрока — ${tournament.styleDiagnosis}.
 
 Результат Hero в этой раздаче — ${chipResult} фишек.
 

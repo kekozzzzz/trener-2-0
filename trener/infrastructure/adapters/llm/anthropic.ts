@@ -13,11 +13,13 @@ import { buildDialogueQuestionPrompt, DIALOGUE_QUESTION_SYSTEM_PROMPT } from "@/
 import { buildVerdictPrompt, VERDICT_SYSTEM_PROMPT } from "@/config/prompts/verdict";
 import { buildChatReplyPrompt, CHAT_REPLY_SYSTEM_PROMPT } from "@/config/prompts/chat-reply";
 import { buildTournamentSummaryPrompt, TOURNAMENT_SUMMARY_SYSTEM_PROMPT } from "@/config/prompts/tournament-summary";
+import { recordLlmUsage } from "@/features/usage/llm-usage";
 import type {
   ChatReplyRequest,
   ChatReplyResult,
   HandAnalysisRequest,
   HandAnalysisResult,
+  LlmCallMeta,
   LlmPort,
   NextQuestionRequest,
   NextQuestionResult,
@@ -139,15 +141,40 @@ function getClient(): Anthropic {
   return cachedClient;
 }
 
-async function callClaude(system: string, prompt: string): Promise<unknown> {
+async function callClaude(
+  system: string,
+  prompt: string,
+  ctx: { step: string; playerId?: string },
+): Promise<unknown> {
   const client = getClient();
 
+  // Кэшируем системный промпт (тренерский «мозг», ~3000 токенов). При загрузке турнира
+  // 10 разборов раздач идут подряд с одним и тем же system — первый пишет кэш (1.25×),
+  // остальные читают почти даром (0.1×), это режет вход примерно на треть. На счёт и
+  // скорость влияет, на ответы модели — нет. Изменчивые данные лежат в user-сообщении
+  // ПОСЛЕ system, поэтому кэш системного префикса они не инвалидируют.
   const message = await client.messages.create({
     model: getAnthropicModel(),
     max_tokens: getAnthropicMaxTokens(),
-    system,
+    system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
     messages: [{ role: "user", content: prompt }],
   });
+
+  // Учёт расхода (вторично — recordLlmUsage не бросает): берём реальный usage из ответа,
+  // включая токены записи/чтения кэша, чтобы потом честно посчитать «кэш-нетто».
+  if (ctx.playerId) {
+    await recordLlmUsage({
+      playerId: ctx.playerId,
+      step: ctx.step,
+      model: getAnthropicModel(),
+      usage: {
+        inputTokens: message.usage.input_tokens ?? 0,
+        outputTokens: message.usage.output_tokens ?? 0,
+        cacheWriteTokens: message.usage.cache_creation_input_tokens ?? 0,
+        cacheReadTokens: message.usage.cache_read_input_tokens ?? 0,
+      },
+    });
+  }
 
   const textBlock = message.content.find((block) => block.type === "text");
   if (!textBlock || textBlock.type !== "text") {
@@ -162,28 +189,46 @@ async function callClaude(system: string, prompt: string): Promise<unknown> {
 }
 
 export const anthropicLlmAdapter: LlmPort = {
-  async generateHandAnalysis(request: HandAnalysisRequest): Promise<HandAnalysisResult> {
-    const parsed = await callClaude(HAND_ANALYSIS_SYSTEM_PROMPT, buildHandAnalysisPrompt(request));
+  async generateHandAnalysis(request: HandAnalysisRequest, meta?: LlmCallMeta): Promise<HandAnalysisResult> {
+    const parsed = await callClaude(HAND_ANALYSIS_SYSTEM_PROMPT, buildHandAnalysisPrompt(request), {
+      step: "HAND_ANALYSIS",
+      playerId: meta?.playerId,
+    });
     return validate(parsed as Partial<HandAnalysisResult>, request);
   },
 
-  async generateNextQuestion(request: NextQuestionRequest): Promise<NextQuestionResult> {
-    const parsed = await callClaude(DIALOGUE_QUESTION_SYSTEM_PROMPT, buildDialogueQuestionPrompt(request));
+  async generateNextQuestion(request: NextQuestionRequest, meta?: LlmCallMeta): Promise<NextQuestionResult> {
+    const parsed = await callClaude(DIALOGUE_QUESTION_SYSTEM_PROMPT, buildDialogueQuestionPrompt(request), {
+      step: "DIALOGUE_QUESTION",
+      playerId: meta?.playerId,
+    });
     return validateNextQuestion(parsed as Partial<NextQuestionResult>);
   },
 
-  async generateVerdict(request: VerdictRequest): Promise<VerdictResult> {
-    const parsed = await callClaude(VERDICT_SYSTEM_PROMPT, buildVerdictPrompt(request));
+  async generateVerdict(request: VerdictRequest, meta?: LlmCallMeta): Promise<VerdictResult> {
+    const parsed = await callClaude(VERDICT_SYSTEM_PROMPT, buildVerdictPrompt(request), {
+      step: "VERDICT",
+      playerId: meta?.playerId,
+    });
     return validateVerdict(parsed as Partial<VerdictResult>);
   },
 
-  async generateChatReply(request: ChatReplyRequest): Promise<ChatReplyResult> {
-    const parsed = await callClaude(CHAT_REPLY_SYSTEM_PROMPT, buildChatReplyPrompt(request));
+  async generateChatReply(request: ChatReplyRequest, meta?: LlmCallMeta): Promise<ChatReplyResult> {
+    const parsed = await callClaude(CHAT_REPLY_SYSTEM_PROMPT, buildChatReplyPrompt(request), {
+      step: "CHAT_REPLY",
+      playerId: meta?.playerId,
+    });
     return validateChatReply(parsed as Partial<ChatReplyResult>);
   },
 
-  async generateTournamentSummary(request: TournamentSummaryRequest): Promise<TournamentSummaryResult> {
-    const parsed = await callClaude(TOURNAMENT_SUMMARY_SYSTEM_PROMPT, buildTournamentSummaryPrompt(request));
+  async generateTournamentSummary(
+    request: TournamentSummaryRequest,
+    meta?: LlmCallMeta,
+  ): Promise<TournamentSummaryResult> {
+    const parsed = await callClaude(TOURNAMENT_SUMMARY_SYSTEM_PROMPT, buildTournamentSummaryPrompt(request), {
+      step: "TOURNAMENT_SUMMARY",
+      playerId: meta?.playerId,
+    });
     return validateTournamentSummary(parsed as Partial<TournamentSummaryResult>);
   },
 };

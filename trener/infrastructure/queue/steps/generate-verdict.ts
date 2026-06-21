@@ -81,7 +81,7 @@ export const generateVerdictStep: StepHandler = async (task, db) => {
     },
   };
 
-  const result = await getLlmAdapter().generateVerdict(request);
+  const result = await getLlmAdapter().generateVerdict(request, { playerId: tournament.playerId });
 
   await db.dialogue.update({
     where: { handId },

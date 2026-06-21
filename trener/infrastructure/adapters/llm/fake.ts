@@ -65,7 +65,7 @@ export const fakeLlmAdapter: LlmPort = {
       label: `(фейк) Момент по раздаче ${h.index}: ${h.chipResult} фишек.`,
     }));
     return {
-      overview: `(фейк) Общая картина: стиль ${request.tournament.styleDiagnosis}, VPIP ${request.tournament.vpipPercent}%, итог ${request.tournament.resultBuyins} бай-инов.`,
+      overview: `(фейк) Общая картина: стиль ${request.tournament.styleDiagnosis}, VPIP ${request.tournament.vpipPercent}%.`,
       moments,
     };
   },

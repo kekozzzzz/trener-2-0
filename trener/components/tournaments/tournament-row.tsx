@@ -41,8 +41,6 @@ function Metric({ label, children }: { label: string; children: React.ReactNode 
 
 export function TournamentRow({ tournament }: { tournament: TournamentListItem }) {
   const status = STATUS[tournament.status];
-  const result = tournament.resultBuyins;
-  const resultSign = result != null && result >= 0 ? "+" : "";
 
   return (
     <Link
@@ -74,11 +72,6 @@ export function TournamentRow({ tournament }: { tournament: TournamentListItem }
         {status.ready && (
           <>
             <Metric label="VPIP">{tournament.vpipPercent != null ? `${tournament.vpipPercent.toFixed(1)}%` : "—"}</Metric>
-            <Metric label="Бай-ины">
-              <span className={cn(result != null && result >= 0 ? "text-primary" : "text-foreground")}>
-                {result != null ? `${resultSign}${result.toFixed(2)}` : "—"}
-              </span>
-            </Metric>
           </>
         )}
         <ArrowRight className="size-4 text-muted-foreground transition-colors duration-150 ease-out group-hover:text-primary" />

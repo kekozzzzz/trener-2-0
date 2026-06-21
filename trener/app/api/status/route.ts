@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/infrastructure/db/client";
 import { requireSession } from "@/features/auth/session";
+import { isAdminEmail } from "@/config/admin";
+import { buildCostReport } from "@/features/usage/cost-report";
 
 export async function GET(): Promise<NextResponse> {
   const { playerId } = await requireSession();
@@ -46,5 +48,11 @@ export async function GET(): Promise<NextResponse> {
     })
     .slice(0, 20);
 
-  return NextResponse.json({ tournaments, tasks });
+  // Расходы LLM по всем игрокам — АДМИНСКИЕ данные. Считаем и отдаём ТОЛЬКО если
+  // email текущего игрока в allowlist (config/admin.ts). Обычный залогиненный
+  // пользователь получает cost === null и ничего чужого не видит.
+  const player = await prisma.player.findUnique({ where: { id: playerId }, select: { email: true } });
+  const cost = isAdminEmail(player?.email) ? await buildCostReport(prisma, 24 * 30) : null;
+
+  return NextResponse.json({ tournaments, tasks, cost });
 }

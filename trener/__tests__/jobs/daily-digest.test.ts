@@ -36,6 +36,7 @@ function mockDb(opts: {
       },
     },
     $queryRaw: async () => [{ avg_seconds: opts.avgSeconds }],
+    llmUsage: { findMany: async () => [] },
   } as unknown as PrismaClient;
 }
 

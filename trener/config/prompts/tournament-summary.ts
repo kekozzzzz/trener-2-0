@@ -42,7 +42,7 @@ export function buildTournamentSummaryPrompt(request: TournamentSummaryRequest):
     })
     .join("\n\n");
 
-  return `Метрики турнира: ${tournament.handsCount} раздач, VPIP ${tournament.vpipPercent}%, итог ${tournament.resultBuyins} бай-инов, стиль игрока — ${tournament.styleDiagnosis}.
+  return `Метрики турнира: ${tournament.handsCount} раздач, VPIP ${tournament.vpipPercent}%, стиль игрока — ${tournament.styleDiagnosis}.
 
 Разобранные раздачи карточки:
 ${handLines}

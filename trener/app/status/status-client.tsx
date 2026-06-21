@@ -21,6 +21,19 @@ type Task = {
   attempt: number;
 };
 
+// Приходит ТОЛЬКО админу (config/admin.ts). У обычного пользователя cost === null.
+type CostPlayer = { playerId: string; email: string | null; requests: number; costUsd: number };
+type CostReport = {
+  totalRequests: number;
+  totalCostUsd: number;
+  cacheNetUsd: number; // >0 — кэш сэкономил; <0 — стоил лишнего
+  topPlayers: CostPlayer[];
+};
+
+function usd(v: number): string {
+  return `$${v.toFixed(Math.abs(v) >= 1 ? 2 : 4)}`;
+}
+
 const TOURNAMENT_LABEL: Record<string, string> = {
   UPLOADED:   "ожидание",
   PARSING:    "разбирается",
@@ -70,7 +83,7 @@ function time(iso: string) {
 }
 
 export function StatusClient() {
-  const [data, setData] = useState<{ tournaments: Tournament[]; tasks: Task[] } | null>(null);
+  const [data, setData] = useState<{ tournaments: Tournament[]; tasks: Task[]; cost?: CostReport | null } | null>(null);
   const [loading, setLoading] = useState(false);
   const [workerError, setWorkerError] = useState<string | null>(null);
   const inFlight = useRef(false);
@@ -107,7 +120,7 @@ export function StatusClient() {
 
   if (!data) return <p>Загружаем...</p>;
 
-  const { tournaments, tasks } = data;
+  const { tournaments, tasks, cost } = data;
 
   const hasPending = tasks.some((t) => t.status === "PENDING" || t.status === "PROCESSING") ||
     tournaments.some((t) => t.status === "UPLOADED" || t.status === "PARSING");
@@ -138,6 +151,41 @@ export function StatusClient() {
         )}
       </div>
 
+      {cost && (
+        <div style={{ marginTop: "1rem", padding: "0.75rem 1rem", border: "1px solid #e5e7eb", borderRadius: "6px", background: "#fafafa" }}>
+          <h2 style={{ marginTop: 0 }}>
+            💸 Расходы Claude · 30 дней{" "}
+            <span style={{ fontSize: "0.6em", color: "#9ca3af", fontWeight: "normal" }}>видно только тебе</span>
+          </h2>
+          <p style={{ margin: "0.25rem 0" }}>
+            Запросов: <b>{cost.totalRequests}</b> · Потрачено: <b>{usd(cost.totalCostUsd)}</b> · Кэш:{" "}
+            <b style={{ color: cost.cacheNetUsd >= 0 ? "#065f46" : "#991b1b" }}>
+              {cost.cacheNetUsd >= 0 ? `сэкономил ${usd(cost.cacheNetUsd)}` : `стоил лишних ${usd(-cost.cacheNetUsd)}`}
+            </b>
+          </p>
+          {cost.topPlayers.length > 0 && (
+            <table style={{ borderCollapse: "collapse", marginTop: "0.5rem" }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid #e5e7eb" }}>
+                  <th style={{ textAlign: "left", padding: "4px 1.5rem 4px 0", fontWeight: "normal", color: "#6b7280" }}>Игрок</th>
+                  <th style={{ textAlign: "left", padding: "4px 1.5rem 4px 0", fontWeight: "normal", color: "#6b7280" }}>Запросов</th>
+                  <th style={{ textAlign: "left", padding: "4px 0", fontWeight: "normal", color: "#6b7280" }}>Потрачено</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cost.topPlayers.map((p) => (
+                  <tr key={p.playerId} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                    <td style={{ padding: "6px 1.5rem 6px 0" }}>{p.email ?? p.playerId.slice(0, 8)}</td>
+                    <td style={{ padding: "6px 1.5rem 6px 0" }}>{p.requests}</td>
+                    <td style={{ padding: "6px 0" }}>{usd(p.costUsd)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
       <h2 style={{ marginTop: "1rem" }}>Турниры</h2>
       {tournaments.length === 0 ? (
         <p style={{ color: "#6b7280" }}>Нет загруженных турниров. <a href="/analyze">Загрузить файл →</a></p>
@@ -160,7 +208,7 @@ export function StatusClient() {
                 <td style={{ padding: "6px 0" }}>
                   {(t.status === "PARSED" || t.status === "CARD_READY") && t.vpipPercent != null ? (
                     <a href={`/tournament/${t.id}`}>
-                      VPIP {Number(t.vpipPercent).toFixed(1)}% · {t.handsCount} рук · {Number(t.resultBuyins).toFixed(2)} BI →
+                      VPIP {Number(t.vpipPercent).toFixed(1)}% · {t.handsCount} рук →
                     </a>
                   ) : t.status === "FAILED" ? (
                     <span style={{ color: "#991b1b" }}>формат не поддерживается</span>

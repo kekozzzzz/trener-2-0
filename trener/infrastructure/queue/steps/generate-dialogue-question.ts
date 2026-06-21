@@ -75,7 +75,7 @@ export const generateDialogueQuestionStep: StepHandler = async (task, db) => {
     },
   };
 
-  const result = await getLlmAdapter().generateNextQuestion(request);
+  const result = await getLlmAdapter().generateNextQuestion(request, { playerId: tournament.playerId });
 
   await db.$transaction(async (tx) => {
     await tx.dialogueRound.create({
