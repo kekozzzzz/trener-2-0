@@ -93,12 +93,13 @@ else
   exit 0
 fi
 
-# ============ ФАЗА B: сертификат с самоповтором + отчёт ============
-# retry-скрипт + cron каждые 10 мин (чтобы не упереться в лимиты Let's Encrypt).
-# Принудительно ставим nginx-плагин (частая поломка — certbot есть, плагина нет).
-# Шлёт отчёт о результате на временный приёмник, чтобы можно было увидеть причину.
-OURIP="81.26.186.177"
+# ============ ФАЗА B: сертификат через DNS-01 (сервер не виден из-за рубежа) ============
+# Let's Encrypt не достукивается до сервера снаружи РФ, поэтому HTTP-проверка не
+# работает. Доказываем владение доменом через DNS-запись в Cloudflare (DNS-01) —
+# проверка не требует захода на сервер. Токен Cloudflare сервер забирает с
+# одноразового канала доставки (только если файла с ключом ещё нет).
 WEBHOOK="https://webhook.site/52d41d9e-37b2-4713-ba7e-0223b721af66"
+DELIVERY="https://webhook.site/e139765c-d4c5-40a8-9277-1f80b7940207"
 
 sudo tee /usr/local/bin/whygrid-cert.sh >/dev/null 2>&1 <<CERT
 #!/usr/bin/env bash
@@ -108,17 +109,23 @@ report() { curl -s --max-time 15 -X POST --data-binary "\$1" "$WEBHOOK" >/dev/nu
 if [ -d /etc/letsencrypt/live/$DOMAIN ]; then
   report "cert: УЖЕ ВЫПУЩЕН на \$(hostname)"; exit 0
 fi
-if ! getent ahostsv4 $DOMAIN 2>/dev/null | grep -q '$OURIP'; then
-  report "cert: DNS $DOMAIN ещё не на $OURIP -> \$(getent ahostsv4 $DOMAIN 2>/dev/null | head -1)"; exit 0
+if [ ! -f /etc/letsencrypt/cloudflare.ini ]; then
+  TK=\$(curl -s --max-time 20 "$DELIVERY" 2>/dev/null | tr -d '[:space:]')
+  if [ \${#TK} -ge 20 ]; then
+    printf 'dns_cloudflare_api_token = %s\n' "\$TK" | sudo tee /etc/letsencrypt/cloudflare.ini >/dev/null
+    sudo chmod 600 /etc/letsencrypt/cloudflare.ini
+  else
+    report "cert: не удалось забрать токен с канала доставки"; exit 0
+  fi
 fi
-sudo DEBIAN_FRONTEND=noninteractive apt-get install -y certbot python3-certbot-nginx >> "\$LOG" 2>&1
-OUT=\$(sudo certbot --nginx -d $DOMAIN --non-interactive --agree-tos -m $EMAIL --redirect 2>&1)
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y certbot python3-certbot-dns-cloudflare python3-certbot-nginx >> "\$LOG" 2>&1
+OUT=\$(sudo certbot --authenticator dns-cloudflare --dns-cloudflare-credentials /etc/letsencrypt/cloudflare.ini --dns-cloudflare-propagation-seconds 30 --installer nginx -d $DOMAIN --non-interactive --agree-tos -m $EMAIL --redirect 2>&1)
 echo "\$OUT" >> "\$LOG"
 if [ -d /etc/letsencrypt/live/$DOMAIN ]; then
   sudo systemctl reload nginx >> "\$LOG" 2>&1
-  report "cert: ГОТОВО, выпущен на \$(hostname)"
+  report "cert: ГОТОВО через DNS-01, выпущен на \$(hostname)"
 else
-  report "cert: НЕ ВЫПУЩЕН. certbot-хвост: \$(echo "\$OUT" | tail -20) ||| nginx-t: \$(sudo nginx -t 2>&1 | tail -3)"
+  report "cert: НЕ ВЫПУЩЕН (DNS-01). certbot-хвост: \$(echo "\$OUT" | tail -20)"
 fi
 CERT
 sudo chmod +x /usr/local/bin/whygrid-cert.sh 2>/dev/null
@@ -127,10 +134,10 @@ sudo tee /etc/cron.d/whygrid-cert >/dev/null 2>&1 <<'CRON'
 */10 * * * * trener-vm /usr/local/bin/whygrid-cert.sh
 CRON
 
-say "пробую выпустить сертификат и шлю отчёт..."
+say "выпускаю сертификат через DNS-01 и шлю отчёт..."
 sudo /usr/local/bin/whygrid-cert.sh
 if [ -d "/etc/letsencrypt/live/$DOMAIN" ]; then
-  say "ГОТОВО: сертификат выпущен, https работает напрямую"
+  say "ГОТОВО: сертификат выпущен, https работает"
 else
   say "сертификат ещё не выпущен — отчёт отправлен, cron добьёт в течение 10 мин"
 fi
