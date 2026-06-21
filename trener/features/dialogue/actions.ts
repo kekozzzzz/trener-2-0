@@ -2,6 +2,8 @@ import type { DialogueState } from "@prisma/client";
 import { prisma } from "@/infrastructure/db/client";
 import { enqueue } from "@/infrastructure/queue";
 import { getDialogueRoundsPerHand, getDialogueAnswerMaxLength } from "@/config/dialogue";
+import { assessAiAccess } from "@/features/usage/budget";
+import { isSubscriptionGateEnabled } from "@/config/plans";
 
 type SubmitAnswerInput = {
   handId: string;
@@ -10,7 +12,7 @@ type SubmitAnswerInput = {
 
 type SubmitAnswerResult =
   | { ok: true; state: DialogueState }
-  | { ok: false; error: "DIALOGUE_NOT_FOUND" | "EMPTY_ANSWER" | "ANSWER_TOO_LONG" };
+  | { ok: false; error: "DIALOGUE_NOT_FOUND" | "EMPTY_ANSWER" | "ANSWER_TOO_LONG" | "PAYWALL" | "LIMIT_REACHED" };
 
 // Лёгкая операция (architecture/04-потоки-данных.md, раздел 2, событие №4):
 // записывает ответ игрока на текущий раунд, переводит диалог
@@ -25,7 +27,10 @@ export async function submitAnswer(input: SubmitAnswerInput): Promise<SubmitAnsw
 
   const dialogue = await prisma.dialogue.findUnique({
     where: { handId: input.handId },
-    include: { rounds: { orderBy: { roundNumber: "desc" }, take: 1 } },
+    include: {
+      rounds: { orderBy: { roundNumber: "desc" }, take: 1 },
+      hand: { include: { tournament: { select: { id: true, playerId: true } } } },
+    },
   });
   if (!dialogue) return { ok: false, error: "DIALOGUE_NOT_FOUND" };
 
@@ -38,6 +43,13 @@ export async function submitAnswer(input: SubmitAnswerInput): Promise<SubmitAnsw
   // Защитный потолок длины — ответ уходит в Claude (config/dialogue.ts,
   // architecture/07-безопасность.md, раздел 2): тормоз для платных токенов.
   if (answer.length > getDialogueAnswerMaxLength()) return { ok: false, error: "ANSWER_TOO_LONG" };
+
+  // Гейт бюджета: следующий шаг (вопрос/вердикт) — платный вызов Claude.
+  if (isSubscriptionGateEnabled()) {
+    const { tournament } = dialogue.hand;
+    const access = await assessAiAccess(prisma, tournament.playerId, { tournamentId: tournament.id });
+    if (!access.allowed) return { ok: false, error: access.reason };
+  }
 
   const currentRound = dialogue.rounds[0];
   const isLastRound = currentRound.roundNumber >= getDialogueRoundsPerHand();

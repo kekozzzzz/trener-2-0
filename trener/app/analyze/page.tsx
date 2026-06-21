@@ -43,17 +43,26 @@ async function handleUpload(formData: FormData) {
   }
 }
 
+const UPLOAD_ERROR_TEXT: Record<string, string> = {
+  UNSUPPORTED_FORMAT: "Загрузи MTT-турнир GGPoker",
+  RATE_LIMITED: "Слишком много загрузок за час. Подожди немного и попробуй снова.",
+  PAYWALL: "Первый турнир ты уже разобрал бесплатно. Оформи подписку, чтобы разбирать дальше.",
+  LIMIT_REACHED: "Лимит этого периода исчерпан — он обновится с началом нового периода подписки.",
+};
+
 function UploadError({ error }: { error: string }) {
   return (
     <div className="relative border border-destructive p-4">
       <ShineBorder shineColor="#FF5C5C" borderWidth={1} duration={1} style={{ animationIterationCount: 1 }} />
-      <p className="text-small text-destructive">
-        {error === "UNSUPPORTED_FORMAT"
-          ? "Загрузи MTT-турнир GGPoker"
-          : error === "RATE_LIMITED"
-            ? "Слишком много загрузок за час. Подожди немного и попробуй снова."
-            : "Ошибка разбора файла"}
-      </p>
+      <p className="text-small text-destructive">{UPLOAD_ERROR_TEXT[error] ?? "Ошибка разбора файла"}</p>
+      {error === "PAYWALL" && (
+        <Link
+          href="/pricing"
+          className="mt-2 inline-block font-mono text-label uppercase tracking-label text-primary transition-colors hover:text-foreground"
+        >
+          Посмотреть тарифы →
+        </Link>
+      )}
     </div>
   );
 }
