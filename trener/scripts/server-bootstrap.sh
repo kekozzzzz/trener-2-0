@@ -93,30 +93,37 @@ else
   exit 0
 fi
 
-# ============ ФАЗА B: сертификат (только если DNS уже на нас) ============
-MYIP="$(curl -s --max-time 10 https://api.ipify.org 2>/dev/null)"
-RESOLVED="$(getent ahostsv4 "$DOMAIN" 2>/dev/null | awk '{print $1; exit}')"
-say "проверка DNS: $DOMAIN → ${RESOLVED:-?}, наш IP ${MYIP:-?}"
+# ============ ФАЗА B: сертификат с самоповтором ============
+# Кладём самостоятельный retry-скрипт и cron, который дёргает его раз в 10 минут,
+# пока сертификат не выпустится. Проверка простая и надёжная: домен указывает на
+# наш статический IP. Раз в 10 минут — чтобы не упереться в лимиты Let's Encrypt.
+OURIP="81.26.186.177"
 
-if [ -n "$MYIP" ] && [ "$RESOLVED" = "$MYIP" ]; then
-  if [ ! -d "/etc/letsencrypt/live/$DOMAIN" ]; then
-    if ! command -v certbot >/dev/null 2>&1; then
-      say "ставлю certbot..."
-      sudo DEBIAN_FRONTEND=noninteractive apt-get install -y certbot python3-certbot-nginx >>"$LOG" 2>&1
-    fi
-    say "DNS указывает на нас — выпускаю сертификат..."
-    sudo certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "$EMAIL" --redirect >>"$LOG" 2>&1
-    if [ -d "/etc/letsencrypt/live/$DOMAIN" ]; then
-      sudo systemctl reload nginx >>"$LOG" 2>&1
-      say "ГОТОВО: сертификат выпущен, https работает напрямую"
-    else
-      say "сертификат пока не выпустился (см. лог), повтор на след. цикле"
-    fi
-  else
-    say "ГОТОВО: сертификат уже на месте"
-  fi
+sudo tee /usr/local/bin/whygrid-cert.sh >/dev/null 2>&1 <<CERT
+#!/usr/bin/env bash
+LOG="/home/trener-vm/bootstrap.log"
+[ -d /etc/letsencrypt/live/$DOMAIN ] && exit 0
+getent ahostsv4 $DOMAIN 2>/dev/null | grep -q '$OURIP' || { echo "\$(date -u +%FT%TZ) | cert-retry: DNS ещё не на нас" >> "\$LOG"; exit 0; }
+command -v certbot >/dev/null 2>&1 || sudo DEBIAN_FRONTEND=noninteractive apt-get install -y certbot python3-certbot-nginx >> "\$LOG" 2>&1
+echo "\$(date -u +%FT%TZ) | cert-retry: выпускаю сертификат..." >> "\$LOG"
+sudo certbot --nginx -d $DOMAIN --non-interactive --agree-tos -m $EMAIL --redirect >> "\$LOG" 2>&1
+if [ -d /etc/letsencrypt/live/$DOMAIN ]; then
+  sudo systemctl reload nginx >> "\$LOG" 2>&1
+  echo "\$(date -u +%FT%TZ) | cert-retry: ГОТОВО, сертификат выпущен" >> "\$LOG"
+fi
+CERT
+sudo chmod +x /usr/local/bin/whygrid-cert.sh 2>/dev/null
+
+sudo tee /etc/cron.d/whygrid-cert >/dev/null 2>&1 <<'CRON'
+*/10 * * * * trener-vm /usr/local/bin/whygrid-cert.sh
+CRON
+
+say "установлен авто-выпуск сертификата (cron каждые 10 мин); пробую прямо сейчас..."
+sudo /usr/local/bin/whygrid-cert.sh
+if [ -d "/etc/letsencrypt/live/$DOMAIN" ]; then
+  say "ГОТОВО: сертификат выпущен, https работает напрямую"
 else
-  say "жду переключения DNS на наш IP (сейчас ещё не на нас) — nginx на 80 уже готов"
+  say "сертификат ещё не выпущен — cron добьёт в течение 10 мин (nginx на 80 уже готов)"
 fi
 
 exit 0
