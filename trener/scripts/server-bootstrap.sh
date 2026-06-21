@@ -93,6 +93,20 @@ else
   exit 0
 fi
 
+# ============ ФАЗА A2: поднять приложение, если оно упало (например после ребута) ============
+if ! curl -s -o /dev/null --max-time 6 http://127.0.0.1:3000/ 2>/dev/null; then
+  say "приложение на :3000 не отвечает — поднимаю через pm2"
+  export PATH="$PATH:/usr/local/bin:/usr/bin:$HOME/.npm-global/bin"
+  pm2 restart trener >>"$LOG" 2>&1 || ( cd "$APP_DIR" && pm2 start npm --name trener -- start >>"$LOG" 2>&1 )
+  pm2 save >>"$LOG" 2>&1
+  sleep 8
+  if curl -s -o /dev/null --max-time 6 http://127.0.0.1:3000/ 2>/dev/null; then
+    say "приложение поднято"
+  else
+    say "приложение пока не отвечает после pm2 (см. лог)"
+  fi
+fi
+
 # ============ ФАЗА B: сертификат через DNS-01 (сервер не виден из-за рубежа) ============
 # Let's Encrypt не достукивается до сервера снаружи РФ, поэтому HTTP-проверка не
 # работает. Доказываем владение доменом через DNS-запись в Cloudflare (DNS-01) —
