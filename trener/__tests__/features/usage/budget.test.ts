@@ -4,7 +4,7 @@ import { assessAiAccess, effectivePeriodStart } from "@/features/usage/budget";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// ADMIN_EMAILS в тестах не задан → админ = OPERATOR.contactEmail (config/legal.ts).
+// ADMIN_EMAILS в тестах не задан → админ/владелец = DEFAULT_ADMIN_EMAILS (config/admin.ts).
 const OWNER_EMAIL = "artemkekoz@gmail.com";
 
 type Sub = {

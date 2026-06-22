@@ -14,8 +14,11 @@ export const OPERATOR = {
   inn: "861713618271",
   // Контакт для обращений субъектов ПДн и по возвратам — ящик, который РЕАЛЬНО
   // читается (не no-reply: тот только отправляет письма через Unisender Go).
-  // Позже можно завести support@whygrid.app с пересылкой сюда.
-  contactEmail: "artemkekoz@gmail.com",
+  // support@whygrid.app: приём настроен через Cloudflare Email Routing → пересылка
+  // на личный Gmail владельца (project_support_mailbox). Идентичность владельца
+  // (админ/обход бюджета) отделена и живёт в config/admin.ts — менять этот ящик
+  // на доступ владельца не влияет.
+  contactEmail: "support@whygrid.app",
 } as const;
 
 // Внешняя ИИ-модель, в которую уходят данные для анализа. Это трансграничная
