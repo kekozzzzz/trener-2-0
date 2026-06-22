@@ -1,18 +1,16 @@
 import Link from "next/link";
-import { LegalLayout, LegalSection, P, LList } from "@/components/legal-layout";
+import { LegalSection, P, LList } from "@/components/legal-layout";
 import { OPERATOR, isOperatorReady } from "@/config/legal";
 
-// Страница реквизитов — её ссылку модерация платёжного сервиса просит прямо в анкете.
-// Для самозанятого достаточно: ФИО, статус НПД, ИНН, контакт. Банковские реквизиты
-// публиковать не обязательно (их для оплаты собирает платёжный сервис).
-// Паспорт/адрес НЕ публикуем (это ПДн).
-export const metadata = { title: "Реквизиты — Whygrid" };
-
-export default function RequisitesPage() {
+// Содержимое реквизитов (раздел сводной страницы /legal) — ссылку модерация
+// платёжного сервиса просит прямо в анкете. Для самозанятого достаточно: ФИО, статус
+// НПД, ИНН, контакт. Банковские реквизиты публиковать не обязательно (их для оплаты
+// собирает платёжный сервис). Паспорт/адрес НЕ публикуем (это ПДн).
+export function RequisitesContent() {
   const ready = isOperatorReady();
 
   return (
-    <LegalLayout title="Реквизиты">
+    <>
       {!ready && (
         <P>
           <b>Реквизиты заполняются.</b> ФИО будет указано после оформления статуса
@@ -34,19 +32,19 @@ export default function RequisitesPage() {
 
       <P>
         Документы сервиса:{" "}
-        <Link className="text-foreground underline" href="/legal/oferta">
+        <Link className="text-foreground underline" href="#oferta">
           оферта
         </Link>
         ,{" "}
-        <Link className="text-foreground underline" href="/legal/privacy">
+        <Link className="text-foreground underline" href="#privacy">
           политика конфиденциальности
         </Link>
         ,{" "}
-        <Link className="text-foreground underline" href="/legal/refund">
+        <Link className="text-foreground underline" href="#refund">
           политика возврата
         </Link>
         .
       </P>
-    </LegalLayout>
+    </>
   );
 }

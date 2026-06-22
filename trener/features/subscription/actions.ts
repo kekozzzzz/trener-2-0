@@ -7,9 +7,10 @@
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { requireSession } from "@/features/auth/session";
-import { getPlan, getCurrency, getSubscriptionPeriodDays } from "@/config/plans";
+import { getPlan, getCurrency, getSubscriptionPeriodDays, usdToKopecks } from "@/config/plans";
 import { getAppBaseUrl } from "@/config/app";
 import { getPaymentsAdapter } from "@/infrastructure/adapters/payments";
+import { getExchangeRateAdapter } from "@/infrastructure/adapters/exchange-rate";
 import { prisma } from "@/infrastructure/db/client";
 import { getSubscriptionState } from "@/features/subscription/access";
 import { proratedUpgradeKopecks } from "@/features/subscription/proration";
@@ -30,10 +31,14 @@ export async function startCheckout(planCode: string): Promise<StartCheckoutResu
   // платёж, если этот же запрос повторится (сетевой ретрай).
   const idempotenceKey = randomUUID();
 
+  // Цена тарифа в долларах → рубли по курсу ЦБ на момент оплаты.
+  const rate = await getExchangeRateAdapter().getUsdRub();
+  const amountKopecks = usdToKopecks(plan.priceUsd, rate);
+
   try {
     const checkout = await getPaymentsAdapter().createCheckout({
       idempotenceKey,
-      money: { amountKopecks: plan.amountKopecks, currency: getCurrency() },
+      money: { amountKopecks, currency: getCurrency() },
       description: `Подписка «${plan.title}» — whygrid`,
       returnUrl: `${getAppBaseUrl()}/account`,
       savePaymentMethod: true,
@@ -84,7 +89,8 @@ export async function switchPlan(newPlanCode: string): Promise<SwitchPlanResult>
 
   // Дешевле — это даунгрейд: запоминаем как запланированный тариф, применит автопродление
   // в начале следующего периода (текущий оплаченный период остаётся на старом тарифе).
-  if (newPlan.amountKopecks < currentPlan.amountKopecks) {
+  // Сравниваем по цене в долларах (не зависит от курса).
+  if (newPlan.priceUsd < currentPlan.priceUsd) {
     await prisma.subscription.updateMany({
       where: { playerId, deletedAt: null },
       data: { scheduledPlanCode: newPlan.code },
@@ -95,9 +101,11 @@ export async function switchPlan(newPlanCode: string): Promise<SwitchPlanResult>
 
   const now = new Date();
   const nextPaymentAt = state.subscription.nextPaymentAt ?? now;
+  // Пересчёт долларовых цен тарифов в рубли по текущему курсу, затем пропорция в рублях.
+  const rate = await getExchangeRateAdapter().getUsdRub();
   const chargeKopecks = proratedUpgradeKopecks(
-    currentPlan.amountKopecks,
-    newPlan.amountKopecks,
+    usdToKopecks(currentPlan.priceUsd, rate),
+    usdToKopecks(newPlan.priceUsd, rate),
     nextPaymentAt,
     now,
     getSubscriptionPeriodDays(),

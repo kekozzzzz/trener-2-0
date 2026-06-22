@@ -70,11 +70,11 @@ export function RegisterForm() {
         <input type="checkbox" name="terms" required className="mt-1 size-4 accent-primary" />
         <span>
           Принимаю{" "}
-          <Link href="/legal/oferta" className="text-foreground underline">
+          <Link href="/legal#oferta" className="text-foreground underline">
             оферту
           </Link>{" "}
           и{" "}
-          <Link href="/legal/privacy" className="text-foreground underline">
+          <Link href="/legal#privacy" className="text-foreground underline">
             политику конфиденциальности
           </Link>{" "}
           и даю согласие на обработку моих данных, включая передачу обезличенных

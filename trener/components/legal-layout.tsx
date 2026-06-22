@@ -55,15 +55,15 @@ export function LegalSection({
   );
 }
 
-// Абзац текста документа — приглушённый, читаемый.
+// Абзац текста документа — приглушённый, читаемый. Шрифт small (юр-текст плотный).
 export function P({ children }: { children: React.ReactNode }) {
-  return <p className="text-body text-muted-foreground">{children}</p>;
+  return <p className="text-small text-muted-foreground">{children}</p>;
 }
 
 // Маркированный список пунктов документа.
 export function LList({ items }: { items: React.ReactNode[] }) {
   return (
-    <ul className="list-disc space-y-1.5 pl-5 text-body text-muted-foreground marker:text-muted-foreground">
+    <ul className="list-disc space-y-1.5 pl-5 text-small text-muted-foreground marker:text-muted-foreground">
       {items.map((item, i) => (
         <li key={i}>{item}</li>
       ))}

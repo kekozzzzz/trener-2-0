@@ -4,7 +4,7 @@ import { AuthNav } from "@/components/auth-nav";
 import { Wordmark } from "@/components/ui/wordmark";
 import { PricingCard } from "@/components/ui/pricing-card";
 import { CheckoutButton } from "@/components/subscription/checkout-button";
-import { getPlans, formatRubles, getPlan } from "@/config/plans";
+import { getPlans, formatUsd, getPlan } from "@/config/plans";
 import { getSession } from "@/features/auth/session";
 import { getSubscriptionState } from "@/features/subscription/access";
 import { cn } from "@/lib/utils";
@@ -54,6 +54,9 @@ export default async function PricingPage() {
             Первый турнир — бесплатно после регистрации. Дальше выбирай тариф по тому,
             как много играешь: возможности у всех одинаковые, разница — в объёме разборов.
           </p>
+          <p className="text-small text-muted-foreground">
+            Цены указаны в долларах. Оплата — в рублях по курсу ЦБ РФ на день платежа.
+          </p>
         </div>
 
         <div className="mt-12 grid items-stretch gap-4 lg:grid-cols-3">
@@ -94,7 +97,7 @@ export default async function PricingPage() {
                 key={plan.code}
                 title={plan.title}
                 description={plan.description}
-                priceLabel={formatRubles(plan.amountKopecks)}
+                priceLabel={formatUsd(plan.priceUsd)}
                 volumeNote={volumeNote(plan.monthlyBudgetUsd, baseBudget)}
                 cta={cta}
               />

@@ -1,6 +1,7 @@
 import type { StepHandler } from "../types";
-import { getPlan, getCurrency } from "@/config/plans";
+import { getPlan, getCurrency, usdToKopecks } from "@/config/plans";
 import { getPaymentsAdapter } from "@/infrastructure/adapters/payments";
+import { getExchangeRateAdapter } from "@/infrastructure/adapters/exchange-rate";
 import { applySucceededPayment } from "@/features/subscription/apply-payment";
 
 type RenewPayload = { subscriptionId: string };
@@ -38,10 +39,14 @@ export const renewSubscriptionStep: StepHandler = async (task, db) => {
   const idempotenceKey = `renew-${sub.id}-${sub.nextPaymentAt?.toISOString() ?? "init"}`;
   const adapter = getPaymentsAdapter();
 
+  // Цена тарифа в долларах → рубли по курсу ЦБ на день списания.
+  const rate = await getExchangeRateAdapter().getUsdRub();
+  const amountKopecks = usdToKopecks(plan.priceUsd, rate);
+
   const charge = await adapter.chargeSaved({
     idempotenceKey,
     paymentMethodId: sub.paymentMethodId,
-    money: { amountKopecks: plan.amountKopecks, currency: getCurrency() },
+    money: { amountKopecks, currency: getCurrency() },
     description: `Продление подписки «${plan.title}» — whygrid`,
     metadata: { playerId: sub.playerId, planCode: plan.code },
   });

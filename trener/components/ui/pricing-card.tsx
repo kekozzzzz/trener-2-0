@@ -12,7 +12,7 @@ interface PricingFeatureGroup {
 interface PricingCardProps {
   title: string
   description: string
-  priceLabel: string // уже отформатированная цена, напр. «690 ₽» (числа — в моно, см. дизайн-систему)
+  priceLabel: string // уже отформатированная цена, напр. «$9» (числа — в моно, см. дизайн-систему)
   period?: string
   volumeNote?: string // строка различия тарифов по объёму (без абсолютных чисел), напр. «× 3 объёма»
   features?: PricingFeatureGroup[] // если не передан — блок «что входит» не рисуем (он общий, ниже колонок)

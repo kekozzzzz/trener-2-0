@@ -10,7 +10,7 @@
 
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/infrastructure/db/client";
-import { getSubscriptionPeriodDays, isPlanCode, getPlan, getCurrency } from "@/config/plans";
+import { getSubscriptionPeriodDays, isPlanCode } from "@/config/plans";
 import type { ProviderPayment } from "@/infrastructure/adapters/payments";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -36,24 +36,9 @@ export async function applySucceededPayment(payment: ProviderPayment): Promise<A
 
   // Смена тарифа в середине периода: оплачена ПРОПОРЦИОНАЛЬНАЯ разница, а не полная
   // цена тарифа, и новый период должен стартовать сегодня (а не продлевать текущий).
+  // (Сверку суммы с ценой тарифа убрали: цена в долларах, а списание в рублях по
+  // курсу ЦБ на момент оплаты — ожидаемая сумма зависит от курса и неоднозначна.)
   const isSwitch = payment.metadata.intent === "switch";
-
-  // Защита в глубину: сумма и planCode формируются на сервере из одного getPlan, но
-  // если оплаченное расходится с ценой тарифа (баг/смена цены/иной валюты) — это
-  // аномалия, которую надо заметить. Активацию НЕ блокируем (платёж реален, по
-  // planCode понятно, что человек покупал, а жёсткий отказ отверг бы реальные деньги),
-  // но пишем предупреждение для разбора/сверки. Для switch расхождение ОЖИДАЕМО
-  // (списана разница по пропорции), поэтому предупреждение не пишем.
-  const plan = getPlan(planCode);
-  if (
-    !isSwitch &&
-    plan &&
-    (payment.money.amountKopecks !== plan.amountKopecks || payment.money.currency !== getCurrency())
-  ) {
-    console.warn(
-      `Платёж ${payment.externalPaymentId}: сумма ${payment.money.amountKopecks} ${payment.money.currency} не совпадает с тарифом «${planCode}» (${plan.amountKopecks} ${getCurrency()})`,
-    );
-  }
 
   const periodMs = getSubscriptionPeriodDays() * DAY_MS;
   const paidAt = payment.capturedAt ?? new Date();

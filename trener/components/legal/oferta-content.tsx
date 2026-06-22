@@ -1,18 +1,16 @@
 import Link from "next/link";
-import { LegalLayout, LegalSection, P, LList } from "@/components/legal-layout";
+import { LegalSection, P, LList } from "@/components/legal-layout";
 import { OPERATOR } from "@/config/legal";
 
-// Договор-оферта на подписку. ЧЕРНОВИК под проверку юристом.
+// Содержимое договора-оферты (раздел сводной страницы /legal). ЧЕРНОВИК под юриста.
 // Учтено: рекуррент (автопродление) с явным согласием и лёгкой отменой —
 // требование ст. 16.1 ЗоЗПП (376-ФЗ, действует с 01.03.2026); доступ после
-// отмены — до конца оплаченного периода; возврат — отдельной страницей /legal/refund.
-export const metadata = { title: "Договор-оферта — Whygrid" };
-
-export default function OfertaPage() {
+// отмены — до конца оплаченного периода; возврат — раздел «Возврат» этой же страницы.
+export function OfertaContent() {
   const operator = OPERATOR.fullName || "Исполнитель (ФИО уточняется)";
 
   return (
-    <LegalLayout title="Договор-оферта на оказание услуг">
+    <>
       <P>
         Настоящий документ — публичная оферта. Регистрируясь в сервисе и оплачивая
         подписку, вы принимаете её условия в полном объёме.
@@ -49,7 +47,7 @@ export default function OfertaPage() {
       <LegalSection heading="4. Тарифы и оплата">
         <LList
           items={[
-            <>Актуальные тарифы и стоимость указаны на странице <Link className="text-foreground underline" href="/pricing">тарифов</Link>. Валюта расчётов — рубли РФ.</>,
+            <>Актуальные тарифы указаны на странице <Link className="text-foreground underline" href="/pricing">тарифов</Link>. Цены приведены в долларах США; оплата производится в рублях РФ по курсу ЦБ РФ на дату платежа.</>,
             "Оплата производится банковской картой через платёжный сервис на сайте.",
             "Доступ к функциям тарифа открывается после поступления оплаты.",
           ]}
@@ -75,7 +73,7 @@ export default function OfertaPage() {
       <LegalSection heading="6. Возврат средств">
         <P>
           Условия возврата изложены в{" "}
-          <Link className="text-foreground underline" href="/legal/refund">
+          <Link className="text-foreground underline" href="#refund">
             Политике возврата
           </Link>
           .
@@ -128,12 +126,12 @@ export default function OfertaPage() {
         />
         <P>
           Полные реквизиты — на странице{" "}
-          <Link className="text-foreground underline" href="/legal/requisites">
+          <Link className="text-foreground underline" href="#requisites">
             реквизитов
           </Link>
           .
         </P>
       </LegalSection>
-    </LegalLayout>
+    </>
   );
 }

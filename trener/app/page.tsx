@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { getCurrentPlayer } from "@/features/auth/queries";
-import { getPlans, formatRubles } from "@/config/plans";
+import { getPlans, formatUsd } from "@/config/plans";
 import { AuthNav } from "@/components/auth-nav";
 import { Wordmark } from "@/components/ui/wordmark";
 import { SiteFooter } from "@/components/site-footer";
@@ -35,9 +35,9 @@ const STEPS = [
 // Лайм-акцент (accent) — только на колонке сервиса (один сигнальный цвет, design-system.md §1).
 const ALTERNATIVES = [
   {
-    tag: "Личный тренер",
-    verdict: "Слишком дорого",
-    description: "$50+ в час — и мало кто возьмётся всерьёз разбирать микролимиты.",
+    tag: "Разовая консультация",
+    verdict: "Дорого и без системы",
+    description: "≈ $50 за разовый разбор. На микролимитах системно почти никто не разбирает.",
     accent: false,
   },
   {
@@ -80,7 +80,7 @@ const BENEFITS = [
 export default async function HomePage() {
   const player = await getCurrentPlayer();
   // Цену на лендинге берём из конфига тарифов (правило 3: не хардкодим цены в разметке).
-  const priceFrom = formatRubles(Math.min(...getPlans().map((p) => p.amountKopecks)));
+  const priceFrom = formatUsd(Math.min(...getPlans().map((p) => p.priceUsd)));
 
   return (
     <main>

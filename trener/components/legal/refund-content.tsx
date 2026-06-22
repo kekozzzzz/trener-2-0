@@ -1,17 +1,15 @@
 import Link from "next/link";
-import { LegalLayout, LegalSection, P, LList } from "@/components/legal-layout";
+import { LegalSection, P, LList } from "@/components/legal-layout";
 import { OPERATOR } from "@/config/legal";
 
-// Политика возврата. ЧЕРНОВИК под проверку юристом.
+// Содержимое политики возврата (раздел сводной страницы /legal). ЧЕРНОВИК под юриста.
 // Опирается на ст. 32 ЗоЗПП (отказ в любое время с оплатой фактических расходов) и
 // ст. 16 ЗоЗПП (нельзя писать «возврат не предусмотрен» — условие ничтожно).
 // Модель: возврат за неиспользованный/не начавшийся период, окно 7 дней с последнего
 // списания (по образцу подписочных сервисов на ЮKassa).
-export const metadata = { title: "Политика возврата — Whygrid" };
-
-export default function RefundPage() {
+export function RefundContent() {
   return (
-    <LegalLayout title="Политика возврата">
+    <>
       <P>
         Здесь описано, в каких случаях и в каком объёме мы возвращаем оплату за
         подписку. Условия соответствуют Закону РФ «О защите прав потребителей».
@@ -56,12 +54,12 @@ export default function RefundPage() {
         </P>
         <P>
           Условия подписки и автопродления — в{" "}
-          <Link className="text-foreground underline" href="/legal/oferta">
+          <Link className="text-foreground underline" href="#oferta">
             оферте
           </Link>
           .
         </P>
       </LegalSection>
-    </LegalLayout>
+    </>
   );
 }

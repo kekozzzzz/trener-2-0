@@ -1,18 +1,16 @@
 import Link from "next/link";
-import { LegalLayout, LegalSection, P, LList } from "@/components/legal-layout";
+import { LegalSection, P, LList } from "@/components/legal-layout";
 import { OPERATOR, AI_PROCESSOR } from "@/config/legal";
 
-// Политика обработки персональных данных (152-ФЗ). ЧЕРНОВИК под проверку юристом.
+// Содержимое политики ПДн (152-ФЗ; раздел сводной страницы /legal). ЧЕРНОВИК под юриста.
 // Главное и честное: раздел про трансграничную передачу в Anthropic (США) — мы её
 // не скрываем, а раскрываем; в США уходят обезличенные игровые факты, а реальные
 // никнеймы заменяются на Hero/Player N до отправки (architecture/07-безопасность.md).
-export const metadata = { title: "Политика конфиденциальности — Whygrid" };
-
-export default function PrivacyPage() {
+export function PrivacyContent() {
   const operator = OPERATOR.fullName || "Оператор (ФИО уточняется)";
 
   return (
-    <LegalLayout title="Политика обработки персональных данных">
+    <>
       <P>
         Настоящая Политика описывает, какие персональные данные обрабатывает сервис
         Whygrid, с какими целями, на каких основаниях и какие права есть у пользователя.
@@ -141,6 +139,6 @@ export default function PrivacyPage() {
           .
         </P>
       </LegalSection>
-    </LegalLayout>
+    </>
   );
 }
