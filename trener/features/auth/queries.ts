@@ -4,6 +4,7 @@ import { getSession } from "./session";
 export async function getCurrentPlayer(): Promise<{
   id: string;
   email: string | null;
+  nickname: string | null;
   passwordChangedAt: Date | null;
 } | null> {
   const session = await getSession();
@@ -18,7 +19,7 @@ export async function getCurrentPlayer(): Promise<{
       closedAt: null,
       sessionsValidFrom: { lte: new Date(session.iat) },
     },
-    select: { id: true, email: true, passwordChangedAt: true },
+    select: { id: true, email: true, nickname: true, passwordChangedAt: true },
   });
 
   return player;

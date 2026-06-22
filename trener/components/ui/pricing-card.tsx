@@ -14,7 +14,8 @@ interface PricingCardProps {
   description: string
   priceLabel: string // уже отформатированная цена, напр. «690 ₽» (числа — в моно, см. дизайн-систему)
   period?: string
-  features: PricingFeatureGroup[]
+  volumeNote?: string // строка различия тарифов по объёму (без абсолютных чисел), напр. «× 3 объёма»
+  features?: PricingFeatureGroup[] // если не передан — блок «что входит» не рисуем (он общий, ниже колонок)
   // CTA: либо готовый элемент (кнопка оплаты — клиентский компонент), либо ссылка.
   cta?: ReactNode
   buttonText?: string
@@ -26,6 +27,7 @@ export function PricingCard({
   description,
   priceLabel,
   period = "в месяц",
+  volumeNote,
   features,
   cta,
   buttonText = "Начать",
@@ -40,11 +42,16 @@ export function PricingCard({
         </div>
         <div className="space-y-1">
           <div className="flex items-baseline gap-3">
-            <span className="font-mono text-display text-primary">{priceLabel}</span>
+            <span className="whitespace-nowrap font-mono text-h1 text-primary">{priceLabel}</span>
           </div>
           <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
             {period}
           </p>
+          {volumeNote && (
+            <p className="pt-2 font-mono text-label uppercase tracking-label text-primary">
+              {volumeNote}
+            </p>
+          )}
         </div>
         {cta ?? (
           <a href={buttonHref} className={cn(buttonVariants(), "w-full justify-center")}>
@@ -53,26 +60,28 @@ export function PricingCard({
         )}
       </div>
 
-      <div className="space-y-6 border-t border-border p-8">
-        {features.map((group, groupIndex) => (
-          <div key={group.title}>
-            <h4 className="mb-4 font-mono text-label uppercase tracking-label text-muted-foreground">
-              {group.title}
-            </h4>
-            <ul className="grid grid-cols-1 gap-3">
-              {group.items.map((item) => (
-                <li key={item} className="flex items-center gap-2 text-body">
-                  <Check className="size-4 shrink-0 text-primary" />
-                  {item}
-                </li>
-              ))}
-            </ul>
-            {groupIndex < features.length - 1 && (
-              <div className="my-6 border-t border-border" />
-            )}
-          </div>
-        ))}
-      </div>
+      {features && features.length > 0 && (
+        <div className="space-y-6 border-t border-border p-8">
+          {features.map((group, groupIndex) => (
+            <div key={group.title}>
+              <h4 className="mb-4 font-mono text-label uppercase tracking-label text-muted-foreground">
+                {group.title}
+              </h4>
+              <ul className="grid grid-cols-1 gap-3">
+                {group.items.map((item) => (
+                  <li key={item} className="flex items-center gap-2 text-body">
+                    <Check className="size-4 shrink-0 text-primary" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              {groupIndex < features.length - 1 && (
+                <div className="my-6 border-t border-border" />
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

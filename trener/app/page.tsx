@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { getCurrentPlayer } from "@/features/auth/queries";
+import { getPlans, formatRubles } from "@/config/plans";
 import { AuthNav } from "@/components/auth-nav";
 import { Wordmark } from "@/components/ui/wordmark";
 import { SiteFooter } from "@/components/site-footer";
@@ -48,7 +49,7 @@ const ALTERNATIVES = [
   },
   {
     tag: "Whygrid",
-    verdict: "от $12 в месяц",
+    verdict: "", // цена подставляется из конфига при рендере (accent-тариф)
     description:
       "Твои собственные раздачи. Парсер считает математику точно, а тренер ведёт вопросами — пока ты сам не увидишь, где слил.",
     accent: true,
@@ -78,6 +79,8 @@ const BENEFITS = [
 // регистрацию, залогиненного — сразу в инструмент «Разбор» (/analyze).
 export default async function HomePage() {
   const player = await getCurrentPlayer();
+  // Цену на лендинге берём из конфига тарифов (правило 3: не хардкодим цены в разметке).
+  const priceFrom = formatRubles(Math.min(...getPlans().map((p) => p.amountKopecks)));
 
   return (
     <main>
@@ -156,7 +159,9 @@ export default async function HomePage() {
                   >
                     {alt.tag}
                   </p>
-                  <h3 className="mt-4 text-h3">{alt.verdict}</h3>
+                  <h3 className="mt-4 text-h3">
+                    {alt.accent ? `от ${priceFrom} в месяц` : alt.verdict}
+                  </h3>
                   <p className="mt-2 text-small text-muted-foreground">{alt.description}</p>
                 </div>
               ))}
@@ -210,10 +215,10 @@ export default async function HomePage() {
       <section className="border-t border-border">
         <BlurFade direction="up" offset={8} blur="0px" duration={0.3} delay={0.1}>
           <div className="mx-auto flex max-w-2xl flex-col items-center space-y-6 px-8 py-16 text-center sm:py-24">
-            <h2 className="text-h2">Всё это — от $12 в месяц</h2>
+            <h2 className="text-h2">Перестань повторять одни и те же ошибки</h2>
             <p className="text-body text-muted-foreground">
-              Первый турнир разберём бесплатно. Это дешевле одного бай-ина, который ты теряешь
-              на повторной ошибке.
+              Первый турнир разберём бесплатно. Загрузи свой HH-файл — и сам увидишь, где
+              сливаешь фишки, пока тренер ведёт тебя вопросами.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
               <Link

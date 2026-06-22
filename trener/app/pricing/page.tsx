@@ -1,18 +1,18 @@
 import Link from "next/link";
+import { Check } from "lucide-react";
 import { AuthNav } from "@/components/auth-nav";
 import { Wordmark } from "@/components/ui/wordmark";
 import { PricingCard } from "@/components/ui/pricing-card";
 import { CheckoutButton } from "@/components/subscription/checkout-button";
-import { getPlans, formatRubles } from "@/config/plans";
+import { getPlans, formatRubles, getPlan } from "@/config/plans";
 import { getSession } from "@/features/auth/session";
 import { getSubscriptionState } from "@/features/subscription/access";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 
-// Набор возможностей одинаков на всех тарифах — они отличаются только бюджетом, то есть
-// тем, сколько разборов в месяц укладывается в лимит (кредитная модель,
-// plans/2026-06-21-кредитная-система.md). Поэтому различитель в карточке — цена и
-// мягкая оценка «≈ N разборов», а список функций общий.
+// Возможности ОДИНАКОВЫ на всех тарифах (кредитная модель,
+// plans/2026-06-21-кредитная-система.md): тарифы отличаются только невидимым бюджетом.
+// Поэтому список «что входит» — один общий блок под колонками, а не повтор в каждой.
 const SHARED_FEATURES = [
   "Сократовский диалог «почему» по ключевым раздачам",
   "Чат по любой раздаче карточки",
@@ -20,11 +20,21 @@ const SHARED_FEATURES = [
   "Точные числа от парсера, а не догадки ИИ",
 ];
 
+// Различие тарифов для пользователя — относительный объём разборов (без абсолютных
+// чисел: счётчик намеренно невидим). Кратность считаем от бюджета базового тарифа —
+// так она честно отражает, во сколько раз больше можно разобрать, и сама подстроится
+// при смене бюджетов в конфиге.
+function volumeNote(budgetUsd: number, baseBudgetUsd: number): string {
+  const mult = Math.round(budgetUsd / baseBudgetUsd);
+  return mult <= 1 ? "Базовый объём" : `Объём × ${mult}`;
+}
+
 export default async function PricingPage() {
   const session = await getSession();
   const state = session ? await getSubscriptionState(session.playerId) : null;
   const currentPlan = state?.hasAccess ? state.planCode : null;
   const plans = getPlans();
+  const baseBudget = getPlan("basic")?.monthlyBudgetUsd ?? 1;
 
   return (
     <main>
@@ -41,30 +51,20 @@ export default async function PricingPage() {
         <div className="mx-auto max-w-2xl space-y-4 text-center">
           <h1 className="text-h1">Тарифы</h1>
           <p className="text-body text-muted-foreground">
-            Первый турнир — бесплатно после регистрации. Дальше выбирай тариф под то,
-            как много хочешь разбирать. Тарифы отличаются объёмом, набор возможностей —
-            один.
+            Первый турнир — бесплатно после регистрации. Дальше выбирай тариф по тому,
+            как много играешь: возможности у всех одинаковые, разница — в объёме разборов.
           </p>
         </div>
 
-        <div className="mt-12 grid items-start gap-4 lg:grid-cols-3">
+        <div className="mt-12 grid items-stretch gap-4 lg:grid-cols-3">
           {plans.map((plan) => {
             const isCurrent = currentPlan === plan.code;
-            const features = [
-              {
-                title: "Что входит",
-                items: [`≈ ${plan.approxAnalyses} разборов турниров в месяц`, ...SHARED_FEATURES],
-              },
-            ];
 
             let cta;
             if (!session) {
               // Гость: сначала регистрация, оплата — уже из кабинета/со страницы цен.
               cta = (
-                <Link
-                  href="/register"
-                  className={cn(buttonVariants(), "w-full justify-center")}
-                >
+                <Link href="/register" className={cn(buttonVariants(), "w-full justify-center")}>
                   Начать
                 </Link>
               );
@@ -95,11 +95,26 @@ export default async function PricingPage() {
                 title={plan.title}
                 description={plan.description}
                 priceLabel={formatRubles(plan.amountKopecks)}
-                features={features}
+                volumeNote={volumeNote(plan.monthlyBudgetUsd, baseBudget)}
                 cta={cta}
               />
             );
           })}
+        </div>
+
+        {/* Общий блок: что входит в ЛЮБОЙ тариф (одинаково для всех). */}
+        <div className="mt-4 border border-border bg-card p-8">
+          <h2 className="font-mono text-label uppercase tracking-label text-muted-foreground">
+            Входит в любой тариф
+          </h2>
+          <ul className="mt-6 grid gap-3 sm:grid-cols-2">
+            {SHARED_FEATURES.map((item) => (
+              <li key={item} className="flex items-center gap-2 text-body">
+                <Check className="size-4 shrink-0 text-primary" />
+                {item}
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
     </main>

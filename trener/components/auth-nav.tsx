@@ -25,14 +25,10 @@ export async function AuthNav() {
 
   return (
     <nav className="flex items-center gap-4 font-mono text-label uppercase tracking-label">
-      <Link href="/analyze" className="text-muted-foreground transition-colors hover:text-foreground">
-        Разбор
-      </Link>
+      {/* «Разбор» (загрузка) убран из меню — загрузить турнир можно со страницы «Мои
+          турниры». «Тарифы» убраны — смена/выбор тарифа живёт в «Аккаунте». */}
       <Link href="/tournaments" className="text-muted-foreground transition-colors hover:text-foreground">
         Мои турниры
-      </Link>
-      <Link href="/pricing" className="text-muted-foreground transition-colors hover:text-foreground">
-        Тарифы
       </Link>
       <Link href="/account" className="text-muted-foreground transition-colors hover:text-foreground">
         Аккаунт

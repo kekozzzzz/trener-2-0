@@ -43,6 +43,16 @@ export function RegisterForm() {
       </div>
 
       <div className="space-y-2">
+        <Label htmlFor="nickname" className="font-mono text-label uppercase tracking-label text-muted-foreground">
+          Покерный ник <span className="normal-case tracking-normal">(необязательно)</span>
+        </Label>
+        <Input id="nickname" name="nickname" type="text" maxLength={40} autoComplete="off" />
+        <p className="text-small text-muted-foreground">
+          Будем показывать его в разборах вместо «Hero». Можно добавить позже в аккаунте.
+        </p>
+      </div>
+
+      <div className="space-y-2">
         <Label htmlFor="password" className="font-mono text-label uppercase tracking-label text-muted-foreground">
           Пароль
         </Label>

@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/infrastructure/db/client";
 import { hashPassword, verifyPassword } from "./password";
 import { createSession, destroySession, requireSession } from "./session";
@@ -28,6 +29,14 @@ export type AuthFormState = { error?: string; success?: boolean };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
+const MAX_NICKNAME_LENGTH = 40;
+
+// Ник для показа в разборах. Необязательный, обрезаем по длине; пустой → null.
+// В LLM не передаётся (приватность) — только отображение пользователю.
+function normalizeNickname(raw: FormDataEntryValue | null): string | null {
+  const value = String(raw ?? "").trim().slice(0, MAX_NICKNAME_LENGTH);
+  return value.length > 0 ? value : null;
+}
 const TOO_MANY_ATTEMPTS = "Слишком много попыток. Подождите несколько минут и попробуйте снова.";
 
 export async function registerAction(
@@ -37,6 +46,7 @@ export async function registerAction(
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
   const passwordConfirm = String(formData.get("passwordConfirm") ?? "");
+  const nickname = normalizeNickname(formData.get("nickname"));
   const termsAccepted = formData.get("terms") === "on";
 
   if (!EMAIL_RE.test(email)) return { error: "Введи правильный email" };
@@ -66,12 +76,21 @@ export async function registerAction(
   // могла бы оказаться больше iat → свежая сессия сразу отвергалась бы. createSession
   // ниже возьмёт iat уже после create — он не меньше этой метки.
   const player = await prisma.player.create({
-    data: { email, passwordHash, termsAcceptedAt: new Date(), sessionsValidFrom: new Date() },
+    data: { email, passwordHash, nickname, termsAcceptedAt: new Date(), sessionsValidFrom: new Date() },
   });
 
   if (limited) recordHit(registerIpKey, getRegisterWindowMs());
   await createSession(player.id);
   redirect("/");
+}
+
+// Изменить покерный ник в личном кабинете (показ в разборах). Пустое значение
+// очищает ник (вернётся «Hero»). Только для своей записи (requireSession).
+export async function updateNicknameAction(formData: FormData): Promise<void> {
+  const { playerId } = await requireSession();
+  const nickname = normalizeNickname(formData.get("nickname"));
+  await prisma.player.update({ where: { id: playerId }, data: { nickname } });
+  revalidatePath("/account");
 }
 
 export async function loginAction(
@@ -264,8 +283,8 @@ export async function logoutEverywhereAction(): Promise<void> {
 }
 
 // Закрытие аккаунта — мягкое (запрет 5): физического DELETE нет.
-// Ставим closedAt и анонимизируем (email/passwordHash → NULL), турниры остаются
-// (Tournament.player onDelete: Restrict). Подтверждение — текущим паролем.
+// Ставим closedAt и анонимизируем (email/passwordHash/nickname → NULL), турниры
+// остаются (Tournament.player onDelete: Restrict). Подтверждение — текущим паролем.
 export async function closeAccountAction(
   _prevState: AuthFormState,
   formData: FormData
@@ -279,7 +298,7 @@ export async function closeAccountAction(
 
   await prisma.player.update({
     where: { id: session.playerId },
-    data: { closedAt: new Date(), email: null, passwordHash: null },
+    data: { closedAt: new Date(), email: null, passwordHash: null, nickname: null },
   });
 
   await destroySession();

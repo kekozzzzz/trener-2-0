@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { getDialogueRoundsPerHand } from "@/config/dialogue";
 import { requireSession } from "@/features/auth/session";
+import { personalizeHero } from "@/lib/hero-name";
 import { AuthNav } from "@/components/auth-nav";
 import { Wordmark } from "@/components/ui/wordmark";
 import { Badge } from "@/components/ui/badge";
@@ -134,6 +135,13 @@ export default async function TournamentPage({
     | { overview?: string; moments?: { handId: string; label: string }[] }
     | null;
 
+  // Ник игрока для показа вместо «Hero» (только отображение; в LLM не идёт).
+  const me = await prisma.player.findUnique({
+    where: { id: session.playerId },
+    select: { nickname: true },
+  });
+  const nick = me?.nickname ?? null;
+
   return (
     <main>
       <PageHeader />
@@ -164,7 +172,7 @@ export default async function TournamentPage({
         {summary?.overview && (
           <div className="mt-16">
             <h2 className="text-h2">Общая картина</h2>
-            <p className="mt-4 max-w-3xl text-body text-foreground">{summary.overview}</p>
+            <p className="mt-4 max-w-3xl text-body text-foreground">{personalizeHero(summary.overview, nick)}</p>
             {summary.moments && summary.moments.length > 0 && (
               <div className="mt-6 space-y-2">
                 {summary.moments.map((moment) => (
@@ -173,7 +181,7 @@ export default async function TournamentPage({
                     href={`/tournament/${id}/hands/${moment.handId}`}
                     className="group flex items-center justify-between gap-4 border border-border bg-card p-4 transition-colors duration-150 ease-out hover:border-primary"
                   >
-                    <span className="text-small text-foreground">{moment.label}</span>
+                    <span className="text-small text-foreground">{personalizeHero(moment.label, nick)}</span>
                     <ArrowRight className="size-4 shrink-0 text-muted-foreground transition-colors duration-150 ease-out group-hover:text-primary" />
                   </Link>
                 ))}

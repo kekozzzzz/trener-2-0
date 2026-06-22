@@ -16,6 +16,7 @@ datasource db {
 model Player {
   id              String    @id @default(uuid()) @db.Uuid
   email           String?   @unique                  // NULL после анонимизации при закрытии аккаунта
+  nickname        String?                             // покерный ник игрока для ПОКАЗА в разборах (вместо «Hero»); в LLM не передаётся (приватность, правило 5)
   passwordHash    String?   @map("password_hash")    // NULL после анонимизации; хэш, никогда не открытый пароль
   termsAcceptedAt DateTime? @map("terms_accepted_at") // момент согласия на обработку данных при регистрации (07-безопасность.md)
   passwordChangedAt DateTime? @map("password_changed_at") // момент последней смены пароля — для показа в кабинете

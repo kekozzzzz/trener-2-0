@@ -6,6 +6,7 @@ import { getChat } from "@/features/chat/queries";
 import { bigBlindFromSnapshot } from "@/parser/big-blind";
 import type { TableSnapshot } from "@/parser/types";
 import { requireSession } from "@/features/auth/session";
+import { personalizeHero } from "@/lib/hero-name";
 import { AuthNav } from "@/components/auth-nav";
 import { Wordmark } from "@/components/ui/wordmark";
 import { AnswerForm } from "./answer-form";
@@ -37,6 +38,13 @@ export default async function HandDialoguePage({
     notFound();
   }
 
+  // Ник игрока для показа вместо «Hero» (только отображение; в LLM не идёт).
+  const me = await prisma.player.findUnique({
+    where: { id: session.playerId },
+    select: { nickname: true },
+  });
+  const nick = me?.nickname ?? null;
+
   const dialogue = await getDialogue(handId);
 
   // Разбор раздачи (played / optimal / note). У критических часть полей дублирует
@@ -52,7 +60,7 @@ export default async function HandDialoguePage({
   const openRound =
     dialogue?.state === "QUESTION_ASKED" ? dialogue.rounds[dialogue.rounds.length - 1] : null;
   const historyRounds = dialogue ? (openRound ? dialogue.rounds.slice(0, -1) : dialogue.rounds) : [];
-  const played = dialogue?.hand.played ?? analysis?.played ?? null;
+  const played = personalizeHero(dialogue?.hand.played ?? analysis?.played ?? null, nick);
   const chipResult = hand.chipResult;
   const chipSign = chipResult >= 0 ? "+" : "";
   const bigBlind = bigBlindFromSnapshot(hand.tableData as unknown as TableSnapshot);
@@ -100,7 +108,7 @@ export default async function HandDialoguePage({
                 <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
                   Вопрос {round.roundNumber}
                 </p>
-                <p className="text-body text-foreground">{round.question}</p>
+                <p className="text-body text-foreground">{personalizeHero(round.question, nick)}</p>
                 <div className="border border-border bg-card p-4">
                   <p className="text-body text-muted-foreground">{round.answer}</p>
                 </div>
@@ -116,7 +124,7 @@ export default async function HandDialoguePage({
                 <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
                   Вопрос {openRound.roundNumber}
                 </p>
-                <p className="text-h3 text-foreground">{openRound.question}</p>
+                <p className="text-h3 text-foreground">{personalizeHero(openRound.question, nick)}</p>
                 <AnswerForm tournamentId={id} handId={handId} />
               </div>
             )}
@@ -127,7 +135,7 @@ export default async function HandDialoguePage({
               <div className="space-y-4">
                 <h2 className="text-h2">Вердикт</h2>
                 <div className="border border-primary bg-card p-6">
-                  <p className="text-body text-foreground">{dialogue.verdict}</p>
+                  <p className="text-body text-foreground">{personalizeHero(dialogue.verdict, nick)}</p>
                 </div>
               </div>
             )}
@@ -143,12 +151,12 @@ export default async function HandDialoguePage({
                 <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
                   Как можно было
                 </p>
-                <p className="text-body text-foreground">{analysis.optimal}</p>
+                <p className="text-body text-foreground">{personalizeHero(analysis.optimal, nick)}</p>
               </div>
             )}
             {analysis.note && (
               <div className="border border-border bg-card p-6">
-                <p className="text-body text-muted-foreground">{analysis.note}</p>
+                <p className="text-body text-muted-foreground">{personalizeHero(analysis.note, nick)}</p>
               </div>
             )}
           </div>
@@ -157,7 +165,11 @@ export default async function HandDialoguePage({
         {chat?.available && (
           <div className="mt-16 space-y-4">
             <h2 className="text-h2">Чат</h2>
-            {chat.messages.length > 0 && <ChatThread messages={chat.messages} />}
+            {chat.messages.length > 0 && (
+              <ChatThread
+                messages={chat.messages.map((m) => ({ ...m, text: personalizeHero(m.text, nick) }))}
+              />
+            )}
             {chat.awaitingReply ? <ChatWaitClient handId={handId} /> : <ChatForm tournamentId={id} handId={handId} />}
           </div>
         )}
