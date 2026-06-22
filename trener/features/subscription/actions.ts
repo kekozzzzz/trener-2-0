@@ -46,20 +46,28 @@ export async function startCheckout(planCode: string): Promise<StartCheckoutResu
   }
 }
 
+// Минимальная доплата, которую есть смысл проводить через ЮKassa. Если пропорциональная
+// разница за остаток периода меньше — апгрейд применяем сразу без оплаты (полную цену
+// нового тарифа человек заплатит при ближайшем автопродлении).
+const MIN_CHARGE_KOPECKS = 100; // 1 ₽
+
 export type SwitchPlanResult =
   | { ok: true; confirmationUrl: string }
   // Даунгрейд (более дешёвый тариф) запланирован: вступит в силу со следующего периода
   // при автопродлении (scheduledPlanCode). Деньги сейчас не списываем.
   | { ok: true; scheduled: true }
+  // Апгрейд применён сразу без оплаты (доплата за остаток периода — копейки).
+  | { ok: true; applied: true }
   | {
       ok: false;
       error: "UNKNOWN_PLAN" | "SAME_PLAN" | "NO_SUBSCRIPTION" | "PROVIDER_ERROR";
     };
 
-// Сменить тариф активной подписке. Апгрейд (дороже) — сразу, в день перехода: новый
-// период стартует сегодня, а неиспользованная часть оплаты текущего тарифа идёт в
-// зачёт цены нового (списываем только разницу). Даунгрейд — со следующего периода.
-// Сброс периода и смену плана делает applySucceededPayment по metadata.intent="switch".
+// Сменить тариф активной подписке. Апгрейд (дороже) — сразу, в текущем периоде: новый
+// тариф (и бюджет) действует немедленно, доплачивается лишь РАЗНИЦА цен за остаток дней
+// (Stripe-style, proration.ts). Период НЕ перезапускается, метр бюджета не сбрасывается —
+// бюджеты тарифов не суммируются «лесенкой». Даунгрейд — со следующего периода.
+// Применение switch к текущему периоду делает applySucceededPayment по intent="switch".
 export async function switchPlan(newPlanCode: string): Promise<SwitchPlanResult> {
   const { playerId } = await requireSession();
 
@@ -94,6 +102,17 @@ export async function switchPlan(newPlanCode: string): Promise<SwitchPlanResult>
     now,
     getSubscriptionPeriodDays(),
   );
+
+  // Доплата за остаток периода — копейки: применяем апгрейд сразу, без оплаты. Окно
+  // периода и метр не трогаем (как и в applySucceededPayment для switch).
+  if (chargeKopecks < MIN_CHARGE_KOPECKS) {
+    await prisma.subscription.updateMany({
+      where: { playerId, deletedAt: null },
+      data: { planCode: newPlan.code, scheduledPlanCode: null },
+    });
+    revalidatePath("/account");
+    return { ok: true, applied: true };
+  }
 
   const idempotenceKey = randomUUID();
   try {

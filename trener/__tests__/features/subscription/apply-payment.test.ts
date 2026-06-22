@@ -115,8 +115,9 @@ describe("applySucceededPayment", () => {
     expect(payments).toHaveLength(2);
   });
 
-  it("смена тарифа (intent=switch) сбрасывает период на день перехода и меняет план", async () => {
+  it("смена тарифа (intent=switch) применяется к текущему периоду: окно НЕ сбрасывается", async () => {
     await applySucceededPayment(payment()); // basic, capturedAt 2026-06-19 → nextPaymentAt 2026-07-19
+    const before = await prisma.subscription.findUnique({ where: { playerId: PLAYER_ID } });
 
     // Пусть на подписке уже стоит запланированный даунгрейд — апгрейд должен его снять.
     await prisma.subscription.update({
@@ -124,14 +125,13 @@ describe("applySucceededPayment", () => {
       data: { scheduledPlanCode: "basic" },
     });
 
-    // Переход на standard в середине периода: оплачена пропорциональная разница,
-    // intent=switch. Новый период должен стартовать СЕГОДНЯ (день перехода), а не
-    // продлевать текущий — иначе nextPaymentAt был бы 2026-08-18.
-    const switchPaidAt = new Date("2026-06-25T10:00:00.000Z");
+    // Переход на standard в середине периода. План меняется сразу, но окно периода
+    // (якорь метра currentPeriodStart и срок nextPaymentAt) НЕ трогаем — иначе метр
+    // бюджета обнулился бы и бюджеты тарифов суммировались бы «лесенкой».
     const res = await applySucceededPayment(
       payment({
         externalPaymentId: "pay_switch_1",
-        capturedAt: switchPaidAt,
+        capturedAt: new Date("2026-06-25T10:00:00.000Z"),
         money: { amountKopecks: 80_000, currency: "RUB" },
         metadata: { playerId: PLAYER_ID, planCode: "standard", intent: "switch" },
       }),
@@ -141,8 +141,9 @@ describe("applySucceededPayment", () => {
     const sub = await prisma.subscription.findUnique({ where: { playerId: PLAYER_ID } });
     expect(sub?.planCode).toBe("standard"); // план сменился сразу
     expect(sub?.scheduledPlanCode).toBeNull(); // запланированный даунгрейд снят апгрейдом
-    expect(sub?.currentPeriodStart.getTime()).toBe(switchPaidAt.getTime()); // метр с дня перехода
-    expect(sub?.nextPaymentAt?.getTime()).toBe(switchPaidAt.getTime() + 30 * DAY_MS); // период от сегодня
+    // Окно периода неизменно → метр продолжает считать расход этого периода (нет лесенки).
+    expect(sub?.currentPeriodStart.getTime()).toBe(before!.currentPeriodStart.getTime());
+    expect(sub?.nextPaymentAt?.getTime()).toBe(before!.nextPaymentAt!.getTime());
   });
 
   it("неоплаченный платёж игнорируется", async () => {
