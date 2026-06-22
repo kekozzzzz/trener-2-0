@@ -1,12 +1,14 @@
-// Доступ по подписке: есть ли у игрока оплаченный доступ и сколько турниров
-// осталось в текущем периоде по его тарифу. Чистые запросы к БД — без побочных
-// эффектов; вызывается из гейта загрузки (Фаза 3) и из личного кабинета.
+// Статус подписки игрока: активна ли прямо сейчас, какой тариф, когда обновляется.
+// Чистые запросы к БД без побочных эффектов — для личного кабинета и страницы цен.
 //
-// Числа лимитов и длительность периода — из config/pricing (правило 3), здесь
-// только логика «активна ли подписка прямо сейчас».
+// ВАЖНО: гейт ПОТРЕБЛЕНИЯ (можно ли выполнить платное ИИ-действие) живёт в
+// features/usage/budget.ts (кредитная модель — бюджет себестоимости, не число
+// турниров). Здесь — только «есть ли оплаченный доступ и до какой даты». Старый гейт
+// по числу турниров (getRemainingTournaments/monthlyTournamentLimit) удалён вместе с
+// config/pricing — заменён бюджетным (plans/2026-06-21-кредитная-система.md).
 
 import { prisma } from "@/infrastructure/db/client";
-import { getPlan, getFreeTournamentLimit, getSubscriptionPeriodDays } from "@/config/pricing";
+import { getSubscriptionPeriodDays } from "@/config/plans";
 import type { Subscription } from "@prisma/client";
 
 export type SubscriptionState = {
@@ -36,32 +38,6 @@ export async function getSubscriptionState(playerId: string): Promise<Subscripti
 
 export async function hasActiveAccess(playerId: string): Promise<boolean> {
   return (await getSubscriptionState(playerId)).hasAccess;
-}
-
-// Сколько турниров игрок может ещё загрузить. Без активной подписки действует
-// бесплатный лимит (первый турнир бесплатно). С подпиской — лимит тарифа за
-// текущий оплаченный период. Возвращает остаток (>= 0).
-export async function getRemainingTournaments(playerId: string): Promise<number> {
-  const state = await getSubscriptionState(playerId);
-
-  let limit: number;
-  let periodStart: Date;
-
-  if (state.hasAccess && state.subscription) {
-    const plan = state.planCode ? getPlan(state.planCode) : undefined;
-    limit = plan?.monthlyTournamentLimit ?? 0;
-    periodStart = state.subscription.currentPeriodStart;
-  } else {
-    // Бесплатный режим: лимит за всё время (первый турнир бесплатно).
-    limit = getFreeTournamentLimit();
-    periodStart = new Date(0);
-  }
-
-  const used = await prisma.tournament.count({
-    where: { playerId, deletedAt: null, createdAt: { gte: periodStart } },
-  });
-
-  return Math.max(0, limit - used);
 }
 
 // Конец текущего оплаченного периода — для показа в личном кабинете.

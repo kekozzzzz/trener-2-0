@@ -4,8 +4,24 @@
 // ДО постановки платной задачи. На клиент не попадают.
 
 import type { PrismaClient } from "@prisma/client";
-import { getPlanBudgetUsd } from "@/config/plans";
+import { getPlanBudgetUsd, getSubscriptionPeriodDays } from "@/config/plans";
 import { isAdminEmail } from "@/config/admin";
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Начало ТЕКУЩЕГО периода метра — ленивый перекат без крона. Бюджет сбрасывается
+// каждые periodDays от currentPeriodStart, поэтому если оплачено вперёд (стекинг) или
+// просто прошло больше одного периода, окно отсчёта расхода сдвигается на последнюю
+// границу периода ≤ now. Так метр честно обнуляется на каждой 30-дневной границе,
+// а не копит расход с самой первой оплаты. Будущий currentPeriodStart (опечатка/баг)
+// не двигаем — возвращаем как есть (elapsed < 0).
+export function effectivePeriodStart(start: Date, now: Date, periodDays: number): Date {
+  const periodMs = periodDays * DAY_MS;
+  const elapsed = now.getTime() - start.getTime();
+  if (elapsed < periodMs) return start;
+  const periodsPassed = Math.floor(elapsed / periodMs);
+  return new Date(start.getTime() + periodsPassed * periodMs);
+}
 
 export type AiAccess =
   | { allowed: true }
@@ -45,16 +61,29 @@ export async function assessAiAccess(
   if (isAdminEmail(player.email)) return { allowed: true };
 
   const sub = player.subscription;
-  const active = sub != null && sub.status === "ACTIVE" && sub.deletedAt === null;
+  const now = new Date();
+  // Активна = ACTIVE, не удалена И оплаченный период ещё не истёк. Проверка срока
+  // важна: без неё подписка с проваленным автосписанием (nextPaymentAt в прошлом)
+  // считалась бы активной вечно и пускала бы бесплатно.
+  const active =
+    sub != null &&
+    sub.status === "ACTIVE" &&
+    sub.deletedAt === null &&
+    (sub.nextPaymentAt == null || sub.nextPaymentAt > now);
 
   if (active && sub) {
     const budget = getPlanBudgetUsd(sub.planCode);
     // Неизвестный план в подписке — не блокируем (защитно: лучше пропустить, чем
     // ошибочно закрыть оплаченный доступ; критическая поломка №1 — потерять подписку).
     if (budget == null) return { allowed: true };
-    const spent = await spentThisPeriodUsd(db, playerId, sub.currentPeriodStart);
+    // Метр считаем с начала ТЕКУЩЕГО периода (ленивый перекат), а не с самой первой
+    // оплаты — иначе при оплате вперёд/смене месяца расход копился бы бесконечно.
+    const periodStart = effectivePeriodStart(sub.currentPeriodStart, now, getSubscriptionPeriodDays());
+    const spent = await spentThisPeriodUsd(db, playerId, periodStart);
     if (spent >= budget) {
-      return { allowed: false, reason: "LIMIT_REACHED", resetsAt: sub.nextPaymentAt ?? null };
+      // Стена обновится на следующей границе периода (когда метр сбросится).
+      const resetsAt = new Date(periodStart.getTime() + getSubscriptionPeriodDays() * DAY_MS);
+      return { allowed: false, reason: "LIMIT_REACHED", resetsAt };
     }
     return { allowed: true };
   }

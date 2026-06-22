@@ -1,4 +1,5 @@
 import { Check } from "lucide-react"
+import type { ReactNode } from "react"
 
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -11,10 +12,11 @@ interface PricingFeatureGroup {
 interface PricingCardProps {
   title: string
   description: string
-  price: number
+  priceLabel: string // уже отформатированная цена, напр. «690 ₽» (числа — в моно, см. дизайн-систему)
   period?: string
-  originalPrice?: number
   features: PricingFeatureGroup[]
+  // CTA: либо готовый элемент (кнопка оплаты — клиентский компонент), либо ссылка.
+  cta?: ReactNode
   buttonText?: string
   buttonHref?: string
 }
@@ -22,10 +24,10 @@ interface PricingCardProps {
 export function PricingCard({
   title,
   description,
-  price,
+  priceLabel,
   period = "в месяц",
-  originalPrice,
   features,
+  cta,
   buttonText = "Начать",
   buttonHref = "#upload",
 }: PricingCardProps) {
@@ -38,20 +40,17 @@ export function PricingCard({
         </div>
         <div className="space-y-1">
           <div className="flex items-baseline gap-3">
-            <span className="font-mono text-display text-primary">${price}</span>
-            {originalPrice && (
-              <span className="font-mono text-h3 text-muted-foreground line-through">
-                ${originalPrice}
-              </span>
-            )}
+            <span className="font-mono text-display text-primary">{priceLabel}</span>
           </div>
           <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
             {period}
           </p>
         </div>
-        <a href={buttonHref} className={cn(buttonVariants(), "w-full justify-center")}>
-          {buttonText}
-        </a>
+        {cta ?? (
+          <a href={buttonHref} className={cn(buttonVariants(), "w-full justify-center")}>
+            {buttonText}
+          </a>
+        )}
       </div>
 
       <div className="space-y-6 border-t border-border p-8">

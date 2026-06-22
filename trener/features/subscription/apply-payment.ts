@@ -10,7 +10,7 @@
 
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/infrastructure/db/client";
-import { getSubscriptionPeriodDays, isPlanCode } from "@/config/pricing";
+import { getSubscriptionPeriodDays, isPlanCode, getPlan, getCurrency } from "@/config/plans";
 import type { ProviderPayment } from "@/infrastructure/adapters/payments";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -34,6 +34,27 @@ export async function applySucceededPayment(payment: ProviderPayment): Promise<A
     );
   }
 
+  // Смена тарифа в середине периода: оплачена ПРОПОРЦИОНАЛЬНАЯ разница, а не полная
+  // цена тарифа, и новый период должен стартовать сегодня (а не продлевать текущий).
+  const isSwitch = payment.metadata.intent === "switch";
+
+  // Защита в глубину: сумма и planCode формируются на сервере из одного getPlan, но
+  // если оплаченное расходится с ценой тарифа (баг/смена цены/иной валюты) — это
+  // аномалия, которую надо заметить. Активацию НЕ блокируем (платёж реален, по
+  // planCode понятно, что человек покупал, а жёсткий отказ отверг бы реальные деньги),
+  // но пишем предупреждение для разбора/сверки. Для switch расхождение ОЖИДАЕМО
+  // (списана разница по пропорции), поэтому предупреждение не пишем.
+  const plan = getPlan(planCode);
+  if (
+    !isSwitch &&
+    plan &&
+    (payment.money.amountKopecks !== plan.amountKopecks || payment.money.currency !== getCurrency())
+  ) {
+    console.warn(
+      `Платёж ${payment.externalPaymentId}: сумма ${payment.money.amountKopecks} ${payment.money.currency} не совпадает с тарифом «${planCode}» (${plan.amountKopecks} ${getCurrency()})`,
+    );
+  }
+
   const periodMs = getSubscriptionPeriodDays() * DAY_MS;
   const paidAt = payment.capturedAt ?? new Date();
 
@@ -41,11 +62,27 @@ export async function applySucceededPayment(payment: ProviderPayment): Promise<A
     return await prisma.$transaction(async (tx) => {
       const existing = await tx.subscription.findUnique({ where: { playerId } });
 
-      // Новый оплаченный период стартует с конца текущего оплаченного (продление)
-      // либо с момента оплаты (первая подписка / просроченная).
-      const base =
-        existing?.nextPaymentAt && existing.nextPaymentAt > paidAt ? existing.nextPaymentAt : paidAt;
+      // Продление активной подписки (оплата ДО конца текущего периода): новый
+      // оплаченный период приклеивается к концу текущего, поэтому nextPaymentAt
+      // считаем от его конца (base). Просроченная/новая — период стартует с оплаты.
+      // Смена тарифа (switch) — НЕ продление: новый период всегда стартует сегодня
+      // (с зачётом неиспользованного деньгами на стороне switchPlan), поэтому метр и
+      // срок считаем от paidAt, а текущий план немедленно меняется на новый.
+      const activeUntil = existing?.nextPaymentAt;
+      const extending = !isSwitch && activeUntil != null && activeUntil > paidAt;
+      const base = extending ? activeUntil : paidAt;
       const nextPaymentAt = new Date(base.getTime() + periodMs);
+
+      // ВАЖНО (бюджет-гейт, безопасность): currentPeriodStart — это якорь МЕТРА
+      // расхода (budget.ts считает потраченное «с начала периода»). При раннем
+      // продлении его НЕЛЬЗЯ двигать в будущее (= конец текущего периода): иначе окно
+      // отсчёта стартовало бы позже «сейчас», метр читал бы 0 и стена снималась бы до
+      // конца периода — бюджет-байпас. Поэтому при продлении активной подписки якорь
+      // оставляем на начале ТЕКУЩЕГО периода; сбрасываем (на paidAt) только когда
+      // период реально начинается заново (новая/просроченная подписка).
+      // (Перекат метра на следующий период при стекинге доплат — за Фазой 4
+      // автопродления/сверки; пока стекинг метрится консервативно в нашу пользу.)
+      const currentPeriodStart = extending && existing ? existing.currentPeriodStart : paidAt;
 
       let subscriptionId: string;
       if (existing) {
@@ -54,8 +91,12 @@ export async function applySucceededPayment(payment: ProviderPayment): Promise<A
           data: {
             status: "ACTIVE",
             planCode,
-            currentPeriodStart: base,
+            currentPeriodStart,
             nextPaymentAt,
+            // Смена тарифа отменяет ранее запланированный даунгрейд: иначе апгрейд
+            // поверх запланированного понижения откатил бы тариф на следующем продлении.
+            // Для продления (не switch) пометку трогает шаг RENEW_SUBSCRIPTION.
+            ...(isSwitch ? { scheduledPlanCode: null } : {}),
             // Сохранённый метод обновляем только если пришёл новый (первая оплата
             // его отдаёт; рекуррентное списание — нет, оставляем прежний).
             paymentMethodId: payment.paymentMethodId ?? existing.paymentMethodId,
@@ -69,7 +110,7 @@ export async function applySucceededPayment(payment: ProviderPayment): Promise<A
             playerId,
             status: "ACTIVE",
             planCode,
-            currentPeriodStart: base,
+            currentPeriodStart,
             nextPaymentAt,
             // У ЮKassa нет объекта «подписка» — идентичность рекуррента несёт
             // сохранённый токен карты. Если карта не сохранена — падаем на id

@@ -77,6 +77,15 @@ describe("POST /api/webhooks/yookassa", () => {
     expect(applyMock).not.toHaveBeenCalled();
   });
 
+  it("мусорный id (инъекция пути) → 200 и платёж не перечитываем", async () => {
+    const res = await POST(
+      webhookReq({ object: { id: "../../secret-endpoint" } }),
+    );
+    expect(res.status).toBe(200);
+    expect(getPaymentMock).not.toHaveBeenCalled();
+    expect(applyMock).not.toHaveBeenCalled();
+  });
+
   it("IP-аллоулист включён, адрес не из списка → 403", async () => {
     process.env.YOOKASSA_WEBHOOK_IPS = "185.71.76.0/27";
     const res = await POST(

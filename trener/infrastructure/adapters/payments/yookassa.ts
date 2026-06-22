@@ -151,7 +151,9 @@ export const yooKassaPaymentsAdapter: PaymentsPort = {
   },
 
   async getPayment(externalPaymentId: string): Promise<ProviderPayment> {
-    const res = await fetch(`${getYooKassaApiUrl()}/payments/${externalPaymentId}`, {
+    // id экранируем: значение может прийти из внешнего источника (тело вебхука),
+    // нельзя дать ему изменить путь запроса (защита от инъекции пути/SSRF).
+    const res = await fetch(`${getYooKassaApiUrl()}/payments/${encodeURIComponent(externalPaymentId)}`, {
       method: "GET",
       headers: { Authorization: authHeader() },
     });

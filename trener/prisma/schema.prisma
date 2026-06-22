@@ -305,6 +305,7 @@ model Subscription {
   playerId               String             @unique @map("player_id") @db.Uuid
   status                 SubscriptionStatus
   planCode               String             @map("plan_code")               // ссылка на тариф в конфиге; цена не хранится здесь
+  scheduledPlanCode      String?            @map("scheduled_plan_code")      // запланированная смена тарифа со след. периода (даунгрейд); применяется при автопродлении
   currentPeriodStart     DateTime           @map("current_period_start")
   nextPaymentAt          DateTime?          @map("next_payment_at")
   externalSubscriptionId String             @unique @map("external_subscription_id")

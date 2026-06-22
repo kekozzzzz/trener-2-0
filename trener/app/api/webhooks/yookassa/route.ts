@@ -40,8 +40,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   } catch {
     return NextResponse.json({ error: "bad request" }, { status: 400 });
   }
-  if (!paymentId) {
-    // Нечего обрабатывать — отвечаем 200, чтобы ЮKassa не долбила повторами.
+  // Тело вебхука может прислать кто угодно: id уйдёт в URL запроса к ЮKassa, поэтому
+  // принимаем только безопасный набор символов id платежа (буквы/цифры/дефис/подчёрк) —
+  // без слэшей, точек и %, чтобы исключить инъекцию пути/SSRF. Важен именно набор
+  // символов, а не длина. Чужое — игнорируем (200, чтобы не провоцировать повторы на
+  // мусорных уведомлениях).
+  if (!paymentId || !/^[A-Za-z0-9_-]{1,64}$/.test(paymentId)) {
     return NextResponse.json({ ok: true }, { status: 200 });
   }
 

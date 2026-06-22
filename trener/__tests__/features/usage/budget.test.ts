@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import type { PrismaClient } from "@prisma/client";
-import { assessAiAccess } from "@/features/usage/budget";
+import { assessAiAccess, effectivePeriodStart } from "@/features/usage/budget";
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 // ADMIN_EMAILS в тестах не задан → админ = OPERATOR.contactEmail (config/legal.ts).
 const OWNER_EMAIL = "artemkekoz@gmail.com";
@@ -32,13 +34,19 @@ function mockDb(opts: {
   } as unknown as PrismaClient;
 }
 
-const activeSub = (planCode: string): Sub => ({
-  status: "ACTIVE",
-  planCode,
-  currentPeriodStart: new Date("2026-06-01"),
-  nextPaymentAt: new Date("2026-07-01"),
-  deletedAt: null,
-});
+// Период относительно «сейчас»: метр считает с currentPeriodStart (5 дней назад,
+// в пределах текущего периода), доступ активен (nextPaymentAt в будущем). Завязка на
+// now делает тест устойчивым к дате прогона.
+const activeSub = (planCode: string): Sub => {
+  const now = Date.now();
+  return {
+    status: "ACTIVE",
+    planCode,
+    currentPeriodStart: new Date(now - 5 * DAY_MS),
+    nextPaymentAt: new Date(now + 25 * DAY_MS),
+    deletedAt: null,
+  };
+};
 
 describe("assessAiAccess", () => {
   it("владелец — без лимита", async () => {
@@ -57,6 +65,22 @@ describe("assessAiAccess", () => {
     expect(res.allowed).toBe(false);
     if (res.allowed) return;
     expect(res.reason).toBe("LIMIT_REACHED");
+  });
+
+  it("статус ACTIVE, но оплаченный период истёк → не активна (paywall, как без подписки)", async () => {
+    const now = Date.now();
+    const expired: Sub = {
+      status: "ACTIVE",
+      planCode: "basic",
+      currentPeriodStart: new Date(now - 40 * DAY_MS),
+      nextPaymentAt: new Date(now - 10 * DAY_MS), // оплаченный период закончился
+      deletedAt: null,
+    };
+    const db = mockDb({ email: "u@x.ru", subscription: expired, firstTournamentId: "T1" });
+    const res = await assessAiAccess(db, "p");
+    expect(res.allowed).toBe(false);
+    if (res.allowed) return;
+    expect(res.reason).toBe("PAYWALL");
   });
 
   it("без подписки, турниров ещё нет → первая загрузка бесплатна", async () => {
@@ -83,5 +107,29 @@ describe("assessAiAccess", () => {
     expect(res.allowed).toBe(false);
     if (res.allowed) return;
     expect(res.reason).toBe("PAYWALL");
+  });
+});
+
+describe("effectivePeriodStart (ленивый перекат метра)", () => {
+  const start = new Date("2026-06-01T00:00:00.000Z");
+
+  it("внутри первого периода — якорь не двигается", () => {
+    const now = new Date("2026-06-20T00:00:00.000Z"); // прошло 19 дней
+    expect(effectivePeriodStart(start, now, 30).getTime()).toBe(start.getTime());
+  });
+
+  it("на втором периоде (оплата вперёд / прошёл месяц) — якорь сдвинут на +30 дней", () => {
+    const now = new Date("2026-07-10T00:00:00.000Z"); // прошло 39 дней → 2-й период
+    expect(effectivePeriodStart(start, now, 30).getTime()).toBe(start.getTime() + 30 * DAY_MS);
+  });
+
+  it("на третьем периоде — якорь на +60 дней", () => {
+    const now = new Date("2026-08-05T00:00:00.000Z"); // прошло 65 дней → 3-й период
+    expect(effectivePeriodStart(start, now, 30).getTime()).toBe(start.getTime() + 60 * DAY_MS);
+  });
+
+  it("currentPeriodStart в будущем (защитно) — возвращаем как есть", () => {
+    const now = new Date("2026-05-20T00:00:00.000Z");
+    expect(effectivePeriodStart(start, now, 30).getTime()).toBe(start.getTime());
   });
 });

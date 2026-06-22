@@ -25,7 +25,7 @@ function payment(overrides: Partial<ProviderPayment> = {}): ProviderPayment {
     externalPaymentId: "pay_test_1",
     status: "succeeded",
     paid: true,
-    money: { amountKopecks: 90_000, currency: "RUB" },
+    money: { amountKopecks: 69_000, currency: "RUB" },
     paymentMethodId: "pm_test_1",
     metadata: { playerId: PLAYER_ID, planCode: "basic" },
     capturedAt: new Date("2026-06-19T10:00:00.000Z"),
@@ -69,7 +69,7 @@ describe("applySucceededPayment", () => {
 
     const payments = await prisma.payment.findMany({ where: { subscriptionId: sub!.id } });
     expect(payments).toHaveLength(1);
-    expect(payments[0].amountCents).toBe(90_000);
+    expect(payments[0].amountCents).toBe(69_000);
     expect(payments[0].status).toBe("SUCCEEDED");
   });
 
@@ -103,11 +103,46 @@ describe("applySucceededPayment", () => {
     const after2 = await prisma.subscription.findUnique({ where: { playerId: PLAYER_ID } });
     expect(after2?.nextPaymentAt?.getTime()).toBe(after1!.nextPaymentAt!.getTime() + 30 * DAY_MS);
 
+    // Безопасность (бюджет-байпас): ранняя доплата продлевает срок, но НЕ сдвигает
+    // якорь метра расхода в будущее — currentPeriodStart остаётся на начале текущего
+    // периода, иначе стена бюджета снялась бы до конца периода.
+    expect(after2?.currentPeriodStart.getTime()).toBe(after1!.currentPeriodStart.getTime());
+
     const subs = await prisma.subscription.findMany({ where: { playerId: PLAYER_ID } });
     expect(subs).toHaveLength(1); // одна подписка, не вторая
 
     const payments = await prisma.payment.findMany({ where: { subscriptionId: after2!.id } });
     expect(payments).toHaveLength(2);
+  });
+
+  it("смена тарифа (intent=switch) сбрасывает период на день перехода и меняет план", async () => {
+    await applySucceededPayment(payment()); // basic, capturedAt 2026-06-19 → nextPaymentAt 2026-07-19
+
+    // Пусть на подписке уже стоит запланированный даунгрейд — апгрейд должен его снять.
+    await prisma.subscription.update({
+      where: { playerId: PLAYER_ID },
+      data: { scheduledPlanCode: "basic" },
+    });
+
+    // Переход на standard в середине периода: оплачена пропорциональная разница,
+    // intent=switch. Новый период должен стартовать СЕГОДНЯ (день перехода), а не
+    // продлевать текущий — иначе nextPaymentAt был бы 2026-08-18.
+    const switchPaidAt = new Date("2026-06-25T10:00:00.000Z");
+    const res = await applySucceededPayment(
+      payment({
+        externalPaymentId: "pay_switch_1",
+        capturedAt: switchPaidAt,
+        money: { amountKopecks: 80_000, currency: "RUB" },
+        metadata: { playerId: PLAYER_ID, planCode: "standard", intent: "switch" },
+      }),
+    );
+    expect(res).toBe("applied");
+
+    const sub = await prisma.subscription.findUnique({ where: { playerId: PLAYER_ID } });
+    expect(sub?.planCode).toBe("standard"); // план сменился сразу
+    expect(sub?.scheduledPlanCode).toBeNull(); // запланированный даунгрейд снят апгрейдом
+    expect(sub?.currentPeriodStart.getTime()).toBe(switchPaidAt.getTime()); // метр с дня перехода
+    expect(sub?.nextPaymentAt?.getTime()).toBe(switchPaidAt.getTime() + 30 * DAY_MS); // период от сегодня
   });
 
   it("неоплаченный платёж игнорируется", async () => {
