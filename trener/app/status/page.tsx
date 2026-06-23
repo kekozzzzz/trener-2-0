@@ -1,3 +1,5 @@
+import { noindex } from "@/lib/seo";
+export const metadata = noindex;
 import { requireSession } from "@/features/auth/session";
 import { StatusClient } from "./status-client";
 

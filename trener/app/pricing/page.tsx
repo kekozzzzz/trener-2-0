@@ -9,6 +9,14 @@ import { getSession } from "@/features/auth/session";
 import { getSubscriptionState } from "@/features/subscription/access";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
+import { indexable } from "@/lib/seo";
+
+export const metadata = {
+  ...indexable,
+  title: "Тарифы",
+  description:
+    "Первый разбор турнира в Whygrid — бесплатно. Дальше подписка с разбором-диалогом твоих раздач: тренер ведёт вопросами, парсер считает числа. Без скрытых платежей.",
+};
 
 // Возможности ОДИНАКОВЫ на всех тарифах (кредитная модель,
 // plans/2026-06-21-кредитная-система.md): тарифы отличаются только невидимым бюджетом.

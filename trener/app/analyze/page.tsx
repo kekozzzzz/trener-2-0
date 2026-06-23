@@ -1,3 +1,5 @@
+import { noindex } from "@/lib/seo";
+export const metadata = noindex;
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { uploadTournament } from "@/features/tournaments/actions";

@@ -1,3 +1,5 @@
+import { noindex } from "@/lib/seo";
+export const metadata = noindex;
 import Link from "next/link";
 import { requireSession } from "@/features/auth/session";
 import { getCurrentPlayer } from "@/features/auth/queries";

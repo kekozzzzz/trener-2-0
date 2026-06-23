@@ -1,3 +1,5 @@
+import { noindex } from "@/lib/seo";
+export const metadata = noindex;
 import Link from "next/link";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { Wordmark } from "@/components/ui/wordmark";

@@ -4,12 +4,18 @@ import { OfertaContent } from "@/components/legal/oferta-content";
 import { PrivacyContent } from "@/components/legal/privacy-content";
 import { RefundContent } from "@/components/legal/refund-content";
 import { RequisitesContent } from "@/components/legal/requisites-content";
+import { indexable } from "@/lib/seo";
 
 // Сводная правовая страница: оферта, политика ПДн, возврат и реквизиты — всё на ОДНОЙ
 // странице по одной ссылке (требование модерации платёжки и 152-ФЗ: документы доступны
 // с любой страницы). Каждый документ — раздел с якорем (#oferta/#privacy/#refund/
 // #requisites), кросс-ссылки внутри ведут на эти якоря.
-export const metadata = { title: "Правовая информация — Whygrid" };
+export const metadata = {
+  ...indexable,
+  title: "Правовая информация",
+  description:
+    "Договор-оферта, политика конфиденциальности, политика возврата и реквизиты сервиса Whygrid — на одной странице.",
+};
 
 const DOCS = [
   { id: "oferta", title: "Договор-оферта", Content: OfertaContent },

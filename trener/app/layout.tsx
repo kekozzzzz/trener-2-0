@@ -1,6 +1,8 @@
 import "./globals.css";
+import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { cn } from "@/lib/utils";
+import { getAppBaseUrl } from "@/config/app";
 
 const inter = localFont({
   src: "../public/fonts/inter-variable.ttf",
@@ -26,7 +28,23 @@ const jetbrainsMono = localFont({
   display: "swap",
 });
 
-export const metadata = { title: "Whygrid" };
+// Базовые метаданные на весь сайт. Заголовок и описание главной — здесь (template
+// «%s — Whygrid» добавляет суффикс к заголовкам вложенных страниц). По умолчанию
+// сайт индексируется; приватные страницы перекрывают это через `noindex` (lib/seo.ts).
+export const metadata: Metadata = {
+  metadataBase: new URL(getAppBaseUrl()),
+  title: {
+    default: "Whygrid — разбор покерных турниров с AI-тренером",
+    template: "%s — Whygrid",
+  },
+  description:
+    "Сократовский AI-тренер для турнирного покера. Парсер точно считает твои раздачи, а тренер ведёт вопросами — пока ты сам не увидишь, где теряешь фишки. Первый разбор турнира — бесплатно.",
+  applicationName: "Whygrid",
+  openGraph: { type: "website", siteName: "Whygrid", locale: "ru_RU" },
+  // По умолчанию ЗАКРЫТО от поиска — публичные страницы открываются точечно через
+  // `indexable` (lib/seo.ts). Так будущие страницы не утекают в Google автоматически.
+  robots: { index: false, follow: false },
+};
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

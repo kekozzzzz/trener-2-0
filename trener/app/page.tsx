@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { indexable } from "@/lib/seo";
 import { getCurrentPlayer } from "@/features/auth/queries";
 import { getPlans, formatUsd } from "@/config/plans";
 import { AuthNav } from "@/components/auth-nav";
@@ -9,6 +10,9 @@ import { BlurFade } from "@/components/ui/blur-fade";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+// Лендинг — в белом списке индексации (заголовок и описание берёт из корневого layout).
+export const metadata = indexable;
 
 const STEPS = [
   {
