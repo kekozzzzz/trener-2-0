@@ -141,25 +141,17 @@ export async function switchPlan(newPlanCode: string): Promise<SwitchPlanResult>
   }
 }
 
-// Отключить автопродление. Доступ сохраняется до конца уже оплаченного периода
-// (status CANCELED → продление не запускаем, по окончании периода EXPIRED). Деньги
-// не списываются и не возвращаются. Идемпотентно (updateMany по активной подписке).
+// Отключить автопродление и ОТВЯЗАТЬ сохранённую карту (paymentMethodId = null).
+// Требование ЮKassa для рекуррента: клиент должен мочь самостоятельно отвязать способ
+// оплаты через интерфейс, без обращения в поддержку. Удаление токена и есть отвязка:
+// крон автопродления такую подписку не спишет (нет карты) и по окончании периода
+// закроет (EXPIRED). Доступ сохраняется до конца уже оплаченного периода. Деньги не
+// списываются и не возвращаются. Идемпотентно (updateMany по активной подписке).
 export async function cancelAutoRenew(): Promise<void> {
   const { playerId } = await requireSession();
   await prisma.subscription.updateMany({
     where: { playerId, deletedAt: null, status: "ACTIVE" },
-    data: { status: "CANCELED" },
-  });
-  revalidatePath("/account");
-}
-
-// Включить автопродление обратно (пока оплаченный период ещё не истёк — иначе подписка
-// уже EXPIRED и нужно оформлять заново).
-export async function resumeAutoRenew(): Promise<void> {
-  const { playerId } = await requireSession();
-  await prisma.subscription.updateMany({
-    where: { playerId, deletedAt: null, status: "CANCELED" },
-    data: { status: "ACTIVE" },
+    data: { status: "CANCELED", paymentMethodId: null },
   });
   revalidatePath("/account");
 }

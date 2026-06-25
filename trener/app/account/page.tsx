@@ -5,7 +5,7 @@ import { requireSession } from "@/features/auth/session";
 import { getCurrentPlayer } from "@/features/auth/queries";
 import { logoutAction, logoutEverywhereAction, updateNicknameAction } from "@/features/auth/actions";
 import { getSubscriptionState, periodEnd } from "@/features/subscription/access";
-import { cancelAutoRenew, resumeAutoRenew, cancelScheduledPlan } from "@/features/subscription/actions";
+import { cancelAutoRenew, cancelScheduledPlan } from "@/features/subscription/actions";
 import { getPlan } from "@/config/plans";
 import { isRecurringEnabled } from "@/config/payments";
 import { cn } from "@/lib/utils";
@@ -74,7 +74,7 @@ export default async function AccountPage() {
                   <span className="font-mono">
                     {periodEnd(sub.subscription).toLocaleDateString("ru-RU")}
                   </span>
-                  {recurring && isCanceled && " — автопродление отключено"}
+                  {recurring && isCanceled && " — автопродление отключено, карта отвязана"}
                   {!recurring && " — дальше продлить вручную"}
                 </p>
                 {scheduledPlan && (
@@ -96,21 +96,21 @@ export default async function AccountPage() {
                 <Link href="/pricing" className={cn(buttonVariants({ variant: "outline" }))}>
                   Сменить тариф
                 </Link>
-                {recurring &&
-                  (isCanceled ? (
-                    <form action={resumeAutoRenew}>
-                      <Button type="submit" variant="outline">
-                        Включить автопродление
-                      </Button>
-                    </form>
-                  ) : (
-                    <form action={cancelAutoRenew}>
-                      <Button type="submit" variant="outline">
-                        Отключить автопродление
-                      </Button>
-                    </form>
-                  ))}
+                {recurring && !isCanceled && (
+                  <form action={cancelAutoRenew}>
+                    <Button type="submit" variant="outline">
+                      Отключить автопродление
+                    </Button>
+                  </form>
+                )}
               </div>
+              {recurring && !isCanceled && (
+                <p className="text-small text-muted-foreground">
+                  Отключение остановит списания и удалит сохранённую карту. Доступ
+                  сохранится до конца оплаченного периода; чтобы продолжить дальше —
+                  оформишь оплату заново.
+                </p>
+              )}
             </div>
           ) : (
             <div className="mt-4 space-y-4">
