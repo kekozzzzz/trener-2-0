@@ -7,4 +7,9 @@ export const noopNotifyAdapter: NotifyPort = {
   async notifyAdmin(): Promise<void> {
     // намеренно ничего не делает
   },
+
+  // Бота нет (дев/тесты) — health по этому каналу не должен падать.
+  async ping(): Promise<boolean> {
+    return true;
+  },
 };

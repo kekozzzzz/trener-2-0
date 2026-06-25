@@ -8,6 +8,7 @@ import {
   getAnthropicProxySecret,
   getAnthropicProxyUrl,
 } from "@/config/llm";
+import { getHealthCheckTimeoutMs } from "@/config/health";
 import { buildHandAnalysisPrompt, HAND_ANALYSIS_SYSTEM_PROMPT } from "@/config/prompts/hand-analysis";
 import { buildDialogueQuestionPrompt, DIALOGUE_QUESTION_SYSTEM_PROMPT } from "@/config/prompts/dialogue-question";
 import { buildVerdictPrompt, VERDICT_SYSTEM_PROMPT } from "@/config/prompts/verdict";
@@ -230,5 +231,18 @@ export const anthropicLlmAdapter: LlmPort = {
       playerId: meta?.playerId,
     });
     return validateTournamentSummary(parsed as Partial<TournamentSummaryResult>);
+  },
+
+  // Проверка доступности Claude для /api/health: GET /v1/models тем же клиентом
+  // (тот же baseURL/релей, заголовок x-proxy-secret и доверие серту через
+  // NODE_EXTRA_CA_CERTS), что и боевые вызовы — но без расхода токенов. maxRetries:0 —
+  // на health ждать незачем. НЕ бросает: ошибку гасим в false.
+  async ping(): Promise<boolean> {
+    try {
+      await getClient().models.list({ limit: 1 }, { timeout: getHealthCheckTimeoutMs(), maxRetries: 0 });
+      return true;
+    } catch {
+      return false;
+    }
   },
 };

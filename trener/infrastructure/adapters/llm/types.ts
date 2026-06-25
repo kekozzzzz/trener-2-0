@@ -129,4 +129,9 @@ export interface LlmPort {
   generateVerdict(request: VerdictRequest, meta?: LlmCallMeta): Promise<VerdictResult>;
   generateChatReply(request: ChatReplyRequest, meta?: LlmCallMeta): Promise<ChatReplyResult>;
   generateTournamentSummary(request: TournamentSummaryRequest, meta?: LlmCallMeta): Promise<TournamentSummaryResult>;
+
+  // Лёгкая проверка доступности Claude для /api/health: GET /v1/models через тот же
+  // релей (без расхода токенов) — проверяет именно путь, что ломается (релей, доверие
+  // серту, ключ). НЕ бросает: реализация ловит ошибку и возвращает false.
+  ping(): Promise<boolean>;
 }

@@ -69,4 +69,9 @@ export const fakeLlmAdapter: LlmPort = {
       moments,
     };
   },
+
+  // Без сети и ключа (дев/тесты) — health по Claude не должен падать.
+  async ping(): Promise<boolean> {
+    return true;
+  },
 };
