@@ -90,11 +90,13 @@ export default async function HomePage() {
     <main>
       <BlurFade direction="up" offset={8} blur="0px" duration={0.3}>
         <header className="border-b border-border">
-          <div className="mx-auto flex max-w-5xl items-center justify-between px-8 py-6">
+          {/* Мобайл: вордмарк и навигация в две центрированные строки — гостевая и
+              авторская навигация шире, чем влезает в одну строку на ≤375px, иначе
+              шапка переполняется по горизонтали (CTA уезжает за край экрана).
+              От sm — снова одна строка со space-between. */}
+          <div className="mx-auto flex max-w-5xl flex-col items-center gap-4 px-4 py-6 sm:flex-row sm:justify-between sm:px-8">
             <Wordmark />
-            <div className="flex items-center gap-4">
-              <AuthNav />
-            </div>
+            <AuthNav />
           </div>
         </header>
       </BlurFade>
