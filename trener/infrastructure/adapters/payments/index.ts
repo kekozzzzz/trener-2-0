@@ -20,4 +20,6 @@ export type {
   PaymentsPort,
   ProviderPayment,
   ProviderPaymentStatus,
+  ProviderRefund,
+  ProviderRefundStatus,
 } from "./types";

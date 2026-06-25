@@ -9,6 +9,7 @@ import type {
   CreateCheckoutResult,
   PaymentsPort,
   ProviderPayment,
+  ProviderRefund,
 } from "./types";
 
 // Память на платежи в рамках процесса — чтобы getPayment мог вернуть то, что
@@ -59,6 +60,17 @@ export const fakePaymentsAdapter: PaymentsPort = {
       money: { amountKopecks: 0, currency: "RUB" },
       metadata: {},
       capturedAt: new Date(),
+    };
+  },
+
+  async getRefund(refundId: string): Promise<ProviderRefund> {
+    // Возвраты в деве не создаём (порт их не инициирует) — отдаём подтверждённый
+    // возврат с нулевой суммой, чтобы поток вебхука можно было прогнать без сети.
+    return {
+      refundId,
+      paymentId: refundId,
+      status: "succeeded",
+      money: { amountKopecks: 0, currency: "RUB" },
     };
   },
 };

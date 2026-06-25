@@ -21,6 +21,8 @@ import type {
   PaymentsPort,
   ProviderPayment,
   ProviderPaymentStatus,
+  ProviderRefund,
+  ProviderRefundStatus,
 } from "./types";
 
 // Сырой ответ ЮKassa по платежу — только поля, которые мы реально используем.
@@ -33,6 +35,15 @@ type YooKassaPayment = {
   payment_method?: { id: string; saved: boolean };
   captured_at?: string;
   metadata?: Record<string, string>;
+};
+
+// Сырой ответ ЮKassa по возврату — только нужные поля. payment_id связывает возврат
+// с исходным платежом, по нему мы находим свою проводку и снимаем доступ.
+type YooKassaRefund = {
+  id: string;
+  payment_id: string;
+  status: string;
+  amount: { value: string; currency: string };
 };
 
 // Копейки → строка рублей "900.00" (ЮKassa принимает сумму строкой с двумя знаками).
@@ -55,6 +66,19 @@ function mapStatus(status: string): ProviderPaymentStatus {
       return "canceled";
     case "waiting_for_capture":
       return "waiting_for_capture";
+    default:
+      return "pending";
+  }
+}
+
+// Статус возврата ЮKassa → нормализованный. Неизвестное считаем "pending"
+// (безопасно: не снимаем доступ на том, что ещё не подтверждено как возврат).
+function mapRefundStatus(status: string): ProviderRefundStatus {
+  switch (status) {
+    case "succeeded":
+      return "succeeded";
+    case "canceled":
+      return "canceled";
     default:
       return "pending";
   }
@@ -162,5 +186,24 @@ export const yooKassaPaymentsAdapter: PaymentsPort = {
       throw new Error(`ЮKassa GET /payments/${externalPaymentId} вернул ${res.status}: ${JSON.stringify(json)}`);
     }
     return toProviderPayment(json);
+  },
+
+  async getRefund(refundId: string): Promise<ProviderRefund> {
+    // id экранируем по той же причине, что и в getPayment: значение приходит из тела
+    // вебхука, нельзя дать ему подменить путь запроса (инъекция пути/SSRF).
+    const res = await fetch(`${getYooKassaApiUrl()}/refunds/${encodeURIComponent(refundId)}`, {
+      method: "GET",
+      headers: { Authorization: authHeader() },
+    });
+    const json = (await res.json()) as YooKassaRefund;
+    if (!res.ok) {
+      throw new Error(`ЮKassa GET /refunds/${refundId} вернул ${res.status}: ${JSON.stringify(json)}`);
+    }
+    return {
+      refundId: json.id,
+      paymentId: json.payment_id,
+      status: mapRefundStatus(json.status),
+      money: toMoney(json.amount),
+    };
   },
 };

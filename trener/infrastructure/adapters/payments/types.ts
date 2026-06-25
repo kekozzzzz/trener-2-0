@@ -59,6 +59,20 @@ export type ProviderPayment = {
   capturedAt?: Date;
 };
 
+// Нормализованный статус возврата у провайдера. Возврат — отдельный объект со своим
+// id, ссылается на исходный платёж (paymentId). Обычно приходит сразу "succeeded".
+export type ProviderRefundStatus = "pending" | "succeeded" | "canceled";
+
+// Снимок возврата у провайдера — для верификации вебхука о возврате: тело
+// уведомления присылает только id возврата, реальные данные перечитываем по нему
+// (тот же принцип «не доверяем телу», что и для платежа в ProviderPayment).
+export type ProviderRefund = {
+  refundId: string; // id самого возврата у провайдера (уникален)
+  paymentId: string; // платёж, который вернули
+  status: ProviderRefundStatus;
+  money: Money;
+};
+
 export interface PaymentsPort {
   // Создать первый платёж подписки и получить ссылку на оплату.
   createCheckout(params: CreateCheckoutParams): Promise<CreateCheckoutResult>;
@@ -66,4 +80,6 @@ export interface PaymentsPort {
   chargeSaved(params: ChargeSavedParams): Promise<ChargeSavedResult>;
   // Перечитать платёж у провайдера по его id (верификация вебхука, сверка).
   getPayment(externalPaymentId: string): Promise<ProviderPayment>;
+  // Перечитать возврат у провайдера по его id (верификация вебхука о возврате).
+  getRefund(refundId: string): Promise<ProviderRefund>;
 }
