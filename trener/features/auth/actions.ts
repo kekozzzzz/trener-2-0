@@ -86,11 +86,18 @@ export async function registerAction(
 
 // Изменить покерный ник в личном кабинете (показ в разборах). Пустое значение
 // очищает ник (вернётся «Hero»). Только для своей записи (requireSession).
-export async function updateNicknameAction(formData: FormData): Promise<void> {
+// Возвращает результат, чтобы форма показала подтверждение сохранения.
+export type NicknameFormState = { saved?: "set" | "cleared" };
+
+export async function updateNicknameAction(
+  _prevState: NicknameFormState,
+  formData: FormData,
+): Promise<NicknameFormState> {
   const { playerId } = await requireSession();
   const nickname = normalizeNickname(formData.get("nickname"));
   await prisma.player.update({ where: { id: playerId }, data: { nickname } });
   revalidatePath("/account");
+  return { saved: nickname ? "set" : "cleared" };
 }
 
 export async function loginAction(

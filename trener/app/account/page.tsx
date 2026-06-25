@@ -5,7 +5,7 @@ import { requireSession } from "@/features/auth/session";
 import { getCurrentPlayer } from "@/features/auth/queries";
 import { getPlayerCharacteristic } from "@/features/profile/queries";
 import { CHARACTERISTIC_RELIABLE_FROM } from "@/config/profile";
-import { logoutAction, logoutEverywhereAction, updateNicknameAction } from "@/features/auth/actions";
+import { logoutAction, logoutEverywhereAction } from "@/features/auth/actions";
 import { getSubscriptionState, periodEnd } from "@/features/subscription/access";
 import { cancelScheduledPlan } from "@/features/subscription/actions";
 import { CancelAutoRenewButton } from "@/components/subscription/cancel-autorenew-button";
@@ -13,10 +13,9 @@ import { getPlan } from "@/config/plans";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/page-header";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { ChangePasswordForm } from "./change-password-form";
 import { CloseAccountForm } from "./close-account-form";
+import { NicknameForm } from "./nickname-form";
 
 export default async function AccountPage() {
   const { playerId } = await requireSession();
@@ -59,24 +58,7 @@ export default async function AccountPage() {
           <p className="mt-2 text-small text-muted-foreground">
             Показываем его в разборах вместо «Hero». Оставь пустым — вернётся «Hero».
           </p>
-          <form action={updateNicknameAction} className="mt-6 flex flex-wrap items-end gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="nickname" className="font-mono text-label uppercase tracking-label text-muted-foreground">
-                Ник
-              </Label>
-              <Input
-                id="nickname"
-                name="nickname"
-                type="text"
-                maxLength={40}
-                autoComplete="off"
-                defaultValue={player?.nickname ?? ""}
-              />
-            </div>
-            <Button type="submit" variant="outline">
-              Сохранить
-            </Button>
-          </form>
+          <NicknameForm defaultNickname={player?.nickname ?? ""} />
         </div>
 
         <div className="mt-12 border-t border-border pt-12">
