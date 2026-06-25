@@ -190,8 +190,8 @@
     "semantic_hash": "64b9c103c45818e7b8eecf965e99a803"
   },
   "trener/app/account/page.tsx": {
-    "mtime": 1782382426.8019135,
-    "ast_hash": "538c2acd6e3dae1407231096b2e53b08",
+    "mtime": 1782405701.683367,
+    "ast_hash": "76f8822b41059bd3694833caa289f11c",
     "semantic_hash": ""
   },
   "trener/app/analyze/page.tsx": {
@@ -270,8 +270,8 @@
     "semantic_hash": ""
   },
   "trener/app/pricing/page.tsx": {
-    "mtime": 1782195778.7740111,
-    "ast_hash": "bbb6082719b56bffeafaa0eda711a436",
+    "mtime": 1782403895.4910853,
+    "ast_hash": "d6c58132e8ec07f41ceff19b28e1d84f",
     "semantic_hash": ""
   },
   "trener/app/register/page.tsx": {
@@ -610,8 +610,8 @@
     "semantic_hash": ""
   },
   "trener/features/subscription/actions.ts": {
-    "mtime": 1782375274.4272554,
-    "ast_hash": "8d5c22687b222456208db487865f9156",
+    "mtime": 1782403798.016323,
+    "ast_hash": "baba694859cad7c5a61ef747e12b7b30",
     "semantic_hash": ""
   },
   "trener/features/subscription/apply-payment.ts": {
@@ -815,9 +815,9 @@
     "semantic_hash": "90426577ad8f38459f3e566411c85589"
   },
   "trener/next.config.ts": {
-    "mtime": 1781610060.6810544,
-    "ast_hash": "dd5116cca9e7eb461357cbea3bee5554",
-    "semantic_hash": "dd5116cca9e7eb461357cbea3bee5554"
+    "mtime": 1782406996.3044736,
+    "ast_hash": "dd96156f1235ae0a25b4d39c7b631d24",
+    "semantic_hash": ""
   },
   "trener/package.json": {
     "mtime": 1782113304.1311762,
@@ -1480,8 +1480,8 @@
     "semantic_hash": ""
   },
   "trener/components/legal/oferta-content.tsx": {
-    "mtime": 1782154208.2687745,
-    "ast_hash": "82440352f5bb439f446f4d485c35ab0a",
+    "mtime": 1782405274.7615218,
+    "ast_hash": "c8c2f0d56a58e9c01006277f6f95d6ef",
     "semantic_hash": ""
   },
   "trener/components/legal/privacy-content.tsx": {
@@ -1500,8 +1500,8 @@
     "semantic_hash": ""
   },
   "trener/components/subscription/checkout-button.tsx": {
-    "mtime": 1782114408.8766785,
-    "ast_hash": "7dbeef814ec6cd0478d95ea04000a2dc",
+    "mtime": 1782403836.590848,
+    "ast_hash": "b80ab4d0d23442cb4cf302499e2eae45",
     "semantic_hash": ""
   },
   "trener/config/admin.ts": {
@@ -2837,6 +2837,16 @@
   "plans/2026-06-25-\u0441\u0435\u0442\u043a\u0430-\u0434\u0438\u0430\u043f\u0430\u0437\u043e\u043d\u0430-\u0432-\u0432\u043e\u043f\u0440\u043e\u0441\u0435.md": {
     "mtime": 1782385171.3046122,
     "ast_hash": "6ef0cb48ab4b654e37e6aaff68b8cddf",
+    "semantic_hash": ""
+  },
+  "trener/components/subscription/cancel-autorenew-button.tsx": {
+    "mtime": 1782405668.8194923,
+    "ast_hash": "eb7406868f2a7d0c9ff6f60e91cdc898",
+    "semantic_hash": ""
+  },
+  "trener/public/google2d4c76d01769360a.html": {
+    "mtime": 1782405859.5329251,
+    "ast_hash": "929956201a519eb4933ca32d501d2ebc",
     "semantic_hash": ""
   }
 }
