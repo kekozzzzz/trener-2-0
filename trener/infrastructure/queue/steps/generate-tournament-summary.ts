@@ -1,16 +1,61 @@
 import { Prisma } from "@prisma/client";
 import type { StepHandler } from "../types";
-import type { TournamentSummaryHand } from "@/infrastructure/adapters/llm/types";
+import type { OpenLeakHand, TournamentSummaryHand } from "@/infrastructure/adapters/llm/types";
+import type { TableSnapshot } from "@/parser/types";
 import { getLlmAdapter } from "@/infrastructure/adapters/llm";
+import { detectHeroOpen } from "@/parser/open-raise";
+import { isOpenSignificantlyWide } from "@/config/poker/rfi-chart";
+import { handLabel } from "@/config/poker/hand-codes";
 
 type GenerateTournamentSummaryPayload = {
   tournamentId: string;
 };
 
-// Шаг «Обзор турнира»: собирает общую картину (overview + ключевые моменты со
-// ссылками на раздачи) из уже посчитанных метрик и готовых разборов раздач
-// карточки (правило 1 — LLM ничего не пересчитывает). Ставится один раз при
-// готовности карточки (generate-hand-analysis.ts → markCardReadyIfComplete).
+// Сколько разных открывашек-нарушителей максимум назвать в обзоре.
+const MAX_OPEN_LEAK = 5;
+
+// Открывашки заметно шире нормы по ВСЕМ раздачам турнира: детектор находит
+// «открылся первым» + код руки (parser/open-raise), чарт отсеивает норму и
+// граничные (config/poker/rfi-chart). Правило 1/2 — числа и сверку считает код.
+// Группируем по позиция+код, чаще встречающиеся — выше, берём топ-N.
+function collectOpenLeak(hands: { tableData: unknown }[]): OpenLeakHand[] {
+  const counts = new Map<string, { leak: OpenLeakHand; count: number }>();
+  for (const hand of hands) {
+    const open = detectHeroOpen(hand.tableData as unknown as TableSnapshot);
+    if (!open || !isOpenSignificantlyWide(open.position, open.code)) continue;
+    const key = `${open.position}:${open.code}`;
+    const entry = counts.get(key);
+    if (entry) entry.count += 1;
+    else counts.set(key, { leak: { position: open.position, code: open.code }, count: 1 });
+  }
+  return [...counts.values()]
+    .sort((a, b) => b.count - a.count)
+    .slice(0, MAX_OPEN_LEAK)
+    .map((e) => e.leak);
+}
+
+// Заменяет токены ссылок {{h:N}} в overview на {{h:handId|карты}} по списку раздач
+// карточки (N — индекс в этом списке). Индекс вне диапазона → токен убираем
+// (ссылка на несуществующую раздачу невозможна). Карты руки берём из снимка
+// парсера, не из текста LLM (правило 2 — модель карты не пишет сама).
+function resolveHandTokens(
+  overview: string,
+  cardHands: { id: string; tableData: unknown }[]
+): string {
+  return overview.replace(/\{\{\s*h:\s*(\d+)\s*\}\}/g, (_match, n: string) => {
+    const index = Number(n);
+    const hand = cardHands[index];
+    if (!hand) return "";
+    const snapshot = hand.tableData as unknown as TableSnapshot;
+    const label = handLabel(snapshot.heroCards ?? []) ?? "раздача";
+    return `{{h:${hand.id}|${label}}}`;
+  });
+}
+
+// Шаг «Обзор турнира»: собирает общую картину (overview с инлайн-ссылками на
+// раздачи + вывод по открывашкам) из уже посчитанных метрик, готовых разборов
+// раздач карточки и детерминированно найденных открывашек (правило 1 — LLM ничего
+// не пересчитывает). Ставится один раз при готовности карточки.
 // Идемпотентность: если summary уже сохранён — платный вызов пропускается.
 export const generateTournamentSummaryStep: StepHandler = async (task, db) => {
   const { tournamentId } = task.payload as GenerateTournamentSummaryPayload;
@@ -31,7 +76,7 @@ export const generateTournamentSummaryStep: StepHandler = async (task, db) => {
   }
 
   // Раздачи карточки с готовым разбором, в стабильном порядке (как на карточке) —
-  // индекс в этом списке и есть ссылка, по которой LLM указывает момент.
+  // индекс в этом списке и есть ссылка, по которой LLM указывает раздачу.
   const cardHands = await db.hand.findMany({
     where: { tournamentId, selectedForCard: true, analysis: { not: Prisma.DbNull } },
     include: { dialogue: true },
@@ -57,6 +102,14 @@ export const generateTournamentSummaryStep: StepHandler = async (task, db) => {
 
   if (summaryHands.length === 0) return;
 
+  // Открывашки ищем по ВСЕМ раздачам турнира (не только карточным) — утечка
+  // открытий видна на всей дистанции, а не на ~10 отобранных раздачах.
+  const allHands = await db.hand.findMany({
+    where: { tournamentId },
+    select: { tableData: true },
+  });
+  const openLeak = collectOpenLeak(allHands);
+
   const result = await getLlmAdapter().generateTournamentSummary({
     tournament: {
       handsCount: tournament.handsCount,
@@ -65,15 +118,11 @@ export const generateTournamentSummaryStep: StepHandler = async (task, db) => {
       styleDiagnosis: tournament.styleDiagnosis,
     },
     hands: summaryHands,
+    openLeak,
   }, { playerId: tournament.playerId });
 
-  // Мапим момент (индекс в cardHands) → handId. Индекс вне диапазона отбрасываем —
-  // ссылка на несуществующую раздачу невозможна (надёжность ссылок, раздел 0 плана).
-  const moments = result.moments
-    .filter((m) => m.hand >= 0 && m.hand < cardHands.length)
-    .map((m) => ({ handId: cardHands[m.hand].id, label: m.label }));
-
-  const summary = { overview: result.overview, moments };
+  const overview = resolveHandTokens(result.overview, cardHands);
+  const summary = { overview };
 
   await db.tournament.updateMany({
     where: { id: tournamentId, deletedAt: null },

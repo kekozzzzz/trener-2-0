@@ -88,9 +88,9 @@ afterAll(async () => {
 });
 
 describe("GENERATE_TOURNAMENT_SUMMARY", () => {
-  it("собирает overview + моменты, мапит индексы в handId раздач карточки", async () => {
+  it("собирает overview, мапит токены {{h:N}} в handId раздач карточки", async () => {
     const tournamentId = await createTournament();
-    // Порядок создания = порядок индексов, на который ссылается LLM.
+    // Порядок создания = порядок индексов, на который ссылается LLM токенами.
     const handIds = [
       await createCardHand(tournamentId, -300),
       await createCardHand(tournamentId, -200),
@@ -100,17 +100,17 @@ describe("GENERATE_TOURNAMENT_SUMMARY", () => {
     await generateTournamentSummaryStep(makeRawTask({ tournamentId }), db);
 
     const tournament = await db.tournament.findUnique({ where: { id: tournamentId } });
-    const summary = tournament!.summary as {
-      overview: string;
-      moments: { handId: string; label: string }[];
-    };
+    const summary = tournament!.summary as { overview: string };
 
     expect(typeof summary.overview).toBe("string");
     expect(summary.overview.length).toBeGreaterThan(0);
-    // fake-адаптер возвращает моменты на первые 3 раздачи — индексы 0..2 → реальные handId.
-    expect(summary.moments).toHaveLength(3);
-    expect(summary.moments.map((m) => m.handId)).toEqual(handIds);
-    summary.moments.forEach((m) => expect(typeof m.label).toBe("string"));
+    // fake-адаптер ставит токены на первые 3 раздачи (индексы 0..2) → реальные handId
+    // вида {{h:<handId>|карты}}; пустой снимок даёт подпись «раздача».
+    handIds.forEach((handId) => {
+      expect(summary.overview).toContain(`{{h:${handId}|`);
+    });
+    // Индексов 0..2 → токенов после замены нет (все заменены на handId).
+    expect(summary.overview).not.toMatch(/\{\{h:\d+\}\}/);
   });
 
   it("идемпотентность: summary уже сохранён — не перезаписывает", async () => {
@@ -118,7 +118,7 @@ describe("GENERATE_TOURNAMENT_SUMMARY", () => {
     await createCardHand(tournamentId, -100);
     await db.tournament.update({
       where: { id: tournamentId },
-      data: { summary: { overview: "уже готово", moments: [] } as unknown as Prisma.InputJsonValue },
+      data: { summary: { overview: "уже готово" } as unknown as Prisma.InputJsonValue },
     });
 
     await generateTournamentSummaryStep(makeRawTask({ tournamentId }), db);

@@ -102,21 +102,27 @@ export type TournamentSummaryHand = {
   verdict?: string;
 };
 
-// Вход GENERATE_TOURNAMENT_SUMMARY — метрики турнира + разобранные раздачи карточки.
+// Открывашка «заметно шире» нормы — посчитал парсер (parser/open-raise.ts) и
+// сверил с RFI-чартом (config/poker/rfi-chart.ts). Правило 1/2: позиция и код руки
+// готовы, LLM их только формулирует словами, ничего не пересчитывая и не добавляя.
+export type OpenLeakHand = {
+  position: string; // EARLY | HJ | CO | BTN | SB
+  code: string; // код руки, напр. "K7s"
+};
+
+// Вход GENERATE_TOURNAMENT_SUMMARY — метрики турнира + разобранные раздачи карточки
+// + список открывашек заметно шире нормы (может быть пустым).
 export type TournamentSummaryRequest = {
   tournament: TournamentContext;
   hands: TournamentSummaryHand[];
+  openLeak: OpenLeakHand[];
 };
 
-// Ключевой момент: ссылка на раздачу по индексу из запроса + короткая подпись.
-export type TournamentSummaryMoment = {
-  hand: number;
-  label: string;
-};
-
+// overview может содержать токены ссылок на раздачу карточки в виде {{h:INDEX}} —
+// шаг детерминированно заменяет их на handId + карты руки (LLM карты не пишет сам,
+// правило 2). Отдельных «моментов» больше нет: ссылки живут прямо в тексте.
 export type TournamentSummaryResult = {
   overview: string;
-  moments: TournamentSummaryMoment[];
 };
 
 // Контекст вызова для учёта расходов: чей это запрос (атрибуция строки в llm_usage).

@@ -32,6 +32,31 @@ const dateFormat = new Intl.DateTimeFormat("ru-RU", {
   timeZone: "UTC",
 });
 
+// Рендер overview обзора: токены {{h:handId|карты}} → кликабельные ссылки на разбор
+// раздачи прямо внутри текста; остальной текст персонализируем (Hero → ник игрока).
+// handId строго формата UUID — токены ссылок шаг очереди генерирует сам из БД, так
+// что произвольный текст модели в ссылку превратиться не может (безопасность).
+const HAND_TOKEN = /(\{\{h:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\|[^}]+\}\})/g;
+const HAND_TOKEN_ONE = /^\{\{h:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\|([^}]+)\}\}$/;
+
+function renderOverview(overview: string, tournamentId: string, nick: string | null) {
+  const parts = overview.split(HAND_TOKEN);
+  return parts.map((part, i) => {
+    const m = HAND_TOKEN_ONE.exec(part);
+    if (!m) return <span key={i}>{personalizeHero(part, nick)}</span>;
+    const [, handId, label] = m;
+    return (
+      <Link
+        key={i}
+        href={`/tournament/${tournamentId}/hands/${handId}`}
+        className="font-medium text-primary underline decoration-primary/40 underline-offset-2 transition-colors hover:decoration-primary"
+      >
+        {label}
+      </Link>
+    );
+  });
+}
+
 function PageHeader() {
   return (
     <header className="border-b border-border">
@@ -131,9 +156,8 @@ export default async function TournamentPage({
   const totalRounds = getDialogueRoundsPerHand();
 
   // Обзор турнира (GENERATE_TOURNAMENT_SUMMARY) — может быть ещё не готов (null).
-  const summary = tournament.summary as
-    | { overview?: string; moments?: { handId: string; label: string }[] }
-    | null;
+  // overview содержит инлайн-токены ссылок {{h:handId|карты}} (см. renderOverview).
+  const summary = tournament.summary as { overview?: string } | null;
 
   // Ник игрока для показа вместо «Hero» (только отображение; в LLM не идёт).
   const me = await prisma.player.findUnique({
@@ -172,21 +196,9 @@ export default async function TournamentPage({
         {summary?.overview && (
           <div className="mt-16">
             <h2 className="text-h2">Общая картина</h2>
-            <p className="mt-4 max-w-3xl text-body text-foreground">{personalizeHero(summary.overview, nick)}</p>
-            {summary.moments && summary.moments.length > 0 && (
-              <div className="mt-6 space-y-2">
-                {summary.moments.map((moment) => (
-                  <Link
-                    key={moment.handId}
-                    href={`/tournament/${id}/hands/${moment.handId}`}
-                    className="group flex items-center justify-between gap-4 border border-border bg-card p-4 transition-colors duration-150 ease-out hover:border-primary"
-                  >
-                    <span className="text-small text-foreground">{personalizeHero(moment.label, nick)}</span>
-                    <ArrowRight className="size-4 shrink-0 text-muted-foreground transition-colors duration-150 ease-out group-hover:text-primary" />
-                  </Link>
-                ))}
-              </div>
-            )}
+            <p className="mt-4 max-w-3xl text-body text-foreground">
+              {renderOverview(summary.overview, id, nick)}
+            </p>
           </div>
         )}
 

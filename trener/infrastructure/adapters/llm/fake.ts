@@ -59,14 +59,18 @@ export const fakeLlmAdapter: LlmPort = {
   },
 
   async generateTournamentSummary(request: TournamentSummaryRequest): Promise<TournamentSummaryResult> {
-    // Детерминированно: берём до 3 раздач карточки как «ключевые моменты».
-    const moments = request.hands.slice(0, 3).map((h) => ({
-      hand: h.index,
-      label: `(фейк) Момент по раздаче ${h.index}: ${h.chipResult} фишек.`,
-    }));
+    // Детерминированно: ссылаемся токенами на первые 3 раздачи карточки + при
+    // наличии добавляем фразу про открывашки (для проверки сборки в тестах).
+    const links = request.hands
+      .slice(0, 3)
+      .map((h) => `раздача {{h:${h.index}}} (${h.chipResult} фишек)`)
+      .join(", ");
+    const leak =
+      request.openLeak.length > 0
+        ? ` Открывашки шире нормы: ${request.openLeak.map((o) => `${o.code} с ${o.position}`).join(", ")}.`
+        : "";
     return {
-      overview: `(фейк) Общая картина: стиль ${request.tournament.styleDiagnosis}, VPIP ${request.tournament.vpipPercent}%.`,
-      moments,
+      overview: `(фейк) Общая картина: стиль ${request.tournament.styleDiagnosis}, VPIP ${request.tournament.vpipPercent}%.${leak} Показательно: ${links}.`,
     };
   },
 

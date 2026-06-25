@@ -126,7 +126,7 @@ model Tournament {
   handsCount     Int?             @map("hands_count")
   resultBuyins   Decimal?         @map("result_buyins") @db.Decimal(8, 2)  // НЕ деньги — единица «бай-ин», может быть дробной
   styleDiagnosis PlayerStyle?     @map("style_diagnosis")
-  summary        Json?            @map("summary")  // обзор турнира: { overview, moments: [{ handId, label }] } — GENERATE_TOURNAMENT_SUMMARY
+  summary        Json?            @map("summary")  // обзор турнира: { overview } — текст с инлайн-токенами ссылок {{h:handId|карты}}; GENERATE_TOURNAMENT_SUMMARY
   status         TournamentStatus @default(UPLOADED)
   deletedAt      DateTime?        @map("deleted_at")  // мягкое удаление (запрет 5)
   createdAt      DateTime         @default(now()) @map("created_at")

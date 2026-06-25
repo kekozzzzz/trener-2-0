@@ -76,16 +76,11 @@ function validateChatReply(result: Partial<ChatReplyResult>): ChatReplyResult {
 }
 
 function validateTournamentSummary(result: Partial<TournamentSummaryResult>): TournamentSummaryResult {
-  if (typeof result.overview !== "string" || !Array.isArray(result.moments)) {
-    throw new Error("Claude вернул обзор турнира без overview/moments");
+  if (typeof result.overview !== "string") {
+    throw new Error("Claude вернул обзор турнира без overview");
   }
-  // Берём только корректные моменты (число hand + строка label); индекс в диапазон
-  // раздач проверяет шаг очереди при мапинге index→handId.
-  const moments = result.moments.filter(
-    (m): m is { hand: number; label: string } =>
-      typeof m?.hand === "number" && Number.isInteger(m.hand) && typeof m?.label === "string"
-  );
-  return { overview: result.overview, moments };
+  // Токены ссылок {{h:N}} в overview проверяет и мапит в handId шаг очереди.
+  return { overview: result.overview };
 }
 
 // CONNECT-прокси для обхода гео-блокировки Claude (см. getAnthropicProxyUrl).
