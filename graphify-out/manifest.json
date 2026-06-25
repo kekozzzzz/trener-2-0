@@ -120,9 +120,9 @@
     "semantic_hash": "6b13175cdc780bb46c68dce7eb515cc1"
   },
   "trener/__tests__/parser/facts.test.ts": {
-    "mtime": 1781858084.6771665,
-    "ast_hash": "ab3ad47636e07af80d1c4e165a0cb50e",
-    "semantic_hash": "ab3ad47636e07af80d1c4e165a0cb50e"
+    "mtime": 1782382334.8045714,
+    "ast_hash": "d3f6196fd426a33b2fea2ead41056bcf",
+    "semantic_hash": ""
   },
   "trener/__tests__/parser/ggpoker.test.ts": {
     "mtime": 1781857826.814934,
@@ -190,8 +190,8 @@
     "semantic_hash": "64b9c103c45818e7b8eecf965e99a803"
   },
   "trener/app/account/page.tsx": {
-    "mtime": 1782375200.2325237,
-    "ast_hash": "c93151eefd27b1f1703790a2d1276284",
+    "mtime": 1782382334.805279,
+    "ast_hash": "edc54dcd0957b429afc3aa06d7ec687b",
     "semantic_hash": ""
   },
   "trener/app/analyze/page.tsx": {
@@ -350,8 +350,8 @@
     "semantic_hash": "6af1ab9ce0271ca78121de8d33886541"
   },
   "trener/app/tournament/[id]/page.tsx": {
-    "mtime": 1782376584.048307,
-    "ast_hash": "f0cb0fb680031594ba68b6c34a5d3519",
+    "mtime": 1782382334.8062778,
+    "ast_hash": "a08e5c287323ce10a86272128198ebee",
     "semantic_hash": ""
   },
   "trener/app/tournament/[id]/parsing-wait-client.tsx": {
@@ -525,13 +525,13 @@
     "semantic_hash": ""
   },
   "trener/config/prompts/hand-analysis.ts": {
-    "mtime": 1781980246.2845328,
-    "ast_hash": "8a8d222c08d60e5ddcdc6db7083bf047",
+    "mtime": 1782382334.8080182,
+    "ast_hash": "7630daf9d8097cf6634ede04cdcf303e",
     "semantic_hash": ""
   },
   "trener/config/prompts/tournament-summary.ts": {
-    "mtime": 1782376443.9965615,
-    "ast_hash": "293a50c21dbdc096b826756e12d77eea",
+    "mtime": 1782382334.8085299,
+    "ast_hash": "2c6d60ccd3d1607d94bda1ef8c1a885e",
     "semantic_hash": ""
   },
   "trener/config/prompts/verdict.ts": {
@@ -655,13 +655,13 @@
     "semantic_hash": "ff2bfe48bdae2770b854156a8b29d8ab"
   },
   "trener/infrastructure/adapters/llm/anthropic.ts": {
-    "mtime": 1782376469.4593706,
-    "ast_hash": "8c9332812a55d6a0d85ad92383a6e747",
+    "mtime": 1782382334.8094747,
+    "ast_hash": "4d566ccc1071d034cac1059f69311857",
     "semantic_hash": ""
   },
   "trener/infrastructure/adapters/llm/fake.ts": {
-    "mtime": 1782376493.2409406,
-    "ast_hash": "56bcd2ee8d4cf3a4f2dfdf234dcb2aab",
+    "mtime": 1782382334.810473,
+    "ast_hash": "4db497a58f8848c1c1843daa8e1a8822",
     "semantic_hash": ""
   },
   "trener/infrastructure/adapters/llm/index.ts": {
@@ -670,8 +670,8 @@
     "semantic_hash": "554a8131e2c742697385e3bf81d920b8"
   },
   "trener/infrastructure/adapters/llm/types.ts": {
-    "mtime": 1782376361.303413,
-    "ast_hash": "471457f52f7050bb09cc9beddbf55792",
+    "mtime": 1782382334.8114736,
+    "ast_hash": "ad6b94fccb16dbefa71b1157a1035fde",
     "semantic_hash": ""
   },
   "trener/infrastructure/adapters/notify/index.ts": {
@@ -725,13 +725,13 @@
     "semantic_hash": ""
   },
   "trener/infrastructure/llm-proxy-worker/worker.js": {
-    "mtime": 1781636881.8255837,
-    "ast_hash": "75c849156fcf2ac07eb58fa598385f79",
-    "semantic_hash": "75c849156fcf2ac07eb58fa598385f79"
+    "mtime": 1782382334.8695064,
+    "ast_hash": "a365e92f01b5d080da9d6db5668d8147",
+    "semantic_hash": ""
   },
   "trener/infrastructure/queue/bootstrap.ts": {
-    "mtime": 1782113352.9844508,
-    "ast_hash": "2621afb1ed33fd2a0b368fac09e6cfd0",
+    "mtime": 1782382334.8114736,
+    "ast_hash": "ea70837969e3073908dbb5a39666f380",
     "semantic_hash": ""
   },
   "trener/infrastructure/queue/enqueue.ts": {
@@ -760,13 +760,13 @@
     "semantic_hash": ""
   },
   "trener/infrastructure/queue/steps/generate-hand-analysis.ts": {
-    "mtime": 1782027277.1128416,
-    "ast_hash": "d3ca3e80d64262fbd9867b51d8bf8858",
+    "mtime": 1782382334.8124733,
+    "ast_hash": "1bc5c98f8162b2aff38eb6556be576fb",
     "semantic_hash": ""
   },
   "trener/infrastructure/queue/steps/generate-tournament-summary.ts": {
-    "mtime": 1782376830.8792078,
-    "ast_hash": "de86483efc71b634db85d0b81851818b",
+    "mtime": 1782382334.813474,
+    "ast_hash": "4a624c043ce55febc9d10d0413b0f532",
     "semantic_hash": ""
   },
   "trener/infrastructure/queue/steps/generate-verdict.ts": {
@@ -830,9 +830,9 @@
     "semantic_hash": "f8d3a21f33ee2545c72c1a95d087d9c7"
   },
   "trener/parser/facts.ts": {
-    "mtime": 1781858027.6101787,
-    "ast_hash": "cb42a245deac9493952f74fa0e0de3b7",
-    "semantic_hash": "cb42a245deac9493952f74fa0e0de3b7"
+    "mtime": 1782382334.8144743,
+    "ast_hash": "65221a5db19ee4473347874ffbf6bdd4",
+    "semantic_hash": ""
   },
   "trener/parser/ggpoker/classify.ts": {
     "mtime": 1781352611.1103647,
@@ -1395,9 +1395,9 @@
     "semantic_hash": "941b5a733cef072a4fe5480227fe427f"
   },
   "trener/infrastructure/llm-proxy-worker/README.md": {
-    "mtime": 1781636898.5816762,
-    "ast_hash": "e3a72296c06265bcf3d26d1f122f7e11",
-    "semantic_hash": "e3a72296c06265bcf3d26d1f122f7e11"
+    "mtime": 1782382334.8695064,
+    "ast_hash": "0166e3af4e0e38ed58fb84230561c0d0",
+    "semantic_hash": ""
   },
   "trener/__tests__/config/currency.test.ts": {
     "mtime": 1782154327.0958745,
@@ -2270,8 +2270,8 @@
     "semantic_hash": ""
   },
   "plans/2026-06-25-\u043e\u0442\u043a\u0440\u044b\u0432\u0430\u0448\u043a\u0438-\u0438-\u0441\u0441\u044b\u043b\u043a\u0438-\u0432-\u043e\u0431\u0437\u043e\u0440\u0435.md": {
-    "mtime": 1782375989.2778082,
-    "ast_hash": "f23607f9d71f55d84fbcaedf291e2aa3",
+    "mtime": 1782377022.9239233,
+    "ast_hash": "e41ff5b2a0baa19db1182cd798fc42c0",
     "semantic_hash": ""
   },
   "retrospectives/2026-06-25_\u0443\u0442\u0440\u0435\u043d\u043d\u0435\u0435-\u0443\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u0435-tg-fetch-failed.md": {
@@ -2737,6 +2737,71 @@
   "whygrid-logo-sketches.png": {
     "mtime": 1781520545.8072925,
     "ast_hash": "04a0934b545b3faa3fab2dbe39d72c7e",
+    "semantic_hash": ""
+  },
+  "plans/2026-06-25-\u0440\u0430\u0437\u043c\u0435\u0440\u044b-\u0441\u0442\u0430\u0432\u043e\u043a-\u0432-\u0440\u0430\u0437\u0431\u043e\u0440\u0435.md": {
+    "mtime": 1782381183.899814,
+    "ast_hash": "ed0a6b92285fc1332ac1463ff7156477",
+    "semantic_hash": ""
+  },
+  "retrospectives/2026-06-25_14-01_\u043e\u0442\u043a\u0440\u044b\u0432\u0430\u0448\u043a\u0438-\u0438-\u0441\u0441\u044b\u043b\u043a\u0438-\u0432-\u043e\u0431\u0437\u043e\u0440\u0435.md": {
+    "mtime": 1782378116.8858368,
+    "ast_hash": "417cffd15e72d2eed86fd2bae8ba4fcb",
+    "semantic_hash": ""
+  },
+  "trener/__tests__/parser/limp.test.ts": {
+    "mtime": 1782382334.865231,
+    "ast_hash": "fd2463324d250a29e272409c05b2f67f",
+    "semantic_hash": ""
+  },
+  "trener/components/metrics/glossary.tsx": {
+    "mtime": 1782382334.866357,
+    "ast_hash": "46afd70b6f551fe7a5f00edce4d6001a",
+    "semantic_hash": ""
+  },
+  "trener/config/profile.ts": {
+    "mtime": 1782382334.866357,
+    "ast_hash": "f1b5d46af3b0afda9c201d683ff82f9c",
+    "semantic_hash": ""
+  },
+  "trener/config/prompts/player-characteristic.ts": {
+    "mtime": 1782382334.8672316,
+    "ast_hash": "ad11bfca89af09c305a0b93617da7b55",
+    "semantic_hash": ""
+  },
+  "trener/features/profile/aggregate.ts": {
+    "mtime": 1782382334.8672316,
+    "ast_hash": "ac58edff8cafbc55c6de48744eaa6ddc",
+    "semantic_hash": ""
+  },
+  "trener/features/profile/queries.ts": {
+    "mtime": 1782382334.8682318,
+    "ast_hash": "d3df569f55dfde71efa3c058fcd345e0",
+    "semantic_hash": ""
+  },
+  "trener/infrastructure/queue/steps/generate-player-characteristic.ts": {
+    "mtime": 1782382334.8708894,
+    "ast_hash": "ac8018fe1a980c6788bfae6dc5fa0d99",
+    "semantic_hash": ""
+  },
+  "trener/parser/limp.ts": {
+    "mtime": 1782382334.8714972,
+    "ast_hash": "b2ebab781f6feee1b8abef0ee535603a",
+    "semantic_hash": ""
+  },
+  "trener/prisma/migrations/20260625120000_add_player_characteristic/migration.sql": {
+    "mtime": 1782382334.8724973,
+    "ast_hash": "d91e991063ad5e384d371d96fbdf1ffe",
+    "semantic_hash": ""
+  },
+  "plans/2026-06-25-\u0430\u043d\u0430\u043b\u0438\u0437-\u043b\u0438\u043c\u043f\u043e\u0432.md": {
+    "mtime": 1782381651.7337258,
+    "ast_hash": "32e49beded9ca15d03c1cf6b10b988c8",
+    "semantic_hash": ""
+  },
+  "plans/2026-06-25-\u0445\u0430\u0440\u0430\u043a\u0442\u0435\u0440\u0438\u0441\u0442\u0438\u043a\u0430-\u0438\u0433\u0440\u043e\u043a\u0430.md": {
+    "mtime": 1782381187.6565993,
+    "ast_hash": "a766ec0b92ae6f93c61a77a681ef3476",
     "semantic_hash": ""
   }
 }

@@ -1,16 +1,16 @@
 # Graph Report - Тренер 2.0  (2026-06-25)
 
 ## Corpus Check
-- 336 files · ~463,274 words
+- 349 files · ~470,038 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2204 nodes · 3645 edges · 187 communities (147 shown, 40 thin omitted)
+- 2284 nodes · 3791 edges · 196 communities (155 shown, 41 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 53 edges (avg confidence: 0.81)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `e4cf7992`
+- Built from commit: `dbf45cfc`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -198,18 +198,27 @@
 - [[_COMMUNITY_Community 184|Community 184]]
 - [[_COMMUNITY_Community 185|Community 185]]
 - [[_COMMUNITY_Community 186|Community 186]]
+- [[_COMMUNITY_Community 187|Community 187]]
+- [[_COMMUNITY_Community 188|Community 188]]
+- [[_COMMUNITY_Community 189|Community 189]]
+- [[_COMMUNITY_Community 190|Community 190]]
+- [[_COMMUNITY_Community 191|Community 191]]
+- [[_COMMUNITY_Community 192|Community 192]]
+- [[_COMMUNITY_Community 193|Community 193]]
+- [[_COMMUNITY_Community 194|Community 194]]
+- [[_COMMUNITY_Community 195|Community 195]]
 
 ## God Nodes (most connected - your core abstractions)
 1. `cn()` - 75 edges
 2. `requireSession()` - 29 edges
-3. `MVP` - 20 edges
-4. `buttonVariants` - 19 edges
-5. `TableSnapshot` - 18 edges
-6. `Button()` - 17 edges
-7. `enqueue()` - 16 edges
-8. `compilerOptions` - 16 edges
-9. `CLAUDE.md — правила работы с агентом` - 15 edges
-10. `Глубокое исследование рынка` - 15 edges
+3. `TableSnapshot` - 21 edges
+4. `MVP` - 20 edges
+5. `buttonVariants` - 19 edges
+6. `Button()` - 18 edges
+7. `getLlmAdapter()` - 16 edges
+8. `enqueue()` - 16 edges
+9. `compilerOptions` - 16 edges
+10. `CLAUDE.md — правила работы с агентом` - 15 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `TableSnapshot` --semantically_similar_to--> `TableSnapshot (структурированный снимок стола)`  [INFERRED] [semantically similar]
@@ -243,19 +252,19 @@
 - **Защита кошелька и операционная безопасность прода** — retrospectives_2026_06_16_16_45_security_review_rate_limit, retrospectives_2026_06_18_22_40_bot_storozh_usage_limits, retrospectives_2026_06_18_22_40_bot_storozh_watchdog_bot [INFERRED 0.85]
 - **Разделение детерминированного парсера и LLM-разбора (Правило 1)** — retrospectives_2026_06_19_14_00_mozg_trenera_coach_framework, retrospectives_2026_06_19_14_00_mozg_trenera_parser_facts, retrospectives_2026_06_19_14_00_mozg_trenera_rule_1_no_invented_charts, fixtures_ggpoker_mtt_rich_fixture [INFERRED 0.75]
 
-## Communities (187 total, 40 thin omitted)
+## Communities (196 total, 41 thin omitted)
 
 ### Community 0 - "LLM-адаптер и генерация разборов"
-Cohesion: 0.19
-Nodes (11): getAnthropicApiKey(), getAnthropicBaseUrl(), getAnthropicMaxTokens(), getAnthropicModel(), getAnthropicProxySecret(), getAnthropicProxyUrl(), buildProxyDispatcher(), callClaude() (+3 more)
+Cohesion: 0.10
+Nodes (33): getAnthropicApiKey(), getAnthropicBaseUrl(), getAnthropicMaxTokens(), getAnthropicModel(), getAnthropicProxySecret(), getAnthropicProxyUrl(), anthropicLlmAdapter, buildProxyDispatcher() (+25 more)
 
 ### Community 1 - "Аутентификация: действия и сессии"
-Cohesion: 0.06
-Nodes (56): AuthFormState, changePasswordAction(), closeAccountAction(), loginAction(), logoutAction(), normalizeNickname(), registerAction(), requestPasswordResetAction() (+48 more)
+Cohesion: 0.07
+Nodes (58): changePasswordAction(), closeAccountAction(), loginAction(), logoutAction(), logoutEverywhereAction(), normalizeNickname(), registerAction(), requestPasswordResetAction() (+50 more)
 
 ### Community 2 - "Платежи ЮKassa и вебхук"
-Cohesion: 0.16
-Nodes (23): getPaymentsProvider(), getYooKassaApiUrl(), getYooKassaSecretKey(), getYooKassaShopId(), fetch(), created, fakePaymentsAdapter, ChargeSavedParams (+15 more)
+Cohesion: 0.13
+Nodes (25): getPaymentsProvider(), getYooKassaApiUrl(), getYooKassaSecretKey(), getYooKassaShopId(), fetch(), created, fakePaymentsAdapter, ChargeSavedParams (+17 more)
 
 ### Community 3 - "Правила проекта и доменные сущности"
 Cohesion: 0.23
@@ -263,19 +272,19 @@ Nodes (13): Правила проекта (project rules), Правило 3 — 
 
 ### Community 4 - "Очередь задач: воркер и нотификации"
 Cohesion: 0.06
-Nodes (44): DEFAULT_ADMIN_EMAILS, getAdminEmails(), isAdminEmail(), getHealthCacheTtlMs(), getHealthCheckTimeoutMs(), getModelRate(), ModelRate, RATES (+36 more)
+Nodes (40): getHealthCacheTtlMs(), getHealthCheckTimeoutMs(), getModelRate(), ModelRate, RATES, getQueueStuckThresholdMs(), getTelegramAdminChatId(), getTelegramBaseUrl() (+32 more)
 
 ### Community 5 - "UI-компоненты и дизайн-превью"
 Cohesion: 0.09
-Nodes (39): palette, cn(), twMerge, Card(), CardAction(), CardContent(), CardDescription(), CardFooter() (+31 more)
+Nodes (40): palette, cn(), Term, TERMS, Card(), CardAction(), CardContent(), CardDescription() (+32 more)
 
 ### Community 6 - "Конфиг пакета и npm-скрипты"
 Cohesion: 0.05
 Nodes (43): dependencies, @anthropic-ai/sdk, @base-ui/react, bcryptjs, class-variance-authority, clsx, lucide-react, motion (+35 more)
 
 ### Community 7 - "Формы аутентификации"
-Cohesion: 0.08
-Nodes (26): ChangePasswordForm(), initialState, CloseAccountForm(), initialState, resetPasswordAction(), ForgotPasswordForm(), initialState, AnswerForm() (+18 more)
+Cohesion: 0.09
+Nodes (27): ChangePasswordForm(), initialState, CloseAccountForm(), initialState, AuthFormState, PageHeader(), ForgotPasswordForm(), initialState (+19 more)
 
 ### Community 8 - "Исследование рынка и суперидея"
 Cohesion: 0.20
@@ -286,20 +295,20 @@ Cohesion: 0.06
 Nodes (39): Утренний дайджест и тревога «очередь стоит», Казахстанский релей 92.60.75.87, Адаптер notify/telegram и порт NotifyPort, Бот-сторож в Telegram (тревоги + дайджест), Доделки / бэклог (2026-06-19), Трансграничная передача ПДн в Anthropic (США), Email-адаптер Unisender Go за портом, Денежный результат турнира из GG summary-файла (+31 more)
 
 ### Community 10 - "Страницы кабинета и тарифов"
-Cohesion: 0.15
-Nodes (19): ALTERNATIVES, BENEFITS, HomePage(), STEPS, getCurrentPlayer(), AuthNav(), formatUsd(), getPlans() (+11 more)
+Cohesion: 0.20
+Nodes (10): twMerge, CheckoutButton(), ERROR_TEXT, Mode, buttonVariants, PricingCard(), PricingCardProps, PricingFeatureGroup (+2 more)
 
 ### Community 11 - "Страницы турниров и загрузки"
-Cohesion: 0.11
-Nodes (18): AnalyzePage(), UPLOAD_ERROR_TEXT, PageHeader(), SiteFooter(), db, TournamentSeed, TournamentsPage(), listMyTournaments() (+10 more)
+Cohesion: 0.13
+Nodes (16): AnalyzePage(), UPLOAD_ERROR_TEXT, db, TournamentSeed, TournamentsPage(), listMyTournaments(), queryTournaments(), recentTournaments() (+8 more)
 
 ### Community 12 - "Страницы входа и регистрации"
-Cohesion: 0.20
-Nodes (7): noindex, StatusPage(), BlurFade(), BlurFadeProps, getFilter(), MarginType, Wordmark()
+Cohesion: 0.11
+Nodes (17): ALTERNATIVES, BENEFITS, HomePage(), STEPS, AuthNav(), SiteFooter(), formatUsd(), getPlans() (+9 more)
 
 ### Community 13 - "Покерные факты: текстура и дро"
-Cohesion: 0.13
-Nodes (18): BetFact, boardTexture, Card, computeHandFacts(), CONNECTED_RU, DrawInfo, HandFacts, hasMadeStraight() (+10 more)
+Cohesion: 0.10
+Nodes (29): Фикстура GGPoker MTT (богатая раздача), Фикстура sample MTT (минимальная раздача), Фикстура TM MTT (турнирная раздача с анте), BetFact, BetSizeClass, boardTexture, boardUpToStreet(), Card (+21 more)
 
 ### Community 14 - "Конфиг shadcn (components.json)"
 Cohesion: 0.09
@@ -311,91 +320,87 @@ Nodes (19): compilerOptions, allowJs, esModuleInterop, incremental, isolatedModu
 
 ### Community 16 - "Email-адаптер (Unisender)"
 Cohesion: 0.22
-Nodes (14): getEmailApiKey(), getEmailApiUrl(), getEmailFromAddress(), getEmailFromName(), isEmailConfigured(), getEmailAdapter(), safeSendEmail(), noopEmailAdapter (+6 more)
+Nodes (13): getEmailApiKey(), getEmailApiUrl(), getEmailFromAddress(), getEmailFromName(), isEmailConfigured(), getEmailAdapter(), noopEmailAdapter, EmailMessage (+5 more)
 
 ### Community 17 - "Отбор раздач и парсинг турнира"
-Cohesion: 0.05
-Nodes (36): selectHandsForCard(), RenewalSweepResult, runSubscriptionRenewals(), safeNotifyAdmin(), ParsedHand, ParsedTournament, DbWithTask, enqueue() (+28 more)
+Cohesion: 0.18
+Nodes (16): safeNotifyAdmin(), enqueue(), db, db, makeProcessing(), getHandler(), registerStep(), WorkerResult (+8 more)
 
 ### Community 18 - "Безопасность хуков и ретроспективы"
 Cohesion: 0.06
 Nodes (34): Дрейф миграций Prisma (_prisma_migrations), Сократовский диалог (формат тренера), Ретро: hardening среза + security-аудит точек входа, Ретро: сократовский диалог, тест формата, Ретро: первый деплой на Yandex Cloud, Ретро: воркеры карточки + LLM-разбор + CARD_READY, Ретро: многораундовый сократовский диалог, Ретро: экран сократовского диалога (getDialogue + UI) (+26 more)
 
 ### Community 19 - "Парсер: загрузка и диагностика стиля"
-Cohesion: 0.18
-Nodes (16): assignImportanceLevels(), computePostflopAggressionFactor(), diagnoseStyle(), buyInSize(), earliestPlayedAt(), heroPlayedPreflop(), heroRaisedPreflop(), heroStack() (+8 more)
+Cohesion: 0.07
+Nodes (34): assignImportanceLevels(), computePostflopAggressionFactor(), diagnoseStyle(), HERO_CONTINUE_ACTIONS, VOLUNTARY_ACTIONS, actionLines(), computeHeroChipResult(), parseActions() (+26 more)
 
 ### Community 20 - "Ядро парсера раздачи"
-Cohesion: 0.47
-Nodes (7): actionLines(), computeHeroChipResult(), parseActions(), parseHand(), parseNum(), parseSeats(), resolvePositions()
+Cohesion: 0.16
+Nodes (10): LimpExample, LimpLeak, OpenLeakHand, TournamentSummaryHand, db, EMPTY_SNAPSHOT, collectLimpLeak(), GenerateTournamentSummaryPayload (+2 more)
 
 ### Community 21 - "Отправка ответа и конфиг диалога"
-Cohesion: 0.18
-Nodes (13): fixtureBuffer, prisma, richBuffer, handleUpload(), getDialogueAnswerMaxLength(), getDialogueRoundsPerHand(), isSubscriptionGateEnabled(), submitAnswer() (+5 more)
+Cohesion: 0.24
+Nodes (8): fixtureBuffer, prisma, richBuffer, handleUpload(), isSubscriptionGateEnabled(), UploadInput, UploadResult, uploadTournament()
 
 ### Community 22 - "Действия чата и гейт доступности"
-Cohesion: 0.17
-Nodes (8): sendChatMessage(), SendChatMessageInput, SendChatMessageResult, db, EMPTY_SNAPSHOT, getChatMessageMaxLength(), ERROR_MESSAGES, sendChatMessageAction()
+Cohesion: 0.15
+Nodes (9): sendChatMessage(), SendChatMessageInput, SendChatMessageResult, db, EMPTY_SNAPSHOT, getChatMessageMaxLength(), ChatFormState, ERROR_MESSAGES (+1 more)
 
 ### Community 23 - "UI диалога и чата"
-Cohesion: 0.26
-Nodes (7): HandDialoguePage(), personalizeHero(), bigBlindFromSnapshot(), detectHeroOpen(), HeroOpen, Position, TableSnapshot
+Cohesion: 0.19
+Nodes (10): Надёжная структурированная выдача (Structured Outputs), bigBlindFromSnapshot(), detectHeroLimp(), HeroLimp, HeroOpen, Position, TableAction, TableSnapshot (+2 more)
 
 ### Community 24 - "Классификация раздач и важность"
-Cohesion: 0.21
-Nodes (9): HERO_CONTINUE_ACTIONS, VOLUNTARY_ACTIONS, ParsedHandSnapshot, ParseError, ParseResult, PlayerStyle, Seat, Street (+1 more)
+Cohesion: 0.13
+Nodes (8): RenewalSweepResult, runSubscriptionRenewals(), db, EMPTY_SNAPSHOT, TASK_TYPES, TournamentOverrides, RawTask, POST()
 
 ### Community 25 - "Security-review и LLM-релей"
 Cohesion: 0.11
 Nodes (18): LLM-прокси через Cloudflare Worker, Деплой (через панель Cloudflare, без wrangler), Если всё равно 403 от Anthropic, Как запросы текут, Переменные окружения сервера (`.env.production`), Rate-limit логина и регистрации, Заголовки безопасности в next.config, Security-review прод-кода по чек-листу из 8 пунктов (+10 more)
 
 ### Community 26 - "UI ожидания парсинга и бейджи"
-Cohesion: 0.19
-Nodes (9): dateFormat, DIALOGUE_STATE_LABEL, IMPORTANCE_LABEL, renderOverview(), TournamentPage(), ParsingWaitClient(), Badge(), BadgeProps (+1 more)
+Cohesion: 0.12
+Nodes (15): ChatForm(), ChatWaitClient(), HandDialoguePage(), WaitClient(), dateFormat, DIALOGUE_STATE_LABEL, IMPORTANCE_LABEL, renderOverview() (+7 more)
 
 ### Community 27 - "API чата и Prisma-клиент"
-Cohesion: 0.19
-Nodes (7): db, EMPTY_SNAPSHOT, ChatMessageView, ChatView, getChat(), ChatThread(), GET()
+Cohesion: 0.13
+Nodes (12): authorizeHand(), db, EMPTY_SNAPSHOT, { sessionRef }, db, EMPTY_SNAPSHOT, ChatMessageView, ChatView (+4 more)
 
 ### Community 28 - "API диалога"
-Cohesion: 0.22
-Nodes (5): globalForPrisma, db, EMPTY_SNAPSHOT, DialogueRoundView, DialogueView
+Cohesion: 0.17
+Nodes (9): selectHandsForCard(), ParsedHand, ParsedTournament, ParseError, db, EMPTY_SNAPSHOT, PARSED, ParsePayload (+1 more)
 
 ### Community 29 - "Лейаут и шрифты"
-Cohesion: 0.33
-Nodes (5): inter, interHeading, jetbrainsMono, metadata, RootLayout()
+Cohesion: 0.24
+Nodes (8): inter, interHeading, jetbrainsMono, metadata, RootLayout(), robots(), sitemap(), getAppBaseUrl()
 
 ### Community 30 - "Авторизация владения раздачей"
-Cohesion: 0.21
-Nodes (9): authorizeHand(), db, EMPTY_SNAPSHOT, { sessionRef }, getDialogue(), AnswerFormState, ERROR_MESSAGES, submitAnswerAction() (+1 more)
+Cohesion: 0.24
+Nodes (7): getDialogueRoundsPerHand(), db, EMPTY_SNAPSHOT, DialogueRoundView, DialogueView, getDialogue(), GET()
 
 ### Community 31 - "Методология: критика планов"
 Cohesion: 0.18
 Nodes (13): Три параллельных субагента (техника/бизнес/UX), Критика плана через 3 параллельных субагента, Почему это работает, Правило, Промпт, Рабочий цикл, Что делать с отчётом, Папка .business/ (7 подпапок) (+5 more)
 
 ### Community 32 - "Тесты вердикта и ответов"
-Cohesion: 0.22
-Nodes (3): db, DialogueOverrides, EMPTY_SNAPSHOT
+Cohesion: 0.13
+Nodes (10): getDialogueAnswerMaxLength(), submitAnswer(), SubmitAnswerInput, SubmitAnswerResult, db, DialogueOverrides, EMPTY_SNAPSHOT, AnswerFormState (+2 more)
 
 ### Community 33 - "Тесты генерации ответа чата"
-Cohesion: 0.14
-Nodes (9): buildAnalysisSummary(), HandAnalysis, ChatGateHand, isChatAvailable(), db, EMPTY_SNAPSHOT, HandOverrides, GenerateChatReplyPayload (+1 more)
+Cohesion: 0.22
+Nodes (3): db, EMPTY_SNAPSHOT, HandOverrides
 
 ### Community 34 - "Тесты генерации вопроса диалога"
-Cohesion: 0.11
-Nodes (9): HandImportance, db, DialogueOverrides, EMPTY_SNAPSHOT, HandOverrides, db, DialogueOverrides, EMPTY_SNAPSHOT (+1 more)
-
-### Community 35 - "Тесты генерации вердикта"
-Cohesion: 0.06
-Nodes (52): Готово, когда, Для кого, Журнал решений, Какую проблему закрываем, Одно предложение, Что входит в первую версию, Что НЕ войдёт в первую версию, Что строим (+44 more)
+Cohesion: 0.22
+Nodes (4): db, DialogueOverrides, EMPTY_SNAPSHOT, HandOverrides
 
 ### Community 36 - "Тесты отправки сообщений очереди"
 Cohesion: 0.16
-Nodes (25): AccountPage(), logoutEverywhereAction(), updateNicknameAction(), requireSession(), isRecurringEnabled(), getCurrency(), getPlan(), usdToKopecks() (+17 more)
+Nodes (23): AccountPage(), requireSession(), isRecurringEnabled(), getCurrency(), getPlan(), usdToKopecks(), getExchangeRateAdapter(), getPaymentsAdapter() (+15 more)
 
 ### Community 37 - "Фреймворк тренера и факты парсера"
-Cohesion: 0.50
-Nodes (4): Фикстура GGPoker MTT (богатая раздача), Фикстура sample MTT (минимальная раздача), Фикстура TM MTT (турнирная раздача с анте), Детерминированные факты парсера (parser/facts.ts)
+Cohesion: 0.23
+Nodes (12): detectHeroOpen(), isOpenSignificantlyWide(), aggregatePlayerCharacteristic(), collectOpenLeak(), CountedTournament, OpenLeakAggregate, PlayerCharacteristicFacts, round2() (+4 more)
 
 ### Community 38 - "Видение: золотая сцена и риски"
 Cohesion: 0.18
@@ -418,8 +423,8 @@ Cohesion: 0.50
 Nodes (4): Детерминированный парсер GGPoker (тесты — Запрет 4), Запрет 6 — инфраструктура только после ≥3 оплат, Вертикальный срез — загрузка турнира за один вечер, План реализации вертикального среза (загрузка турнира)
 
 ### Community 44 - "Структурированная выдача и обезличивание"
-Cohesion: 0.67
-Nodes (3): Надёжная структурированная выдача (Structured Outputs), Обезличивание никнеймов (Hero/Player N), TableSnapshot (структурированный снимок стола)
+Cohesion: 0.18
+Nodes (9): BADGE_STYLE, CostPlayer, CostReport, StatusClient(), Task, TASK_LABEL, Tournament, TOURNAMENT_LABEL (+1 more)
 
 ### Community 45 - "Важность и отбор раздач"
 Cohesion: 0.67
@@ -442,8 +447,8 @@ Cohesion: 0.11
 Nodes (16): plans/ - технические планы реализации, Зачем это нужно, Как работать с планом, Правила, Шаблон, Итог, Контекст, Критерии готовности (+8 more)
 
 ### Community 73 - "Community 73"
-Cohesion: 0.15
-Nodes (21): OpenLeakHand, TournamentSummaryHand, handCode(), handLabel(), Hole, parseHole(), rankValue(), buildRange() (+13 more)
+Cohesion: 0.20
+Nodes (14): handCode(), handLabel(), Hole, parseHole(), rankValue(), buildRange(), expand(), isOpenPosition() (+6 more)
 
 ### Community 75 - "Community 75"
 Cohesion: 0.09
@@ -466,8 +471,8 @@ Cohesion: 0.11
 Nodes (19): 1. Таблицы по-человечески, 2. Частые запросы и индексы, 3. Правила, которые в базе никогда не должны нарушаться, 4. Файлы, 5. Как менять базу позже, не теряя данные, 6. SQL-схема, `chat_messages` — Сообщение чата, `dialogue_rounds` — Раунд диалога (+11 more)
 
 ### Community 81 - "Community 81"
-Cohesion: 0.21
-Nodes (15): anthropicLlmAdapter, fakeLlmAdapter, ChatReplyRequest, ChatReplyResult, HandAnalysisRequest, HandAnalysisResult, LlmPort, NextQuestionRequest (+7 more)
+Cohesion: 0.14
+Nodes (13): UI: страница «Аккаунт», Изменение схемы БД (нужно разрешение №2), Итог, Новый LLM-промпт (нужно разрешение №5), Новый шаг очереди: GENERATE_PLAYER_CHARACTERISTIC, План: сводная характеристика игрока в личном кабинете, Порог точности (правило 3 — в конфиг, не в код), Решения (зафиксированы) (+5 more)
 
 ### Community 82 - "Community 82"
 Cohesion: 0.11
@@ -515,7 +520,7 @@ Nodes (15): Журнал, Зависимость, Итог, Концепция (
 
 ### Community 93 - "Community 93"
 Cohesion: 0.12
-Nodes (15): A1. RFI-чарт в конфиг `[ ]`, A2. Детектор «открылся первым» в парсере `[ ]`, A3. Порог «заметно шире» `[ ]`, A4. Сбор утечки по турниру `[ ]`, A5. Передать факты в LLM и оформить промпт `[ ]`  ⚠️ правило-разрешение №5, B1. Токены ссылок в overview `[ ]`, B2. Рендер инлайн-ссылок на странице `[ ]`, Итог (+7 more)
+Nodes (15): A1. RFI-чарт в конфиг `[x]`, A2. Детектор «открылся первым» в парсере `[x]`, A3. Порог «заметно шире» `[x]`, A4. Сбор утечки по турниру `[x]`, A5. Передать факты в LLM и оформить промпт `[x]`  ⚠️ правило-разрешение №5, B1. Токены ссылок в overview `[x]`, B2. Рендер инлайн-ссылок на странице `[x]`, Итог (+7 more)
 
 ### Community 94 - "Community 94"
 Cohesion: 0.12
@@ -530,8 +535,8 @@ Cohesion: 0.13
 Nodes (15): 0. Главное ограничение, которое определяет весь порядок, 1. Граф зависимостей — список возможностей, 2. По неделям, 3. Сценарии приёмки для первой возможности — детерминированный парсер, 4. План Б — что отрезаем первым, если времени не хватает, 5. После запуска — мультиплатформенный парсер, 6. Мост в завтрашний день — промт для свежего окна, 6. После запуска — оперативный мониторинг (+7 more)
 
 ### Community 97 - "Community 97"
-Cohesion: 0.26
-Nodes (10): getLlmAdapter(), StepHandler, GenerateDialogueQuestionPayload, generateDialogueQuestionStep(), GenerateHandAnalysisPayload, generateHandAnalysisStep(), markCardReadyIfComplete(), GenerateVerdictPayload (+2 more)
+Cohesion: 0.14
+Nodes (19): buildAnalysisSummary(), HandAnalysis, ChatGateHand, isChatAvailable(), getLlmAdapter(), DbWithTask, handlers, StepHandler (+11 more)
 
 ### Community 98 - "Community 98"
 Cohesion: 0.13
@@ -570,8 +575,8 @@ Cohesion: 0.26
 Nodes (8): getYooKassaWebhookIps(), ipv4InAnyRange(), ipv4InRange(), ipv4ToInt(), { getPaymentMock, applyMock }, SUCCEEDED, clientIp(), POST()
 
 ### Community 107 - "Community 107"
-Cohesion: 0.38
-Nodes (10): getLlmMessageMaxPerHour(), getLlmMessageWindowMs(), getUploadMaxPerHour(), getUploadWindowMs(), intFromEnv(), isUsageLimitEnabled(), checkLlmMessageQuota(), checkUploadQuota() (+2 more)
+Cohesion: 0.18
+Nodes (7): Воркеры карточки: сохранение всех раздач + LLM-разбор отобранных + CARD_READY, Итог, Контекст, Не входит в эту фазу, Решения, Статус задач, Файлы
 
 ### Community 108 - "Community 108"
 Cohesion: 0.15
@@ -606,8 +611,8 @@ Cohesion: 0.36
 Nodes (5): getExchangeRateProvider(), getFallbackUsdRub(), cbrExchangeRate, fakeExchangeRate, ExchangeRatePort
 
 ### Community 116 - "Community 116"
-Cohesion: 0.26
-Nodes (6): getPlanBudgetUsd(), AiAccess, assessAiAccess(), effectivePeriodStart(), spentThisPeriodUsd(), Sub
+Cohesion: 0.18
+Nodes (10): DEFAULT_ADMIN_EMAILS, getAdminEmails(), isAdminEmail(), getPlanBudgetUsd(), GET(), AiAccess, assessAiAccess(), effectivePeriodStart() (+2 more)
 
 ### Community 117 - "Community 117"
 Cohesion: 0.17
@@ -753,10 +758,6 @@ Nodes (6): Задача, Как решал, Как стало, Ретроспе�
 Cohesion: 0.29
 Nodes (6): 🍎 Mac, 🪟 Windows, Голосовой ввод + скриншоты в буфер, Промпт, Часть 1. Голосовой ввод, Часть 2. Скриншот в буфер обмена
 
-### Community 153 - "Community 153"
-Cohesion: 0.60
-Nodes (3): robots(), sitemap(), getAppBaseUrl()
-
 ### Community 154 - "Community 154"
 Cohesion: 0.40
 Nodes (6): Парсер считает, LLM объясняет, EVIE — математика отдельно от LLM, Риск #5 — ошибка AI убивает доверие, Промпт hand-analysis (обязательные строки правила 1), Шаг GENERATE_TOURNAMENT_SUMMARY, Ссылки по индексу → handId (защита от галлюцинаций)
@@ -801,6 +802,10 @@ Nodes (4): Генерация CLAUDE.md под твой проект, Зачем
 Cohesion: 0.40
 Nodes (4): Важно, Проверка, Промпт, Тест-цикл - проверить что всё работает
 
+### Community 165 - "Community 165"
+Cohesion: 0.22
+Nodes (9): AI-коучи и специализированные инструменты, GTO-солверы, Итог: что никто не делает → академическое подтверждение [[deep-research]], принципы архитектуры [[principles]], Коммерческие трекеры, Копилка чужих решений, Мой ориентир, Открытые репозитории, Референсы (+1 more)
+
 ### Community 166 - "Community 166"
 Cohesion: 0.50
 Nodes (3): For /graphify add, For --watch, graphify reference: add a URL and watch a folder
@@ -817,25 +822,61 @@ Nodes (3): For --cluster-only, For --update (incremental re-extraction), graphif
 Cohesion: 0.50
 Nodes (3): Интервью и заполнение `.business/`, Промпт, Советы
 
+### Community 187 - "Community 187"
+Cohesion: 0.22
+Nodes (8): Зачем, Итог, План: размеры ставок в разборе, Фаза 1 — числа в парсере (`parser/facts.ts`) + тесты  [x], Фаза 2 — промпт разбора (`config/prompts/hand-analysis.ts`)  [x] (НЕ задеплоено — показать до деплоя), Фаза 3 — проверка  [x], Фазы, Что уже есть (не дублируем)
+
+### Community 188 - "Community 188"
+Cohesion: 0.29
+Nodes (6): Задача, Как решал, Как стало, Ретроспектива: вывод по открывашкам + кликабельные руки в обзоре, Решил, Что лучше в следующий раз
+
+### Community 189 - "Community 189"
+Cohesion: 0.22
+Nodes (8): Зачем, Итог, План: анализ лимпов в разборе, Фаза 1 — детектор (`parser/limp.ts`) + тесты  [ ], Фаза 2 — типы + агрегация + обзор турнира  [ ] (промпт — показать до деплоя), Фаза 3 — фреймворк поштучного разбора (`config/prompts/hand-analysis.ts`)  [ ] (показать до деплоя), Фаза 4 — проверка  [ ], Фазы
+
+### Community 190 - "Community 190"
+Cohesion: 0.25
+Nodes (8): Готово, когда, Для кого, Журнал решений, Какую проблему закрываем, Одно предложение, Что входит в первую версию, Что НЕ войдёт в первую версию, Что строим
+
+### Community 191 - "Community 191"
+Cohesion: 0.25
+Nodes (8): 0. Два варианта раскладки и выбор, 1. Дерево папок и файлов, 2. Таблица модулей, 3. Что и в каком виде передаётся через границы, 4. Где лежат адаптеры к внешним сервисам, 5. Карта владения для параллельных окон, Журнал решений, Структура кода
+
+### Community 192 - "Community 192"
+Cohesion: 0.29
+Nodes (7): Главные 5 архитектурных решений, Главный риск, Итог дня — сводный чертёж и журнал решений, Общий журнал решений дня (сводка по всем файлам, 2026-06-07), С чего начинаем завтра, Что НЕ делаем (в первой версии), Что строим (1 абзац)
+
+### Community 193 - "Community 193"
+Cohesion: 0.40
+Nodes (4): Итог, План: обзор турнира («общая картина» сверху карточки), Раздел 0 — Правила, Фазы
+
+### Community 194 - "Community 194"
+Cohesion: 0.40
+Nodes (4): Итог, План: чат на простых раздачах карточки, Раздел 0 — Решение и правило проекта №2, Фазы
+
+### Community 195 - "Community 195"
+Cohesion: 0.50
+Nodes (3): Инвалидация сессий при смене пароля + «Выйти на всех устройствах», Итог, Фазы
+
 ## Knowledge Gaps
-- **1074 isolated node(s):** `prisma`, `fixtureBuffer`, `richBuffer`, `ENV_KEYS`, `savedEnv` (+1069 more)
+- **1116 isolated node(s):** `prisma`, `fixtureBuffer`, `richBuffer`, `ENV_KEYS`, `savedEnv` (+1111 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **40 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **41 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `Правило 1 — Парсер считает числа, LLM объясняет` connect `Community 79` to `Community 105`, `Community 154`, `Правила проекта и доменные сущности`, `UI диалога и чата`?**
-  _High betweenness centrality (0.281) - this node is a cross-community bridge._
-- **Why does `MVP` connect `Community 118` to `Community 160`, `Тесты генерации вердикта`, `Видение: золотая сцена и риски`, `Community 102`, `Community 119`, `Community 89`, `Community 154`, `Community 123`, `Community 124`, `Community 125`?**
-  _High betweenness centrality (0.261) - this node is a cross-community bridge._
-- **Why does `TableSnapshot` connect `UI диалога и чата` to `Тесты генерации ответа чата`, `Community 97`, `Community 73`, `Структурированная выдача и обезличивание`, `Покерные факты: текстура и дро`, `Community 79`, `Community 81`, `Ядро парсера раздачи`, `Классификация раздач и важность`?**
   _High betweenness centrality (0.256) - this node is a cross-community bridge._
+- **Why does `MVP` connect `Community 118` to `Community 160`, `Community 153`, `Видение: золотая сцена и риски`, `Community 102`, `Community 119`, `Community 89`, `Community 154`, `Community 123`, `Community 124`, `Community 125`?**
+  _High betweenness centrality (0.236) - this node is a cross-community bridge._
+- **Why does `TableSnapshot` connect `UI диалога и чата` to `LLM-адаптер и генерация разборов`, `Community 97`, `Фреймворк тренера и факты парсера`, `Покерные факты: текстура и дро`, `Community 79`, `Парсер: загрузка и диагностика стиля`, `Ядро парсера раздачи`, `UI ожидания парсинга и бейджи`, `API диалога`?**
+  _High betweenness centrality (0.233) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `requireSession()` (e.g. with `GET()` and `GET()`) actually correct?**
   _`requireSession()` has 2 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 2 inferred relationships involving `TableSnapshot` (e.g. with `Правило 1 — Парсер считает числа, LLM объясняет` and `TableSnapshot (структурированный снимок стола)`) actually correct?**
+  _`TableSnapshot` has 2 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `prisma`, `fixtureBuffer`, `richBuffer` to the rest of the system?**
-  _1101 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `Аутентификация: действия и сессии` be split into smaller, more focused modules?**
-  _Cohesion score 0.058496853017400964 - nodes in this community are weakly interconnected._
-- **Should `Очередь задач: воркер и нотификации` be split into smaller, more focused modules?**
-  _Cohesion score 0.05839727195225917 - nodes in this community are weakly interconnected._
+  _1143 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Should `LLM-адаптер и генерация разборов` be split into smaller, more focused modules?**
+  _Cohesion score 0.09620721554116558 - nodes in this community are weakly interconnected._

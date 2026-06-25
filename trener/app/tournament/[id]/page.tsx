@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ParsingWaitClient } from "./parsing-wait-client";
+import { MetricsGlossary } from "@/components/metrics/glossary";
 
 const DIALOGUE_STATE_LABEL: Record<string, string> = {
   QUESTION_ASKED: "вопрос задан",
@@ -184,7 +185,13 @@ export default async function TournamentPage({
           {tournament.room && ` · ${tournament.room}`}
         </p>
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-2">
+        <div className="mt-8 flex items-center justify-between gap-4">
+          <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
+            Метрики
+          </p>
+          <MetricsGlossary />
+        </div>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <StatCard label="VPIP">
             <p className="mt-2 font-mono text-h2 text-foreground">{vpip}%</p>
           </StatCard>

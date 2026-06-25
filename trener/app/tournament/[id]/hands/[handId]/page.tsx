@@ -10,6 +10,8 @@ import { personalizeHero } from "@/lib/hero-name";
 import { AuthNav } from "@/components/auth-nav";
 import { Wordmark } from "@/components/ui/wordmark";
 import { AnswerForm } from "./answer-form";
+import { RangeAnswerForm } from "./range-answer-form";
+import { splitRangeMarker } from "@/config/dialogue";
 import { WaitClient } from "./wait-client";
 import { ChatThread } from "./chat-thread";
 import { ChatForm } from "./chat-form";
@@ -108,7 +110,9 @@ export default async function HandDialoguePage({
                 <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
                   Вопрос {round.roundNumber}
                 </p>
-                <p className="text-body text-foreground">{personalizeHero(round.question, nick)}</p>
+                <p className="text-body text-foreground">
+                  {personalizeHero(splitRangeMarker(round.question).text, nick)}
+                </p>
                 <div className="border border-border bg-card p-4">
                   <p className="text-body text-muted-foreground">{round.answer}</p>
                 </div>
@@ -119,15 +123,22 @@ export default async function HandDialoguePage({
 
         {dialogue && (
           <div className="mt-16">
-            {dialogue.state === "QUESTION_ASKED" && openRound && (
-              <div className="space-y-2">
-                <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
-                  Вопрос {openRound.roundNumber}
-                </p>
-                <p className="text-h3 text-foreground">{personalizeHero(openRound.question, nick)}</p>
-                <AnswerForm tournamentId={id} handId={handId} />
-              </div>
-            )}
+            {dialogue.state === "QUESTION_ASKED" && openRound && (() => {
+              const { isRange, text } = splitRangeMarker(openRound.question);
+              return (
+                <div className="space-y-2">
+                  <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
+                    Вопрос {openRound.roundNumber}
+                  </p>
+                  <p className="text-h3 text-foreground">{personalizeHero(text, nick)}</p>
+                  {isRange ? (
+                    <RangeAnswerForm tournamentId={id} handId={handId} />
+                  ) : (
+                    <AnswerForm tournamentId={id} handId={handId} />
+                  )}
+                </div>
+              );
+            })()}
 
             {dialogue.state === "ANSWER_RECEIVED" && <WaitClient handId={handId} />}
 

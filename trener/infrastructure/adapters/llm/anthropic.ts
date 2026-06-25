@@ -14,6 +14,7 @@ import { buildDialogueQuestionPrompt, DIALOGUE_QUESTION_SYSTEM_PROMPT } from "@/
 import { buildVerdictPrompt, VERDICT_SYSTEM_PROMPT } from "@/config/prompts/verdict";
 import { buildChatReplyPrompt, CHAT_REPLY_SYSTEM_PROMPT } from "@/config/prompts/chat-reply";
 import { buildTournamentSummaryPrompt, TOURNAMENT_SUMMARY_SYSTEM_PROMPT } from "@/config/prompts/tournament-summary";
+import { buildPlayerCharacteristicPrompt, PLAYER_CHARACTERISTIC_SYSTEM_PROMPT } from "@/config/prompts/player-characteristic";
 import { recordLlmUsage } from "@/features/usage/llm-usage";
 import type {
   ChatReplyRequest,
@@ -24,6 +25,8 @@ import type {
   LlmPort,
   NextQuestionRequest,
   NextQuestionResult,
+  PlayerCharacteristicRequest,
+  PlayerCharacteristicResult,
   TournamentSummaryRequest,
   TournamentSummaryResult,
   VerdictRequest,
@@ -36,6 +39,13 @@ function extractJson(text: string): string {
   return (fenced ? fenced[1] : text).trim();
 }
 
+// Строго: режим ответа сеткой включается ТОЛЬКО литералом "range". Любое другое
+// значение (или его отсутствие) — обычный текстовый ответ. Так произвольная строка
+// модели не сможет невзначай включить сетку.
+function parseAnswerMode(value: unknown): "range" | undefined {
+  return value === "range" ? "range" : undefined;
+}
+
 function validate(result: Partial<HandAnalysisResult>, request: HandAnalysisRequest): HandAnalysisResult {
   if (typeof result.played !== "string" || typeof result.optimal !== "string") {
     throw new Error("Claude вернул разбор без обязательных полей played/optimal");
@@ -45,7 +55,13 @@ function validate(result: Partial<HandAnalysisResult>, request: HandAnalysisRequ
     if (typeof result.question !== "string" || typeof result.draftVerdict !== "string") {
       throw new Error("Claude вернул CRITICAL-разбор без question/draftVerdict");
     }
-    return { played: result.played, optimal: result.optimal, question: result.question, draftVerdict: result.draftVerdict };
+    return {
+      played: result.played,
+      optimal: result.optimal,
+      question: result.question,
+      draftVerdict: result.draftVerdict,
+      answerMode: parseAnswerMode(result.answerMode),
+    };
   }
 
   if (typeof result.note !== "string") {
@@ -65,7 +81,7 @@ function validateNextQuestion(result: Partial<NextQuestionResult>): NextQuestion
   if (typeof result.question !== "string") {
     throw new Error("Claude вернул ответ без поля question");
   }
-  return { question: result.question };
+  return { question: result.question, answerMode: parseAnswerMode(result.answerMode) };
 }
 
 function validateChatReply(result: Partial<ChatReplyResult>): ChatReplyResult {
@@ -81,6 +97,13 @@ function validateTournamentSummary(result: Partial<TournamentSummaryResult>): To
   }
   // Токены ссылок {{h:N}} в overview проверяет и мапит в handId шаг очереди.
   return { overview: result.overview };
+}
+
+function validatePlayerCharacteristic(result: Partial<PlayerCharacteristicResult>): PlayerCharacteristicResult {
+  if (typeof result.characteristic !== "string") {
+    throw new Error("Claude вернул характеристику без поля characteristic");
+  }
+  return { characteristic: result.characteristic };
 }
 
 // CONNECT-прокси для обхода гео-блокировки Claude (см. getAnthropicProxyUrl).
@@ -226,6 +249,17 @@ export const anthropicLlmAdapter: LlmPort = {
       playerId: meta?.playerId,
     });
     return validateTournamentSummary(parsed as Partial<TournamentSummaryResult>);
+  },
+
+  async generatePlayerCharacteristic(
+    request: PlayerCharacteristicRequest,
+    meta?: LlmCallMeta,
+  ): Promise<PlayerCharacteristicResult> {
+    const parsed = await callClaude(PLAYER_CHARACTERISTIC_SYSTEM_PROMPT, buildPlayerCharacteristicPrompt(request), {
+      step: "PLAYER_CHARACTERISTIC",
+      playerId: meta?.playerId,
+    });
+    return validatePlayerCharacteristic(parsed as Partial<PlayerCharacteristicResult>);
   },
 
   // Проверка доступности Claude для /api/health: GET /v1/models тем же клиентом

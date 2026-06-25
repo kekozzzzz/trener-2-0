@@ -4,6 +4,7 @@ import type { StepHandler } from "../types";
 import type { TableSnapshot } from "@/parser/types";
 import type { HandAnalysisRequest } from "@/infrastructure/adapters/llm/types";
 import { getLlmAdapter } from "@/infrastructure/adapters/llm";
+import { applyRangeMarker } from "@/config/dialogue";
 import { enqueue } from "../enqueue";
 
 type GenerateHandAnalysisPayload = {
@@ -59,12 +60,13 @@ export const generateHandAnalysisStep: StepHandler = async (task, db) => {
       // Сократовский вопрос (правило 2): для CRITICAL раздач диалог открывается
       // сразу, вердикт остаётся в analysis.draftVerdict до ответа игрока.
       if (hand.importanceLevel === "CRITICAL" && result.question) {
+        const question = applyRangeMarker(result.question, result.answerMode);
         await tx.dialogue.upsert({
           where: { handId },
           create: {
             handId,
             state: "QUESTION_ASKED",
-            rounds: { create: { roundNumber: 1, question: result.question } },
+            rounds: { create: { roundNumber: 1, question } },
           },
           update: {},
         });
@@ -72,13 +74,13 @@ export const generateHandAnalysisStep: StepHandler = async (task, db) => {
     });
   }
 
-  await markCardReadyIfComplete(db, hand.tournamentId);
+  await markCardReadyIfComplete(db, hand.tournamentId, hand.tournament.playerId);
 };
 
 // Карточка готова, когда у всех отобранных раздач (selected_for_card) либо есть
 // analysis, либо их GENERATE_HAND_ANALYSIS ушла в карантин — одна сломанная
 // раздача не блокирует всю карточку (architecture/04-потоки-данных.md).
-async function markCardReadyIfComplete(db: PrismaClient, tournamentId: string): Promise<void> {
+async function markCardReadyIfComplete(db: PrismaClient, tournamentId: string, playerId: string): Promise<void> {
   const pending = await db.hand.findMany({
     where: { tournamentId, selectedForCard: true, analysis: { equals: Prisma.DbNull } },
     select: { id: true },
@@ -100,9 +102,11 @@ async function markCardReadyIfComplete(db: PrismaClient, tournamentId: string): 
   });
 
   // Карточка только что стала готовой (count > 0 — переход случается ровно один раз;
-  // конкурентные завершения раздач получат count 0) — ставим обзор турнира.
-  // Сам GENERATE_TOURNAMENT_SUMMARY дополнительно идемпотентен (пропустит, если summary уже есть).
+  // конкурентные завершения раздач получат count 0) — ставим обзор турнира и пересборку
+  // характеристики игрока по всей дистанции. Оба шага дополнительно идемпотентны
+  // (GENERATE_TOURNAMENT_SUMMARY — по summary; GENERATE_PLAYER_CHARACTERISTIC — по числу турниров).
   if (count > 0) {
     await enqueue(db, { type: "GENERATE_TOURNAMENT_SUMMARY", payload: { tournamentId } });
+    await enqueue(db, { type: "GENERATE_PLAYER_CHARACTERISTIC", payload: { playerId } });
   }
 }

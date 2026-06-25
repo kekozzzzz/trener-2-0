@@ -170,3 +170,127 @@ describe("computeHandFacts — фолд-эквити для бета Hero", () =
     expect(heroBet?.foldsNeededPct).toBe(33); // 60 / (120 + 60)
   });
 });
+
+describe("computeHandFacts — класс размера ставки", () => {
+  function flopBetSnap(betAmount: number): TableSnapshot {
+    return snap({
+      seats: [
+        { label: "Hero", position: "BTN", startingStack: 100000 },
+        { label: "Player 2", position: "BB", startingStack: 100000 },
+      ],
+      board: ["2c", "7h", "Kd"],
+      actions: [
+        { street: "PREFLOP", actor: "Player 2", action: "POST_BB", amount: 20 },
+        { street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 60 },
+        { street: "PREFLOP", actor: "Player 2", action: "CALL", amount: 40 },
+        // банк к флопу = 120
+        { street: "FLOP", actor: "Player 2", action: "CHECK" },
+        { street: "FLOP", actor: "Hero", action: "BET", amount: betAmount },
+      ],
+    });
+  }
+
+  it("≈25% банка → мелкая", () => {
+    expect(computeHandFacts(flopBetSnap(30)).heroBets[0]?.sizeClass).toBe("SMALL");
+  });
+  it("50% банка → стандарт", () => {
+    expect(computeHandFacts(flopBetSnap(60)).heroBets[0]?.sizeClass).toBe("STANDARD");
+  });
+  it("пот-сайз (100%) → крупная", () => {
+    expect(computeHandFacts(flopBetSnap(120)).heroBets[0]?.sizeClass).toBe("LARGE");
+  });
+  it("больше банка → овербет", () => {
+    expect(computeHandFacts(flopBetSnap(180)).heroBets[0]?.sizeClass).toBe("OVERBET");
+  });
+});
+
+describe("computeHandFacts — обратные оддсы при защите с дро", () => {
+  // Hero BB с флеш-дро A♥K♥ на 2♥7♥Q♠; BTN бетит в банк, прямых оддсов не хватает.
+  const s = snap({
+    seats: [
+      { label: "Hero", position: "BB", startingStack: 100000 },
+      { label: "Player 2", position: "BTN", startingStack: 100000 },
+    ],
+    heroCards: ["Ah", "Kh"],
+    board: ["2h", "7h", "Qs"],
+    actions: [
+      { street: "PREFLOP", actor: "Player 2", action: "POST_SB", amount: 10 },
+      { street: "PREFLOP", actor: "Hero", action: "POST_BB", amount: 20 },
+      { street: "PREFLOP", actor: "Player 2", action: "RAISE", amount: 60 },
+      { street: "PREFLOP", actor: "Hero", action: "CALL", amount: 40 },
+      // банк к флопу = 120
+      { street: "FLOP", actor: "Hero", action: "CHECK" },
+      { street: "FLOP", actor: "Player 2", action: "BET", amount: 120 }, // овербет: банк станет 240, доложить 120
+      { street: "FLOP", actor: "Hero", action: "CALL", amount: 120 },
+    ],
+  });
+
+  const facing = computeHandFacts(s).heroFacing.find((h) => h.street === "FLOP");
+
+  it("эквити дро прокинуто в факт", () => {
+    expect(facing?.drawEquityPct).toBe(36); // флеш-дро с флопа, 9*4
+  });
+
+  it("прямой пот-оддс 33%, дро 36% — оддсов хватает, добор не нужен", () => {
+    // toCall 120, банк после бета 240 → 120/360 = 33%; 36% ≥ 33% → impliedExtraNeeded нет
+    expect(facing?.equityToCallPct).toBe(33);
+    expect(facing?.impliedExtraNeeded).toBeUndefined();
+  });
+});
+
+describe("computeHandFacts — имплайды, когда прямых оддсов мало", () => {
+  // Та же рука, но соперник пушит овербет так, что прямых оддсов не хватает.
+  const s = snap({
+    seats: [
+      { label: "Hero", position: "BB", startingStack: 100000 },
+      { label: "Player 2", position: "BTN", startingStack: 100000 },
+    ],
+    heroCards: ["Ah", "Kh"],
+    board: ["2h", "7h", "Qs"],
+    actions: [
+      { street: "PREFLOP", actor: "Player 2", action: "POST_SB", amount: 10 },
+      { street: "PREFLOP", actor: "Hero", action: "POST_BB", amount: 20 },
+      { street: "PREFLOP", actor: "Player 2", action: "RAISE", amount: 60 },
+      { street: "PREFLOP", actor: "Hero", action: "CALL", amount: 40 },
+      // банк к флопу = 120
+      { street: "FLOP", actor: "Hero", action: "CHECK" },
+      { street: "FLOP", actor: "Player 2", action: "BET", amount: 300 }, // банк станет 420, доложить 300
+      { street: "FLOP", actor: "Hero", action: "CALL", amount: 300 },
+    ],
+  });
+
+  const facing = computeHandFacts(s).heroFacing.find((h) => h.street === "FLOP");
+
+  it("прямых оддсов не хватает → есть добор при попадании", () => {
+    // p=0.36, toCall=300, банк после бета=420 → X = 300/0.36 − 420 − 300 = 113
+    expect(facing?.equityToCallPct).toBe(42); // 300/(420+300)
+    expect(facing?.impliedExtraNeeded).toBe(113);
+  });
+});
+
+describe("computeHandFacts — полу-блеф Hero собирает банк при доезде", () => {
+  const s = snap({
+    seats: [
+      { label: "Hero", position: "BTN", startingStack: 100000 },
+      { label: "Player 2", position: "BB", startingStack: 100000 },
+    ],
+    heroCards: ["Ah", "Kh"],
+    board: ["2h", "7h", "Qs"],
+    actions: [
+      { street: "PREFLOP", actor: "Player 2", action: "POST_BB", amount: 20 },
+      { street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 60 },
+      { street: "PREFLOP", actor: "Player 2", action: "CALL", amount: 40 },
+      // банк к флопу = 120
+      { street: "FLOP", actor: "Player 2", action: "CHECK" },
+      { street: "FLOP", actor: "Hero", action: "BET", amount: 120 }, // пот-сайз с флеш-дро = полу-блеф
+    ],
+  });
+
+  const heroBet = computeHandFacts(s).heroBets.find((b) => b.street === "FLOP");
+
+  it("эквити дро и банк при колле посчитаны", () => {
+    expect(heroBet?.drawEquityPct).toBe(36);
+    expect(heroBet?.potIfCalled).toBe(360); // 120 + 2*120
+    expect(heroBet?.sizeClass).toBe("LARGE"); // 120/120 = 100%
+  });
+});

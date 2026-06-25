@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Whygrid — варианты B</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0E0E0E;
+    --surface: #1A1A1A;
+    --line: #2A2A2A;
+    --text: #F5F5F5;
+    --muted: #8C8C8C;
+    --accent: #D4FF33;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; padding: 64px; }
+  .sub {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--muted); margin-bottom: 48px;
+  }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .card { background: var(--surface); border: 1px solid var(--line); padding: 48px 24px; display: flex; flex-direction: column; align-items: center; gap: 32px; }
+  .label { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); align-self: flex-start; }
+  .icon-wrap { width: 140px; height: 140px; display: flex; align-items: center; justify-content: center; }
+  .wordmark { font-family: 'Inter', sans-serif; font-weight: 900; font-size: 32px; letter-spacing: -0.01em; display: flex; }
+  .accent-part { color: var(--accent); }
+  .text-part { color: var(--text); }
+</style>
+</head>
+<body>
+  <div class="sub">Варианты B · развилка решения</div>
+  <div class="grid">
+
+    <!-- B0: исходный вариант с квадратами -->
+    <div class="card">
+      <div class="label">B0 · квадраты (как было)</div>
+      <div class="icon-wrap">
+        <svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M60 110 L60 65 L25 20" stroke="#F5F5F5" stroke-width="6" fill="none"/>
+          <path d="M60 65 L95 20" stroke="#D4FF33" stroke-width="6" fill="none"/>
+          <rect x="17" y="8" width="16" height="16" stroke="#F5F5F5" stroke-width="2" fill="none"/>
+          <rect x="87" y="8" width="16" height="16" fill="#D4FF33"/>
+        </svg>
+      </div>
+      <div class="wordmark"><span class="accent-part">WHY</span><span class="text-part">GRID</span></div>
+    </div>
+
+    <!-- B1: шире и крупнее стрелки -->
+    <div class="card">
+      <div class="label">B1 · шире, крупнее стрелки</div>
+      <div class="icon-wrap">
+        <svg width="140" height="140" viewBox="0 0 140 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M70 132 L70 78" stroke="#F5F5F5" stroke-width="8" fill="none"/>
+          <path d="M70 78 L30 32" stroke="#F5F5F5" stroke-width="8" fill="none"/>
+          <path d="M70 78 L110 32" stroke="#D4FF33" stroke-width="8" fill="none"/>
+          <polygon points="14,10 22,38 46,26" stroke="#F5F5F5" stroke-width="2" fill="none"/>
+          <polygon points="126,10 118,38 94,26" fill="#D4FF33"/>
+        </svg>
+      </div>
+      <div class="wordmark"><span class="accent-part">WHY</span><span class="text-part">GRID</span></div>
+    </div>
+
+    <!-- B2: одна крупная стрелка, без развилки -->
+    <div class="card">
+      <div class="label">B2 · одна крупная стрелка</div>
+      <div class="icon-wrap">
+        <svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M22 98 L92 28" stroke="#D4FF33" stroke-width="10" fill="none"/>
+          <polygon points="100,10 68,22 86,40" fill="#D4FF33"/>
+        </svg>
+      </div>
+      <div class="wordmark"><span class="accent-part">WHY</span><span class="text-part">GRID</span></div>
+    </div>
+
+  </div>
+</body>
+</html>

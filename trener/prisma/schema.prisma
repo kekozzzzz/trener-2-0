@@ -87,6 +87,7 @@ model PlayerProfile {
   avgResultBuyins    Decimal?  @map("avg_result_buyins") @db.Decimal(8, 2)
   avgHandsCount      Decimal?  @map("avg_hands_count") @db.Decimal(8, 2)
   tournamentsCounted Int       @default(0) @map("tournaments_counted")
+  characteristic     String?   @map("characteristic") // сводный текст-характеристика игры по всем турнирам; NULL пока не собран. Числа в нём — от парсера (правило 1)
   recalculatedAt     DateTime? @map("recalculated_at")
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")

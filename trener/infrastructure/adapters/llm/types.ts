@@ -20,12 +20,15 @@ export type HandAnalysisRequest = {
 // Состав результата зависит от importanceLevel:
 // CRITICAL — question + draftVerdict (черновик до ответа игрока, правило 2);
 // STRONG/MEDIUM — note (короткое подтверждение / лёгкая заметка).
+// answerMode "range" — вопрос просит назвать диапазон рук оппонента: игрок
+// отвечает кликами по сетке 13×13, а не текстом (см. config/dialogue.ts).
 export type HandAnalysisResult = {
   played: string;
   optimal: string;
   note?: string;
   question?: string;
   draftVerdict?: string;
+  answerMode?: "text" | "range";
 };
 
 // Один отвеченный раунд сократовского диалога — вопрос системы + ответ игрока.
@@ -49,6 +52,7 @@ export type NextQuestionRequest = {
 
 export type NextQuestionResult = {
   question: string;
+  answerMode?: "text" | "range"; // "range" — ответ сеткой 13×13 (см. HandAnalysisResult)
 };
 
 // Вход GENERATE_VERDICT — история всех раундов диалога (правило 2: итог
@@ -110,12 +114,29 @@ export type OpenLeakHand = {
   code: string; // код руки, напр. "K7s"
 };
 
+// Один показательный лимп Hero — посчитал парсер (parser/limp.ts). kind: OPEN —
+// открыл лимпом (первым в банк), OVER — долимпил поверх лимперов вместо изоляции.
+export type LimpExample = {
+  position: string; // EARLY | HJ | CO | BTN | SB
+  code: string; // код руки, напр. "Q9s"
+  kind: "OPEN" | "OVER";
+};
+
+// Сводка лимпов Hero за турнир — счётчики + пара показательных рук. Правило 1:
+// факты лимпов считает парсер, LLM только формулирует совет (изолируй/фолди).
+export type LimpLeak = {
+  openLimps: number; // сколько раз открыл лимпом
+  overLimps: number; // сколько раз долимпил поверх лимперов
+  examples: LimpExample[]; // до нескольких показательных рук
+};
+
 // Вход GENERATE_TOURNAMENT_SUMMARY — метрики турнира + разобранные раздачи карточки
-// + список открывашек заметно шире нормы (может быть пустым).
+// + список открывашек заметно шире нормы + сводка лимпов (оба могут быть пустыми).
 export type TournamentSummaryRequest = {
   tournament: TournamentContext;
   hands: TournamentSummaryHand[];
   openLeak: OpenLeakHand[];
+  limpLeak: LimpLeak;
 };
 
 // overview может содержать токены ссылок на раздачу карточки в виде {{h:INDEX}} —
@@ -123,6 +144,25 @@ export type TournamentSummaryRequest = {
 // правило 2). Отдельных «моментов» больше нет: ссылки живут прямо в тексте.
 export type TournamentSummaryResult = {
   overview: string;
+};
+
+// Вход GENERATE_PLAYER_CHARACTERISTIC — агрегаты по ВСЕМ турнирам игрока (средние,
+// распределение стилей, открывашки шире нормы по всей дистанции). Всё посчитано
+// детерминированно (features/profile/aggregate.ts) — LLM числа не пересчитывает,
+// только формулирует характеристику словами. styleCounts — сколько турниров на
+// каждый из 4 стилей; openLeak.count — как часто игрок так открывал.
+export type PlayerCharacteristicRequest = {
+  tournamentsCounted: number;
+  avgVpip: number;
+  avgResultBuyins: number;
+  avgHandsCount: number;
+  dominantStyle: PlayerStyle;
+  styleCounts: Record<PlayerStyle, number>;
+  openLeak: { position: string; code: string; count: number }[];
+};
+
+export type PlayerCharacteristicResult = {
+  characteristic: string;
 };
 
 // Контекст вызова для учёта расходов: чей это запрос (атрибуция строки в llm_usage).
@@ -135,6 +175,7 @@ export interface LlmPort {
   generateVerdict(request: VerdictRequest, meta?: LlmCallMeta): Promise<VerdictResult>;
   generateChatReply(request: ChatReplyRequest, meta?: LlmCallMeta): Promise<ChatReplyResult>;
   generateTournamentSummary(request: TournamentSummaryRequest, meta?: LlmCallMeta): Promise<TournamentSummaryResult>;
+  generatePlayerCharacteristic(request: PlayerCharacteristicRequest, meta?: LlmCallMeta): Promise<PlayerCharacteristicResult>;
 
   // Лёгкая проверка доступности Claude для /api/health: GET /v1/models через тот же
   // релей (без расхода токенов) — проверяет именно путь, что ломается (релей, доверие

@@ -1,9 +1,10 @@
 import { Prisma } from "@prisma/client";
 import type { StepHandler } from "../types";
-import type { OpenLeakHand, TournamentSummaryHand } from "@/infrastructure/adapters/llm/types";
+import type { LimpExample, LimpLeak, OpenLeakHand, TournamentSummaryHand } from "@/infrastructure/adapters/llm/types";
 import type { TableSnapshot } from "@/parser/types";
 import { getLlmAdapter } from "@/infrastructure/adapters/llm";
 import { detectHeroOpen } from "@/parser/open-raise";
+import { detectHeroLimp } from "@/parser/limp";
 import { isOpenSignificantlyWide } from "@/config/poker/rfi-chart";
 import { handLabel } from "@/config/poker/hand-codes";
 
@@ -13,6 +14,9 @@ type GenerateTournamentSummaryPayload = {
 
 // Сколько разных открывашек-нарушителей максимум назвать в обзоре.
 const MAX_OPEN_LEAK = 5;
+
+// Сколько показательных рук-лимпов максимум приложить к сводке лимпов.
+const MAX_LIMP_EXAMPLES = 4;
 
 // Открывашки заметно шире нормы по ВСЕМ раздачам турнира: детектор находит
 // «открылся первым» + код руки (parser/open-raise), чарт отсеивает норму и
@@ -32,6 +36,24 @@ function collectOpenLeak(hands: { tableData: unknown }[]): OpenLeakHand[] {
     .sort((a, b) => b.count - a.count)
     .slice(0, MAX_OPEN_LEAK)
     .map((e) => e.leak);
+}
+
+// Лимпы Hero по ВСЕМ раздачам турнира: детектор находит «открыл лимпом / долимпил»
+// (parser/limp), считаем сколько каждого и берём несколько показательных рук
+// (дедуп по позиция+код+вид). Правило 1 — факт лимпа считает код, LLM формулирует.
+function collectLimpLeak(hands: { tableData: unknown }[]): LimpLeak {
+  let openLimps = 0;
+  let overLimps = 0;
+  const examples = new Map<string, LimpExample>();
+  for (const hand of hands) {
+    const limp = detectHeroLimp(hand.tableData as unknown as TableSnapshot);
+    if (!limp) continue;
+    if (limp.kind === "OPEN") openLimps += 1;
+    else overLimps += 1;
+    const key = `${limp.position}:${limp.code}:${limp.kind}`;
+    if (!examples.has(key)) examples.set(key, { position: limp.position, code: limp.code, kind: limp.kind });
+  }
+  return { openLimps, overLimps, examples: [...examples.values()].slice(0, MAX_LIMP_EXAMPLES) };
 }
 
 // Заменяет токены ссылок {{h:N}} в overview на {{h:handId|карты}} по списку раздач
@@ -109,6 +131,7 @@ export const generateTournamentSummaryStep: StepHandler = async (task, db) => {
     select: { tableData: true },
   });
   const openLeak = collectOpenLeak(allHands);
+  const limpLeak = collectLimpLeak(allHands);
 
   const result = await getLlmAdapter().generateTournamentSummary({
     tournament: {
@@ -119,6 +142,7 @@ export const generateTournamentSummaryStep: StepHandler = async (task, db) => {
     },
     hands: summaryHands,
     openLeak,
+    limpLeak,
   }, { playerId: tournament.playerId });
 
   const overview = resolveHandTokens(result.overview, cardHands);

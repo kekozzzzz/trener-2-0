@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Whygrid — наброски логотипа v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0E0E0E;
+    --surface: #1A1A1A;
+    --line: #2A2A2A;
+    --text: #F5F5F5;
+    --muted: #8C8C8C;
+    --accent: #D4FF33;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    padding: 64px;
+  }
+  h1 {
+    font-family: 'Inter', sans-serif;
+    font-weight: 900;
+    font-size: 40px;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+  }
+  .sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 48px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    padding: 48px 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 32px;
+  }
+  .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    align-self: flex-start;
+  }
+  .icon-wrap {
+    width: 120px;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .wordmark {
+    font-family: 'Inter', sans-serif;
+    font-weight: 900;
+    font-size: 32px;
+    letter-spacing: -0.01em;
+    display: flex;
+    gap: 0;
+  }
+  .wordmark .accent-part { color: var(--accent); }
+  .wordmark .text-part { color: var(--text); }
+
+  /* Concept A: "?" в рамке-визире */
+  .a-frame {
+    width: 96px;
+    height: 96px;
+    border: 1px solid var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .a-frame::before, .a-frame::after,
+  .a-tick-tr, .a-tick-bl {
+    content: '';
+    position: absolute;
+    background: var(--accent);
+  }
+  .a-frame::before { width: 12px; height: 1px; top: -1px; left: -1px; }
+  .a-frame::after { width: 1px; height: 12px; top: -1px; left: -1px; }
+  .a-tick-tr { width: 12px; height: 1px; top: -1px; right: -1px; position: absolute; background: var(--accent); }
+  .a-tick-bl { width: 1px; height: 12px; bottom: -1px; left: -1px; position: absolute; background: var(--accent); }
+  .a-q {
+    font-family: 'Inter', sans-serif;
+    font-weight: 900;
+    font-size: 48px;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  /* Concept B: развилка / Y из прямых линий */
+  .b-svg { width: 120px; height: 120px; }
+
+  /* Concept C: столбцы данных + акцентная точка (оставлен из v1) */
+  .c-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    height: 96px;
+  }
+  .c-bars .bar { width: 16px; background: var(--line); }
+  .c-bars .bar.accent { background: var(--accent); }
+  .c-col { display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%; justify-content: flex-end; }
+  .c-dot { width: 16px; height: 16px; background: var(--accent); }
+  .c-dot.empty { background: transparent; }
+
+  /* Concept D: монограмма W из линий (оставлен из v1) */
+  .d-svg { width: 120px; height: 120px; }
+</style>
+</head>
+<body>
+  <h1>Whygrid</h1>
+  <div class="sub">Наброски логотипа v2 · WHY — лайм, GRID — белый · без сетки</div>
+
+  <div class="grid">
+
+    <!-- Concept A: ? в рамке-визире -->
+    <div class="card">
+      <div class="label">A · знак вопроса в рамке-визире</div>
+      <div class="icon-wrap">
+        <div class="a-frame">
+          <div class="a-tick-tr"></div>
+          <div class="a-tick-bl"></div>
+          <span class="a-q">?</span>
+        </div>
+      </div>
+      <div class="wordmark"><span class="accent-part">WHY</span><span class="text-part">GRID</span></div>
+    </div>
+
+    <!-- Concept B: развилка Y -->
+    <div class="card">
+      <div class="label">B · развилка решения (Y, квадраты)</div>
+      <div class="icon-wrap">
+        <svg class="b-svg" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M60 110 L60 65 L25 16" stroke="#F5F5F5" stroke-width="6" fill="none"/>
+          <path d="M60 65 L95 16" stroke="#D4FF33" stroke-width="6" fill="none"/>
+          <rect x="17" y="8" width="16" height="16" stroke="#F5F5F5" stroke-width="2" fill="#0E0E0E"/>
+          <rect x="87" y="8" width="16" height="16" fill="#D4FF33"/>
+        </svg>
+      </div>
+      <div class="wordmark"><span class="accent-part">WHY</span><span class="text-part">GRID</span></div>
+    </div>
+
+    <!-- Concept C: столбцы данных -->
+    <div class="card">
+      <div class="label">C · столбцы данных + акцентная точка</div>
+      <div class="icon-wrap">
+        <div class="c-bars">
+          <div class="c-col"><div class="c-dot empty"></div><div class="bar" style="height:40px"></div></div>
+          <div class="c-col"><div class="c-dot empty"></div><div class="bar" style="height:64px"></div></div>
+          <div class="c-col"><div class="c-dot empty"></div><div class="bar" style="height:32px"></div></div>
+          <div class="c-col"><div class="c-dot"></div><div class="bar accent" style="height:80px"></div></div>
+        </div>
+      </div>
+      <div class="wordmark"><span class="accent-part">WHY</span><span class="text-part">GRID</span></div>
+    </div>
+
+    <!-- Concept D: монограмма W -->
+    <div class="card">
+      <div class="label">D · монограмма W из линий</div>
+      <div class="icon-wrap">
+        <svg class="d-svg" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M10 20 L35 100 L60 40 L85 100 L110 20" stroke="#F5F5F5" stroke-width="6" fill="none"/>
+          <rect x="52" y="34" width="16" height="16" fill="#D4FF33"/>
+        </svg>
+      </div>
+      <div class="wordmark"><span class="accent-part">WHY</span><span class="text-part">GRID</span></div>
+    </div>
+
+  </div>
+</body>
+</html>

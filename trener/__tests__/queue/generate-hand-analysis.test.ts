@@ -88,7 +88,9 @@ beforeAll(async () => {
   });
 });
 
-const TASK_TYPES = ["GENERATE_HAND_ANALYSIS", "GENERATE_TOURNAMENT_SUMMARY"];
+// При готовности карточки шаг ставит и обзор турнира, и пересборку характеристики
+// игрока — чистим оба, иначе невычищенные задачи перехватывает runWorkerOnce.
+const TASK_TYPES = ["GENERATE_HAND_ANALYSIS", "GENERATE_TOURNAMENT_SUMMARY", "GENERATE_PLAYER_CHARACTERISTIC"];
 
 beforeEach(async () => {
   await db.tournament.deleteMany({ where: { playerId: TEST_PLAYER_ID } });
@@ -148,6 +150,10 @@ describe("GENERATE_HAND_ANALYSIS — основной путь", () => {
     const hand = await db.hand.findUnique({ where: { id: handId } });
     const analysis = hand!.analysis as { draftVerdict?: string };
     expect(analysis.draftVerdict).toBeTruthy();
+
+    // Диапазонный вопрос (fake возвращает answerMode "range") → метка {{range}}
+    // в начале сохранённого текста: страница по ней покажет сетку 13×13.
+    expect(dialogue!.rounds[0].question.startsWith("{{range}}")).toBe(true);
   });
 
   it("CARD_READY выставляется только после обработки всех отобранных раздач", async () => {

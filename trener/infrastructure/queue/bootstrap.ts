@@ -10,6 +10,7 @@ import { generateDialogueQuestionStep } from "./steps/generate-dialogue-question
 import { generateVerdictStep } from "./steps/generate-verdict";
 import { generateChatReplyStep } from "./steps/generate-chat-reply";
 import { generateTournamentSummaryStep } from "./steps/generate-tournament-summary";
+import { generatePlayerCharacteristicStep } from "./steps/generate-player-characteristic";
 import { renewSubscriptionStep } from "./steps/renew-subscription";
 
 registerStep("NOOP", noopStep);
@@ -19,4 +20,5 @@ registerStep("GENERATE_DIALOGUE_QUESTION", generateDialogueQuestionStep);
 registerStep("GENERATE_VERDICT", generateVerdictStep);
 registerStep("GENERATE_CHAT_REPLY", generateChatReplyStep);
 registerStep("GENERATE_TOURNAMENT_SUMMARY", generateTournamentSummaryStep);
+registerStep("GENERATE_PLAYER_CHARACTERISTIC", generatePlayerCharacteristicStep);
 registerStep("RENEW_SUBSCRIPTION", renewSubscriptionStep);

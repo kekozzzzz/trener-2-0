@@ -6,6 +6,8 @@ import type {
   LlmPort,
   NextQuestionRequest,
   NextQuestionResult,
+  PlayerCharacteristicRequest,
+  PlayerCharacteristicResult,
   TournamentSummaryRequest,
   TournamentSummaryResult,
   VerdictRequest,
@@ -25,8 +27,11 @@ export const fakeLlmAdapter: LlmPort = {
       return {
         played,
         optimal,
-        question: "(фейк) Что ты думал, когда принимал это решение?",
+        // Диапазонный вопрос — в деве показывает сетку 13×13 (answerMode "range"),
+        // чтобы видеть фичу без обращения к Claude.
+        question: "(фейк) Какие руки ты даёшь оппоненту в этом споте? Отметь их на сетке.",
         draftVerdict: "(фейк) Черновик вердикта — ждёт ответа игрока.",
+        answerMode: "range",
       };
     }
 
@@ -71,6 +76,18 @@ export const fakeLlmAdapter: LlmPort = {
         : "";
     return {
       overview: `(фейк) Общая картина: стиль ${request.tournament.styleDiagnosis}, VPIP ${request.tournament.vpipPercent}%.${leak} Показательно: ${links}.`,
+    };
+  },
+
+  async generatePlayerCharacteristic(request: PlayerCharacteristicRequest): Promise<PlayerCharacteristicResult> {
+    // Детерминированно: стиль + средний VPIP + при наличии — фраза про открывашки
+    // (для проверки сборки фактов и шага очереди в тестах, без сети и расходов).
+    const leak =
+      request.openLeak.length > 0
+        ? ` Открывашки шире нормы: ${request.openLeak.map((o) => `${o.code} с ${o.position}`).join(", ")}.`
+        : "";
+    return {
+      characteristic: `(фейк) Стиль ${request.dominantStyle}, средний VPIP ${request.avgVpip}% по ${request.tournamentsCounted} турнирам.${leak}`,
     };
   },
 

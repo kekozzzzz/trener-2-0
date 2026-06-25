@@ -166,12 +166,41 @@ const CONNECTED_RU: Record<BoardTexture["connected"], string> = {
   DISCONNECTED: "несвязанный (сухой)",
 };
 
+// Класс размера ставки относительно банка — детерминированный рид «крупно/стандартно».
+// Стандарт по фреймворку — 1/3…3/4 банка; на стандарт тренер отдельно не реагирует,
+// крупная/овербет читается как сила или поляризация.
+export type BetSizeClass = "SMALL" | "STANDARD" | "LARGE" | "OVERBET";
+
+function sizeClass(pctOfPot: number): BetSizeClass {
+  if (pctOfPot < 33) return "SMALL"; // блок/проб-бет
+  if (pctOfPot <= 80) return "STANDARD"; // 1/3, 1/2, 3/4 — не реагируем
+  if (pctOfPot <= 110) return "LARGE"; // больше стандарта = сила
+  return "OVERBET"; // ставка больше банка — поляризация
+}
+
+const SIZE_CLASS_RU: Record<BetSizeClass, string> = {
+  SMALL: "мелкая",
+  STANDARD: "стандарт",
+  LARGE: "крупная",
+  OVERBET: "овербет",
+};
+
+// Борд на момент улицы: флоп — первые 3 карты, тёрн — 4, ривер — 5.
+// Нужен, чтобы считать дро/имплайды на улице действия, а не по финальному борду.
+function boardUpToStreet(board: string[], street: Street): string[] {
+  if (street === "FLOP") return board.slice(0, 3);
+  if (street === "TURN") return board.slice(0, 4);
+  if (street === "RIVER") return board.slice(0, 5);
+  return [];
+}
+
 // Одна заметная ставка/рейз для тренера: чей размер и доля банка до действия.
 export type BetFact = {
   street: Street;
   actor: string;
   // доля банка ДО этого действия, %: для бета — betSize/pot; для рейза — добавленные фишки/pot
   sizePctOfPot: number;
+  sizeClass: BetSizeClass;
 };
 
 // Спот, где Hero стоит перед ставкой соперника и должен решать колл/фолд.
@@ -181,14 +210,24 @@ export type HeroFacingBet = {
   toCall: number;
   // сколько эквити нужно для прибыльного колла, % = toCall / (банк_после_ставки + toCall)
   equityToCallPct: number;
+  // если у Hero есть дро на этой улице — его эквити до следующей улицы, %
+  drawEquityPct?: number;
+  // обратные оддсы: если прямых пот-оддсов с дро не хватает, сколько фишек нужно
+  // дополнительно выиграть на будущих улицах при попадании, чтобы колл окупился
+  impliedExtraNeeded?: number;
 };
 
 // Спот, где Hero сам ставит/рейзит как агрессор.
 export type HeroBet = {
   street: Street;
   sizePctOfPot: number;
+  sizeClass: BetSizeClass;
   // как часто соперник должен сбрасывать, чтобы блеф окупился сразу, % = риск/(банк_до+риск)
   foldsNeededPct: number;
+  // банк, если соперник коллирует — «сколько соберёшь, если доедешь» при полу-блефе
+  potIfCalled: number;
+  // если у Hero есть дро на этой улице — эквити до следующей улицы, % (бет = полу-блеф)
+  drawEquityPct?: number;
 };
 
 export type HandFacts = {
@@ -208,6 +247,23 @@ const pct = (n: number) => Math.round(n * 100);
 // Прогон банка по действиям. amount у RAISE — абсолютная сумма «to» на улице,
 // у BET/CALL/POST — добавляемая дельта (см. parseActions). ALL_IN однозначим по
 // порогу: сумма больше текущей ставки на улице → это рейз «to amount», иначе колл-дельта.
+// Факт бета/рейза Hero: размер, фолд-эквити, банк при колле и (если есть дро) полу-блеф.
+// risk — добавляемые фишки (для бета весь amt, для рейза дельта); potBefore — банк ДО действия.
+function heroBetFact(snapshot: TableSnapshot, street: Street, risk: number, potBefore: number): HeroBet {
+  const size = pct(risk / potBefore);
+  const fact: HeroBet = {
+    street,
+    sizePctOfPot: size,
+    sizeClass: sizeClass(size),
+    foldsNeededPct: pct(risk / (potBefore + risk)),
+    // если соперник коллирует: он доложит столько же → банк потолстеет на 2×risk
+    potIfCalled: potBefore + 2 * risk,
+  };
+  const draw = heroDraw(snapshot.heroCards, boardUpToStreet(snapshot.board, street));
+  if (draw) fact.drawEquityPct = draw.equityPct;
+  return fact;
+}
+
 function walkPot(snapshot: TableSnapshot, bigBlind: number | null): HandFacts {
   const startingStack = new Map<string, number>();
   for (const s of snapshot.seats) startingStack.set(s.label, s.startingStack);
@@ -275,9 +331,10 @@ function walkPot(snapshot: TableSnapshot, bigBlind: number | null): HandFacts {
         const amt = a.amount ?? 0;
         // Доля банка как рид — постфлоп-понятие; префлоп меряют в BB, не в %банка.
         if (street !== "PREFLOP" && a.actor === "Hero" && pot > 0) {
-          heroBets.push({ street, sizePctOfPot: pct(amt / pot), foldsNeededPct: pct(amt / (pot + amt)) });
+          heroBets.push(heroBetFact(snapshot, street, amt, pot));
         } else if (street !== "PREFLOP" && pot > 0) {
-          bets.push({ street, actor: a.actor, sizePctOfPot: pct(amt / pot) });
+          const size = pct(amt / pot);
+          bets.push({ street, actor: a.actor, sizePctOfPot: size, sizeClass: sizeClass(size) });
         }
         streetCommitted.set(a.actor, committed + amt);
         pot += amt;
@@ -292,9 +349,10 @@ function walkPot(snapshot: TableSnapshot, bigBlind: number | null): HandFacts {
         if (isRaise) {
           const delta = Math.max(raw - committed, 0);
           if (street !== "PREFLOP" && a.actor === "Hero" && pot > 0) {
-            heroBets.push({ street, sizePctOfPot: pct(delta / pot), foldsNeededPct: pct(delta / (pot + delta)) });
+            heroBets.push(heroBetFact(snapshot, street, delta, pot));
           } else if (street !== "PREFLOP" && pot > 0) {
-            bets.push({ street, actor: a.actor, sizePctOfPot: pct(delta / pot) });
+            const size = pct(delta / pot);
+            bets.push({ street, actor: a.actor, sizePctOfPot: size, sizeClass: sizeClass(size) });
           }
           pot += delta;
           addInvested(a.actor, delta);
@@ -322,6 +380,15 @@ function walkPot(snapshot: TableSnapshot, bigBlind: number | null): HandFacts {
           toCall,
           equityToCallPct: pct(toCall / (pot + toCall)),
         };
+        // Обратные оддсы с дро: если прямой эквити не хватает, считаем добор при попадании.
+        const draw = heroDraw(snapshot.heroCards, boardUpToStreet(snapshot.board, street));
+        if (draw) {
+          fact.drawEquityPct = draw.equityPct;
+          const p = draw.equityPct / 100;
+          // нужное p ≥ toCall/(pot + toCall + X) → X = toCall/p − pot − toCall
+          const extra = p > 0 ? toCall / p - pot - toCall : 0;
+          if (extra > 0) fact.impliedExtraNeeded = Math.round(extra);
+        }
         // один спот на улицу — оставляем последний (самый крупный to-call)
         if (last && last.street === street) heroFacing[heroFacing.length - 1] = fact;
         else heroFacing.push(fact);
@@ -391,15 +458,25 @@ export function renderHandFacts(snapshot: TableSnapshot): string {
       `Дро Hero: ${f.draw.kind} — ${f.draw.outs} аутов, эквити до ривера ≈${f.draw.equityPct}% (грубо, по правилу 2/4).`,
     );
 
-  for (const b of f.bets) lines.push(`Ставка соперника (${b.actor}, ${b.street}): ≈${b.sizePctOfPot}% банка.`);
-  for (const b of f.heroBets)
+  for (const b of f.bets)
     lines.push(
-      `Ставка Hero (${b.street}): ≈${b.sizePctOfPot}% банка; как блеф окупается, если соперник сбрасывает чаще ≈${b.foldsNeededPct}%.`,
+      `Ставка соперника (${b.actor}, ${b.street}): ≈${b.sizePctOfPot}% банка (${SIZE_CLASS_RU[b.sizeClass]}).`,
     );
-  for (const h of f.heroFacing)
-    lines.push(
-      `Решение Hero на ${h.street}: доложить ${h.toCall} для колла; прибыльно при эквити от ≈${h.equityToCallPct}% (пот-оддс).`,
-    );
+  for (const b of f.heroBets) {
+    let line = `Ставка Hero (${b.street}): ≈${b.sizePctOfPot}% банка (${SIZE_CLASS_RU[b.sizeClass]}); как блеф окупается, если соперник сбрасывает чаще ≈${b.foldsNeededPct}%.`;
+    if (b.drawEquityPct !== undefined)
+      line += ` У Hero дро (эквити ≈${b.drawEquityPct}%) — это полу-блеф: при колле банк станет ${b.potIfCalled} (потенциал добора, если доедешь).`;
+    lines.push(line);
+  }
+  for (const h of f.heroFacing) {
+    let line = `Решение Hero на ${h.street}: доложить ${h.toCall} для колла; прибыльно при эквити от ≈${h.equityToCallPct}% (пот-оддс).`;
+    if (h.drawEquityPct !== undefined) {
+      if (h.impliedExtraNeeded !== undefined)
+        line += ` У Hero дро (эквити ≈${h.drawEquityPct}%) — прямых пот-оддсов не хватает: колл окупится, только если при попадании доберёшь ещё ≥${h.impliedExtraNeeded} на следующих улицах (обратные оддсы).`;
+      else line += ` У Hero дро (эквити ≈${h.drawEquityPct}%) — прямых пот-оддсов уже достаточно для колла.`;
+    }
+    lines.push(line);
+  }
 
   if (lines.length === 0) return "";
   return ["Числа от парсера (используй как есть; игроку объясняй простыми словами, без терминов):", ...lines].join("\n");
