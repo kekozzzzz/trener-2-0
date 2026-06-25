@@ -7,6 +7,7 @@ import { logoutAction, logoutEverywhereAction, updateNicknameAction } from "@/fe
 import { getSubscriptionState, periodEnd } from "@/features/subscription/access";
 import { cancelAutoRenew, resumeAutoRenew, cancelScheduledPlan } from "@/features/subscription/actions";
 import { getPlan } from "@/config/plans";
+import { isRecurringEnabled } from "@/config/payments";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/page-header";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -22,6 +23,9 @@ export default async function AccountPage() {
   const plan = getPlan(sub.planCode);
   const scheduledPlan = getPlan(sub.subscription?.scheduledPlanCode);
   const isCanceled = sub.subscription?.status === "CANCELED";
+  // Автопродление доступно только когда у магазина ЮKassa включён рекуррент. Пока он
+  // выключен, подписка не продлевается сама — текст и кнопки не должны обещать обратное.
+  const recurring = isRecurringEnabled();
 
   return (
     <main>
@@ -66,11 +70,12 @@ export default async function AccountPage() {
               <div className="space-y-2">
                 <p className="text-body text-foreground">Тариф «{plan.title}»</p>
                 <p className="text-small text-muted-foreground">
-                  {isCanceled ? "Доступ до" : "Продлится"}{" "}
+                  {!recurring || isCanceled ? "Действует до" : "Продлится"}{" "}
                   <span className="font-mono">
                     {periodEnd(sub.subscription).toLocaleDateString("ru-RU")}
                   </span>
-                  {isCanceled && " — автопродление отключено"}
+                  {recurring && isCanceled && " — автопродление отключено"}
+                  {!recurring && " — дальше продлить вручную"}
                 </p>
                 {scheduledPlan && (
                   <p className="text-small text-muted-foreground">
@@ -91,19 +96,20 @@ export default async function AccountPage() {
                 <Link href="/pricing" className={cn(buttonVariants({ variant: "outline" }))}>
                   Сменить тариф
                 </Link>
-                {isCanceled ? (
-                  <form action={resumeAutoRenew}>
-                    <Button type="submit" variant="outline">
-                      Включить автопродление
-                    </Button>
-                  </form>
-                ) : (
-                  <form action={cancelAutoRenew}>
-                    <Button type="submit" variant="outline">
-                      Отключить автопродление
-                    </Button>
-                  </form>
-                )}
+                {recurring &&
+                  (isCanceled ? (
+                    <form action={resumeAutoRenew}>
+                      <Button type="submit" variant="outline">
+                        Включить автопродление
+                      </Button>
+                    </form>
+                  ) : (
+                    <form action={cancelAutoRenew}>
+                      <Button type="submit" variant="outline">
+                        Отключить автопродление
+                      </Button>
+                    </form>
+                  ))}
               </div>
             </div>
           ) : (
