@@ -21,9 +21,14 @@ export type StartCheckoutResult =
   | { ok: false; error: "UNKNOWN_PLAN" | "PROVIDER_ERROR" };
 
 // Создать первый платёж подписки по выбранному тарифу и вернуть ссылку на оплату.
-// savePaymentMethod зависит от isRecurringEnabled(): карта сохраняется для
-// автопродления только если у магазина ЮKassa включён рекуррент (иначе разовый платёж).
-export async function startCheckout(planCode: string): Promise<StartCheckoutResult> {
+// recurring=true — подписка с автопродлением: просим сохранить карту (форма ЮKassa
+// покажет только карту — только её можно «запомнить»). recurring=false — разовая оплата
+// любым способом (СБП/кошелёк/карта), карта не сохраняется, автосписания не будет.
+// Сохранение карты возможно лишь когда у магазина включён рекуррент (isRecurringEnabled).
+export async function startCheckout(
+  planCode: string,
+  recurring: boolean,
+): Promise<StartCheckoutResult> {
   const { playerId } = await requireSession();
 
   const plan = getPlan(planCode);
@@ -43,7 +48,7 @@ export async function startCheckout(planCode: string): Promise<StartCheckoutResu
       money: { amountKopecks, currency: getCurrency() },
       description: `Подписка «${plan.title}» — whygrid`,
       returnUrl: `${getAppBaseUrl()}/account`,
-      savePaymentMethod: isRecurringEnabled(),
+      savePaymentMethod: recurring && isRecurringEnabled(),
       metadata: { playerId, planCode: plan.code },
     });
     return { ok: true, confirmationUrl: checkout.confirmationUrl };

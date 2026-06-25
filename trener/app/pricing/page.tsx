@@ -5,6 +5,7 @@ import { Wordmark } from "@/components/ui/wordmark";
 import { PricingCard } from "@/components/ui/pricing-card";
 import { CheckoutButton } from "@/components/subscription/checkout-button";
 import { getPlans, formatUsd, getPlan } from "@/config/plans";
+import { isRecurringEnabled } from "@/config/payments";
 import { getSession } from "@/features/auth/session";
 import { getSubscriptionState } from "@/features/subscription/access";
 import { cn } from "@/lib/utils";
@@ -43,6 +44,9 @@ export default async function PricingPage() {
   const currentPlan = state?.hasAccess ? state.planCode : null;
   const plans = getPlans();
   const baseBudget = getPlan("basic")?.monthlyBudgetUsd ?? 1;
+  // Автоплатёж сохраняет только карту → форма ЮKassa станет card-only. Поэтому для новой
+  // подписки даём два пути: картой с автопродлением ИЛИ разово любым способом (СБП и др.).
+  const recurringOn = isRecurringEnabled();
 
   return (
     <main>
@@ -88,16 +92,27 @@ export default async function PricingPage() {
                   Текущий тариф
                 </Link>
               );
-            } else {
+            } else if (currentPlan) {
               // Подписчик меняет тариф → switch (апгрейд сразу с зачётом, даунгрейд —
-              // со следующего периода). Без подписки → новая оплата.
+              // со следующего периода).
               cta = (
-                <CheckoutButton
-                  planCode={plan.code}
-                  label={currentPlan ? "Перейти на этот" : "Оформить"}
-                  mode={currentPlan ? "switch" : "new"}
-                />
+                <CheckoutButton planCode={plan.code} label="Перейти на этот" mode="switch" />
               );
+            } else if (recurringOn) {
+              // Новая подписка: два способа оплаты.
+              cta = (
+                <div className="space-y-2">
+                  <CheckoutButton planCode={plan.code} label="Подписка картой" recurring />
+                  <CheckoutButton planCode={plan.code} label="Разовая оплата (СБП и др.)" variant="outline" />
+                  <p className="text-small text-muted-foreground">
+                    Картой — продлевается автоматически каждый месяц. Разовая — любой способ,
+                    без автопродления.
+                  </p>
+                </div>
+              );
+            } else {
+              // Рекуррент выключен — только разовая оплата.
+              cta = <CheckoutButton planCode={plan.code} label="Оформить" />;
             }
 
             return (

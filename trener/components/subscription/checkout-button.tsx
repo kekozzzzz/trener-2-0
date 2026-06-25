@@ -23,10 +23,16 @@ export function CheckoutButton({
   planCode,
   label,
   mode = "new",
+  recurring = false,
+  variant = "default",
 }: {
   planCode: string;
   label: string;
   mode?: Mode;
+  // recurring=true — подписка с автопродлением (сохранение карты); false — разовая оплата
+  // любым способом без автосписания. Для mode="switch" не используется.
+  recurring?: boolean;
+  variant?: "default" | "outline";
 }) {
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
@@ -34,7 +40,8 @@ export function CheckoutButton({
   function onClick() {
     setMessage(null);
     startTransition(async () => {
-      const res = mode === "switch" ? await switchPlan(planCode) : await startCheckout(planCode);
+      const res =
+        mode === "switch" ? await switchPlan(planCode) : await startCheckout(planCode, recurring);
       if (res.ok && "confirmationUrl" in res) {
         // Апгрейд / новая подписка — уводим на оплату ЮKassa.
         window.location.href = res.confirmationUrl;
@@ -56,7 +63,7 @@ export function CheckoutButton({
         type="button"
         onClick={onClick}
         disabled={pending}
-        className={cn(buttonVariants(), "w-full justify-center disabled:opacity-60")}
+        className={cn(buttonVariants({ variant }), "w-full justify-center disabled:opacity-60")}
       >
         {pending ? "Открываем оплату…" : label}
       </button>
