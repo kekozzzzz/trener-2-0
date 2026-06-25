@@ -10,7 +10,7 @@
  * Бьёт в реальную тестовую базу (trener_test).
  */
 
-import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll } from "vitest";
 import { PrismaClient } from "@prisma/client";
 import type { ParsedHand, ParsedTournament } from "@/parser/types";
 import type { RawTask } from "@/infrastructure/queue/types";
@@ -137,5 +137,56 @@ describe("PARSE_TOURNAMENT — основной путь", () => {
 
     const tasks = await db.task.findMany({ where: { type: "GENERATE_HAND_ANALYSIS" } });
     expect(tasks).toHaveLength(10);
+  });
+});
+
+// Модель «грузи сколько угодно, разбор — у одного бесплатного, остальные под замком».
+// При включённом гейте: первый турнир бесплатен (разбор открыт), второй без подписки
+// запирается — метрики сохранены, но НИ ОДНОЙ платной ИИ-задачи (правило №1).
+describe("PARSE_TOURNAMENT — гейт разбора (правило №1)", () => {
+  beforeEach(() => {
+    process.env.SUBSCRIPTION_GATE_ENABLED = "true";
+  });
+  afterEach(() => {
+    delete process.env.SUBSCRIPTION_GATE_ENABLED;
+  });
+
+  it("первый (бесплатный) турнир: разбор открыт, задачи поставлены", async () => {
+    const tournamentId = await createTournament();
+
+    await parseTournamentStep(makeRawTask({ tournamentId, parsed: PARSED }), db);
+
+    const t = await db.tournament.findUnique({ where: { id: tournamentId } });
+    expect(t!.analysisUnlocked).toBe(true);
+
+    const tasks = await db.task.findMany({ where: { type: "GENERATE_HAND_ANALYSIS" } });
+    expect(tasks).toHaveLength(10);
+  });
+
+  it("второй турнир без подписки: заперт — метрики есть, платных задач НЕТ", async () => {
+    // Первый (бесплатный) уже существует и заведомо старше — он и есть бесплатный.
+    await db.tournament.create({
+      data: {
+        playerId: TEST_PLAYER_ID,
+        playedAt: new Date(),
+        status: "PARSED",
+        createdAt: new Date(Date.now() - 100_000),
+      },
+    });
+    const tournamentId = await createTournament(); // второй, новее
+
+    await parseTournamentStep(makeRawTask({ tournamentId, parsed: PARSED }), db);
+
+    const t = await db.tournament.findUnique({ where: { id: tournamentId } });
+    expect(t!.status).toBe("PARSED");
+    expect(t!.analysisUnlocked).toBe(false);
+
+    // Метрики и раздачи сохранены (видны бесплатно)...
+    const hands = await db.hand.findMany({ where: { tournamentId } });
+    expect(hands).toHaveLength(12);
+
+    // ...но ни одной платной ИИ-задачи не порождено.
+    const tasks = await db.task.findMany({ where: { type: "GENERATE_HAND_ANALYSIS" } });
+    expect(tasks).toHaveLength(0);
   });
 });

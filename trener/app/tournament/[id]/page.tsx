@@ -3,8 +3,11 @@ import { Prisma } from "@prisma/client";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { getDialogueRoundsPerHand } from "@/config/dialogue";
 import { requireSession } from "@/features/auth/session";
+import { hasActiveAccess } from "@/features/subscription/access";
+import { bigBlindFromSnapshot } from "@/parser/big-blind";
+import type { TableSnapshot } from "@/parser/types";
+import { unlockTournamentAnalysisAction } from "./actions";
 import { personalizeHero } from "@/lib/hero-name";
 import { AuthNav } from "@/components/auth-nav";
 import { Wordmark } from "@/components/ui/wordmark";
@@ -15,9 +18,9 @@ import { ParsingWaitClient } from "./parsing-wait-client";
 import { MetricsGlossary } from "@/components/metrics/glossary";
 
 const DIALOGUE_STATE_LABEL: Record<string, string> = {
-  QUESTION_ASKED: "вопрос задан",
-  ANSWER_RECEIVED: "обрабатываем",
-  VERDICT_SHOWN: "вердикт готов",
+  QUESTION_ASKED: "в работе",
+  ANSWER_RECEIVED: "в работе",
+  VERDICT_SHOWN: "разбор завершён",
 };
 
 const IMPORTANCE_LABEL: Record<string, string> = {
@@ -85,10 +88,10 @@ export default async function TournamentPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ duplicate?: string }>;
+  searchParams: Promise<{ duplicate?: string; error?: string }>;
 }) {
   const { id } = await params;
-  const { duplicate } = await searchParams;
+  const { duplicate, error } = await searchParams;
   const session = await requireSession();
   const tournament = await prisma.tournament.findUnique({ where: { id } });
 
@@ -132,6 +135,127 @@ export default async function TournamentPage({
     );
   }
 
+  // Запертый турнир (модель «грузи сколько угодно, разбор — у одного бесплатного»):
+  // метрики парсера видны, но платная ИИ-цепочка не запускалась. Показываем метрики и
+  // результаты раздач, а вместо разбора — замок с предложением подписки/кнопкой «Разобрать».
+  if (!tournament.analysisUnlocked) {
+    const vpipLocked = tournament.vpipPercent ? Number(tournament.vpipPercent).toFixed(1) : "—";
+    const handsLocked = tournament.handsCount ?? "—";
+    const lockedHands = await prisma.hand.findMany({
+      where: { tournamentId: id, selectedForCard: true },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, importanceLevel: true, chipResult: true, tableData: true },
+    });
+    const canUnlock = await hasActiveAccess(session.playerId);
+
+    return (
+      <main>
+        <PageHeader />
+        <section className="mx-auto max-w-5xl px-8 py-16">
+          <h1 className="text-h1">{tournament.name ?? "Результаты турнира"}</h1>
+          <p className="mt-2 font-mono text-label uppercase tracking-label text-muted-foreground">
+            {dateFormat.format(tournament.playedAt)}
+            {tournament.room && ` · ${tournament.room}`}
+          </p>
+
+          {error === "LIMIT_REACHED" && (
+            <div className="mt-8 border border-destructive p-4">
+              <p className="text-small text-destructive">
+                Лимит этого периода исчерпан — он обновится с началом нового периода подписки.
+              </p>
+            </div>
+          )}
+          {error === "RATE_LIMITED" && (
+            <div className="mt-8 border border-destructive p-4">
+              <p className="text-small text-destructive">
+                Слишком много разборов за час. Подожди немного и попробуй снова.
+              </p>
+            </div>
+          )}
+
+          <div className="mt-8 grid gap-4 sm:grid-cols-2">
+            <StatCard label="VPIP">
+              <p className="mt-2 font-mono text-h2 text-foreground">{vpipLocked}%</p>
+            </StatCard>
+            <StatCard label="Рук сыграно">
+              <p className="mt-2 font-mono text-h2 text-foreground">{handsLocked}</p>
+            </StatCard>
+          </div>
+
+          <div className="mt-16 border border-primary bg-card p-6">
+            <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
+              Разбор под замком
+            </p>
+            <p className="mt-2 text-body text-foreground">
+              Метрики этого турнира уже посчитаны. Полный разбор — сократовский диалог по
+              ключевым раздачам, разборы ошибок и общая картина — откроется по подписке.
+            </p>
+            {canUnlock ? (
+              <form action={unlockTournamentAnalysisAction} className="mt-4">
+                <input type="hidden" name="tournamentId" value={tournament.id} />
+                <button type="submit" className={cn(buttonVariants())}>
+                  Разобрать этот турнир
+                </button>
+              </form>
+            ) : (
+              <Link href="/pricing" className={cn(buttonVariants(), "mt-4 inline-flex")}>
+                Оформить подписку →
+              </Link>
+            )}
+          </div>
+
+          {lockedHands.length > 0 && (
+            <div className="mt-16">
+              <h2 className="text-h2">Раздачи</h2>
+              <p className="mt-2 text-small text-muted-foreground">
+                Результаты по ключевым раздачам. Разбор откроется после подписки.
+              </p>
+              <div className="mt-8 space-y-4">
+                {lockedHands.map((hand) => {
+                  const sign = hand.chipResult >= 0 ? "+" : "";
+                  const bb = bigBlindFromSnapshot(hand.tableData as unknown as TableSnapshot);
+                  const bbResult = bb ? hand.chipResult / bb : null;
+                  return (
+                    <div
+                      key={hand.id}
+                      className="flex items-center justify-between gap-4 border border-border bg-card p-6"
+                    >
+                      <Badge variant="outline">
+                        {IMPORTANCE_LABEL[hand.importanceLevel] ?? hand.importanceLevel}
+                      </Badge>
+                      <div className="flex flex-col items-end">
+                        <span
+                          className={cn(
+                            "font-mono text-body",
+                            hand.chipResult >= 0 ? "text-primary" : "text-foreground"
+                          )}
+                        >
+                          {bbResult !== null ? `${sign}${bbResult.toFixed(1)} BB` : `${sign}${hand.chipResult}`}
+                        </span>
+                        {bbResult !== null && (
+                          <span className="font-mono text-small text-muted-foreground">
+                            {sign}
+                            {hand.chipResult} фишек
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className="mt-16 border-t border-border pt-8 font-mono text-label uppercase tracking-label">
+            <Link href="/analyze" className="text-muted-foreground transition-colors hover:text-foreground">
+              ← Загрузить ещё
+            </Link>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   const vpip = tournament.vpipPercent ? Number(tournament.vpipPercent).toFixed(1) : "—";
   const hands = tournament.handsCount ?? "—";
 
@@ -151,10 +275,8 @@ export default async function TournamentPage({
       analysis: { not: Prisma.DbNull },
     },
     orderBy: { createdAt: "asc" },
-    select: { id: true, importanceLevel: true, chipResult: true },
+    select: { id: true, importanceLevel: true, chipResult: true, tableData: true },
   });
-
-  const totalRounds = getDialogueRoundsPerHand();
 
   // Обзор турнира (GENERATE_TOURNAMENT_SUMMARY) — может быть ещё не готов (null).
   // overview содержит инлайн-токены ссылок {{h:handId|карты}} (см. renderOverview).
@@ -215,7 +337,6 @@ export default async function TournamentPage({
             <div className="mt-8 space-y-4">
               {handsForDialogue.map((hand, index) => {
                 const dialogue = hand.dialogue!;
-                const progress = dialogue.rounds.length;
                 return (
                   <Link
                     key={hand.id}
@@ -226,16 +347,11 @@ export default async function TournamentPage({
                       <span className="font-mono text-label uppercase tracking-label text-muted-foreground">
                         Раздача {index + 1}
                       </span>
-                      <Badge variant={dialogue.state === "QUESTION_ASKED" ? "default" : "outline"}>
+                      <Badge variant={dialogue.state === "VERDICT_SHOWN" ? "outline" : "default"}>
                         {DIALOGUE_STATE_LABEL[dialogue.state] ?? dialogue.state}
                       </Badge>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <span className="font-mono text-small text-muted-foreground">
-                        раунд {progress}/{totalRounds}
-                      </span>
-                      <ArrowRight className="size-4 text-muted-foreground transition-colors duration-150 ease-out group-hover:text-primary" />
-                    </div>
+                    <ArrowRight className="size-4 text-muted-foreground transition-colors duration-150 ease-out group-hover:text-primary" />
                   </Link>
                 );
               })}
@@ -252,6 +368,8 @@ export default async function TournamentPage({
             <div className="mt-8 space-y-4">
               {simpleHands.map((hand) => {
                 const sign = hand.chipResult >= 0 ? "+" : "";
+                const bb = bigBlindFromSnapshot(hand.tableData as unknown as TableSnapshot);
+                const bbResult = bb ? hand.chipResult / bb : null;
                 return (
                   <Link
                     key={hand.id}
@@ -262,15 +380,22 @@ export default async function TournamentPage({
                       {IMPORTANCE_LABEL[hand.importanceLevel] ?? hand.importanceLevel}
                     </Badge>
                     <div className="flex items-center gap-4">
-                      <span
-                        className={cn(
-                          "font-mono text-body",
-                          hand.chipResult >= 0 ? "text-primary" : "text-foreground"
+                      <div className="flex flex-col items-end">
+                        <span
+                          className={cn(
+                            "font-mono text-body",
+                            hand.chipResult >= 0 ? "text-primary" : "text-foreground"
+                          )}
+                        >
+                          {bbResult !== null ? `${sign}${bbResult.toFixed(1)} BB` : `${sign}${hand.chipResult}`}
+                        </span>
+                        {bbResult !== null && (
+                          <span className="font-mono text-small text-muted-foreground">
+                            {sign}
+                            {hand.chipResult} фишек
+                          </span>
                         )}
-                      >
-                        {sign}
-                        {hand.chipResult}
-                      </span>
+                      </div>
                       <ArrowRight className="size-4 text-muted-foreground transition-colors duration-150 ease-out group-hover:text-primary" />
                     </div>
                   </Link>

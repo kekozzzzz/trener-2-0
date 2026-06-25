@@ -1,8 +1,6 @@
 import { prisma } from "@/infrastructure/db/client";
 import { enqueue } from "@/infrastructure/queue";
 import { parseGGPokerMtt } from "@/parser/ggpoker";
-import { assessAiAccess } from "@/features/usage/budget";
-import { isSubscriptionGateEnabled } from "@/config/plans";
 
 type UploadInput = {
   fileBuffer: Buffer;
@@ -28,13 +26,10 @@ export async function uploadTournament(input: UploadInput): Promise<UploadResult
 
   const { room, externalTournamentId, name, playedAt } = parsed.data;
 
-  // Гейт платного действия: бесплатно только первый турнир; дальше — подписка и её
-  // бюджет (кредитная система). Формат уже проверен выше, поэтому пользователь сначала
-  // узнаёт про неподдерживаемый файл, и только корректный упирается в paywall/стену.
-  if (isSubscriptionGateEnabled()) {
-    const access = await assessAiAccess(prisma, playerId);
-    if (!access.allowed) return { ok: false, error: access.reason };
-  }
+  // Загрузка больше НЕ упирается в стену: грузить можно любой турнир (метрики парсера
+  // бесплатны). Платный гейт переехал на РАЗБОР — решение «разбирать или запереть»
+  // принимает шаг парсинга через assessAiAccess (см. queue/steps/parse-tournament.ts).
+  // Часовой лимит загрузок (checkUploadQuota) остаётся в точке входа страницы.
 
   // Дедупликация: тот же игрок уже загрузил турнир с этим номером с той же площадки.
   // Повтор не создаём — отдаём ссылку на существующий разбор (deletedAt: null — удалённый

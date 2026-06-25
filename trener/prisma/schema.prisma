@@ -129,6 +129,7 @@ model Tournament {
   styleDiagnosis PlayerStyle?     @map("style_diagnosis")
   summary        Json?            @map("summary")  // обзор турнира: { overview } — текст с инлайн-токенами ссылок {{h:handId|карты}}; GENERATE_TOURNAMENT_SUMMARY
   status         TournamentStatus @default(UPLOADED)
+  analysisUnlocked Boolean        @default(true) @map("analysis_unlocked")  // открыт ли разбор (ИИ): первый бесплатный / активная подписка → true; заперт за подпиской → false. Метрики парсера видны всегда.
   deletedAt      DateTime?        @map("deleted_at")  // мягкое удаление (запрет 5)
   createdAt      DateTime         @default(now()) @map("created_at")
   updatedAt      DateTime         @updatedAt @map("updated_at")
