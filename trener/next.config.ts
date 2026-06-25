@@ -23,6 +23,17 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
+  // Старые отдельные юр-страницы свели в одну /legal (UI-пачка 2026-06). Их адреса
+  // успели попасть в индекс Google — редиректим на /legal, чтобы переход из старой
+  // выдачи вёл на страницу, а не на 404, и поисковик консолидировал дубли.
+  async redirects() {
+    return [
+      { source: "/legal/privacy", destination: "/legal", permanent: true },
+      { source: "/legal/oferta", destination: "/legal", permanent: true },
+      { source: "/legal/refund", destination: "/legal", permanent: true },
+      { source: "/legal/requisites", destination: "/legal", permanent: true },
+    ];
+  },
 };
 
 export default nextConfig;
