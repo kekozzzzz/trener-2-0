@@ -38,3 +38,12 @@ export function getYooKassaWebhookIps(): string[] {
     .map((s) => s.trim())
     .filter(Boolean);
 }
+
+// Включён ли рекуррент (сохранение карты для автопродления). По умолчанию ВЫКЛ:
+// возможность автоплатежей у магазина ЮKassa активируется отдельно по запросу
+// (иначе ЮKassa отвечает 403 "store can't make recurring payments"). Пока выключено —
+// оплата разовая, подписка не продлевается сама. Когда ЮKassa включит автоплатежи,
+// поставить PAYMENTS_RECURRING_ENABLED=true в .env (правило 3, без правки кода).
+export function isRecurringEnabled(): boolean {
+  return process.env.PAYMENTS_RECURRING_ENABLED === "true";
+}

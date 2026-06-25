@@ -10,6 +10,7 @@ import { requireSession } from "@/features/auth/session";
 import { getPlan, getCurrency, getSubscriptionPeriodDays, usdToKopecks } from "@/config/plans";
 import { getAppBaseUrl } from "@/config/app";
 import { getPaymentsAdapter } from "@/infrastructure/adapters/payments";
+import { isRecurringEnabled } from "@/config/payments";
 import { getExchangeRateAdapter } from "@/infrastructure/adapters/exchange-rate";
 import { prisma } from "@/infrastructure/db/client";
 import { getSubscriptionState } from "@/features/subscription/access";
@@ -20,7 +21,8 @@ export type StartCheckoutResult =
   | { ok: false; error: "UNKNOWN_PLAN" | "PROVIDER_ERROR" };
 
 // Создать первый платёж подписки по выбранному тарифу и вернуть ссылку на оплату.
-// savePaymentMethod: true — карта сохраняется для автопродления (рекуррент).
+// savePaymentMethod зависит от isRecurringEnabled(): карта сохраняется для
+// автопродления только если у магазина ЮKassa включён рекуррент (иначе разовый платёж).
 export async function startCheckout(planCode: string): Promise<StartCheckoutResult> {
   const { playerId } = await requireSession();
 
@@ -41,7 +43,7 @@ export async function startCheckout(planCode: string): Promise<StartCheckoutResu
       money: { amountKopecks, currency: getCurrency() },
       description: `Подписка «${plan.title}» — whygrid`,
       returnUrl: `${getAppBaseUrl()}/account`,
-      savePaymentMethod: true,
+      savePaymentMethod: isRecurringEnabled(),
       metadata: { playerId, planCode: plan.code },
     });
     return { ok: true, confirmationUrl: checkout.confirmationUrl };
@@ -129,7 +131,7 @@ export async function switchPlan(newPlanCode: string): Promise<SwitchPlanResult>
       money: { amountKopecks: chargeKopecks, currency: getCurrency() },
       description: `Переход на тариф «${newPlan.title}» — whygrid`,
       returnUrl: `${getAppBaseUrl()}/account`,
-      savePaymentMethod: true,
+      savePaymentMethod: isRecurringEnabled(),
       metadata: { playerId, planCode: newPlan.code, intent: "switch" },
     });
     return { ok: true, confirmationUrl: checkout.confirmationUrl };
