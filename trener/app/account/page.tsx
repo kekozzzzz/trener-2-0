@@ -7,7 +7,8 @@ import { getPlayerCharacteristic } from "@/features/profile/queries";
 import { CHARACTERISTIC_RELIABLE_FROM } from "@/config/profile";
 import { logoutAction, logoutEverywhereAction, updateNicknameAction } from "@/features/auth/actions";
 import { getSubscriptionState, periodEnd } from "@/features/subscription/access";
-import { cancelAutoRenew, cancelScheduledPlan } from "@/features/subscription/actions";
+import { cancelScheduledPlan } from "@/features/subscription/actions";
+import { CancelAutoRenewButton } from "@/components/subscription/cancel-autorenew-button";
 import { getPlan } from "@/config/plans";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/page-header";
@@ -111,21 +112,8 @@ export default async function AccountPage() {
                 <Link href="/pricing" className={cn(buttonVariants({ variant: "outline" }))}>
                   Сменить тариф
                 </Link>
-                {hasAutopay && (
-                  <form action={cancelAutoRenew}>
-                    <Button type="submit" variant="outline">
-                      Отключить автопродление
-                    </Button>
-                  </form>
-                )}
               </div>
-              {hasAutopay && (
-                <p className="text-small text-muted-foreground">
-                  Отключение остановит списания и удалит сохранённую карту. Доступ
-                  сохранится до конца оплаченного периода; чтобы продолжить дальше —
-                  оформишь оплату заново.
-                </p>
-              )}
+              {hasAutopay && <CancelAutoRenewButton />}
             </div>
           ) : (
             <div className="mt-4 space-y-4">
