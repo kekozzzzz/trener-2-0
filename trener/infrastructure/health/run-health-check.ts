@@ -6,6 +6,8 @@ import { getHealthCheckTimeoutMs } from "@/config/health";
 
 // Сводка здоровья для внешнего монитора. Наружу отдаём только эти имена и ok/fail:
 // ни секретов, ни бизнес-чисел (эндпоинт публичный). status "down" → роут отдаёт 503.
+// Монитор роняют только КРИТИЧНЫЕ проверки (база + воркер); telegram и claude —
+// справочные (см. вычисление status ниже).
 export type CheckStatus = "ok" | "fail";
 export type HealthChecks = { db: CheckStatus; telegram: CheckStatus; claude: CheckStatus; worker: CheckStatus };
 export type HealthResult = { status: "ok" | "down"; checks: HealthChecks; ts: string };
@@ -53,6 +55,11 @@ export async function runHealthCheck(deps: HealthDeps): Promise<HealthResult> {
   ]);
 
   const checks: HealthChecks = { db, telegram, claude, worker };
-  const status = Object.values(checks).every((c) => c === "ok") ? "ok" : "down";
+  // Внешний монитор отражает «могут ли люди пользоваться сайтом» = база (данные) +
+  // воркер (очередь разгребается). claude и telegram ходят через релей и могут кратко
+  // затупить по сети, не влияя на доступность сайта, — оставляем их в теле как справку,
+  // но они НЕ роняют монитор (за реальными их сбоями следит бот-сторож и очередь),
+  // иначе единичная икота релея даёт ложную тревогу.
+  const status = db === "ok" && worker === "ok" ? "ok" : "down";
   return { status, checks, ts: new Date().toISOString() };
 }

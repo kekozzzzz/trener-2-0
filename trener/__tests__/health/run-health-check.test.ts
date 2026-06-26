@@ -33,15 +33,15 @@ describe("runHealthCheck", () => {
     expect(r.checks).toEqual({ db: "ok", telegram: "ok", claude: "ok", worker: "ok" });
   });
 
-  it("telegram недоступен → status down, telegram fail, остальное ok", async () => {
+  it("telegram недоступен → telegram fail, но status ОСТАЁТСЯ ok (справочная проверка)", async () => {
     const r = await runHealthCheck({ db: db(), notify: notify(down), llm: llm(up) });
-    expect(r.status).toBe("down");
+    expect(r.status).toBe("ok");
     expect(r.checks.telegram).toBe("fail");
     expect(r.checks.db).toBe("ok");
     expect(r.checks.claude).toBe("ok");
   });
 
-  it("claude бросил исключение → claude fail (проверка не роняет остальные)", async () => {
+  it("claude бросил исключение → claude fail, но status ОСТАЁТСЯ ok (справочная проверка)", async () => {
     const r = await runHealthCheck({
       db: db(),
       notify: notify(up),
@@ -49,9 +49,16 @@ describe("runHealthCheck", () => {
         throw new Error("relay down");
       }),
     });
-    expect(r.status).toBe("down");
+    expect(r.status).toBe("ok");
     expect(r.checks.claude).toBe("fail");
     expect(r.checks.telegram).toBe("ok");
+  });
+
+  it("оба справочных канала (telegram+claude) лежат, но база и воркер живы → status ok", async () => {
+    const r = await runHealthCheck({ db: db(), notify: notify(down), llm: llm(down) });
+    expect(r.status).toBe("ok");
+    expect(r.checks.telegram).toBe("fail");
+    expect(r.checks.claude).toBe("fail");
   });
 
   it("очередь зависла (есть просроченные PENDING) → worker fail", async () => {
@@ -76,7 +83,7 @@ describe("runHealthCheck", () => {
         llm: llm(up),
       });
       expect(r.checks.telegram).toBe("fail");
-      expect(r.status).toBe("down");
+      expect(r.status).toBe("ok"); // telegram — справочный, его таймаут не роняет монитор
     } finally {
       if (prev === undefined) delete process.env.HEALTH_CHECK_TIMEOUT_MS;
       else process.env.HEALTH_CHECK_TIMEOUT_MS = prev;
