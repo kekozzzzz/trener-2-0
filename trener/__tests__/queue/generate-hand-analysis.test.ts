@@ -19,6 +19,7 @@ import type { HandImportance, PlayerStyle } from "@/parser/types";
 import type { RawTask } from "@/infrastructure/queue/types";
 import { enqueue, runWorkerOnce } from "@/infrastructure/queue";
 import { generateHandAnalysisStep } from "@/infrastructure/queue/steps/generate-hand-analysis";
+import { splitMarkers } from "@/config/dialogue";
 
 const TEST_PLAYER_ID = "bbbbbbbb-0000-0000-0000-000000000001";
 
@@ -151,9 +152,12 @@ describe("GENERATE_HAND_ANALYSIS — основной путь", () => {
     const analysis = hand!.analysis as { draftVerdict?: string };
     expect(analysis.draftVerdict).toBeTruthy();
 
-    // Диапазонный вопрос (fake возвращает answerMode "range") → метка {{range}}
-    // в начале сохранённого текста: страница по ней покажет сетку 13×13.
-    expect(dialogue!.rounds[0].question.startsWith("{{range}}")).toBe(true);
+    // Диапазонный вопрос (fake возвращает answerMode "range") + метка действия
+    // {{table:N}} от fake — обе метки в начале текста, страница по ним покажет
+    // сетку 13×13 и схему стола. splitMarkers снимает их в любом порядке.
+    const { isRange, tableActionIndex } = splitMarkers(dialogue!.rounds[0].question);
+    expect(isRange).toBe(true);
+    expect(tableActionIndex).not.toBeNull();
   });
 
   it("CARD_READY выставляется только после обработки всех отобранных раздач", async () => {

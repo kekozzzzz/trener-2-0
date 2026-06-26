@@ -4,7 +4,7 @@ import type { StepHandler } from "../types";
 import type { TableSnapshot } from "@/parser/types";
 import type { HandAnalysisRequest } from "@/infrastructure/adapters/llm/types";
 import { getLlmAdapter } from "@/infrastructure/adapters/llm";
-import { applyRangeMarker } from "@/config/dialogue";
+import { applyRangeMarker, applyTableMarker } from "@/config/dialogue";
 import { enqueue } from "../enqueue";
 
 type GenerateHandAnalysisPayload = {
@@ -60,7 +60,10 @@ export const generateHandAnalysisStep: StepHandler = async (task, db) => {
       // Сократовский вопрос (правило 2): для CRITICAL раздач диалог открывается
       // сразу, вердикт остаётся в analysis.draftVerdict до ответа игрока.
       if (hand.importanceLevel === "CRITICAL" && result.question) {
-        const question = applyRangeMarker(result.question, result.answerMode);
+        const question = applyTableMarker(
+          applyRangeMarker(result.question, result.answerMode),
+          result.tableActionIndex,
+        );
         await tx.dialogue.upsert({
           where: { handId },
           create: {

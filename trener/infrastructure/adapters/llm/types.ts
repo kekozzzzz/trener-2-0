@@ -22,6 +22,9 @@ export type HandAnalysisRequest = {
 // STRONG/MEDIUM — note (короткое подтверждение / лёгкая заметка).
 // answerMode "range" — вопрос просит назвать диапазон рук оппонента: игрок
 // отвечает кликами по сетке 13×13, а не текстом (см. config/dialogue.ts).
+// tableActionIndex — номер действия из снимка (точка решения), к которому
+// относится вопрос: страница рисует схему стола на этот момент. Модель лишь
+// указывает номер, числа стола считает парсер.
 export type HandAnalysisResult = {
   played: string;
   optimal: string;
@@ -29,6 +32,7 @@ export type HandAnalysisResult = {
   question?: string;
   draftVerdict?: string;
   answerMode?: "text" | "range";
+  tableActionIndex?: number;
 };
 
 // Один отвеченный раунд сократовского диалога — вопрос системы + ответ игрока.
@@ -53,6 +57,7 @@ export type NextQuestionRequest = {
 export type NextQuestionResult = {
   question: string;
   answerMode?: "text" | "range"; // "range" — ответ сеткой 13×13 (см. HandAnalysisResult)
+  tableActionIndex?: number; // номер действия для схемы стола над вопросом (см. HandAnalysisResult)
 };
 
 // Вход GENERATE_VERDICT — история всех раундов диалога (правило 2: итог

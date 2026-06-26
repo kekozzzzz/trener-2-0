@@ -39,6 +39,66 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ChevronDown, Trash2 } from "lucide-react";
+import { HandTable } from "@/components/poker/hand-table";
+import { RangeGrid } from "@/components/poker/range-grid";
+import { tableStateUpTo } from "@/parser/table-state";
+import type { TableSnapshot } from "@/parser/types";
+
+// Демо-снимок: 8-max, BB=100. HJ пошёл в олл-ин, ход на Hero (CO). После Hero ещё
+// живы BTN, SB, BB. Индекс [5] — пуш HJ (точка решения). Места заняты не все —
+// пустые показываются по размеру стола.
+const pushSnapshot: TableSnapshot = {
+  tableSize: 8,
+  buttonSeat: 6,
+  seats: [
+    { label: "Player 1", position: "EARLY", positionName: "UTG", startingStack: 4100, seatNumber: 1 },
+    { label: "Player 2", position: "EARLY", positionName: "UTG+1", startingStack: 2700, seatNumber: 2 },
+    { label: "Player 3", position: "EARLY", positionName: "LJ", startingStack: 5200, seatNumber: 3 },
+    { label: "Player 4", position: "HJ", startingStack: 2400, seatNumber: 4 },
+    { label: "Hero", position: "CO", startingStack: 2200, seatNumber: 5 },
+    { label: "Player 6", position: "BTN", startingStack: 3100, seatNumber: 6 },
+    { label: "Player 7", position: "SB", startingStack: 1800, seatNumber: 7 },
+    { label: "Player 8", position: "BB", startingStack: 4000, seatNumber: 8 },
+  ],
+  heroCards: ["Ah", "Qd"],
+  board: [],
+  actions: [
+    { street: "PREFLOP", actor: "Player 7", action: "POST_SB", amount: 50 },
+    { street: "PREFLOP", actor: "Player 8", action: "POST_BB", amount: 100 },
+    { street: "PREFLOP", actor: "Player 1", action: "FOLD" },
+    { street: "PREFLOP", actor: "Player 2", action: "FOLD" },
+    { street: "PREFLOP", actor: "Player 3", action: "FOLD" },
+    { street: "PREFLOP", actor: "Player 4", action: "ALL_IN", amount: 2400 },
+  ],
+  potTotal: 0,
+};
+
+// Демо-снимок: 8-max, реально сидят четверо. Флоп K72r, бет Hero (BTN).
+// Пустые места видны. Индекс [8] — бет Hero на флопе (точка решения).
+const flopSnapshot: TableSnapshot = {
+  tableSize: 8,
+  buttonSeat: 6,
+  seats: [
+    { label: "Player 1", position: "SB", startingStack: 3300, seatNumber: 1 },
+    { label: "Player 4", position: "BB", startingStack: 4000, seatNumber: 4 },
+    { label: "Player 5", position: "CO", startingStack: 4000, seatNumber: 5 },
+    { label: "Hero", position: "BTN", startingStack: 4000, seatNumber: 6 },
+  ],
+  heroCards: ["As", "Ks"],
+  board: ["Kd", "7h", "2c", "9s", "3d"],
+  actions: [
+    { street: "PREFLOP", actor: "Player 1", action: "POST_SB", amount: 50 },
+    { street: "PREFLOP", actor: "Player 4", action: "POST_BB", amount: 100 },
+    { street: "PREFLOP", actor: "Player 5", action: "CALL", amount: 100 },
+    { street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 300 },
+    { street: "PREFLOP", actor: "Player 1", action: "FOLD" },
+    { street: "PREFLOP", actor: "Player 4", action: "CALL", amount: 200 },
+    { street: "PREFLOP", actor: "Player 5", action: "CALL", amount: 200 },
+    { street: "FLOP", actor: "Player 4", action: "CHECK" },
+    { street: "FLOP", actor: "Hero", action: "BET", amount: 500 },
+  ],
+  potTotal: 1450,
+};
 
 const palette = [
   { name: "background", hex: "#0E0E0E", role: "Фон страницы" },
@@ -236,6 +296,47 @@ export default function DesignPreviewPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+      </section>
+
+      {/* Стол раздачи */}
+      <section className="space-y-4">
+        <h2 className="text-h2">Стол раздачи</h2>
+        <p className="max-w-2xl text-body text-muted-foreground">
+          Схема стола над вопросом разбора. Точка решения подсвечена акцентом «▸».
+        </p>
+
+        <div className="space-y-2">
+          <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
+            Момент: соперник пошёл в олл-ин (вопрос — какой диапазон под колл пуша)
+          </p>
+          <HandTable state={tableStateUpTo(pushSnapshot, 5)} nick="kekoz" />
+        </div>
+
+        <div className="space-y-2">
+          <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
+            Момент: бет Hero на флопе
+          </p>
+          <HandTable state={tableStateUpTo(flopSnapshot, 8)} nick="kekoz" />
+        </div>
+      </section>
+
+      {/* Сетка диапазонов */}
+      <section className="space-y-4">
+        <h2 className="text-h2">Сетка диапазонов</h2>
+        <p className="max-w-2xl text-body text-muted-foreground">
+          Форма ответа в диалоге: игрок отмечает руки, которые даёт оппоненту. Показана рядом с
+          текстом вопроса, чтобы сверить масштаб.
+        </p>
+
+        <div className="space-y-2">
+          <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
+            Вопрос 2
+          </p>
+          <p className="text-h3 text-foreground">
+            Соперник пошёл в олл-ин с BB. Какой диапазон рук ты ему даёшь под этот пуш?
+          </p>
+          <RangeGrid />
+        </div>
       </section>
 
       {/* Выпадающее меню */}

@@ -14,8 +14,10 @@ export type Position = "BTN" | "SB" | "BB" | "CO" | "HJ" | "EARLY" | "OTHER";
 
 export type Seat = {
   label: string; // "Hero" | "Player <место>"
-  position: Position;
+  position: Position; // коарс-позиция для чартов/стратегии (EARLY — склейка ранних)
+  positionName?: string; // точное имя места для показа: UTG/UTG+1/LJ/HJ/CO/BTN/SB/BB
   startingStack: number;
+  seatNumber?: number; // физический номер места за столом (Seat N из HH)
 };
 
 export type TableSnapshot = {
@@ -24,6 +26,8 @@ export type TableSnapshot = {
   board: string[];
   actions: TableAction[];
   potTotal: number;
+  tableSize?: number; // мест за столом (из «N-max» в заголовке HH) — для схемы стола
+  buttonSeat?: number; // номер места баттона (Seat #N is the button)
 };
 
 export type HandImportance = "CRITICAL" | "STRONG" | "MEDIUM";

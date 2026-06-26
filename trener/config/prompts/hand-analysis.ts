@@ -84,11 +84,13 @@ ${COACH_FRAMEWORK}
 // передаётся LLM в одном и том же текстовом виде на обоих шагах диалога.
 export function renderTableSnapshot(tableSnapshot: TableSnapshot): string {
   const seats = tableSnapshot.seats
-    .map((seat) => `${seat.label} (${seat.position}, стек ${seat.startingStack})`)
+    .map((seat) => `${seat.label} (${seat.positionName ?? seat.position}, стек ${seat.startingStack})`)
     .join("; ");
 
+  // Действия нумеруем [N] — модель этим номером указывает точку решения для схемы
+  // стола (tableActionIndex). Номер ставит код, модель только выбирает строку.
   const actions = tableSnapshot.actions
-    .map((a) => `${a.street} — ${a.actor}: ${a.action}${a.amount != null ? ` ${a.amount}` : ""}`)
+    .map((a, i) => `[${i}] ${a.street} — ${a.actor}: ${a.action}${a.amount != null ? ` ${a.amount}` : ""}`)
     .join("\n");
 
   const facts = renderHandFacts(tableSnapshot);
@@ -110,7 +112,7 @@ function outputSchemaFor(request: HandAnalysisRequest): string {
   "optimal": "альтернативная линия, которая была бы как минимум не хуже (на «ты»)",
   "question": "один сократовский вопрос игроку о его решении на «ты» («почему ты…») — без подсказки правильного ответа",
   "answerMode": "\\"range\\" если вопрос просит назвать диапазон рук оппонента (игрок ответит сеткой), иначе \\"text\\"",
-  "tableStreet": "улица решения, которое разбирает question: \\"PREFLOP\\", \\"FLOP\\", \\"TURN\\" или \\"RIVER\\" — над вопросом покажется схема стола на этот момент (числа считает парсер, ты только называешь улицу)",
+  "tableActionIndex": "номер [N] действия из списка «Действия по улицам» — точка решения, которую разбирает question (последнее действие, которое игрок должен видеть на столе: напр. ставка/олл-ин соперника, на которые Hero отвечает). Над вопросом покажется схема стола на этот момент; числа считает парсер, ты только выбираешь номер",
   "draftVerdict": "черновик разбора для внутреннего использования — игрок его пока не увидит, он появится после ответа на question"
 }`;
   }

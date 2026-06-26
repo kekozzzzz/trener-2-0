@@ -13,6 +13,7 @@ import type {
   VerdictRequest,
   VerdictResult,
 } from "./types";
+import { lastActionIndex } from "@/parser/table-state";
 
 // Детерминированный фейк — без сети и без расходов. Используется в тестах
 // и как дев-фоллбэк, когда ANTHROPIC_API_KEY не задан (config/llm.ts).
@@ -32,6 +33,8 @@ export const fakeLlmAdapter: LlmPort = {
         question: "(фейк) Какие руки ты даёшь оппоненту в этом споте? Отметь их на сетке.",
         draftVerdict: "(фейк) Черновик вердикта — ждёт ответа игрока.",
         answerMode: "range",
+        // В деве показываем схему стола на последнем действии раздачи.
+        tableActionIndex: lastActionIndex(request.tableSnapshot),
       };
     }
 
@@ -46,6 +49,7 @@ export const fakeLlmAdapter: LlmPort = {
     const nextRound = request.history.length + 1;
     return {
       question: `(фейк) Раунд ${nextRound}: и почему ты выбрал именно это?`,
+      tableActionIndex: lastActionIndex(request.tableSnapshot),
     };
   },
 

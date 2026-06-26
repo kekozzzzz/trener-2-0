@@ -114,6 +114,19 @@ describe("снимок раздачи (hands[])", () => {
     const bb = hand.tableSnapshot.seats.find((s) => s.position === "BB");
     expect(bb?.label).toBe("Player 5");
 
+    // Размер стола из «8-max», номер места и точные имена ранних позиций (LJ-стиль).
+    expect(hand.tableSnapshot.tableSize).toBe(8);
+    expect(hand.tableSnapshot.buttonSeat).toBe(3);
+    const byLabel = (l: string) => hand.tableSnapshot.seats.find((s) => s.label === l);
+    // ранние места EARLY (коарс) получают точные имена: UTG, UTG+1, LJ
+    expect(byLabel("Player 6")?.positionName).toBe("UTG");
+    expect(byLabel("Player 7")?.positionName).toBe("UTG+1");
+    expect(byLabel("Player 8")?.positionName).toBe("LJ");
+    // у не-ранних точное имя совпадает с позицией
+    expect(byLabel("Player 6")?.position).toBe("EARLY");
+    expect(byLabel("Player 1")?.positionName).toBe("HJ");
+    expect(hero?.positionName).toBe("SB");
+
     const heroAllIn = hand.tableSnapshot.actions.find(
       (a) => a.actor === "Hero" && a.action === "ALL_IN",
     );

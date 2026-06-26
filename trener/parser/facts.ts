@@ -1,5 +1,6 @@
 import type { Street, TableAction, TableSnapshot } from "./types";
 import { bigBlindFromSnapshot } from "./big-blind";
+import { boardUpToStreet } from "./table-state";
 
 // Дешёвые детерминированные факты раздачи — общая покерная арифметика, которую
 // парсер считает за LLM (правило 1: тренер числа не вычисляет). Всё выводится из
@@ -185,14 +186,8 @@ const SIZE_CLASS_RU: Record<BetSizeClass, string> = {
   OVERBET: "овербет",
 };
 
-// Борд на момент улицы: флоп — первые 3 карты, тёрн — 4, ривер — 5.
-// Нужен, чтобы считать дро/имплайды на улице действия, а не по финальному борду.
-function boardUpToStreet(board: string[], street: Street): string[] {
-  if (street === "FLOP") return board.slice(0, 3);
-  if (street === "TURN") return board.slice(0, 4);
-  if (street === "RIVER") return board.slice(0, 5);
-  return [];
-}
+// Борд на момент улицы (boardUpToStreet) живёт в ./table-state — единый источник
+// для расчёта дро/имплайдов здесь и для визуальной схемы стола в разборе.
 
 // Одна заметная ставка/рейз для тренера: чей размер и доля банка до действия.
 export type BetFact = {

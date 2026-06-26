@@ -46,6 +46,15 @@ function parseAnswerMode(value: unknown): "range" | undefined {
   return value === "range" ? "range" : undefined;
 }
 
+// Номер действия для схемы стола: принимаем неотрицательное целое (число или
+// строку из цифр). Границы проверяет рендер по длине снимка — некорректный номер
+// просто не нарисует стол по этому вопросу.
+function parseTableActionIndex(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isInteger(value) && value >= 0) return value;
+  if (typeof value === "string" && /^\d+$/.test(value)) return parseInt(value, 10);
+  return undefined;
+}
+
 function validate(result: Partial<HandAnalysisResult>, request: HandAnalysisRequest): HandAnalysisResult {
   if (typeof result.played !== "string" || typeof result.optimal !== "string") {
     throw new Error("Claude вернул разбор без обязательных полей played/optimal");
@@ -61,6 +70,7 @@ function validate(result: Partial<HandAnalysisResult>, request: HandAnalysisRequ
       question: result.question,
       draftVerdict: result.draftVerdict,
       answerMode: parseAnswerMode(result.answerMode),
+      tableActionIndex: parseTableActionIndex(result.tableActionIndex),
     };
   }
 
@@ -81,7 +91,11 @@ function validateNextQuestion(result: Partial<NextQuestionResult>): NextQuestion
   if (typeof result.question !== "string") {
     throw new Error("Claude вернул ответ без поля question");
   }
-  return { question: result.question, answerMode: parseAnswerMode(result.answerMode) };
+  return {
+    question: result.question,
+    answerMode: parseAnswerMode(result.answerMode),
+    tableActionIndex: parseTableActionIndex(result.tableActionIndex),
+  };
 }
 
 function validateChatReply(result: Partial<ChatReplyResult>): ChatReplyResult {

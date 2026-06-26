@@ -2,7 +2,7 @@ import type { StepHandler } from "../types";
 import type { TableSnapshot } from "@/parser/types";
 import type { NextQuestionRequest } from "@/infrastructure/adapters/llm/types";
 import { getLlmAdapter } from "@/infrastructure/adapters/llm";
-import { applyRangeMarker } from "@/config/dialogue";
+import { applyRangeMarker, applyTableMarker } from "@/config/dialogue";
 
 type GenerateDialogueQuestionPayload = {
   handId: string;
@@ -83,7 +83,7 @@ export const generateDialogueQuestionStep: StepHandler = async (task, db) => {
       data: {
         dialogueId: dialogue.id,
         roundNumber: roundNumber + 1,
-        question: applyRangeMarker(result.question, result.answerMode),
+        question: applyTableMarker(applyRangeMarker(result.question, result.answerMode), result.tableActionIndex),
       },
     });
 

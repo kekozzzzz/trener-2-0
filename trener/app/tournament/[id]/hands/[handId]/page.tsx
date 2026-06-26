@@ -11,7 +11,9 @@ import { AuthNav } from "@/components/auth-nav";
 import { Wordmark } from "@/components/ui/wordmark";
 import { AnswerForm } from "./answer-form";
 import { RangeAnswerForm } from "./range-answer-form";
-import { splitRangeMarker } from "@/config/dialogue";
+import { splitMarkers } from "@/config/dialogue";
+import { HandTable } from "@/components/poker/hand-table";
+import { tableStateUpTo, lastActionIndex } from "@/parser/table-state";
 import { WaitClient } from "./wait-client";
 import { ChatThread } from "./chat-thread";
 import { ChatForm } from "./chat-form";
@@ -54,8 +56,37 @@ export default async function HandDialoguePage({
   const analysis = hand.analysis as { played?: string; optimal?: string; note?: string } | null;
 
   // Страница доступна, если есть диалог (критическая) ИЛИ готовый разбор простой
-  // раздачи карточки. Иначе раздача не входит в карточку / ещё не разобрана.
-  if (!dialogue && !analysis) notFound();
+  // раздачи карточки. Иначе: турнир заперт (метрики есть, разбор под замком) —
+  // показываем замок со ссылкой на турнир; либо раздача не из карточки → 404.
+  if (!dialogue && !analysis) {
+    if (!hand.tournament.analysisUnlocked) {
+      return (
+        <main>
+          <header className="border-b border-border">
+            <div className="mx-auto flex max-w-5xl items-center justify-between px-8 py-6">
+              <Link href="/">
+                <Wordmark />
+              </Link>
+              <AuthNav />
+            </div>
+          </header>
+          <section className="mx-auto max-w-5xl px-8 py-16">
+            <h1 className="text-h1">Разбор под замком</h1>
+            <p className="mt-4 max-w-2xl text-body text-muted-foreground">
+              Разбор этого турнира ещё не открыт. Метрики доступны на странице турнира — там же
+              можно открыть разбор по подписке.
+            </p>
+            <div className="mt-8 font-mono text-label uppercase tracking-label">
+              <Link href={`/tournament/${id}`} className="text-muted-foreground transition-colors hover:text-foreground">
+                ← К турниру
+              </Link>
+            </div>
+          </section>
+        </main>
+      );
+    }
+    notFound();
+  }
 
   const chat = await getChat(handId);
 
@@ -65,8 +96,17 @@ export default async function HandDialoguePage({
   const played = personalizeHero(dialogue?.hand.played ?? analysis?.played ?? null, nick);
   const chipResult = hand.chipResult;
   const chipSign = chipResult >= 0 ? "+" : "";
-  const bigBlind = bigBlindFromSnapshot(hand.tableData as unknown as TableSnapshot);
+  const snapshot = hand.tableData as unknown as TableSnapshot;
+  const bigBlind = bigBlindFromSnapshot(snapshot);
   const bbResult = bigBlind ? chipResult / bigBlind : null;
+
+  // Стол перед каждым вопросом: новые диалоги несут метку действия {{table:N}} в
+  // тексте вопроса. Если меток нет (старые диалоги / простые раздачи) — показываем
+  // один общий стол на последнем действии раздачи (fallback).
+  const dialogueHasTable = dialogue
+    ? dialogue.rounds.some((round) => splitMarkers(round.question).tableActionIndex !== null)
+    : false;
+  const showFallbackTable = !dialogueHasTable;
 
   return (
     <main>
@@ -84,52 +124,79 @@ export default async function HandDialoguePage({
 
         <div className="mt-8 border border-border bg-card p-6">
           {played && <p className="text-body text-muted-foreground">{played}</p>}
-          <p
-            className={cn(
-              "mt-4 font-mono text-display",
-              chipResult >= 0 ? "text-primary" : "text-foreground"
-            )}
-          >
-            {chipSign}
-            {chipResult}
-          </p>
-          <p className="mt-1 font-mono text-label uppercase tracking-label text-muted-foreground">фишек</p>
-          {bbResult !== null && (
-            <p className="mt-2 font-mono text-small text-muted-foreground">
-              {chipSign}
-              {bbResult.toFixed(1)} BB
-            </p>
+          {bbResult !== null ? (
+            <>
+              <p
+                className={cn(
+                  "mt-4 font-mono text-display",
+                  chipResult >= 0 ? "text-primary" : "text-foreground"
+                )}
+              >
+                {chipSign}
+                {bbResult.toFixed(1)} BB
+              </p>
+              <p className="mt-1 font-mono text-small text-muted-foreground">
+                {chipSign}
+                {chipResult} фишек
+              </p>
+            </>
+          ) : (
+            <>
+              <p
+                className={cn(
+                  "mt-4 font-mono text-display",
+                  chipResult >= 0 ? "text-primary" : "text-foreground"
+                )}
+              >
+                {chipSign}
+                {chipResult}
+              </p>
+              <p className="mt-1 font-mono text-label uppercase tracking-label text-muted-foreground">фишек</p>
+            </>
           )}
         </div>
+
+        {showFallbackTable && (
+          <div className="mt-8">
+            <HandTable state={tableStateUpTo(snapshot, lastActionIndex(snapshot))} nick={nick} />
+          </div>
+        )}
 
         {historyRounds.length > 0 && (
           <div className="mt-16 space-y-8">
             <h2 className="text-h2">История</h2>
-            {historyRounds.map((round) => (
-              <div key={round.roundNumber} className="space-y-2">
-                <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
-                  Вопрос {round.roundNumber}
-                </p>
-                <p className="text-body text-foreground">
-                  {personalizeHero(splitRangeMarker(round.question).text, nick)}
-                </p>
-                <div className="border border-border bg-card p-4">
-                  <p className="text-body text-muted-foreground">{round.answer}</p>
+            {historyRounds.map((round) => {
+              const { tableActionIndex, text } = splitMarkers(round.question);
+              return (
+                <div key={round.roundNumber} className="space-y-2">
+                  <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
+                    Вопрос {round.roundNumber}
+                  </p>
+                  {tableActionIndex !== null && (
+                    <HandTable state={tableStateUpTo(snapshot, tableActionIndex)} nick={nick} />
+                  )}
+                  <p className="text-body text-foreground">{personalizeHero(text, nick)}</p>
+                  <div className="border border-border bg-card p-4">
+                    <p className="text-body text-muted-foreground">{round.answer}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
         {dialogue && (
           <div className="mt-16">
             {dialogue.state === "QUESTION_ASKED" && openRound && (() => {
-              const { isRange, text } = splitRangeMarker(openRound.question);
+              const { isRange, tableActionIndex, text } = splitMarkers(openRound.question);
               return (
                 <div className="space-y-2">
                   <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
                     Вопрос {openRound.roundNumber}
                   </p>
+                  {tableActionIndex !== null && (
+                    <HandTable state={tableStateUpTo(snapshot, tableActionIndex)} nick={nick} />
+                  )}
                   <p className="text-h3 text-foreground">{personalizeHero(text, nick)}</p>
                   {isRange ? (
                     <RangeAnswerForm tournamentId={id} handId={handId} />

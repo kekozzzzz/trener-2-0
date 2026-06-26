@@ -2,6 +2,7 @@ import type { ParsedHandSnapshot, Position, Seat, Street, TableAction, TableSnap
 
 const SEAT_LINE = /^Seat (\d+): (\S+) \(([\d,]+) in chips\)$/gm;
 const BUTTON_SEAT = /Seat #(\d+) is the button/;
+const TABLE_MAX = /(\d+)-max/;
 const HERO_CARDS = /^Dealt to Hero \[(.+?)\]$/m;
 const BOARD_LINE = /^Board \[(.+?)\]$/m;
 const POT_TOTAL = /^Total pot ([\d,]+)/m;
@@ -154,18 +155,31 @@ function positionAtDistance(d: number, n: number): Position {
   return "EARLY";
 }
 
-// Карта место→позиция. Если баттон в раздаче не определён — запасной путь по
-// именам постящих блайнды (как раньше), остальные места — OTHER.
+// Точное имя места для показа (LJ-стиль, решение Артёма 2026-06-26). Совпадает с
+// коарс-позицией везде, кроме склейки EARLY: там по расстоянию d от баттона —
+// перед HJ идёт LJ (лоуджек), раньше — UTG, UTG+1, UTG+2… Имена нужны, чтобы в
+// разборе тренер называл реальную позицию, а не безликое «EARLY».
+function finePositionName(coarse: Position, d: number, n: number): string {
+  if (coarse !== "EARLY") return coarse;
+  if (d === n - 3) return "LJ";
+  return d === 3 ? "UTG" : `UTG+${d - 3}`;
+}
+
+// Карта место→{коарс-позиция (для чартов), точное имя (для показа)}. Если баттон
+// в раздаче не определён — запасной путь по именам постящих блайнды, остальные — OTHER.
+type ResolvedPosition = { coarse: Position; fine: string };
+
 function resolvePositions(
   seatRows: { seatNum: number; name: string }[],
   buttonSeatNum: number | null,
   sbName: string | null,
   bbName: string | null,
-): Map<string, Position> {
-  const byName = new Map<string, Position>();
+): Map<string, ResolvedPosition> {
+  const byName = new Map<string, ResolvedPosition>();
   if (buttonSeatNum == null || !seatRows.some((r) => r.seatNum === buttonSeatNum)) {
     for (const row of seatRows) {
-      byName.set(row.name, row.name === sbName ? "SB" : row.name === bbName ? "BB" : "OTHER");
+      const c: Position = row.name === sbName ? "SB" : row.name === bbName ? "BB" : "OTHER";
+      byName.set(row.name, { coarse: c, fine: c });
     }
     return byName;
   }
@@ -175,7 +189,8 @@ function resolvePositions(
   const buttonIdx = ring.findIndex((r) => r.seatNum === buttonSeatNum);
   ring.forEach((row, i) => {
     const d = (i - buttonIdx + n) % n;
-    byName.set(row.name, positionAtDistance(d, n));
+    const coarse = positionAtDistance(d, n);
+    byName.set(row.name, { coarse, fine: finePositionName(coarse, d, n) });
   });
   return byName;
 }
@@ -194,11 +209,19 @@ export function parseHand(handText: string): ParsedHandSnapshot {
 
   const positionByName = resolvePositions(seatRows, buttonSeatNum, sbName, bbName);
 
-  const seats: Seat[] = seatRows.map((row) => ({
-    label: nameToLabel.get(row.name)!,
-    position: positionByName.get(row.name) ?? "OTHER",
-    startingStack: row.stack,
-  }));
+  const seats: Seat[] = seatRows.map((row) => {
+    const resolved = positionByName.get(row.name);
+    return {
+      label: nameToLabel.get(row.name)!,
+      position: resolved?.coarse ?? "OTHER",
+      positionName: resolved?.fine ?? "OTHER",
+      startingStack: row.stack,
+      seatNumber: row.seatNum,
+    };
+  });
+
+  const tableMaxMatch = TABLE_MAX.exec(handText);
+  const tableSize = tableMaxMatch ? parseInt(tableMaxMatch[1], 10) : undefined;
 
   const heroCardsMatch = HERO_CARDS.exec(handText);
   const heroCards = heroCardsMatch ? heroCardsMatch[1].split(" ") : [];
@@ -215,6 +238,8 @@ export function parseHand(handText: string): ParsedHandSnapshot {
     board,
     actions: parseActions(handText, nameToLabel),
     potTotal,
+    tableSize,
+    buttonSeat: buttonSeatNum ?? undefined,
   };
 
   return { chipResult: computeHeroChipResult(handText), tableSnapshot };
