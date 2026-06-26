@@ -62,7 +62,7 @@ export function RangeGrid({ onChange }: { onChange?: (codes: string[]) => void }
   const percent = percentOf(selected);
 
   return (
-    <div className="space-y-3" onPointerUp={endPaint} onPointerLeave={endPaint}>
+    <div className="max-w-[400px] space-y-3" onPointerUp={endPaint} onPointerLeave={endPaint}>
       <div
         className="grid touch-none select-none gap-px"
         style={{ gridTemplateColumns: `repeat(${SIZE}, minmax(0, 1fr))` }}

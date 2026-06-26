@@ -55,10 +55,16 @@ export function WaitClient({ handId }: { handId: string }) {
         Ответ принят, готовим следующий шаг
         <LoadingDots />
       </p>
-      <Button variant="outline" onClick={triggerWorker} disabled={running}>
-        Запустить воркер
-      </Button>
-      {workerError && <span className="text-small text-destructive">{workerError}</span>}
+      {/* Ручной «пинок» очереди — только для локальной разработки, где нет
+          постоянного воркера. На проде воркер крутится сам, кнопка не нужна. */}
+      {process.env.NODE_ENV !== "production" && (
+        <>
+          <Button variant="outline" onClick={triggerWorker} disabled={running}>
+            Запустить воркер
+          </Button>
+          {workerError && <span className="text-small text-destructive">{workerError}</span>}
+        </>
+      )}
     </div>
   );
 }
