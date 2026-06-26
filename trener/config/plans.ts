@@ -87,6 +87,14 @@ export function getSubscriptionPeriodDays(): number {
   return PERIOD_DAYS;
 }
 
+// За сколько дней до конца оплаченного периода слать напоминание о скором
+// списании/истечении. Бизнес-конфиг (правило 3) — переопределяемо из .env.
+const RENEWAL_REMINDER_LEAD_DAYS = 3;
+export function getRenewalReminderLeadDays(): number {
+  const fromEnv = Number(process.env.RENEWAL_REMINDER_LEAD_DAYS);
+  return Number.isFinite(fromEnv) && fromEnv > 0 ? fromEnv : RENEWAL_REMINDER_LEAD_DAYS;
+}
+
 export function getFreeTournamentLimit(): number {
   return FREE_TOURNAMENT_LIMIT;
 }

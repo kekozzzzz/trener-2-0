@@ -80,6 +80,9 @@ beforeEach(async () => {
   await expect(
     registerAction(initialState, formData({ email: EMAIL, password: ORIG, passwordConfirm: ORIG, terms: "on" }))
   ).rejects.toThrow("REDIRECT:/");
+  // Регистрация теперь шлёт приветственное письмо — очищаем буфер после неё,
+  // чтобы тесты считали только письма сброса.
+  sentEmails.length = 0;
 });
 
 afterAll(async () => {

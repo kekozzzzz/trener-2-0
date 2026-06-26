@@ -10,7 +10,9 @@
 
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/infrastructure/db/client";
-import { getSubscriptionPeriodDays, isPlanCode } from "@/config/plans";
+import { getSubscriptionPeriodDays, isPlanCode, getPlan } from "@/config/plans";
+import { safeSendEmail } from "@/infrastructure/adapters/email";
+import { buildPaymentSuccessEmail } from "./subscription-emails";
 import type { ProviderPayment } from "@/infrastructure/adapters/payments";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -43,8 +45,14 @@ export async function applySucceededPayment(payment: ProviderPayment): Promise<A
   const periodMs = getSubscriptionPeriodDays() * DAY_MS;
   const paidAt = payment.capturedAt ?? new Date();
 
+  // Данные письма-квитанции собираем ВНУТРИ транзакции (последним шагом, после
+  // успешной проводки) и ВОЗВРАЩАЕМ из неё, а отправляем ПОСЛЕ коммита: иначе при
+  // откате (P2002 — дубль вебхука) ушло бы письмо о неприменённом платеже. null →
+  // не шлём (нет email у анонимизированного аккаунта).
+  type Receipt = { to: string; planTitle: string; activeUntil: Date; amountKopecks: number };
+
   try {
-    return await prisma.$transaction(async (tx) => {
+    const receipt = await prisma.$transaction(async (tx): Promise<Receipt | null> => {
       const existing = await tx.subscription.findUnique({ where: { playerId } });
 
       // Продление активной подписки (оплата ДО конца текущего периода): новый
@@ -90,6 +98,9 @@ export async function applySucceededPayment(payment: ProviderPayment): Promise<A
             // Сохранённый метод обновляем только если пришёл новый (первая оплата
             // его отдаёт; рекуррентное списание — нет, оставляем прежний).
             paymentMethodId: payment.paymentMethodId ?? existing.paymentMethodId,
+            // Период сдвинулся вперёд → сбрасываем отметку напоминания, чтобы для нового
+            // периода оно сработало снова. При switch (окно не трогаем) — оставляем как есть.
+            ...(keepWindow ? {} : { renewalReminderSentAt: null }),
             deletedAt: null,
           },
         });
@@ -126,8 +137,25 @@ export async function applySucceededPayment(payment: ProviderPayment): Promise<A
         },
       });
 
-      return "applied" as const;
+      // Письмо-квитанцию готовим ТОЛЬКО после успешной проводки (последним шагом),
+      // чтобы дубль (P2002 выше) откатил транзакцию вместе с этим возвратом.
+      const player = await tx.player.findUnique({ where: { id: playerId }, select: { email: true } });
+      if (!player?.email) return null;
+      return {
+        to: player.email,
+        planTitle: getPlan(planCode)?.title ?? planCode,
+        activeUntil: nextPaymentAt,
+        amountKopecks: payment.money.amountKopecks,
+      };
     });
+
+    // Отправка вне транзакции: коммит уже прошёл, сбой письма не откатит оплату.
+    if (receipt) {
+      await safeSendEmail(
+        buildPaymentSuccessEmail(receipt.to, receipt.planTitle, receipt.activeUntil, receipt.amountKopecks),
+      );
+    }
+    return "applied";
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
       return "duplicate";

@@ -12,6 +12,7 @@ import {
   buildResetLink,
   buildResetEmail,
 } from "./password-reset";
+import { buildWelcomeEmail, buildPasswordChangedEmail } from "./auth-emails";
 import { safeSendEmail } from "@/infrastructure/adapters/email";
 import {
   isAuthRateLimitEnabled,
@@ -80,6 +81,9 @@ export async function registerAction(
   });
 
   if (limited) recordHit(registerIpKey, getRegisterWindowMs());
+  // Мягкое приветствие: письмо вторично, доступ не блокирует. Шлём до createSession
+  // (он редиректит и прервёт выполнение), ошибку доставки safeSendEmail глушит.
+  await safeSendEmail(buildWelcomeEmail(email));
   await createSession(player.id);
   redirect("/");
 }
@@ -170,6 +174,9 @@ export async function changePasswordAction(
     data: { passwordHash: newHash, passwordChangedAt: now, sessionsValidFrom: now },
   });
 
+  // Уведомление безопасности — при уведённом доступе человек заметит чужую смену.
+  if (player?.email) await safeSendEmail(buildPasswordChangedEmail(player.email, now));
+
   // Текущему устройству выдаём свежую сессию — сменивший пароль остаётся в системе,
   // слетают только остальные. iat новой куки > sessionsValidFrom, поэтому она валидна.
   await createSession(session.playerId);
@@ -252,7 +259,7 @@ export async function resetPasswordAction(
   // Аккаунт мог быть закрыт (анонимизирован) после запроса — такой не восстанавливаем.
   const player = await prisma.player.findFirst({
     where: { id: row.playerId, closedAt: null },
-    select: { id: true },
+    select: { id: true, email: true },
   });
   if (!player) return { error: INVALID };
 
@@ -270,6 +277,9 @@ export async function resetPasswordAction(
       data: { usedAt: now },
     }),
   ]);
+
+  // Уведомление безопасности (после коммита, до редиректа — redirect бросает исключение).
+  if (player.email) await safeSendEmail(buildPasswordChangedEmail(player.email, now));
 
   redirect("/login?reset=1");
 }
