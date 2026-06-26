@@ -32,6 +32,19 @@ export function getTelegramProxySecret(): string {
   return process.env.TELEGRAM_PROXY_SECRET ?? "";
 }
 
+// Канал для автопостинга (@whygrid или числовой -100…). Пусто — постинг отключён.
+// Бот должен быть админом канала с правом публикации (plans/2026-06-26-…-бот-постинг.md).
+export function getTelegramChannelId(): string {
+  return process.env.TELEGRAM_CHANNEL_ID ?? "";
+}
+
+// Секрет webhook'а Telegram: бот шлёт его в заголовке X-Telegram-Bot-Api-Secret-Token
+// при каждом обновлении; маршрут принимает апдейт, только если секрет совпал. Пусто —
+// приём входящих не настроен (webhook не регистрируем). Хранить в .env, не в git.
+export function getTelegramWebhookSecret(): string {
+  return process.env.TELEGRAM_WEBHOOK_SECRET ?? "";
+}
+
 // Бот считается настроенным, только когда есть и токен, и адрес администратора.
 // Иначе выбирается noop-адаптер — продукт работает без уведомлений (они вторичны).
 export function isNotifyConfigured(): boolean {
