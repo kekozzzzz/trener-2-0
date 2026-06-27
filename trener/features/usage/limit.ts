@@ -14,6 +14,8 @@ import {
   getUploadWindowMs,
   getLlmMessageMaxPerHour,
   getLlmMessageWindowMs,
+  getTranscribeMaxPerHour,
+  getTranscribeWindowMs,
 } from "@/config/usage-limits";
 
 export type QuotaDecision = { ok: true } | { ok: false; retryAfterMs: number };
@@ -48,4 +50,11 @@ export function checkUploadQuota(playerId: string): QuotaDecision {
 export function checkLlmMessageQuota(playerId: string): QuotaDecision {
   if (!isUsageLimitEnabled()) return { ok: true };
   return consumeQuota(`llm-msg:${playerId}`, getLlmMessageMaxPerHour(), getLlmMessageWindowMs());
+}
+
+// Квота на распознавание речи (надиктовки в /api/stt). Отдельный счётчик: путь не
+// зовёт Claude, у него свой потолок.
+export function checkTranscribeQuota(playerId: string): QuotaDecision {
+  if (!isUsageLimitEnabled()) return { ok: true };
+  return consumeQuota(`stt:${playerId}`, getTranscribeMaxPerHour(), getTranscribeWindowMs());
 }

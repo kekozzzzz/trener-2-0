@@ -16,6 +16,11 @@ const DEFAULT_UPLOAD_MAX_PER_HOUR = 15;
 const DEFAULT_UPLOAD_WINDOW_MS = 60 * 60 * 1000; // 1 час
 const DEFAULT_LLM_MESSAGE_MAX_PER_HOUR = 120;
 const DEFAULT_LLM_MESSAGE_WINDOW_MS = 60 * 60 * 1000; // 1 час
+// Распознавание речи дешевле вызова Claude, но тоже платное и зовётся напрямую
+// эндпоинтом — режем шторм надиктовок. Потолок выше, чем у сообщений: одна реплика
+// может состоять из нескольких надиктованных кусков.
+const DEFAULT_TRANSCRIBE_MAX_PER_HOUR = 200;
+const DEFAULT_TRANSCRIBE_WINDOW_MS = 60 * 60 * 1000; // 1 час
 
 function intFromEnv(raw: string | undefined, fallback: number): number {
   const parsed = raw ? parseInt(raw, 10) : NaN;
@@ -39,6 +44,15 @@ export function getLlmMessageMaxPerHour(): number {
 
 export function getLlmMessageWindowMs(): number {
   return intFromEnv(process.env.USAGE_LLM_MESSAGE_WINDOW_MS, DEFAULT_LLM_MESSAGE_WINDOW_MS);
+}
+
+// Сколько надиктовок (запросов к /api/stt) один игрок может сделать за окно.
+export function getTranscribeMaxPerHour(): number {
+  return intFromEnv(process.env.USAGE_TRANSCRIBE_MAX_PER_HOUR, DEFAULT_TRANSCRIBE_MAX_PER_HOUR);
+}
+
+export function getTranscribeWindowMs(): number {
+  return intFromEnv(process.env.USAGE_TRANSCRIBE_WINDOW_MS, DEFAULT_TRANSCRIBE_WINDOW_MS);
 }
 
 // Лимитер считает в памяти процесса. В тестах (vitest) выключен по той же причине,
