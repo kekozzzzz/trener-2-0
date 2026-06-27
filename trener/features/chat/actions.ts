@@ -1,5 +1,5 @@
 import { prisma } from "@/infrastructure/db/client";
-import { enqueue } from "@/infrastructure/queue";
+import { enqueue, kickWorker } from "@/infrastructure/queue";
 import { getChatMessageMaxLength } from "@/config/chat";
 import { assessAiAccess } from "@/features/usage/budget";
 import { isSubscriptionGateEnabled } from "@/config/plans";
@@ -68,6 +68,9 @@ export async function sendChatMessage(input: SendChatMessageInput): Promise<Send
     });
     await enqueue(tx, { type: "GENERATE_CHAT_REPLY", payload: { handId: input.handId } });
   });
+
+  // Будим воркер сразу — ответ в чате считается мгновенно, без ≤15с ожидания крона.
+  void kickWorker(prisma);
 
   return { ok: true };
 }

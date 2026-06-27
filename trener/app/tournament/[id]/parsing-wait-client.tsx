@@ -30,7 +30,7 @@ export function ParsingWaitClient({ tournamentId }: { tournamentId: string }) {
   }, [tournamentId, router]);
 
   useEffect(() => {
-    const pollId = setInterval(poll, 3000);
+    const pollId = setInterval(poll, 1500);
     return () => clearInterval(pollId);
   }, [poll]);
 

@@ -15,6 +15,24 @@ const RETRY_DELAY_BASE_MS = 30_000;
 const STUCK_PROCESSING_TIMEOUT_MS =
   Number(process.env.QUEUE_STUCK_TIMEOUT_MS) || 10 * 60_000;
 
+// Разгребает очередь до конца, гоняя `concurrency` воркеров параллельно. Каждый
+// крутит runWorkerOnce, пока тот возвращает задачи. Параллельность безопасна:
+// claimTask берёт задачу через FOR UPDATE SKIP LOCKED, так что два воркера не
+// возьмут одну и ту же. Это и есть ускорение турнира: ~8 разборов раздач считаются
+// разом, а не по одному. Возвращает суммарное число обработанных задач.
+export async function drainQueue(db: PrismaClient, concurrency: number): Promise<number> {
+  let total = 0;
+  const lanes = Array.from({ length: Math.max(1, concurrency) }, async () => {
+    let result;
+    do {
+      result = await runWorkerOnce(db);
+      total += result.tasksProcessed;
+    } while (result.tasksProcessed > 0);
+  });
+  await Promise.all(lanes);
+  return total;
+}
+
 export async function runWorkerOnce(db: PrismaClient): Promise<WorkerResult> {
   const task = await claimTask(db);
   if (!task) return { tasksProcessed: 0 };

@@ -1,6 +1,6 @@
 import type { DialogueState } from "@prisma/client";
 import { prisma } from "@/infrastructure/db/client";
-import { enqueue } from "@/infrastructure/queue";
+import { enqueue, kickWorker } from "@/infrastructure/queue";
 import { getDialogueRoundsPerHand, getDialogueAnswerMaxLength } from "@/config/dialogue";
 import { assessAiAccess } from "@/features/usage/budget";
 import { isSubscriptionGateEnabled } from "@/config/plans";
@@ -54,28 +54,33 @@ export async function submitAnswer(input: SubmitAnswerInput): Promise<SubmitAnsw
   const currentRound = dialogue.rounds[0];
   const isLastRound = currentRound.roundNumber >= getDialogueRoundsPerHand();
 
-  await prisma.$transaction(async (tx) => {
+  const enqueued = await prisma.$transaction(async (tx) => {
     const updated = await tx.dialogue.updateMany({
       where: { handId: input.handId, state: "QUESTION_ASKED" },
       data: { state: "ANSWER_RECEIVED" },
     });
 
-    if (updated.count > 0) {
-      await tx.dialogueRound.update({
-        where: { id: currentRound.id },
-        data: { answer },
-      });
+    if (updated.count === 0) return false;
 
-      if (isLastRound) {
-        await enqueue(tx, { type: "GENERATE_VERDICT", payload: { handId: input.handId } });
-      } else {
-        await enqueue(tx, {
-          type: "GENERATE_DIALOGUE_QUESTION",
-          payload: { handId: input.handId, roundNumber: currentRound.roundNumber },
-        });
-      }
+    await tx.dialogueRound.update({
+      where: { id: currentRound.id },
+      data: { answer },
+    });
+
+    if (isLastRound) {
+      await enqueue(tx, { type: "GENERATE_VERDICT", payload: { handId: input.handId } });
+    } else {
+      await enqueue(tx, {
+        type: "GENERATE_DIALOGUE_QUESTION",
+        payload: { handId: input.handId, roundNumber: currentRound.roundNumber },
+      });
     }
+    return true;
   });
+
+  // Будим воркер сразу после постановки задачи — следующий вопрос/вердикт считается
+  // мгновенно, без ≤15с ожидания крона. Фоново: не держим ответ игрока.
+  if (enqueued) void kickWorker(prisma);
 
   return { ok: true, state: "ANSWER_RECEIVED" };
 }

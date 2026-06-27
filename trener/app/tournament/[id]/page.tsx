@@ -15,7 +15,9 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ParsingWaitClient } from "./parsing-wait-client";
+import { LiveRefresh } from "./live-refresh";
 import { MetricsGlossary } from "@/components/metrics/glossary";
+import { LoadingDots } from "@/components/ui/loading-dots";
 
 const DIALOGUE_STATE_LABEL: Record<string, string> = {
   QUESTION_ASKED: "в работе",
@@ -289,10 +291,17 @@ export default async function TournamentPage({
   });
   const nick = me?.nickname ?? null;
 
+  // Турнир ещё досчитывается, пока не готова общая картина (она собирается последней,
+  // из уже разобранных раздач). Пока идёт — держим живое обновление и плейсхолдеры,
+  // чтобы раздачи и картина всплывали сами, без ручного обновления страницы.
+  const processing = tournament.status !== "CARD_READY" || !summary?.overview;
+
   return (
     <main>
       <PageHeader />
       <section className="mx-auto max-w-5xl px-8 py-16">
+        {processing && <LiveRefresh tournamentId={id} />}
+
         {duplicate && (
           <div className="mb-8 border border-border bg-card p-4">
             <p className="text-small text-muted-foreground">
@@ -307,7 +316,22 @@ export default async function TournamentPage({
           {tournament.room && ` · ${tournament.room}`}
         </p>
 
-        <div className="mt-8 flex items-center justify-between gap-4">
+        {/* Общая картина — наверху. Готова → показываем; ещё собирается → плейсхолдер. */}
+        <div className="mt-16">
+          <h2 className="text-h2">Общая картина</h2>
+          {summary?.overview ? (
+            <p className="mt-4 max-w-3xl text-body text-foreground">
+              {renderOverview(summary.overview, id, nick)}
+            </p>
+          ) : (
+            <p className="mt-4 flex items-center gap-2 text-body text-muted-foreground">
+              Собираем общую картину турнира
+              <LoadingDots />
+            </p>
+          )}
+        </div>
+
+        <div className="mt-16 flex items-center justify-between gap-4">
           <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
             Метрики
           </p>
@@ -322,18 +346,13 @@ export default async function TournamentPage({
           </StatCard>
         </div>
 
-        {summary?.overview && (
-          <div className="mt-16">
-            <h2 className="text-h2">Общая картина</h2>
-            <p className="mt-4 max-w-3xl text-body text-foreground">
-              {renderOverview(summary.overview, id, nick)}
-            </p>
-          </div>
-        )}
-
         {handsForDialogue.length > 0 && (
           <div className="mt-16">
-            <h2 className="text-h2">Раздачи для разбора</h2>
+            <h2 className="text-h2">Критические раздачи</h2>
+            <p className="mt-2 text-small text-muted-foreground">
+              Парсер выбрал самые решающие раздачи турнира — по ним тренер сам ведёт разбор
+              и задаёт вопрос «почему».
+            </p>
             <div className="mt-8 space-y-4">
               {handsForDialogue.map((hand, index) => {
                 const dialogue = hand.dialogue!;
@@ -361,9 +380,9 @@ export default async function TournamentPage({
 
         {simpleHands.length > 0 && (
           <div className="mt-16">
-            <h2 className="text-h2">Остальные раздачи</h2>
+            <h2 className="text-h2">Сильные и средние раздачи</h2>
             <p className="mt-2 text-small text-muted-foreground">
-              Загляни в любую и спроси, если по ней есть вопрос.
+              Тоже заметные руки — разбор по ним уже готов. Зайди в любую и спроси, если есть вопрос.
             </p>
             <div className="mt-8 space-y-4">
               {simpleHands.map((hand) => {
@@ -403,6 +422,13 @@ export default async function TournamentPage({
               })}
             </div>
           </div>
+        )}
+
+        {processing && handsForDialogue.length === 0 && simpleHands.length === 0 && (
+          <p className="mt-16 flex items-center gap-2 text-body text-muted-foreground">
+            Разбираем раздачи турнира
+            <LoadingDots />
+          </p>
         )}
 
         <div className="mt-16 border-t border-border pt-8 font-mono text-label uppercase tracking-label">

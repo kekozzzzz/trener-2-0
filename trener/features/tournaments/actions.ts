@@ -1,5 +1,5 @@
 import { prisma } from "@/infrastructure/db/client";
-import { enqueue } from "@/infrastructure/queue";
+import { enqueue, kickWorker } from "@/infrastructure/queue";
 import { parseGGPokerMtt } from "@/parser/ggpoker";
 
 type UploadInput = {
@@ -62,6 +62,10 @@ export async function uploadTournament(input: UploadInput): Promise<UploadResult
 
     return t;
   });
+
+  // Будим воркер сразу — парсинг и разбор стартуют мгновенно, а не через ≤15с крона.
+  // Фоново: не держим ответ загрузки, пока разгребается очередь.
+  void kickWorker(prisma);
 
   return { ok: true, tournamentId: tournament.id };
 }
