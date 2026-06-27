@@ -6,7 +6,7 @@
  *     переводит в VERDICT_SHOWN.
  *  2. Идемпотентность: повторный вызов после VERDICT_SHOWN не переписывает verdict.
  *  3. Правило 2: state=QUESTION_ASKED (ответа нет) — бросает ошибку, verdict не пишется.
- *  4. Правило 2: последний раунд диалога ещё не достигнут — бросает ошибку.
+ *  4. Досрочное завершение: вердикт на раннем раунде (< потолка) проходит — длину задаёт ИИ.
  *  5. Без draftVerdict в analysis — понятная ошибка (GENERATE_HAND_ANALYSIS должен идти раньше).
  *
  * Бьёт в реальную тестовую базу (trener_test).
@@ -167,7 +167,10 @@ describe("GENERATE_VERDICT", () => {
     await expect(generateVerdictStep(makeRawTask({ handId }), db)).rejects.toThrow(/draftVerdict/);
   });
 
-  it("правило 2: последний раунд диалога ещё не достигнут — бросает ошибку, verdict не пишется", async () => {
+  it("досрочное завершение: вердикт на раннем раунде (< потолка) проходит — длину задаёт ИИ", async () => {
+    // Решение «диалог исчерпан» принимает шаг вопроса (флаг complete), а вердикт
+    // ставится легитимно на любом отвеченном раунде. Здесь раунд 1 при потолке 3 —
+    // это не нарушение, а нормальный досрочный финал.
     const original = process.env.DIALOGUE_ROUNDS_PER_HAND;
     process.env.DIALOGUE_ROUNDS_PER_HAND = "3";
     try {
@@ -175,10 +178,11 @@ describe("GENERATE_VERDICT", () => {
       const handId = await createHand(tournamentId);
       await createDialogue(handId, { state: "ANSWER_RECEIVED", roundNumber: 1 });
 
-      await expect(generateVerdictStep(makeRawTask({ handId }), db)).rejects.toThrow(/правила 2/);
+      await generateVerdictStep(makeRawTask({ handId }), db);
 
       const dialogue = await db.dialogue.findUnique({ where: { handId } });
-      expect(dialogue!.verdict).toBeNull();
+      expect(dialogue!.state).toBe("VERDICT_SHOWN");
+      expect(dialogue!.verdict).toBeTruthy();
     } finally {
       process.env.DIALOGUE_ROUNDS_PER_HAND = original;
     }

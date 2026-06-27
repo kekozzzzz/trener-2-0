@@ -88,11 +88,14 @@ function validateVerdict(result: Partial<VerdictResult>): VerdictResult {
 }
 
 function validateNextQuestion(result: Partial<NextQuestionResult>): NextQuestionResult {
-  if (typeof result.question !== "string") {
+  const complete = result.complete === true;
+  // При complete=true вопрос не нужен (диалог завершён) — поле может отсутствовать.
+  if (!complete && typeof result.question !== "string") {
     throw new Error("Claude вернул ответ без поля question");
   }
   return {
-    question: result.question,
+    complete,
+    question: typeof result.question === "string" ? result.question : "",
     answerMode: parseAnswerMode(result.answerMode),
     tableActionIndex: parseTableActionIndex(result.tableActionIndex),
   };

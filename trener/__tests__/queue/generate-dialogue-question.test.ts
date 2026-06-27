@@ -4,6 +4,7 @@
  * Покрывают:
  *  1. ANSWER_RECEIVED + draftVerdict, раунд < DIALOGUE_ROUNDS_PER_HAND — создаёт следующий
  *     раунд с вопросом, переводит диалог в QUESTION_ASKED.
+ *  1b. ИИ решил «диалог исчерпан» (complete) — раунд не создаётся, ставится GENERATE_VERDICT.
  *  2. Идемпотентность: следующий раунд уже создан — платный вызов пропускается.
  *  3. Правило 2: state=QUESTION_ASKED (ответа на текущий раунд нет) — бросает ошибку.
  *  4. Без draftVerdict в analysis — понятная ошибка (GENERATE_HAND_ANALYSIS должен идти раньше).
@@ -125,6 +126,13 @@ afterAll(async () => {
   process.env.DIALOGUE_ROUNDS_PER_HAND = originalRoundsPerHand;
 });
 
+// Фильтруем по handId — тестовая БД общая с другими файлами, глобальную чистку
+// задач делать нельзя (сотрёт задачу, которую в этот момент берёт чужой воркер).
+async function findVerdictTasks(handId: string) {
+  const tasks = await db.task.findMany({ where: { type: "GENERATE_VERDICT" } });
+  return tasks.filter((task) => (task.payload as { handId?: string }).handId === handId);
+}
+
 describe("GENERATE_DIALOGUE_QUESTION", () => {
   it("создаёт раунд 2 с вопросом и переводит диалог в QUESTION_ASKED", async () => {
     const tournamentId = await createTournament();
@@ -142,6 +150,27 @@ describe("GENERATE_DIALOGUE_QUESTION", () => {
     expect(dialogue!.rounds[1].roundNumber).toBe(2);
     expect(dialogue!.rounds[1].question).toBeTruthy();
     expect(dialogue!.rounds[1].answer).toBeNull();
+  });
+
+  it("ИИ решил «диалог исчерпан» — раунд не создаётся, ставится GENERATE_VERDICT, state остаётся ANSWER_RECEIVED", async () => {
+    const tournamentId = await createTournament();
+    const handId = await createHand(tournamentId);
+    // Фейк-адаптер завершает диалог, когда в ответе есть «понял» (в проде это решает Claude).
+    await createDialogue(handId, { state: "ANSWER_RECEIVED", answer: "Теперь понял свою ошибку." });
+
+    await generateDialogueQuestionStep(makeRawTask({ handId, roundNumber: 1 }), db);
+
+    const dialogue = await db.dialogue.findUnique({
+      where: { handId },
+      include: { rounds: { orderBy: { roundNumber: "asc" } } },
+    });
+    // Раунд не добавлен, состояние под вердикт (правило 2: вердикт после ответа).
+    expect(dialogue!.rounds).toHaveLength(1);
+    expect(dialogue!.state).toBe("ANSWER_RECEIVED");
+    expect(dialogue!.verdict).toBeNull();
+
+    const verdictTasks = await findVerdictTasks(handId);
+    expect(verdictTasks).toHaveLength(1);
   });
 
   it("идемпотентность: раунд 2 уже создан — повторный вызов ничего не меняет", async () => {

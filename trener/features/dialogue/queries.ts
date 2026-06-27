@@ -1,6 +1,6 @@
 import type { DialogueState } from "@prisma/client";
 import { prisma } from "@/infrastructure/db/client";
-import { getDialogueRoundsPerHand } from "@/config/dialogue";
+import { getDialogueMaxRounds } from "@/config/dialogue";
 
 export type DialogueRoundView = {
   roundNumber: number;
@@ -11,7 +11,7 @@ export type DialogueRoundView = {
 export type DialogueView = {
   handId: string;
   state: DialogueState;
-  totalRounds: number;
+  totalRounds: number; // потолок длины диалога (страховка); реальную длину задаёт ИИ
   rounds: DialogueRoundView[];
   verdict: string | null;
   hand: {
@@ -38,7 +38,7 @@ export async function getDialogue(handId: string): Promise<DialogueView | null> 
   return {
     handId: dialogue.handId,
     state: dialogue.state,
-    totalRounds: getDialogueRoundsPerHand(),
+    totalRounds: getDialogueMaxRounds(),
     rounds: dialogue.rounds.map((round) => ({
       roundNumber: round.roundNumber,
       question: round.question,

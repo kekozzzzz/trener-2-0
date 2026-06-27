@@ -46,8 +46,18 @@ export const fakeLlmAdapter: LlmPort = {
   },
 
   async generateNextQuestion(request: NextQuestionRequest): Promise<NextQuestionResult> {
+    // Дев-сигнал завершения: если в последнем ответе игрока есть «понял» / «всё ясно»
+    // — фейк закрывает диалог (в проде это решает Claude по смыслу ответа). Позволяет
+    // в деве дойти до вердикта за нужное число раундов, просто написав «понял».
+    const lastAnswer = request.history[request.history.length - 1]?.answer ?? "";
+    const complete = lastAnswer.toLowerCase().includes("понял") || lastAnswer.toLowerCase().includes("всё ясно");
+    if (complete) {
+      return { complete: true, question: "" };
+    }
+
     const nextRound = request.history.length + 1;
     return {
+      complete: false,
       question: `(фейк) Раунд ${nextRound}: и почему ты выбрал именно это?`,
       tableActionIndex: lastActionIndex(request.tableSnapshot),
     };

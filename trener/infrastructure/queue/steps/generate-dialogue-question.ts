@@ -3,6 +3,7 @@ import type { TableSnapshot } from "@/parser/types";
 import type { NextQuestionRequest } from "@/infrastructure/adapters/llm/types";
 import { getLlmAdapter } from "@/infrastructure/adapters/llm";
 import { applyRangeMarker, applyTableMarker } from "@/config/dialogue";
+import { enqueue } from "../enqueue";
 
 type GenerateDialogueQuestionPayload = {
   handId: string;
@@ -25,6 +26,8 @@ export const generateDialogueQuestionStep: StepHandler = async (task, db) => {
   });
 
   if (!dialogue || dialogue.hand.tournament.deletedAt) return; // удалено до того, как воркер взял задачу
+
+  if (dialogue.verdict !== null) return; // диалог уже завершён вердиктом (идемпотентность)
 
   if (dialogue.rounds.length > roundNumber) return; // следующий раунд уже создан (идемпотентность)
 
@@ -77,6 +80,15 @@ export const generateDialogueQuestionStep: StepHandler = async (task, db) => {
   };
 
   const result = await getLlmAdapter().generateNextQuestion(request, { playerId: tournament.playerId });
+
+  // ИИ прочитал ответ игрока и решил, что диалог исчерпан (игрок дошёл до сути либо
+  // копать дальше бессмысленно). Раунд не создаём — ставим вердикт. Состояние
+  // остаётся ANSWER_RECEIVED: правило 2 соблюдено (вердикт идёт после ответа игрока),
+  // GENERATE_VERDICT идемпотентен по dialogue.verdict. Решение 2026-06-27.
+  if (result.complete) {
+    await enqueue(db, { type: "GENERATE_VERDICT", payload: { handId } });
+    return;
+  }
 
   await db.$transaction(async (tx) => {
     await tx.dialogueRound.create({

@@ -55,7 +55,12 @@ export type NextQuestionRequest = {
 };
 
 export type NextQuestionResult = {
-  question: string;
+  // complete — ИИ прочитал последний ответ игрока и решил, что диалог исчерпан
+  // (игрок сам дошёл до сути либо копать дальше бессмысленно): раунд не создаётся,
+  // дальше идёт вердикт. Длину диалога задаёт этот флаг, а не счётчик — потолок
+  // числа раундов лишь страховка (config/dialogue.ts). Решение 2026-06-27.
+  complete?: boolean;
+  question: string; // следующий вопрос; при complete=true игнорируется (может быть пустым)
   answerMode?: "text" | "range"; // "range" — ответ сеткой 13×13 (см. HandAnalysisResult)
   tableActionIndex?: number; // номер действия для схемы стола над вопросом (см. HandAnalysisResult)
 };

@@ -1,7 +1,7 @@
 import type { DialogueState } from "@prisma/client";
 import { prisma } from "@/infrastructure/db/client";
 import { enqueue, kickWorker } from "@/infrastructure/queue";
-import { getDialogueRoundsPerHand, getDialogueAnswerMaxLength } from "@/config/dialogue";
+import { getDialogueMaxRounds, getDialogueAnswerMaxLength } from "@/config/dialogue";
 import { assessAiAccess } from "@/features/usage/budget";
 import { isSubscriptionGateEnabled } from "@/config/plans";
 
@@ -52,7 +52,11 @@ export async function submitAnswer(input: SubmitAnswerInput): Promise<SubmitAnsw
   }
 
   const currentRound = dialogue.rounds[0];
-  const isLastRound = currentRound.roundNumber >= getDialogueRoundsPerHand();
+  // Достигнут потолок длины диалога — вердикт принудительно, без лишнего вызова ИИ.
+  // Иначе ставим шаг вопроса: он прочитает ответ и сам решит — продолжать или
+  // завершать (флаг complete). Длину диалога задаёт ИИ, потолок — лишь страховка
+  // (config/dialogue.ts, решение 2026-06-27).
+  const reachedCap = currentRound.roundNumber >= getDialogueMaxRounds();
 
   const enqueued = await prisma.$transaction(async (tx) => {
     const updated = await tx.dialogue.updateMany({
@@ -67,7 +71,7 @@ export async function submitAnswer(input: SubmitAnswerInput): Promise<SubmitAnsw
       data: { answer },
     });
 
-    if (isLastRound) {
+    if (reachedCap) {
       await enqueue(tx, { type: "GENERATE_VERDICT", payload: { handId: input.handId } });
     } else {
       await enqueue(tx, {

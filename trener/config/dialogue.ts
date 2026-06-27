@@ -1,13 +1,19 @@
-// Глубина сократовского диалога — бизнес-число, живёт только в конфиге/.env
-// (правило проекта №3). Одинакова для всех тарифов подписки
+// ПОТОЛОК глубины сократовского диалога — бизнес-число, живёт только в конфиге/.env
+// (правило проекта №3). Одинаков для всех тарифов подписки
 // (architecture/02-сущности.md, решение 2026-06-11).
+//
+// Длину диалога определяет ИИ по смыслу ответа игрока (флаг complete на шаге
+// GENERATE_DIALOGUE_QUESTION): от 1 раунда (сразу всё ясно) до этого потолка. Здесь
+// — только жёсткая страховка от бесконечного диалога и расходов. Имя переменной
+// окружения историческое (DIALOGUE_ROUNDS_PER_HAND), смысл — максимум раундов.
+// Решение 2026-06-27: динамическая длина диалога.
 
-const DEFAULT_ROUNDS_PER_HAND = 5;
+const DEFAULT_MAX_ROUNDS = 12;
 
-export function getDialogueRoundsPerHand(): number {
+export function getDialogueMaxRounds(): number {
   const raw = process.env.DIALOGUE_ROUNDS_PER_HAND;
   const parsed = raw ? parseInt(raw, 10) : NaN;
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_ROUNDS_PER_HAND;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_MAX_ROUNDS;
 }
 
 // Защитный потолок длины свободного ответа на сократовский вопрос — этот текст

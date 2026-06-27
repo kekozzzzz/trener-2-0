@@ -4,7 +4,7 @@
  * Покрывают:
  *  1. Диалог не найден → null.
  *  2. QUESTION_ASKED с 2 раундами (1 отвечен, 2 — открыт) → rounds длиной 2,
- *     rounds[1].answer === null, verdict === null, totalRounds === getDialogueRoundsPerHand().
+ *     rounds[1].answer === null, verdict === null, totalRounds === getDialogueMaxRounds().
  *  3. VERDICT_SHOWN → verdict заполнен, все rounds[].answer заполнены.
  *  4. hand.played достаётся из hand.analysis.played, когда analysis есть,
  *     и null, когда analysis === null.
@@ -16,7 +16,7 @@ import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
 import { PrismaClient, type Prisma } from "@prisma/client";
 import { prisma } from "@/infrastructure/db/client";
 import { getDialogue } from "@/features/dialogue/queries";
-import { getDialogueRoundsPerHand } from "@/config/dialogue";
+import { getDialogueMaxRounds } from "@/config/dialogue";
 
 const TEST_PLAYER_ID = "eeeeeeee-0000-0000-0000-000000000001";
 
@@ -105,7 +105,7 @@ describe("getDialogue", () => {
     expect(result!.rounds[0].answer).toBe("Подумал, у него блеф.");
     expect(result!.rounds[1].answer).toBeNull();
     expect(result!.verdict).toBeNull();
-    expect(result!.totalRounds).toBe(getDialogueRoundsPerHand());
+    expect(result!.totalRounds).toBe(getDialogueMaxRounds());
   });
 
   it("VERDICT_SHOWN — verdict заполнен, все rounds[].answer заполнены", async () => {

@@ -2,7 +2,6 @@ import type { StepHandler } from "../types";
 import type { TableSnapshot } from "@/parser/types";
 import type { VerdictRequest } from "@/infrastructure/adapters/llm/types";
 import { getLlmAdapter } from "@/infrastructure/adapters/llm";
-import { getDialogueRoundsPerHand } from "@/config/dialogue";
 
 type GenerateVerdictPayload = {
   handId: string;
@@ -26,20 +25,20 @@ export const generateVerdictStep: StepHandler = async (task, db) => {
 
   if (dialogue.verdict !== null) return; // уже выполнено (идемпотентность)
 
-  // Правило 2: итог не формируется раньше ответа игрока на последний раунд.
-  // submitAnswer ставит эту задачу только после перехода в ANSWER_RECEIVED на
-  // последнем раунде — любое другое состояние здесь означает нарушение инварианта.
+  // Правило 2: итог не формируется раньше ответа игрока. Состояние ANSWER_RECEIVED —
+  // единственный страж: вердикт ставится только после ответа (submitAnswer при
+  // потолке длины ИЛИ шаг вопроса, когда ИИ решил «диалог исчерпан»). Длину диалога
+  // задаёт ИИ (1..потолок), поэтому проверки «ровно N-й раунд» больше нет —
+  // вердикт легитимен на любом отвеченном раунде. Решение 2026-06-27.
   if (dialogue.state !== "ANSWER_RECEIVED") {
     throw new Error(
-      "GENERATE_VERDICT поставлена до ответа игрока на последний раунд — нарушение правила 2"
+      "GENERATE_VERDICT поставлена до ответа игрока — нарушение правила 2"
     );
   }
 
   const lastRound = dialogue.rounds[dialogue.rounds.length - 1];
-  if (!lastRound || lastRound.roundNumber !== getDialogueRoundsPerHand()) {
-    throw new Error(
-      "GENERATE_VERDICT поставлена до последнего раунда диалога — нарушение правила 2"
-    );
+  if (!lastRound) {
+    throw new Error("GENERATE_VERDICT без единого раунда диалога — нечего разбирать");
   }
 
   const { hand } = dialogue;
