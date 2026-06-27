@@ -16,6 +16,15 @@ import { buildChatReplyPrompt, CHAT_REPLY_SYSTEM_PROMPT } from "@/config/prompts
 import { buildTournamentSummaryPrompt, TOURNAMENT_SUMMARY_SYSTEM_PROMPT } from "@/config/prompts/tournament-summary";
 import { buildPlayerCharacteristicPrompt, PLAYER_CHARACTERISTIC_SYSTEM_PROMPT } from "@/config/prompts/player-characteristic";
 import { recordLlmUsage } from "@/features/usage/llm-usage";
+import {
+  extractJson,
+  validateChatReply,
+  validateHandAnalysis,
+  validateNextQuestion,
+  validatePlayerCharacteristic,
+  validateTournamentSummary,
+  validateVerdict,
+} from "./parse";
 import type {
   ChatReplyRequest,
   ChatReplyResult,
@@ -32,96 +41,6 @@ import type {
   VerdictRequest,
   VerdictResult,
 } from "./types";
-
-// Claude иногда оборачивает JSON в markdown-код-блок несмотря на инструкцию — снимаем его.
-function extractJson(text: string): string {
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-  return (fenced ? fenced[1] : text).trim();
-}
-
-// Строго: режим ответа сеткой включается ТОЛЬКО литералом "range". Любое другое
-// значение (или его отсутствие) — обычный текстовый ответ. Так произвольная строка
-// модели не сможет невзначай включить сетку.
-function parseAnswerMode(value: unknown): "range" | undefined {
-  return value === "range" ? "range" : undefined;
-}
-
-// Номер действия для схемы стола: принимаем неотрицательное целое (число или
-// строку из цифр). Границы проверяет рендер по длине снимка — некорректный номер
-// просто не нарисует стол по этому вопросу.
-function parseTableActionIndex(value: unknown): number | undefined {
-  if (typeof value === "number" && Number.isInteger(value) && value >= 0) return value;
-  if (typeof value === "string" && /^\d+$/.test(value)) return parseInt(value, 10);
-  return undefined;
-}
-
-function validate(result: Partial<HandAnalysisResult>, request: HandAnalysisRequest): HandAnalysisResult {
-  if (typeof result.played !== "string" || typeof result.optimal !== "string") {
-    throw new Error("Claude вернул разбор без обязательных полей played/optimal");
-  }
-
-  if (request.importanceLevel === "CRITICAL") {
-    if (typeof result.question !== "string" || typeof result.draftVerdict !== "string") {
-      throw new Error("Claude вернул CRITICAL-разбор без question/draftVerdict");
-    }
-    return {
-      played: result.played,
-      optimal: result.optimal,
-      question: result.question,
-      draftVerdict: result.draftVerdict,
-      answerMode: parseAnswerMode(result.answerMode),
-      tableActionIndex: parseTableActionIndex(result.tableActionIndex),
-    };
-  }
-
-  if (typeof result.note !== "string") {
-    throw new Error(`Claude вернул ${request.importanceLevel}-разбор без note`);
-  }
-  return { played: result.played, optimal: result.optimal, note: result.note };
-}
-
-function validateVerdict(result: Partial<VerdictResult>): VerdictResult {
-  if (typeof result.verdict !== "string") {
-    throw new Error("Claude вернул вердикт без поля verdict");
-  }
-  return { verdict: result.verdict };
-}
-
-function validateNextQuestion(result: Partial<NextQuestionResult>): NextQuestionResult {
-  const complete = result.complete === true;
-  // При complete=true вопрос не нужен (диалог завершён) — поле может отсутствовать.
-  if (!complete && typeof result.question !== "string") {
-    throw new Error("Claude вернул ответ без поля question");
-  }
-  return {
-    complete,
-    question: typeof result.question === "string" ? result.question : "",
-    answerMode: parseAnswerMode(result.answerMode),
-    tableActionIndex: parseTableActionIndex(result.tableActionIndex),
-  };
-}
-
-function validateChatReply(result: Partial<ChatReplyResult>): ChatReplyResult {
-  if (typeof result.reply !== "string") {
-    throw new Error("Claude вернул ответ без поля reply");
-  }
-  return { reply: result.reply };
-}
-
-function validateTournamentSummary(result: Partial<TournamentSummaryResult>): TournamentSummaryResult {
-  if (typeof result.overview !== "string") {
-    throw new Error("Claude вернул обзор турнира без overview");
-  }
-  // Токены ссылок {{h:N}} в overview проверяет и мапит в handId шаг очереди.
-  return { overview: result.overview };
-}
-
-function validatePlayerCharacteristic(result: Partial<PlayerCharacteristicResult>): PlayerCharacteristicResult {
-  if (typeof result.characteristic !== "string") {
-    throw new Error("Claude вернул характеристику без поля characteristic");
-  }
-  return { characteristic: result.characteristic };
-}
 
 // CONNECT-прокси для обхода гео-блокировки Claude (см. getAnthropicProxyUrl).
 // Логин/пароль (если заданы в URL) уходят в заголовок Proxy-Authorization;
@@ -230,7 +149,7 @@ export const anthropicLlmAdapter: LlmPort = {
       step: "HAND_ANALYSIS",
       playerId: meta?.playerId,
     });
-    return validate(parsed as Partial<HandAnalysisResult>, request);
+    return validateHandAnalysis(parsed as Partial<HandAnalysisResult>, request);
   },
 
   async generateNextQuestion(request: NextQuestionRequest, meta?: LlmCallMeta): Promise<NextQuestionResult> {

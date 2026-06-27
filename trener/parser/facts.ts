@@ -1,6 +1,8 @@
 import type { Street, TableAction, TableSnapshot } from "./types";
 import { bigBlindFromSnapshot } from "./big-blind";
 import { boardUpToStreet } from "./table-state";
+import { heroMadeHand } from "./made-hand";
+import { handCode } from "@/config/poker/hand-codes";
 
 // Дешёвые детерминированные факты раздачи — общая покерная арифметика, которую
 // парсер считает за LLM (правило 1: тренер числа не вычисляет). Всё выводится из
@@ -431,9 +433,36 @@ export function computeHandFacts(snapshot: TableSnapshot): HandFacts {
 
 // Текстовый блок фактов для промпта. Пусто, если считать нечего (например, фолд
 // до флопа без заметных ставок) — тогда тренер просто работает по снимку.
+const STREET_RU: Record<Street, string> = {
+  PREFLOP: "префлопе",
+  FLOP: "флопе",
+  TURN: "тёрне",
+  RIVER: "ривере",
+};
+
 export function renderHandFacts(snapshot: TableSnapshot): string {
   const f = computeHandFacts(snapshot);
   const lines: string[] = [];
+
+  // Класс карманных карт — одномастные/разномастные/пара (масти модель не разглядывает сама).
+  const code = handCode(snapshot.heroCards);
+  if (code) {
+    const gloss = code.length === 2 ? "карманная пара" : code.endsWith("s") ? "одномастные" : "разномастные";
+    lines.push(`Карманные карты Hero: ${code} (${gloss}).`);
+  }
+
+  // Состав стола и позиция Hero — голые факты из снимка, чтобы модель не прикидывала «на глаз».
+  const heroSeat = snapshot.seats.find((s) => s.label === "Hero");
+  if (heroSeat) lines.push(`Позиция Hero за столом: ${heroSeat.positionName ?? heroSeat.position}.`);
+  const dealt = snapshot.seats.length;
+  const tableSize = snapshot.tableSize ?? dealt;
+  const foldedPreflop = new Set(
+    snapshot.actions.filter((a) => a.street === "PREFLOP" && a.action === "FOLD").map((a) => a.actor),
+  );
+  const sawFlop = snapshot.board.length >= 3 ? dealt - foldedPreflop.size : null;
+  lines.push(
+    `За столом ${tableSize} мест, в раздаче ${dealt} игрок(ов)${sawFlop !== null ? `, на флоп пошло ${sawFlop}` : ""}.`,
+  );
 
   if (f.heroStackBb !== null) lines.push(`Стек Hero на старте раздачи: ${f.heroStackBb} BB.`);
   if (f.effectiveStackBb !== null && f.effectiveStackBb !== f.heroStackBb)
@@ -448,10 +477,39 @@ export function renderHandFacts(snapshot: TableSnapshot): string {
 
   if (f.sprFlop !== null) lines.push(`SPR на флопе: ${f.sprFlop} (эффективный остаток к банку флопа).`);
 
-  if (f.draw)
+  // Дро Hero ПО УЛИЦАМ (флоп/тёрн) — считаем на каждой, т.к. на полном борде (ривер)
+  // дро уже нет, и иначе флоп/тёрн-дро вообще не попало бы в факты (так модель его
+  // выдумывала или ставила не на ту улицу). Ривер пропускаем — там дро не бывает.
+  let drawSeen = false;
+  let prevDraw = "";
+  for (const street of ["FLOP", "TURN"] as const) {
+    const b = boardUpToStreet(snapshot.board, street);
+    if (b.length < 3) continue;
+    const d = heroDraw(snapshot.heroCards, b);
+    if (!d) continue;
+    drawSeen = true;
+    const key = `${d.kind}|${d.outs}`;
+    if (key === prevDraw) continue;
+    prevDraw = key;
     lines.push(
-      `Дро Hero: ${f.draw.kind} — ${f.draw.outs} аутов, эквити до ривера ≈${f.draw.equityPct}% (грубо, по правилу 2/4).`,
+      `Дро Hero на ${STREET_RU[street]}: ${d.kind} — ${d.outs} аутов, эквити до следующей улицы ≈${d.equityPct}% (грубо, 2/4).`,
     );
+  }
+  if (snapshot.board.length >= 3 && !drawSeen)
+    lines.push("Дро у Hero нет (ни флеш-дро, ни стрит-дро) — на дро ты не попал, не приписывай его.");
+
+  // Готовая рука Hero по улицам — состав комбинации считает парсер (правило 1), чтобы
+  // модель не выдумывала «пару, которой нет» и не путала фулл с двумя парами. Показываем
+  // по мере роста борда, без повторов; последняя строка = рука Hero на вскрытии.
+  let prevMade = "";
+  for (const street of ["FLOP", "TURN", "RIVER"] as const) {
+    const b = boardUpToStreet(snapshot.board, street);
+    if (b.length < 3) continue;
+    const mh = heroMadeHand(snapshot.heroCards, b);
+    if (!mh || mh.ru === prevMade) continue;
+    prevMade = mh.ru;
+    lines.push(`Готовая рука Hero на ${STREET_RU[street]}: ${mh.ru}.`);
+  }
 
   for (const b of f.bets)
     lines.push(

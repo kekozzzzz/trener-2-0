@@ -13,6 +13,9 @@ const RATES: Record<string, ModelRate> = {
   "claude-sonnet-4-6": { input: 3, output: 15, cacheWrite: 3.75, cacheRead: 0.3 },
   "claude-opus-4-8": { input: 5, output: 25, cacheWrite: 6.25, cacheRead: 0.5 },
   "claude-haiku-4-5": { input: 1, output: 5, cacheWrite: 1.25, cacheRead: 0.1 },
+  // DeepSeek через OpenRouter (основной провайдер, ~16× дешевле Sonnet). У DeepSeek
+  // кэш контекста свой: попадание в кэш ≈0.1× входа, отдельной платы за запись нет.
+  "deepseek/deepseek-v3.2": { input: 0.27, output: 1.1, cacheWrite: 0.27, cacheRead: 0.027 },
 };
 
 // Неизвестная модель → ставки sonnet-4.6 (рабочая по умолчанию), чтобы расчёт не падал.

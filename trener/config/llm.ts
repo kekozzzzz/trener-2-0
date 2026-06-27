@@ -23,6 +23,33 @@ export function getAnthropicMaxTokens(): number {
   return Number.isInteger(raw) && raw > 0 ? raw : DEFAULT_MAX_TOKENS;
 }
 
+// ───────────────────────── Выбор провайдера LLM ──────────────────────────────
+// Какой провайдер обслуживает прод: "anthropic" (Sonnet, запасной) или "openrouter"
+// (DeepSeek, основной — дешевле в ~16×). Переключение — одним env-флагом без передеплоя
+// (Правило 3), это же и мгновенный откат. По умолчанию anthropic (совместимость/тесты).
+export type LlmProvider = "anthropic" | "openrouter";
+export function getLlmProvider(): LlmProvider {
+  return process.env.LLM_PROVIDER === "openrouter" ? "openrouter" : "anthropic";
+}
+
+// ───────────────────────── OpenRouter (шлюз к DeepSeek) ──────────────────────
+const DEFAULT_OPENROUTER_MODEL = "deepseek/deepseek-v3.2";
+
+export function getOpenRouterApiKey(): string {
+  return process.env.OPENROUTER_API_KEY ?? "";
+}
+
+export function getOpenRouterModel(): string {
+  return process.env.OPENROUTER_MODEL || DEFAULT_OPENROUTER_MODEL;
+}
+
+// Базовый адрес OpenAI-совместимого API (до «/chat/completions»). В проде указывает на
+// казахский релей (прямой выход из РФ во внешние API ненадёжен), который пересылает запрос
+// в openrouter.ai с не-российского IP. Локально/в будущем — прямой https://openrouter.ai/api/v1.
+export function getOpenRouterBaseUrl(): string {
+  return process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1";
+}
+
 // Прокси для вызовов Claude. Нужен, когда сервер стоит в регионе, который Anthropic
 // не обслуживает (например РФ — запрос с местного IP отбивается 403). Запросы идут
 // через CONNECT-туннель: прокси не расшифровывает трафик, ключ и данные раздач
