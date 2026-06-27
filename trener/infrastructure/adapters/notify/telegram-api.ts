@@ -134,3 +134,43 @@ export async function getMe(opts?: { signal?: AbortSignal; token?: string }): Pr
     return false;
   }
 }
+
+// Сырое обновление из getUpdates: update_id + поля апдейта (callback_query/message),
+// которые понимает общий обработчик webhook.ts.
+export type RawUpdate = { update_id: number } & Record<string, unknown>;
+
+// Опрос обновлений (getUpdates) — для среды, где Telegram НЕ достукивается до нас вебхуком
+// (вход на релей КЗ глух по таймауту), а ИСХОДЯЩЕЕ через релей работает. Мы сами тянем
+// нажатия ✅/✏️ и входящие тем же рабочим каналом. offset = update_id последнего
+// обработанного + 1 (подтверждает приём прошлой пачки, Telegram её больше не отдаст).
+// ВАЖНО: вебхук и getUpdates взаимоисключающи — перед опросом вебхук должен быть снят
+// (deleteWebhook), иначе Telegram отвечает 409.
+export async function getUpdates(
+  offset: number,
+  opts?: { token?: string; timeoutSec?: number; signal?: AbortSignal },
+): Promise<RawUpdate[]> {
+  const token = opts?.token ?? getTelegramBotToken();
+  const params = new URLSearchParams({
+    offset: String(offset),
+    timeout: String(opts?.timeoutSec ?? 0),
+    allowed_updates: JSON.stringify(["callback_query", "message"]),
+  });
+  const response = await fetch(`${apiBase()}/bot${token}/getUpdates?${params.toString()}`, {
+    method: "GET",
+    headers: proxyHeaders(),
+    signal: opts?.signal,
+  });
+  if (!response.ok) {
+    throw new Error(`Telegram getUpdates не прошёл: HTTP ${response.status}`);
+  }
+  const data = (await response.json().catch(() => null)) as
+    | { ok?: boolean; result?: RawUpdate[] }
+    | null;
+  if (!data?.ok || !Array.isArray(data.result)) return [];
+  return data.result;
+}
+
+// Снять вебхук — нужно перед переходом на опрос getUpdates (иначе 409). Идемпотентно.
+export async function deleteWebhook(opts?: { token?: string }): Promise<void> {
+  await callTelegram("deleteWebhook", { drop_pending_updates: false }, { token: opts?.token });
+}
