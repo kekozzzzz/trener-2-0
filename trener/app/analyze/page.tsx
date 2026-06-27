@@ -13,6 +13,7 @@ import { ShineBorder } from "@/components/ui/shine-border";
 import { Label } from "@/components/ui/label";
 import { FileInput } from "@/components/upload/file-input";
 import { SubmitButton } from "@/components/upload/submit-button";
+import { UploadGuide } from "@/components/upload/upload-guide";
 
 async function handleUpload(formData: FormData) {
   "use server";
@@ -102,6 +103,8 @@ export default async function AnalyzePage({
             </div>
             <SubmitButton />
           </form>
+
+          <UploadGuide />
         </div>
       </section>
 
