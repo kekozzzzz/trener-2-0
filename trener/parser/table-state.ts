@@ -42,8 +42,10 @@ export type SeatState = {
   isCurrent: boolean;
   // фишки, вложенные на ТЕКУЩЕЙ улице к моменту точки (в фишках) — «ставка перед игроком»
   streetBet: number;
-  // последнее НЕ форсированное действие места до точки включительно; null — ещё
-  // не действовал (например, BB до круга торговли) либо только постил блайнд
+  // последнее НЕ форсированное действие места на ТЕКУЩЕЙ улице; null — на этой
+  // улице ещё не ходил (напр. BB до круга торговли, либо только постил блайнд).
+  // Действия прошлых улиц не тянутся (на флопе не висит префлоп-колл); исключение —
+  // фолд: выбывший игрок так и показывается «фолд» до конца раздачи.
   lastAction: SeatAction | null;
 };
 
@@ -87,6 +89,12 @@ export function tableStateUpTo(snapshot: TableSnapshot, actionIndex: number): Ta
       street = a.street;
       streetCommitted.clear();
       currentBet = 0;
+      // Новая улица — действия прошлой улицы больше не «последние»: на флопе у Hero
+      // не должен висеть префлоп-колл, если на флопе он ещё не ходил. Фолд оставляем
+      // (игрок выбыл из раздачи — его «фолд» виден до конца).
+      for (const actor of [...lastAction.keys()]) {
+        if (!folded.has(actor)) lastAction.delete(actor);
+      }
     }
 
     const committed = streetCommitted.get(a.actor) ?? 0;
@@ -165,6 +173,23 @@ export function tableStateUpTo(snapshot: TableSnapshot, actionIndex: number): Ta
     decisionActor,
     playersAfterHero: playersAfterHeroCount(snapshot, folded, street),
   };
+}
+
+// Подпись видимого состояния стола — чтобы не перерисовывать одну и ту же картинку
+// под каждым вопросом диалога. Стол показываем заново, только когда ситуация реально
+// изменилась: новая улица/борд, сменилась ставка перед игроком, кто-то выбыл, или
+// сместилась точка решения (подсвеченное место). Совпали подписи — стол не повторяем,
+// предыдущий «висит» над следующими вопросами.
+export function tableSignature(state: TableState): string {
+  const seats = state.seats
+    .map(
+      (s) =>
+        `${s.seatNumber}:${s.folded ? "F" : ""}:${s.streetBet}:${
+          s.lastAction ? s.lastAction.action + (s.lastAction.amount ?? "") : ""
+        }${s.isCurrent ? "*" : ""}`,
+    )
+    .join("|");
+  return `${state.street}/${state.board.join("")}/${state.potSoFar}/${seats}`;
 }
 
 // Сколько живых соперников действуют ПОСЛЕ Hero на текущей улице — теория за пушем

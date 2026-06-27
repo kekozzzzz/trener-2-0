@@ -13,7 +13,7 @@ import { AnswerForm } from "./answer-form";
 import { RangeAnswerForm } from "./range-answer-form";
 import { splitMarkers } from "@/config/dialogue";
 import { HandTable } from "@/components/poker/hand-table";
-import { tableStateUpTo, lastActionIndex } from "@/parser/table-state";
+import { tableStateUpTo, lastActionIndex, tableSignature } from "@/parser/table-state";
 import { WaitClient } from "./wait-client";
 import { ChatThread } from "./chat-thread";
 import { ChatForm } from "./chat-form";
@@ -108,6 +108,25 @@ export default async function HandDialoguePage({
     : false;
   const showFallbackTable = !dialogueHasTable;
 
+  // Стол не повторяем под каждым вопросом: проходим раунды по порядку и помечаем
+  // показ заново только там, где картинка стола изменилась (новая улица, ставка,
+  // выбывший, другая точка решения). На неизменных вопросах стол не печатаем —
+  // «висит» предыдущий. Считаем один раз для всего диалога, чтобы история и
+  // открытый вопрос делили одну цепочку подписей.
+  const showTableForRound = new Map<number, boolean>();
+  if (dialogue) {
+    let prevSig: string | null = null;
+    for (const round of dialogue.rounds) {
+      const { tableActionIndex } = splitMarkers(round.question);
+      if (tableActionIndex === null) continue;
+      const sig = tableSignature(tableStateUpTo(snapshot, tableActionIndex));
+      if (sig !== prevSig) {
+        showTableForRound.set(round.roundNumber, true);
+        prevSig = sig;
+      }
+    }
+  }
+
   return (
     <main>
       <header className="border-b border-border">
@@ -172,7 +191,7 @@ export default async function HandDialoguePage({
                   <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
                     Вопрос {round.roundNumber}
                   </p>
-                  {tableActionIndex !== null && (
+                  {tableActionIndex !== null && showTableForRound.get(round.roundNumber) && (
                     <HandTable state={tableStateUpTo(snapshot, tableActionIndex)} nick={nick} />
                   )}
                   <p className="text-body text-foreground">{personalizeHero(text, nick)}</p>
@@ -194,7 +213,7 @@ export default async function HandDialoguePage({
                   <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
                     Вопрос {openRound.roundNumber}
                   </p>
-                  {tableActionIndex !== null && (
+                  {tableActionIndex !== null && showTableForRound.get(openRound.roundNumber) && (
                     <HandTable state={tableStateUpTo(snapshot, tableActionIndex)} nick={nick} />
                   )}
                   <p className="text-h3 text-foreground">{personalizeHero(text, nick)}</p>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { tableStateUpTo, lastActionIndex, boardUpToStreet } from "@/parser/table-state";
+import { tableStateUpTo, lastActionIndex, boardUpToStreet, tableSignature } from "@/parser/table-state";
 import type { TableSnapshot } from "@/parser/types";
 
 // Снимок на 40bb (BB=100). Hero на BTN. Префлоп: HJ фолд, CO колл, Hero рейз,
@@ -88,6 +88,22 @@ describe("tableStateUpTo", () => {
     expect(s.potSoFar).toBe(1450);
     // CO ещё не сфолдил на этот момент (фолд на idx 10)
     expect(seatBy(s, "Player 4").folded).toBe(false);
+    // действие прошлой улицы не тянется: P4 заколлировал на префлопе, но на флопе
+    // ещё не ходил (фолд позже, на idx 10) → надписи действия у него нет
+    expect(seatBy(s, "Player 4").lastAction).toBeNull();
+    // P2 чекнул на флопе (idx 8) — это и есть его действие текущей улицы
+    expect(seatBy(s, "Player 2").lastAction).toEqual({ action: "CHECK" });
+  });
+
+  it("на чеке Hero на тёрне (idx 13): флоп-бет Hero не висит, у обоих чек тёрна", () => {
+    const s = tableStateUpTo(snap(), 13);
+    expect(s.street).toBe("TURN");
+    // Hero бетил на флопе, но на тёрне чекнул — показываем чек тёрна, не флоп-бет
+    expect(seatBy(s, "Hero").lastAction).toEqual({ action: "CHECK" });
+    expect(seatBy(s, "Player 2").lastAction).toEqual({ action: "CHECK" });
+    // выбывшие так и висят «фолд» до конца раздачи
+    expect(seatBy(s, "Player 3").lastAction).toEqual({ action: "FOLD" });
+    expect(seatBy(s, "Player 4").lastAction).toEqual({ action: "FOLD" });
   });
 
   it("некорректный индекс зажимается в границы (не падает)", () => {
@@ -144,6 +160,26 @@ describe("tableStateUpTo — момент пуша соперника", () => {
     expect(seatBy(s, "Hero").lastAction).toEqual({ action: "CALL", amount: 1750 });
     expect(seatBy(s, "Player 2").lastAction).toEqual({ action: "ALL_IN", amount: 2000 });
     expect(s.potSoFar).toBe(4050);
+  });
+});
+
+describe("tableSignature", () => {
+  it("одна точка решения — одна подпись (стол не перерисовывать)", () => {
+    const a = tableSignature(tableStateUpTo(pushSnap(), 4));
+    const b = tableSignature(tableStateUpTo(pushSnap(), 4));
+    expect(a).toBe(b);
+  });
+
+  it("сменилась точка решения — подпись другая (стол показать заново)", () => {
+    const push = tableSignature(tableStateUpTo(pushSnap(), 4)); // пуш соперника
+    const call = tableSignature(tableStateUpTo(pushSnap(), 5)); // колл Hero
+    expect(push).not.toBe(call);
+  });
+
+  it("смена улицы меняет подпись", () => {
+    const preflop = tableSignature(tableStateUpTo(snap(), 4)); // рейз Hero, префлоп
+    const flop = tableSignature(tableStateUpTo(snap(), 9)); // бет Hero, флоп
+    expect(preflop).not.toBe(flop);
   });
 });
 
