@@ -3,8 +3,8 @@
 // Голосовой ввод ответа. Кнопка-микрофон рядом с полем: игрок жмёт, проговаривает
 // ответ, речь распознаётся и дописывается текстом в поле.
 //
-// Боевой движок — Qwen3-ASR (Alibaba) через адаптер (правило 4). Здесь, на клиенте,
-// мы только пишем звук через MediaRecorder и шлём blob на наш эндпоинт /api/stt,
+// Боевой движок — Voxtral (через OpenRouter→КЗ-релей) за адаптером (правило 4). Здесь,
+// на клиенте, мы только пишем звук через MediaRecorder и шлём blob на наш эндпоинт /api/stt,
 // который зовёт адаптер и возвращает текст. Сам ключ/вендор живут на сервере —
 // браузер о них не знает. (Прежний макет использовал браузерный Web Speech API,
 // негодный в проде: гнал звук через Google, из РФ недостижим.)
@@ -114,8 +114,19 @@ export function MicButton({
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch {
-      setErrorMsg("Нет доступа к микрофону");
+    } catch (err) {
+      // Различаем причину — иначе игрок не понимает, что чинить. Имена ошибок
+      // getUserMedia стандартные (DOMException.name).
+      const name = (err as { name?: string })?.name ?? "";
+      setErrorMsg(
+        name === "NotFoundError" || name === "DevicesNotFoundError"
+          ? "Микрофон не найден - проверь, что он подключён и включён в системе"
+          : name === "NotReadableError" || name === "TrackStartError"
+            ? "Микрофон занят другой программой - закрой её и попробуй снова"
+            : name === "NotAllowedError" || name === "SecurityError" || name === "PermissionDeniedError"
+              ? "Доступ к микрофону запрещён - разреши его в настройках браузера и Windows"
+              : "Не удалось включить микрофон - проверь его подключение и разрешения",
+      );
       setStatus("error");
       return;
     }
