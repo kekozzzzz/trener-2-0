@@ -8,16 +8,16 @@ import {
 } from "@/config/stt";
 import type { SttPort, TranscribeRequest, TranscribeResult } from "./types";
 
-// Адаптер распознавания речи через OpenRouter (модель qwen3-asr-flash), формат
-// OpenAI-совместимый: POST /api/v1/chat/completions с частью content типа
-// input_audio (звук base64 + формат). На проде ходим через КЗ-релей (адрес и секрет
-// в .env) — прямой доступ к OpenRouter с Yandex Cloud нестабилен.
+// Адаптер распознавания речи через OpenRouter (боевая модель — Voxtral, см.
+// config/stt.ts getOpenrouterModel), формат OpenAI-совместимый: POST .../chat/completions
+// с частью content типа input_audio (звук base64 + формат). На проде ходим через КЗ-релей
+// (адрес и секрет в .env) — прямой доступ к OpenRouter с Yandex Cloud нестабилен.
 //
 // ВНИМАНИЕ: поле format у input_audio принимает ограниченный набор (wav/mp3/...).
 // Браузер пишет webm/opus — принимается ли он, проверяется живым смоук-тестом; если
 // нет, конвертируем запись. Правится только этот файл — порт и эндпоинт не зависят.
 
-const CHAT_PATH = "/api/v1/chat/completions";
+const CHAT_PATH = "/chat/completions";
 
 // MIME записи браузера → значение поля format у OpenRouter.
 function audioFormat(mimeType: string): string {
@@ -91,7 +91,7 @@ export const openrouterSttAdapter: SttPort = {
       const headers: Record<string, string> = {};
       const secret = getSttProxySecret();
       if (secret) headers["x-proxy-secret"] = secret;
-      await fetch(`${getOpenrouterBaseUrl()}/api/v1/models`, {
+      await fetch(`${getOpenrouterBaseUrl()}/models`, {
         method: "GET",
         headers,
         signal: AbortSignal.timeout(getSttTimeoutMs()),

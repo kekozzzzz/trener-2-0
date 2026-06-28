@@ -35,11 +35,12 @@ export function getSttMaxAudioBytes(): number {
   return Number.isInteger(raw) && raw > 0 ? raw : DEFAULT_MAX_AUDIO_BYTES;
 }
 
-// Секрет для КЗ-релея (заголовок x-proxy-secret) — тот же, которым подписываются
-// запросы к Claude (ANTHROPIC_PROXY_SECRET). Пусто — заголовок не шлём (прямой путь
-// без релея). Релей без верного секрета отвечает 403.
+// Секрет для КЗ-релея (заголовок x-proxy-secret) — это ТОТ ЖЕ секрет, что у Claude и
+// LLM-разбора: релей один, секрет один. Если STT_PROXY_SECRET не задан отдельно —
+// берём ANTHROPIC_PROXY_SECRET (он уже есть в проде). Пусто — заголовок не шлём
+// (прямой путь без релея). Релей без верного секрета отвечает 403.
 export function getSttProxySecret(): string {
-  return process.env.STT_PROXY_SECRET ?? "";
+  return process.env.STT_PROXY_SECRET || process.env.ANTHROPIC_PROXY_SECRET || "";
 }
 
 // ── OpenRouter (боевой путь) ────────────────────────────────────────────────
@@ -48,11 +49,11 @@ export function getOpenrouterApiKey(): string {
   return process.env.OPENROUTER_API_KEY ?? "";
 }
 
-// Базовый адрес OpenRouter. На проде указывает на КЗ-релей
-// (https://<релей>/openrouter), в деве можно оставить прямой адрес. SDK не
-// используем — путь /api/v1/... дописывает адаптер.
+// Базовый адрес OpenRouter ВКЛЮЧАЯ /api/v1 — единый с LLM-разбором (config/llm.ts),
+// чтобы обе фичи делили одну env-переменную OPENROUTER_BASE_URL без конфликта. На проде
+// это КЗ-релей (https://<релей>/openrouter/api/v1). Адаптер дописывает только /chat/completions.
 export function getOpenrouterBaseUrl(): string {
-  return process.env.OPENROUTER_BASE_URL || "https://openrouter.ai";
+  return process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1";
 }
 
 // Боевая модель — Voxtral (Mistral): на сравнении 2026-06-27 лучшая по русскому

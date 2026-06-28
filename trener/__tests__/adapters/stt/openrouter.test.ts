@@ -20,6 +20,7 @@ const ENV_KEYS = [
   "OPENROUTER_API_KEY",
   "OPENROUTER_BASE_URL",
   "STT_PROXY_SECRET",
+  "ANTHROPIC_PROXY_SECRET",
   "STT_MODEL",
   "DASHSCOPE_API_KEY",
 ] as const;
@@ -28,8 +29,10 @@ const savedEnv: Record<string, string | undefined> = {};
 beforeEach(() => {
   for (const k of ENV_KEYS) savedEnv[k] = process.env[k];
   process.env.OPENROUTER_API_KEY = "or-key";
-  process.env.OPENROUTER_BASE_URL = "https://relay.example/openrouter";
+  // База ВКЛЮЧАЕТ /api/v1 — единая схема с LLM-разбором (адаптер дописывает /chat/completions).
+  process.env.OPENROUTER_BASE_URL = "https://relay.example/openrouter/api/v1";
   process.env.STT_PROXY_SECRET = "secret123";
+  delete process.env.ANTHROPIC_PROXY_SECRET; // чтобы фолбэк секрета не вмешивался в тесты
   delete process.env.STT_MODEL;
   delete process.env.DASHSCOPE_API_KEY;
 });
