@@ -55,6 +55,7 @@ export function MicButton({
 }) {
   const [status, setStatus] = useState<Status>("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const [debug, setDebug] = useState(""); // ВРЕМЕННО: разбивка времени по этапам
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -142,6 +143,7 @@ export function MicButton({
     // Движок распознавания принимает только wav/mp3, а MediaRecorder отдаёт webm —
     // перекодируем в wav прямо в браузере перед отправкой.
     let wav: Blob;
+    const c0 = Date.now();
     try {
       wav = await blobToWav(recorded);
     } catch {
@@ -149,16 +151,18 @@ export function MicButton({
       setStatus("error");
       return;
     }
-    await sendForTranscription(wav);
+    await sendForTranscription(wav, Date.now() - c0, recorded.size);
   }
 
-  async function sendForTranscription(blob: Blob) {
+  async function sendForTranscription(blob: Blob, convertMs: number, rawSize: number) {
+    const f0 = Date.now();
     try {
       const res = await fetch("/api/stt", {
         method: "POST",
         headers: { "Content-Type": "audio/wav" },
         body: blob,
       });
+      const sendMs = Date.now() - f0;
       if (!res.ok) {
         setErrorMsg(
           res.status === 429
@@ -171,6 +175,10 @@ export function MicButton({
       const data = (await res.json()) as { text?: string };
       const text = data.text?.trim() ?? "";
       if (text) onTranscriptRef.current(text);
+      // ВРЕМЕННО: разбивка времени, чтобы найти узкое место.
+      setDebug(
+        `конвертация ${convertMs}мс · сеть+модель ${sendMs}мс · WAV ${Math.round(blob.size / 1024)}КБ (запись ${Math.round(rawSize / 1024)}КБ)`,
+      );
       setStatus("idle");
     } catch {
       setErrorMsg("Не удалось распознать, попробуй ещё раз");
@@ -287,6 +295,9 @@ export function MicButton({
         <span className="text-small text-muted-foreground" aria-live="polite">
           {errorMsg}
         </span>
+      )}
+      {debug && status === "idle" && (
+        <span className="text-small text-muted-foreground">{debug}</span>
       )}
     </span>
   );

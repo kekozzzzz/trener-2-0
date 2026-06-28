@@ -28,7 +28,9 @@ export async function POST(request: Request): Promise<Response> {
     return NextResponse.json({ error: "BAD_AUDIO_TYPE" }, { status: 400 });
   }
 
+  const tStart = Date.now();
   const audio = Buffer.from(await request.arrayBuffer());
+  const tBodyRead = Date.now();
   if (audio.length === 0) {
     return NextResponse.json({ error: "EMPTY_AUDIO" }, { status: 400 });
   }
@@ -42,6 +44,10 @@ export async function POST(request: Request): Promise<Response> {
       mimeType,
       context: POKER_ASR_CONTEXT,
     });
+    // ВРЕМЕННЫЙ замер: где время — приём тела (загрузка на сервер) vs модель.
+    console.log(
+      `[stt-timing] audio=${audio.length}b body=${tBodyRead - tStart}ms model=${Date.now() - tBodyRead}ms`,
+    );
     return NextResponse.json({ text: applyPokerFixups(text) });
   } catch (err) {
     // Детали — в лог сервера; клиенту общий ответ, без утечки внутренностей вендора.
