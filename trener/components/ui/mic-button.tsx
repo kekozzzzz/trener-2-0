@@ -8,6 +8,11 @@
 // который зовёт адаптер и возвращает текст. Сам ключ/вендор живут на сервере —
 // браузер о них не знает. (Прежний макет использовал браузерный Web Speech API,
 // негодный в проде: гнал звук через Google, из РФ недостижим.)
+//
+// Пока идёт запись — рисуем живую звуковую дорожку (бары по громкости через Web Audio
+// AnalyserNode), чтобы было видно, что голос слышат (как в голосовом вводе ChatGPT).
+// Расшифровка всё равно идёт ПОСЛЕ записи (потоковый набор по ходу речи требует движка,
+// которого у нас из РФ нет), но дорожка убирает ощущение «мёртвой кнопки».
 
 import { useEffect, useRef, useState } from "react";
 import { Mic, Square } from "lucide-react";
@@ -24,6 +29,12 @@ function isSupported(): boolean {
     typeof window !== "undefined" &&
     typeof window.MediaRecorder !== "undefined"
   );
+}
+
+function audioContextCtor(): typeof AudioContext | null {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
+  return w.AudioContext ?? w.webkitAudioContext ?? null;
 }
 
 // Выбираем формат записи, который умеет браузер. Chrome — webm/opus, Safari — mp4.
@@ -47,6 +58,11 @@ export function MicButton({
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  // Web Audio для живой дорожки записи.
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   // Держим свежий колбэк в ref — запись живёт дольше одного рендера.
   const onTranscriptRef = useRef(onTranscript);
   onTranscriptRef.current = onTranscript;
@@ -55,11 +71,68 @@ export function MicButton({
     if (!isSupported()) setStatus("unsupported");
     return () => {
       recorderRef.current?.state === "recording" && recorderRef.current.stop();
+      stopVisualizer();
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
   }, []);
 
+  // ── Живая звуковая дорожка (бары по частотам) ──────────────────────────────
+  function setupVisualizer(stream: MediaStream) {
+    const Ctor = audioContextCtor();
+    if (!Ctor) return; // визуализация необязательна
+    try {
+      const ac = new Ctor();
+      const source = ac.createMediaStreamSource(stream);
+      const analyser = ac.createAnalyser();
+      analyser.fftSize = 64; // мало бинов — бары отзывчивые
+      source.connect(analyser);
+      audioCtxRef.current = ac;
+      analyserRef.current = analyser;
+      drawBars();
+    } catch {
+      /* без дорожки запись всё равно работает */
+    }
+  }
+
+  function drawBars() {
+    const analyser = analyserRef.current;
+    const canvas = canvasRef.current;
+    if (!analyser || !canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const bins = analyser.frequencyBinCount;
+    const data = new Uint8Array(bins);
+    const W = canvas.width;
+    const H = canvas.height;
+    const BARS = Math.min(24, bins);
+    const color = getComputedStyle(canvas).color || "#a3e635";
+    const tick = () => {
+      rafRef.current = requestAnimationFrame(tick);
+      analyser.getByteFrequencyData(data);
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = color;
+      const bw = W / BARS;
+      for (let i = 0; i < BARS; i++) {
+        const v = data[Math.floor((i / BARS) * bins)] / 255;
+        const bh = Math.max(2, v * H);
+        ctx.fillRect(i * bw + 1, (H - bh) / 2, Math.max(1, bw - 2), bh);
+      }
+    };
+    tick();
+  }
+
+  function stopVisualizer() {
+    if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
+    analyserRef.current = null;
+    void audioCtxRef.current?.close();
+    audioCtxRef.current = null;
+    const canvas = canvasRef.current;
+    canvas?.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
   function releaseStream() {
+    stopVisualizer();
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
   }
@@ -131,6 +204,7 @@ export function MicButton({
       return;
     }
     streamRef.current = stream;
+    setupVisualizer(stream);
 
     const mimeType = pickMimeType();
     const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
@@ -194,12 +268,15 @@ export function MicButton({
         {recording ? <Square fill="currentColor" /> : <Mic />}
       </Button>
 
-      {recording && (
-        <span className="font-mono text-label uppercase tracking-label text-primary" aria-live="polite">
-          Слушаю
-          <LoadingDots />
-        </span>
-      )}
+      {/* Дорожка всегда в DOM (ref стабилен), показываем только при записи. */}
+      <span
+        className={recording ? "inline-flex items-center gap-2 text-primary" : "hidden"}
+        aria-live="polite"
+      >
+        <canvas ref={canvasRef} width={140} height={24} aria-hidden="true" className="text-primary" />
+        <span className="font-mono text-label uppercase tracking-label">Слушаю</span>
+      </span>
+
       {transcribing && (
         <span className="font-mono text-label uppercase tracking-label text-muted-foreground" aria-live="polite">
           Распознаю
