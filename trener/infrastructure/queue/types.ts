@@ -17,6 +17,8 @@ export type RawTask = {
 export type TaskInput = {
   type: string;
   payload: Record<string, unknown>;
+  // Переопределить приоритет; по умолчанию вычисляется по типу (см. enqueue).
+  priority?: number;
 };
 
 export type WorkerResult = {

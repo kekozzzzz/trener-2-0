@@ -18,17 +18,19 @@ type Sub = {
 function mockDb(opts: {
   email: string;
   subscription?: Sub;
-  spentUsd?: number;
+  analyzedCount?: number; // турниров уже разобрано за период (счётчик лимита)
   firstTournamentId?: string | null;
+  unlockedTournamentId?: string | null; // какой турнир уже открыт (analysisUnlocked=true)
 }): PrismaClient {
   return {
     player: {
       findUnique: async () => ({ email: opts.email, subscription: opts.subscription ?? null }),
     },
-    llmUsage: {
-      aggregate: async () => ({ _sum: { costUsd: opts.spentUsd ?? 0 } }),
-    },
     tournament: {
+      findUnique: async ({ where }: { where: { id: string } }) => ({
+        analysisUnlocked: opts.unlockedTournamentId != null && where.id === opts.unlockedTournamentId,
+      }),
+      count: async () => opts.analyzedCount ?? 0,
       findFirst: async () => (opts.firstTournamentId ? { id: opts.firstTournamentId } : null),
     },
   } as unknown as PrismaClient;
@@ -54,17 +56,28 @@ describe("assessAiAccess", () => {
     expect(await assessAiAccess(db, "p", { tournamentId: "T9" })).toEqual({ allowed: true });
   });
 
-  it("активная подписка, бюджет не исчерпан → доступ", async () => {
-    const db = mockDb({ email: "u@x.ru", subscription: activeSub("basic"), spentUsd: 1.0 });
+  it("активная подписка, лимит турниров не исчерпан → доступ", async () => {
+    const db = mockDb({ email: "u@x.ru", subscription: activeSub("basic"), analyzedCount: 10 }); // basic = 50
     expect(await assessAiAccess(db, "p")).toEqual({ allowed: true });
   });
 
-  it("активная подписка, бюджет исчерпан → стена LIMIT_REACHED", async () => {
-    const db = mockDb({ email: "u@x.ru", subscription: activeSub("basic"), spentUsd: 5.0 }); // basic = $4.0
+  it("активная подписка, лимит турниров исчерпан → стена LIMIT_REACHED", async () => {
+    const db = mockDb({ email: "u@x.ru", subscription: activeSub("basic"), analyzedCount: 50 }); // basic = 50
     const res = await assessAiAccess(db, "p");
     expect(res.allowed).toBe(false);
     if (res.allowed) return;
     expect(res.reason).toBe("LIMIT_REACHED");
+  });
+
+  it("лимит исчерпан, но действие на УЖЕ открытом турнире → доступ (слот не тратит)", async () => {
+    // Диалог/чат внутри открытого турнира не упирается в лимит — турнир уже посчитан.
+    const db = mockDb({
+      email: "u@x.ru",
+      subscription: activeSub("basic"),
+      analyzedCount: 50, // лимит выбран
+      unlockedTournamentId: "T1",
+    });
+    expect(await assessAiAccess(db, "p", { tournamentId: "T1" })).toEqual({ allowed: true });
   });
 
   it("статус ACTIVE, но оплаченный период истёк → не активна (paywall, как без подписки)", async () => {

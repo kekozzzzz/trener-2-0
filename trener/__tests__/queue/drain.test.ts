@@ -8,7 +8,7 @@
  *  4. kickWorker single-flight: повторный пинок во время прогона не теряет задачи
  */
 
-import { describe, it, expect, beforeEach, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
 import { PrismaClient } from "@prisma/client";
 import { enqueue, drainQueue, kickWorker, registerStep } from "@/infrastructure/queue";
 
@@ -18,11 +18,19 @@ const db = new PrismaClient({
   },
 });
 
+// Этот файл тестирует САМ kickWorker — включаем фоновый пинок для него (в остальных
+// тестах он выключен, чтобы fire-and-forget дренаж не воровал чужие задачи). Файлы идут
+// серийно (fileParallelism: false), пинок здесь дожидаемся — утечки в другие файлы нет.
+beforeAll(() => {
+  process.env.QUEUE_KICK_IN_TEST = "true";
+});
+
 beforeEach(async () => {
   await db.task.deleteMany();
 });
 
 afterAll(async () => {
+  delete process.env.QUEUE_KICK_IN_TEST;
   await db.task.deleteMany();
   await db.$disconnect();
 });

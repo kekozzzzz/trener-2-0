@@ -2,10 +2,11 @@ import { noindex } from "@/lib/seo";
 export const metadata = noindex;
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { uploadTournament } from "@/features/tournaments/actions";
+import { uploadTournamentsBatch, type BatchItem } from "@/features/tournaments/actions";
 import { recentTournaments } from "@/features/tournaments/queries";
 import { requireSession } from "@/features/auth/session";
 import { checkUploadQuota } from "@/features/usage/limit";
+import { getUploadMaxFilesPerBatch } from "@/config/usage-limits";
 import { PageHeader } from "@/components/page-header";
 import { SiteFooter } from "@/components/site-footer";
 import { TournamentRow } from "@/components/tournaments/tournament-row";
@@ -15,39 +16,65 @@ import { FileInput } from "@/components/upload/file-input";
 import { SubmitButton } from "@/components/upload/submit-button";
 import { UploadGuide } from "@/components/upload/upload-guide";
 
+const MAX_FILE_BYTES = 5 * 1024 * 1024;
+
 async function handleUpload(formData: FormData) {
   "use server";
   const { playerId } = await requireSession();
 
-  // Лимит загрузок в час на игрока (защита баланса Anthropic: один файл = десятки
-  // платных вызовов). Проверяем ДО чтения файла и любой работы парсера/очереди.
+  // Лимит загрузок в час на игрока — защита от шторма. Считаем по «закиду» (один
+  // клик = одна единица), а не по файлу: загрузка сама по себе дешёвая (парсинг),
+  // платная стена стоит на РАЗБОРЕ (parse-tournament.ts). Проверяем ДО чтения файлов.
   if (!checkUploadQuota(playerId).ok) {
     redirect(`/analyze?error=RATE_LIMITED`);
   }
 
-  const file = formData.get("file") as File | null;
-  if (!file || file.size === 0 || file.size > 5 * 1024 * 1024) return;
+  const picked = formData
+    .getAll("file")
+    .filter((f): f is File => f instanceof File && f.size > 0);
+  if (picked.length === 0) return;
 
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const result = await uploadTournament({
-    fileBuffer: buffer,
-    originalFilename: file.name,
-    playerId,
-  });
+  // Потолок файлов в пачке: берём первые N, остальное отсекаем (помечаем capped).
+  const maxBatch = getUploadMaxFilesPerBatch();
+  const capped = picked.length > maxBatch;
+  const chosen = picked.slice(0, maxBatch);
 
-  if (!result.ok) {
-    if (result.error === "DUPLICATE") {
-      // Повтор: ведём к уже существующему разбору с пометкой.
-      redirect(`/tournament/${result.existingTournamentId}?duplicate=1`);
+  // Слишком большие файлы (>5 МБ) не читаем — считаем их «ошибкой» в сводке.
+  const items: BatchItem[] = [];
+  let oversize = 0;
+  for (const file of chosen) {
+    if (file.size > MAX_FILE_BYTES) {
+      oversize++;
+      continue;
     }
-    redirect(`/analyze?error=${result.error}`);
-  } else {
-    redirect(`/tournament/${result.tournamentId}`);
+    items.push({ fileBuffer: Buffer.from(await file.arrayBuffer()), originalFilename: file.name });
   }
+
+  const summary = await uploadTournamentsBatch(items, playerId);
+  const failed = summary.failed + oversize;
+
+  // Одиночная загрузка — поведение как раньше: сразу на страницу турнира (или дубль/ошибка).
+  if (picked.length === 1) {
+    const r = summary.singleResult;
+    if (r?.ok) redirect(`/tournament/${r.tournamentId}`);
+    if (r && !r.ok && r.error === "DUPLICATE") redirect(`/tournament/${r.existingTournamentId}?duplicate=1`);
+    if (oversize === 1) redirect(`/analyze?error=TOO_LARGE`);
+    redirect(`/analyze?error=${r && !r.ok ? r.error : "PARSE_FAILED"}`);
+  }
+
+  // Пачка (2+ файла) — на «Мои турниры» со сводкой по итогу обработки.
+  const params = new URLSearchParams({
+    uploaded: String(summary.uploaded),
+    dup: String(summary.duplicates),
+    failed: String(failed),
+  });
+  if (capped) params.set("capped", String(maxBatch));
+  redirect(`/tournaments?${params.toString()}`);
 }
 
 const UPLOAD_ERROR_TEXT: Record<string, string> = {
   UNSUPPORTED_FORMAT: "Загрузи MTT-турнир GGPoker",
+  TOO_LARGE: "Файл больше 5 МБ — загрузи файл поменьше.",
   RATE_LIMITED: "Слишком много загрузок за час. Подожди немного и попробуй снова.",
   PAYWALL: "Первый турнир ты уже разобрал бесплатно. Оформи подписку, чтобы разбирать дальше.",
   LIMIT_REACHED: "Лимит этого периода исчерпан — он обновится с началом нового периода подписки.",
@@ -88,8 +115,10 @@ export default async function AnalyzePage({
       <section className="mx-auto max-w-5xl px-8 py-16">
         <div className="mx-auto max-w-2xl space-y-8 text-center">
           <div className="space-y-2">
-            <h1 className="text-h1">Загрузить турнир</h1>
-            <p className="text-small text-muted-foreground">HH-файл GGPoker MTT в формате .txt, до 5 МБ.</p>
+            <h1 className="text-h1">Загрузить турниры</h1>
+            <p className="text-small text-muted-foreground">
+              HH-файлы GGPoker MTT в формате .txt, до 5 МБ каждый. Можно выбрать сразу несколько.
+            </p>
           </div>
 
           {error && <UploadError error={error} />}
@@ -97,9 +126,9 @@ export default async function AnalyzePage({
           <form action={handleUpload} encType="multipart/form-data" className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="file" className="font-mono text-label uppercase tracking-label text-muted-foreground">
-                HH-файл (.txt)
+                HH-файлы (.txt)
               </Label>
-              <FileInput id="file" name="file" accept=".txt" required />
+              <FileInput id="file" name="file" accept=".txt" required multiple />
             </div>
             <SubmitButton />
           </form>

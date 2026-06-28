@@ -4,7 +4,7 @@ import { AuthNav } from "@/components/auth-nav";
 import { Wordmark } from "@/components/ui/wordmark";
 import { PricingCard } from "@/components/ui/pricing-card";
 import { CheckoutButton } from "@/components/subscription/checkout-button";
-import { getPlans, formatUsd, getPlan } from "@/config/plans";
+import { getPlans, formatUsd } from "@/config/plans";
 import { isRecurringEnabled } from "@/config/payments";
 import { getSession } from "@/features/auth/session";
 import { getSubscriptionState } from "@/features/subscription/access";
@@ -19,9 +19,8 @@ export const metadata = {
     "Первый разбор турнира в Whygrid — бесплатно. Дальше подписка с разбором-диалогом твоих раздач: тренер ведёт вопросами, парсер считает числа. Без скрытых платежей.",
 };
 
-// Возможности ОДИНАКОВЫ на всех тарифах (кредитная модель,
-// plans/2026-06-21-кредитная-система.md): тарифы отличаются только невидимым бюджетом.
-// Поэтому список «что входит» — один общий блок под колонками, а не повтор в каждой.
+// Возможности ОДИНАКОВЫ на всех тарифах: отличаются только числом разборов за месяц
+// (tournamentLimit). Поэтому список «что входит» — один общий блок под колонками.
 const SHARED_FEATURES = [
   "Сократовский диалог «почему» по ключевым раздачам",
   "Чат по любой раздаче карточки",
@@ -29,13 +28,10 @@ const SHARED_FEATURES = [
   "Точные числа от парсера, а не догадки ИИ",
 ];
 
-// Различие тарифов для пользователя — относительный объём разборов (без абсолютных
-// чисел: счётчик намеренно невидим). Кратность считаем от бюджета базового тарифа —
-// так она честно отражает, во сколько раз больше можно разобрать, и сама подстроится
-// при смене бюджетов в конфиге.
-function volumeNote(budgetUsd: number, baseBudgetUsd: number): string {
-  const mult = Math.round(budgetUsd / baseBudgetUsd);
-  return mult <= 1 ? "Базовый объём" : `Объём × ${mult}`;
+// Различие тарифов для пользователя — видимое число разборов турниров в месяц.
+// Загрузка и метрики бесплатны и безлимитны; лимит тратит только запуск разбора.
+function volumeNote(tournamentLimit: number): string {
+  return `${tournamentLimit} разборов турниров в месяц`;
 }
 
 export default async function PricingPage() {
@@ -43,7 +39,6 @@ export default async function PricingPage() {
   const state = session ? await getSubscriptionState(session.playerId) : null;
   const currentPlan = state?.hasAccess ? state.planCode : null;
   const plans = getPlans();
-  const baseBudget = getPlan("basic")?.monthlyBudgetUsd ?? 1;
   // Автоплатёж сохраняет только карту → форма ЮKassa станет card-only. Поэтому для новой
   // подписки даём два пути: картой с автопродлением ИЛИ разово любым способом (СБП и др.).
   const recurringOn = isRecurringEnabled();
@@ -121,7 +116,7 @@ export default async function PricingPage() {
                 title={plan.title}
                 description={plan.description}
                 priceLabel={formatUsd(plan.priceUsd)}
-                volumeNote={volumeNote(plan.monthlyBudgetUsd, baseBudget)}
+                volumeNote={volumeNote(plan.tournamentLimit)}
                 cta={cta}
               />
             );

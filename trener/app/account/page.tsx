@@ -3,8 +3,6 @@ export const metadata = noindex;
 import Link from "next/link";
 import { requireSession } from "@/features/auth/session";
 import { getCurrentPlayer } from "@/features/auth/queries";
-import { getPlayerCharacteristic } from "@/features/profile/queries";
-import { CHARACTERISTIC_RELIABLE_FROM } from "@/config/profile";
 import { logoutAction, logoutEverywhereAction } from "@/features/auth/actions";
 import { getSubscriptionState, periodEnd } from "@/features/subscription/access";
 import { cancelScheduledPlan } from "@/features/subscription/actions";
@@ -14,13 +12,13 @@ import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/page-header";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ChangePasswordForm } from "./change-password-form";
+import { SetPasswordForm } from "./set-password-form";
 import { CloseAccountForm } from "./close-account-form";
 import { NicknameForm } from "./nickname-form";
 
 export default async function AccountPage() {
   const { playerId } = await requireSession();
   const player = await getCurrentPlayer();
-  const characteristic = await getPlayerCharacteristic(playerId);
   const sub = await getSubscriptionState(playerId);
   const plan = getPlan(sub.planCode);
   const scheduledPlan = getPlan(sub.subscription?.scheduledPlanCode);
@@ -40,18 +38,6 @@ export default async function AccountPage() {
           <p className="font-mono text-label uppercase tracking-label text-muted-foreground">Email</p>
           <p className="text-body text-foreground">{player?.email ?? "—"}</p>
         </div>
-
-        {characteristic && (
-          <div className="mt-12 border-t border-border pt-12">
-            <h2 className="text-h2">Твой профиль игры</h2>
-            <p className="mt-4 whitespace-pre-line text-body text-foreground">{characteristic.characteristic}</p>
-            <p className="mt-3 text-small text-muted-foreground">
-              {characteristic.tournamentsCounted >= CHARACTERISTIC_RELIABLE_FROM
-                ? `Собрано по всей твоей дистанции (учтено турниров: ${characteristic.tournamentsCounted}).`
-                : `Пока учтено турниров: ${characteristic.tournamentsCounted}. Картина предварительная — станет точной примерно от ${CHARACTERISTIC_RELIABLE_FROM} турниров.`}
-            </p>
-          </div>
-        )}
 
         <div className="mt-12 border-t border-border pt-12">
           <h2 className="text-h2">Покерный ник</h2>
@@ -111,15 +97,15 @@ export default async function AccountPage() {
         </div>
 
         <div className="mt-12 border-t border-border pt-12">
-          <h2 className="text-h2">Сменить пароль</h2>
+          <h2 className="text-h2">{player?.hasPassword ? "Сменить пароль" : "Задать пароль"}</h2>
           <p className="mt-2 text-small text-muted-foreground">
-            {player?.passwordChangedAt
-              ? `Пароль менялся: ${player.passwordChangedAt.toLocaleDateString("ru-RU")}`
-              : "Пароль ещё не менялся с момента регистрации."}
+            {player?.hasPassword
+              ? player?.passwordChangedAt
+                ? `Пароль менялся: ${player.passwordChangedAt.toLocaleDateString("ru-RU")}`
+                : "Пароль ещё не менялся с момента регистрации."
+              : "Сейчас ты заходишь по ссылке на почту. Можешь задать пароль — тогда сможешь входить и им тоже."}
           </p>
-          <div className="mt-6">
-            <ChangePasswordForm />
-          </div>
+          <div className="mt-6">{player?.hasPassword ? <ChangePasswordForm /> : <SetPasswordForm />}</div>
         </div>
 
         <div className="mt-12 border-t border-border pt-12 space-y-6">

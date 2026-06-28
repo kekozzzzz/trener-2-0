@@ -29,6 +29,7 @@ model Player {
   tournaments  Tournament[]
   subscription Subscription?
   passwordResetTokens PasswordResetToken[]
+  accountClosureTokens AccountClosureToken[]
   llmUsage     LlmUsage[]
 
   @@map("players")
@@ -76,6 +77,46 @@ model PasswordResetToken {
 
   @@index([playerId])
   @@map("password_reset_tokens")
+}
+
+// ─────────────── Одноразовый токен входа по ссылке (passwordless) ───────────────
+// «Волшебная ссылка»: вход И регистрация без пароля одной ссылкой из письма. Ключ —
+// email, а НЕ игрок: при первой регистрации игрока ещё нет, поэтому FK на Player тут
+// невозможен. Сырой токен живёт только в письме; в базе — лишь SHA-256 (утечка базы
+// не даёт рабочих ссылок). Одноразовый (used_at) и короткоживущий (expires_at).
+// По клику: игрок с таким email есть → сразу сессия; нет → экран согласия и создание
+// аккаунта. plans/2026-06-28-вход-по-волшебной-ссылке.md
+model MagicLinkToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  email     String                                  // нормализованный (trim + lower-case)
+  tokenHash String    @unique @map("token_hash")    // SHA-256 (hex) сырого токена
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")               // момент использования; NULL — ещё не использован
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@index([email])
+  @@map("magic_link_tokens")
+}
+
+// ─────────────── Одноразовый токен закрытия аккаунта по ссылке ───────────────
+// Закрытие — необратимое действие (мягкое удаление + анонимизация). Подтверждается
+// кликом по ссылке из письма (доступ к ящику = подтверждение) и кнопкой на странице
+// (НЕ по самому клику — иначе почтовый сканер мог бы закрыть аккаунт). Сырой токен —
+// только в письме, в базе SHA-256. Одноразовый и короткоживущий, как сброс пароля.
+model AccountClosureToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  playerId  String    @map("player_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash") // SHA-256 (hex) сырого токена
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([playerId])
+  @@map("account_closure_tokens")
 }
 
 // ─────────────────── Профиль игрока (1:1, создаётся с первым турниром) ────────
@@ -185,6 +226,8 @@ model Hand {
   tableData       Json          @map("table_data")     // JSONB: карты, действия, позиции — снимок парсера
   selectedForCard Boolean       @default(false) @map("selected_for_card") // попала в ~10 раздач карточки этого турнира (selectHandsForCard)
   analysis        Json?                                // JSONB: что сделано / что было бы оптимально — NULL, пока LLM не сгенерировала (только для selectedForCard; для остальных — по требованию, режим «Тренировка»)
+  spot            Json?                                // отпечаток спота (parser/spot-fingerprint): позиция/роль/глубина/борд/попадание — основа памяти тренера, считает ПАРСЕР (Правило 1)
+  spotKey         String?       @map("spot_key")       // канонический ключ отпечатка — для быстрого поиска похожих спотов игрока
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
@@ -193,6 +236,7 @@ model Hand {
   chatMessages ChatMessage[]
 
   @@index([tournamentId, selectedForCard], map: "idx_hands_tournament_card")
+  @@index([spotKey], map: "idx_hands_spot_key")
   @@map("hands")
 }
 
@@ -283,14 +327,18 @@ model Task {
   payload   Json
   status    TaskStatus @default(PENDING)
   attempt   Int        @default(0)
+  // Приоритет: живое/интерактивное (вопрос диалога, вердикт, чат) выше массового
+  // разбора, чтобы залив пачки не замораживал чужие живые диалоги. Больше = раньше.
+  priority  Int        @default(0)
   runAfter  DateTime   @default(now()) @map("run_after")
   doneAt    DateTime?  @map("done_at")
   error     String?
   createdAt DateTime   @default(now()) @map("created_at")
   updatedAt DateTime   @updatedAt @map("updated_at")
 
-  // Горячий индекс: воркер ищет PENDING-задачи с run_after <= NOW() в порядке очереди
-  @@index([status, runAfter, createdAt], map: "idx_tasks_queue")
+  // Горячий индекс: воркер ищет PENDING-задачи с run_after <= NOW(), берёт по приоритету,
+  // внутри приоритета — в порядке очереди (created_at).
+  @@index([status, runAfter, priority, createdAt], map: "idx_tasks_queue")
   @@map("tasks")
 }
 

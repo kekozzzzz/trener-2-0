@@ -12,7 +12,7 @@ import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
 import { PrismaClient } from "@prisma/client";
 import fs from "fs";
 import path from "path";
-import { uploadTournament } from "@/features/tournaments/actions";
+import { uploadTournament, uploadTournamentsBatch } from "@/features/tournaments/actions";
 import { submitAnswer } from "@/features/dialogue/actions";
 import { runWorkerOnce } from "@/infrastructure/queue";
 
@@ -106,6 +106,65 @@ describe("uploadTournament — главный путь", () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error).toBe("UNSUPPORTED_FORMAT");
+  });
+});
+
+describe("uploadTournamentsBatch — пакетная загрузка", () => {
+  it("создаёт по турниру на файл; воркер доводит оба до PARSED", async () => {
+    const summary = await uploadTournamentsBatch(
+      [
+        { fileBuffer: fixtureBuffer, originalFilename: "sample_mtt.txt" },
+        { fileBuffer: richBuffer, originalFilename: "ggpoker_mtt_rich.txt" },
+      ],
+      TEST_PLAYER_ID,
+    );
+
+    expect(summary.uploaded).toBe(2);
+    expect(summary.duplicates).toBe(0);
+    expect(summary.failed).toBe(0);
+    // singleResult заполняется только для пачки из одного файла
+    expect(summary.singleResult).toBeNull();
+
+    const created = await prisma.tournament.findMany({ where: { playerId: TEST_PLAYER_ID } });
+    expect(created).toHaveLength(2);
+    expect(created.every((t) => t.status === "UPLOADED")).toBe(true);
+
+    for (let i = 0; i < 20; i++) {
+      const { tasksProcessed } = await runWorkerOnce(prisma);
+      if (tasksProcessed === 0) break;
+    }
+
+    const parsed = await prisma.tournament.findMany({ where: { playerId: TEST_PLAYER_ID } });
+    expect(parsed.every((t) => t.handsCount != null && t.handsCount > 0)).toBe(true);
+  });
+
+  it("дубль внутри пачки не создаёт второй турнир и попадает в счётчик", async () => {
+    const summary = await uploadTournamentsBatch(
+      [
+        { fileBuffer: fixtureBuffer, originalFilename: "a.txt" },
+        { fileBuffer: fixtureBuffer, originalFilename: "a-копия.txt" },
+      ],
+      TEST_PLAYER_ID,
+    );
+
+    expect(summary.uploaded).toBe(1);
+    expect(summary.duplicates).toBe(1);
+
+    const created = await prisma.tournament.findMany({ where: { playerId: TEST_PLAYER_ID } });
+    expect(created).toHaveLength(1);
+  });
+
+  it("не-MTT файл в пачке считается ошибкой, остальные грузятся", async () => {
+    const summary = await uploadTournamentsBatch(
+      [
+        { fileBuffer: Buffer.from("PokerStars Hand #1: Hold'em"), originalFilename: "bad.txt" },
+        { fileBuffer: fixtureBuffer, originalFilename: "good.txt" },
+      ],
+      TEST_PLAYER_ID,
+    );
+
+    expect(summary.uploaded).toBe(1);
+    expect(summary.failed).toBe(1);
   });
 });
 

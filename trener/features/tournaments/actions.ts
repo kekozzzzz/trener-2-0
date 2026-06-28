@@ -8,7 +8,7 @@ type UploadInput = {
   playerId: string;
 };
 
-type UploadResult =
+export type UploadResult =
   | { ok: true; tournamentId: string }
   | { ok: false; error: "UNSUPPORTED_FORMAT" | "PARSE_FAILED" | "PAYWALL" | "LIMIT_REACHED" }
   | { ok: false; error: "DUPLICATE"; existingTournamentId: string };
@@ -68,4 +68,53 @@ export async function uploadTournament(input: UploadInput): Promise<UploadResult
   void kickWorker(prisma);
 
   return { ok: true, tournamentId: tournament.id };
+}
+
+export type BatchItem = { fileBuffer: Buffer; originalFilename: string };
+
+export type BatchSummary = {
+  uploaded: number; // создано новых турниров
+  duplicates: number; // уже были у игрока (повтор не создаём)
+  failed: number; // не-MTT / не распарсилось
+  firstTournamentId: string | null; // первый созданный/существующий — для редиректа
+  // Точный результат, когда в пачке ровно один файл: одиночная загрузка сохраняет
+  // прежнее поведение (страница турнира / дубль / конкретная ошибка).
+  singleResult: UploadResult | null;
+};
+
+// Пакетная загрузка: прогоняет каждый файл через uploadTournament и собирает итог.
+// Цикл, а не транзакция: файлы независимы — дубль или не-MTT среди них не должен
+// валить остальные. kickWorker внутри uploadTournament — single-flight, повторные
+// вызовы в цикле безвредны. Потолок/срез пачки и квоту проверяет точка входа
+// (app/analyze/page.tsx) ДО вызова — сюда приходят уже отобранные файлы.
+export async function uploadTournamentsBatch(
+  items: BatchItem[],
+  playerId: string,
+): Promise<BatchSummary> {
+  let uploaded = 0;
+  let duplicates = 0;
+  let failed = 0;
+  let firstTournamentId: string | null = null;
+  let singleResult: UploadResult | null = null;
+
+  for (const item of items) {
+    const result = await uploadTournament({
+      fileBuffer: item.fileBuffer,
+      originalFilename: item.originalFilename,
+      playerId,
+    });
+    if (items.length === 1) singleResult = result;
+
+    if (result.ok) {
+      uploaded++;
+      firstTournamentId ??= result.tournamentId;
+    } else if (result.error === "DUPLICATE") {
+      duplicates++;
+      firstTournamentId ??= result.existingTournamentId;
+    } else {
+      failed++;
+    }
+  }
+
+  return { uploaded, duplicates, failed, firstTournamentId, singleResult };
 }

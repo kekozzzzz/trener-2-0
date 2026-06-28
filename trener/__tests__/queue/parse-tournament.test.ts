@@ -28,8 +28,8 @@ function makeHand(importanceLevel: ParsedHand["importanceLevel"], chipResult: nu
   return { importanceLevel, chipResult, tableSnapshot: EMPTY_SNAPSHOT };
 }
 
-// 12 раздач: 2 CRITICAL + 6 STRONG + 4 MEDIUM → selectHandsForCard отбирает 10
-// (2 критических + топ-5 сильных + топ-3 средних).
+// 12 раздач: 2 CRITICAL + 6 STRONG + 4 MEDIUM → 8 спорных, selectHandsForCard отбирает 10
+// (все 8 спорных + топ-2 средних до нижней планки = 2C/6S/2M).
 const PARSED: ParsedTournament = {
   room: "GGPoker",
   externalTournamentId: "999999",
@@ -116,14 +116,39 @@ describe("PARSE_TOURNAMENT — основной путь", () => {
     const selected = hands.filter((h) => h.selectedForCard);
     expect(selected).toHaveLength(10);
     expect(selected.filter((h) => h.importanceLevel === "CRITICAL")).toHaveLength(2);
-    expect(selected.filter((h) => h.importanceLevel === "STRONG")).toHaveLength(5);
-    expect(selected.filter((h) => h.importanceLevel === "MEDIUM")).toHaveLength(3);
+    expect(selected.filter((h) => h.importanceLevel === "STRONG")).toHaveLength(6);
+    expect(selected.filter((h) => h.importanceLevel === "MEDIUM")).toHaveLength(2);
 
     const tasks = await db.task.findMany({ where: { type: "GENERATE_HAND_ANALYSIS" } });
     expect(tasks).toHaveLength(10);
     expect(new Set(tasks.map((t) => (t.payload as { handId: string }).handId))).toEqual(
       new Set(selected.map((h) => h.id))
     );
+  });
+
+  it("ленивый разбор: второй турнир игрока НЕ разбирается сам (без гейта тоже)", async () => {
+    // Первый (старейший) турнир уже есть — он и есть авто-разбираемый хук.
+    await db.tournament.create({
+      data: {
+        playerId: TEST_PLAYER_ID,
+        playedAt: new Date(),
+        status: "PARSED",
+        createdAt: new Date(Date.now() - 100_000),
+      },
+    });
+    const tournamentId = await createTournament(); // второй, новее
+
+    await parseTournamentStep(makeRawTask({ tournamentId, parsed: PARSED }), db);
+
+    const t = await db.tournament.findUnique({ where: { id: tournamentId } });
+    expect(t!.status).toBe("PARSED");
+    expect(t!.analysisUnlocked).toBe(false); // лениво: ждёт клика «Разобрать»
+
+    const hands = await db.hand.findMany({ where: { tournamentId } });
+    expect(hands).toHaveLength(12); // метрики и раздачи сохранены, видны бесплатно
+
+    const tasks = await db.task.findMany({ where: { type: "GENERATE_HAND_ANALYSIS" } });
+    expect(tasks).toHaveLength(0); // разбор сам не запускается, даже без платной стены
   });
 
   it("идемпотентность: повторный вызов не дублирует раздачи и задачи", async () => {
@@ -140,10 +165,11 @@ describe("PARSE_TOURNAMENT — основной путь", () => {
   });
 });
 
-// Модель «грузи сколько угодно, разбор — у одного бесплатного, остальные под замком».
-// При включённом гейте: первый турнир бесплатен (разбор открыт), второй без подписки
-// запирается — метрики сохранены, но НИ ОДНОЙ платной ИИ-задачи (правило №1).
-describe("PARSE_TOURNAMENT — гейт разбора (правило №1)", () => {
+// Ленивый разбор: сам парс-шаг авто-разбирает только ПЕРВЫЙ турнир игрока (хук),
+// остальные рождаются заперты (analysis_unlocked=false, ноль платных задач — правило №1).
+// Сам платный гейт (можно ли открыть по клику) живёт в unlockTournamentAnalysisAction и
+// проверяется отдельно; здесь — что первый разбирается сам, а следующий ждёт.
+describe("PARSE_TOURNAMENT — авто только у первого (правило №1)", () => {
   beforeEach(() => {
     process.env.SUBSCRIPTION_GATE_ENABLED = "true";
   });

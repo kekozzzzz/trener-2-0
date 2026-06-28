@@ -144,7 +144,7 @@ async function claimTask(db: PrismaClient): Promise<RawTask | null> {
       SELECT * FROM tasks
       WHERE status = 'PENDING'
         AND (run_after AT TIME ZONE 'UTC') <= NOW()::timestamp(3)
-      ORDER BY created_at
+      ORDER BY priority DESC, created_at
       LIMIT 1
       FOR UPDATE SKIP LOCKED
     `;

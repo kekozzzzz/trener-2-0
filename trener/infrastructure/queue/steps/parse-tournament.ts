@@ -3,8 +3,7 @@ import type { Prisma } from "@prisma/client";
 import type { StepHandler } from "../types";
 import type { ParsedTournament } from "@/parser/types";
 import { selectHandsForCard } from "@/features/card/select-hands";
-import { assessAiAccess } from "@/features/usage/budget";
-import { isSubscriptionGateEnabled } from "@/config/plans";
+import { computeSpotFingerprint, spotKey } from "@/parser/spot-fingerprint";
 import { enqueue } from "../enqueue";
 
 type ParsePayload = {
@@ -12,30 +11,37 @@ type ParsePayload = {
   parsed: ParsedTournament;
 };
 
-// Сохраняет ВСЕ размеченные раздачи турнира, отмечает ~10 отобранных для карточки
+// Сохраняет ВСЕ размеченные раздачи турнира, отмечает ~10-20 отобранных для карточки
 // (selectHandsForCard) флагом selected_for_card. Числа уже посчитаны парсером
 // синхронно при загрузке (features/tournaments/actions.ts) — здесь только запись.
 //
-// Платный гейт РАЗБОРА (правило №1): задачи GENERATE_HAND_ANALYSIS — и вся выросшая
-// из них ИИ-цепочка (диалоги/вердикты/обзор/характеристика) — ставятся ТОЛЬКО если
-// разбор этого турнира разрешён (assessAiAccess: первый бесплатный / активная
-// подписка с остатком бюджета). Иначе турнир «заперт»: метрики сохранены и видны,
-// но ни одна платная задача не порождается; analysis_unlocked=false. Открыть позже —
-// unlockTournamentAnalysis (app/tournament/[id]/actions.ts).
+// ЛЕНИВЫЙ РАЗБОР: турнир рождается «распарсен, но не разобран» (analysis_unlocked=false),
+// и ИИ-цепочку (GENERATE_HAND_ANALYSIS → диалоги/вердикты/обзор) НЕ запускаем сами.
+// Игрок открывает разбор кнопкой «Разобрать» (unlockTournamentAnalysisAction — там и
+// гейт доступа/лимита, правило №1). Исключение — конверсионный хук: ПЕРВЫЙ турнир игрока
+// разбирается сразу, чтобы новичок увидел магию без лишнего шага (первый всегда бесплатен).
+// Так залив сотни турниров не жжёт бюджет: метрики по всем бесплатны, разбор — по клику.
 export const parseTournamentStep: StepHandler = async (task, db) => {
   const { tournamentId, parsed } = task.payload as ParsePayload;
   const { handsCount, vpipPercent, resultBuyins, styleDiagnosis, hands } = parsed;
 
-  // Разрешён ли разбор этого турнира. Гейт выключен → всегда открыт (дев/тесты).
   const owner = await db.tournament.findUnique({
     where: { id: tournamentId },
     select: { playerId: true },
   });
-  let unlocked = true;
-  if (owner && isSubscriptionGateEnabled()) {
-    const access = await assessAiAccess(db, owner.playerId, { tournamentId });
-    unlocked = access.allowed;
-  }
+
+  // Авто-разбор только у ПЕРВОГО (старейшего) турнира игрока — конверсионный хук.
+  // Остальные лениво: ждут клика «Разобрать». Определяем по старейшему турниру игрока.
+  const firstEver = owner
+    ? (
+        await db.tournament.findFirst({
+          where: { playerId: owner.playerId, deletedAt: null },
+          orderBy: { createdAt: "asc" },
+          select: { id: true },
+        })
+      )?.id === tournamentId
+    : false;
+  const unlocked = firstEver;
 
   await db.$transaction(async (tx) => {
     const { count } = await tx.tournament.updateMany({
@@ -52,18 +58,25 @@ export const parseTournamentStep: StepHandler = async (task, db) => {
 
     const selected = new Set(selectHandsForCard(hands));
 
-    const rows = hands.map((hand) => ({
-      id: randomUUID(),
-      tournamentId,
-      importanceLevel: hand.importanceLevel,
-      chipResult: hand.chipResult,
-      tableData: hand.tableSnapshot as unknown as Prisma.InputJsonValue,
-      selectedForCard: selected.has(hand),
-    }));
+    const rows = hands.map((hand) => {
+      // Отпечаток спота — детерминированно из снимка (Правило 1: похожесть считает парсер).
+      const fingerprint = computeSpotFingerprint(hand.tableSnapshot);
+      return {
+        id: randomUUID(),
+        tournamentId,
+        importanceLevel: hand.importanceLevel,
+        chipResult: hand.chipResult,
+        tableData: hand.tableSnapshot as unknown as Prisma.InputJsonValue,
+        selectedForCard: selected.has(hand),
+        spot: fingerprint as unknown as Prisma.InputJsonValue,
+        spotKey: spotKey(fingerprint),
+      };
+    });
 
     await tx.hand.createMany({ data: rows });
 
-    // Заперт → платную ИИ-цепочку НЕ запускаем (метрики уже сохранены).
+    // Лениво (не первый турнир) → ИИ-цепочку НЕ запускаем, ждём клика «Разобрать».
+    // Метрики и раздачи уже сохранены и видны бесплатно.
     if (!unlocked) return;
 
     for (const row of rows) {

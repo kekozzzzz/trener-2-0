@@ -32,6 +32,13 @@ async function loop(db: PrismaClient): Promise<void> {
 // крон/админ-экшен могут дождаться. Ошибки фонового прогона не роняют вызвавший запрос:
 // статус задач уже сохранён в БД воркером, прогон самовосстановится на следующем пинке/кроне.
 export function kickWorker(db: PrismaClient): Promise<void> {
+  // В тестах фоновый пинок выключен: воркер гоняют явно (runWorkerOnce/drainQueue). Иначе
+  // fire-and-forget дренаж доживает до следующего тест-файла и воует его задачи из общей
+  // очереди (флейки). Тот же приём, что и у лимитов (isUsageLimitEnabled). Исключение —
+  // тесты самого kickWorker (drain.test.ts ставит QUEUE_KICK_IN_TEST=true и ждёт пинок).
+  const inTest = process.env.NODE_ENV === "test" || process.env.VITEST;
+  if (inTest && process.env.QUEUE_KICK_IN_TEST !== "true") return Promise.resolve();
+
   if (active) {
     wantMore = true;
     return active;

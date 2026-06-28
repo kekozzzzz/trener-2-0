@@ -4,9 +4,12 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { requireSession } from "@/features/auth/session";
-import { hasActiveAccess } from "@/features/subscription/access";
+import { assessAiAccess } from "@/features/usage/budget";
+import { isSubscriptionGateEnabled } from "@/config/plans";
 import { bigBlindFromSnapshot } from "@/parser/big-blind";
+import { heroDecisionLabel } from "@/parser/hand-summary";
 import type { TableSnapshot } from "@/parser/types";
+import { HoleCards } from "@/components/poker/hole-cards";
 import { unlockTournamentAnalysisAction } from "./actions";
 import { personalizeHero } from "@/lib/hero-name";
 import { AuthNav } from "@/components/auth-nav";
@@ -15,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ParsingWaitClient } from "./parsing-wait-client";
-import { LiveRefresh } from "./live-refresh";
+import { AnalysisProgress } from "./analysis-progress";
 import { MetricsGlossary } from "@/components/metrics/glossary";
 import { LoadingDots } from "@/components/ui/loading-dots";
 
@@ -148,7 +151,12 @@ export default async function TournamentPage({
       orderBy: { createdAt: "asc" },
       select: { id: true, importanceLevel: true, chipResult: true, tableData: true },
     });
-    const canUnlock = await hasActiveAccess(session.playerId);
+    // Можно ли запустить разбор по клику. Стена выключена → можно всем (ленивый разбор
+    // бесплатен). Стена включена → по гейту: первый бесплатный / подписка в пределах лимита.
+    const access = isSubscriptionGateEnabled()
+      ? await assessAiAccess(prisma, session.playerId, { tournamentId: id })
+      : ({ allowed: true } as const);
+    const canUnlock = access.allowed;
 
     return (
       <main>
@@ -186,11 +194,12 @@ export default async function TournamentPage({
 
           <div className="mt-16 border border-primary bg-card p-6">
             <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
-              Разбор под замком
+              {canUnlock ? "Разбор этого турнира" : "Разбор под замком"}
             </p>
             <p className="mt-2 text-body text-foreground">
-              Метрики этого турнира уже посчитаны. Полный разбор — сократовский диалог по
-              ключевым раздачам, разборы ошибок и общая картина — откроется по подписке.
+              {canUnlock
+                ? "Метрики этого турнира уже посчитаны. Нажми «Разобрать» — тренер разберёт ключевые раздачи, проведёт сократовский диалог и соберёт общую картину."
+                : "Метрики этого турнира уже посчитаны. Полный разбор — сократовский диалог по ключевым раздачам, разборы ошибок и общая картина — откроется по подписке."}
             </p>
             {canUnlock ? (
               <form action={unlockTournamentAnalysisAction} className="mt-4">
@@ -210,7 +219,9 @@ export default async function TournamentPage({
             <div className="mt-16">
               <h2 className="text-h2">Раздачи</h2>
               <p className="mt-2 text-small text-muted-foreground">
-                Результаты по ключевым раздачам. Разбор откроется после подписки.
+                {canUnlock
+                  ? "Результаты по ключевым раздачам. Нажми «Разобрать» — и тренер разберёт их."
+                  : "Результаты по ключевым раздачам. Разбор откроется после подписки."}
               </p>
               <div className="mt-8 space-y-4">
                 {lockedHands.map((hand) => {
@@ -280,6 +291,20 @@ export default async function TournamentPage({
     select: { id: true, importanceLevel: true, chipResult: true, tableData: true },
   });
 
+  // Раздачи карточки, которые ещё разбираются (отобраны, но разбор не готов и диалога нет).
+  // Показываем их «в работе» с коротким описанием, пока турнир досчитывается — чтобы было
+  // видно, что именно тренер сейчас смотрит. Когда всё готово — список пуст.
+  const pendingHands = await prisma.hand.findMany({
+    where: {
+      tournamentId: id,
+      selectedForCard: true,
+      dialogue: { is: null },
+      analysis: { equals: Prisma.DbNull },
+    },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, tableData: true },
+  });
+
   // Обзор турнира (GENERATE_TOURNAMENT_SUMMARY) — может быть ещё не готов (null).
   // overview содержит инлайн-токены ссылок {{h:handId|карты}} (см. renderOverview).
   const summary = tournament.summary as { overview?: string } | null;
@@ -300,7 +325,6 @@ export default async function TournamentPage({
     <main>
       <PageHeader />
       <section className="mx-auto max-w-5xl px-8 py-16">
-        {processing && <LiveRefresh tournamentId={id} />}
 
         {duplicate && (
           <div className="mb-8 border border-border bg-card p-4">
@@ -315,6 +339,14 @@ export default async function TournamentPage({
           {dateFormat.format(tournament.playedAt)}
           {tournament.room && ` · ${tournament.room}`}
         </p>
+
+        {/* Пока турнир досчитывается — баннер с честными этапами. Он же опрашивает статус и
+            подгоняет страницу, чтобы разборы раздач всплывали в списках ниже по очереди. */}
+        {processing && (
+          <div className="mt-12 border border-border bg-card p-6">
+            <AnalysisProgress tournamentId={id} />
+          </div>
+        )}
 
         {/* Общая картина — наверху. Готова → показываем; ещё собирается → плейсхолдер. */}
         <div className="mt-16">
@@ -356,21 +388,29 @@ export default async function TournamentPage({
             <div className="mt-8 space-y-4">
               {handsForDialogue.map((hand, index) => {
                 const dialogue = hand.dialogue!;
+                const snap = hand.tableData as unknown as TableSnapshot;
+                const label = heroDecisionLabel(snap);
                 return (
                   <Link
                     key={hand.id}
                     href={`/tournament/${id}/hands/${hand.id}`}
                     className="group flex items-center justify-between gap-4 border border-border bg-card p-6 transition-colors duration-150 ease-out hover:border-primary"
                   >
-                    <div className="flex items-center gap-4">
-                      <span className="font-mono text-label uppercase tracking-label text-muted-foreground">
-                        Раздача {index + 1}
-                      </span>
-                      <Badge variant={dialogue.state === "VERDICT_SHOWN" ? "outline" : "default"}>
-                        {DIALOGUE_STATE_LABEL[dialogue.state] ?? dialogue.state}
-                      </Badge>
+                    <div className="flex min-w-0 items-center gap-4">
+                      <HoleCards cards={snap.heroCards ?? []} />
+                      <div className="flex min-w-0 flex-col gap-1">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <span className="font-mono text-label uppercase tracking-label text-muted-foreground">
+                            Раздача {index + 1}
+                          </span>
+                          <Badge variant={dialogue.state === "VERDICT_SHOWN" ? "outline" : "default"}>
+                            {DIALOGUE_STATE_LABEL[dialogue.state] ?? dialogue.state}
+                          </Badge>
+                        </div>
+                        {label && <span className="text-small text-muted-foreground">{label}</span>}
+                      </div>
                     </div>
-                    <ArrowRight className="size-4 text-muted-foreground transition-colors duration-150 ease-out group-hover:text-primary" />
+                    <ArrowRight className="size-4 shrink-0 text-muted-foreground transition-colors duration-150 ease-out group-hover:text-primary" />
                   </Link>
                 );
               })}
@@ -387,7 +427,9 @@ export default async function TournamentPage({
             <div className="mt-8 space-y-4">
               {simpleHands.map((hand) => {
                 const sign = hand.chipResult >= 0 ? "+" : "";
-                const bb = bigBlindFromSnapshot(hand.tableData as unknown as TableSnapshot);
+                const snap = hand.tableData as unknown as TableSnapshot;
+                const label = heroDecisionLabel(snap);
+                const bb = bigBlindFromSnapshot(snap);
                 const bbResult = bb ? hand.chipResult / bb : null;
                 return (
                   <Link
@@ -395,10 +437,16 @@ export default async function TournamentPage({
                     href={`/tournament/${id}/hands/${hand.id}`}
                     className="group flex items-center justify-between gap-4 border border-border bg-card p-6 transition-colors duration-150 ease-out hover:border-primary"
                   >
-                    <Badge variant="outline">
-                      {IMPORTANCE_LABEL[hand.importanceLevel] ?? hand.importanceLevel}
-                    </Badge>
-                    <div className="flex items-center gap-4">
+                    <div className="flex min-w-0 items-center gap-4">
+                      <Badge variant="outline" className="shrink-0">
+                        {IMPORTANCE_LABEL[hand.importanceLevel] ?? hand.importanceLevel}
+                      </Badge>
+                      <HoleCards cards={snap.heroCards ?? []} />
+                      {label && (
+                        <span className="truncate text-small text-muted-foreground">{label}</span>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-4">
                       <div className="flex flex-col items-end">
                         <span
                           className={cn(
@@ -424,11 +472,36 @@ export default async function TournamentPage({
           </div>
         )}
 
-        {processing && handsForDialogue.length === 0 && simpleHands.length === 0 && (
-          <p className="mt-16 flex items-center gap-2 text-body text-muted-foreground">
-            Разбираем раздачи турнира
-            <LoadingDots />
-          </p>
+        {processing && pendingHands.length > 0 && (
+          <div className="mt-16">
+            <h2 className="text-h2">Разбираем сейчас</h2>
+            <p className="mt-2 text-small text-muted-foreground">
+              Тренер смотрит эти раздачи — они появятся выше, как будут готовы.
+            </p>
+            <div className="mt-8 space-y-4">
+              {pendingHands.map((hand) => {
+                const snap = hand.tableData as unknown as TableSnapshot;
+                const label = heroDecisionLabel(snap);
+                return (
+                  <div
+                    key={hand.id}
+                    className="flex items-center justify-between gap-4 border border-border bg-card p-6 opacity-70"
+                  >
+                    <div className="flex min-w-0 items-center gap-4">
+                      <HoleCards cards={snap.heroCards ?? []} />
+                      {label && (
+                        <span className="truncate text-small text-muted-foreground">{label}</span>
+                      )}
+                    </div>
+                    <span className="flex shrink-0 items-center gap-2 font-mono text-label uppercase tracking-label text-muted-foreground">
+                      Разбираем
+                      <LoadingDots />
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         )}
 
         <div className="mt-16 border-t border-border pt-8 font-mono text-label uppercase tracking-label">
