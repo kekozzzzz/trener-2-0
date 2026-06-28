@@ -15,11 +15,21 @@ const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "X-DNS-Prefetch-Control", value: "off" },
-  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+  // microphone=(self) — голосовой ввод ответа работает только на нашем же origin
+  // (сторонним сайтам/iframe доступа нет). camera/geolocation не используем — закрыты.
+  { key: "Permissions-Policy", value: "camera=(), microphone=(self), geolocation=()" },
   { key: "Strict-Transport-Security", value: "max-age=31536000" },
 ];
 
 const nextConfig: NextConfig = {
+  // Пакетная загрузка турниров: до 100 HH-файлов в одном запросе серверного экшена.
+  // Дефолтный лимит тела экшена — 1 МБ, его пробивает уже десяток файлов. Поднимаем
+  // с запасом под сотню реальных HH (~190-250 КБ каждый). Точка входа залогинена и
+  // ограничена часовым лимитом загрузок — вектор абуза узкий. На файл всё равно
+  // действует потолок 5 МБ в обработчике (app/analyze/page.tsx).
+  experimental: {
+    serverActions: { bodySizeLimit: "50mb" },
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
