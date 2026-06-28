@@ -5,6 +5,7 @@ import { getSttMaxAudioBytes } from "@/config/stt";
 import { POKER_ASR_CONTEXT } from "@/config/poker-asr-fixups";
 import { getSttAdapter } from "@/infrastructure/adapters/stt";
 import { applyPokerFixups } from "@/lib/apply-poker-fixups";
+import { transcodeToWav } from "@/lib/transcode-audio";
 
 // Buffer/адаптер требуют Node-рантайма (не edge).
 export const runtime = "nodejs";
@@ -38,15 +39,26 @@ export async function POST(request: Request): Promise<Response> {
     return NextResponse.json({ error: "AUDIO_TOO_LARGE" }, { status: 413 });
   }
 
+  // Клиент шлёт сжатую запись (webm/opus) — перекодируем в wav на сервере (ffmpeg),
+  // движок принимает только wav/mp3. Маленький вход = быстрая загрузка по каналу.
+  let wav: Buffer;
+  try {
+    wav = await transcodeToWav(audio);
+  } catch (err) {
+    console.error("[stt] перекодировка звука не удалась:", err);
+    return NextResponse.json({ error: "TRANSCODE_FAILED" }, { status: 502 });
+  }
+  const tConvert = Date.now();
+
   try {
     const { text } = await getSttAdapter().transcribe({
-      audio,
-      mimeType,
+      audio: wav,
+      mimeType: "audio/wav",
       context: POKER_ASR_CONTEXT,
     });
-    // ВРЕМЕННЫЙ замер: где время — приём тела (загрузка на сервер) vs модель.
+    // Замер: приём тела vs перекодировка vs модель (для контроля скорости).
     console.log(
-      `[stt-timing] audio=${audio.length}b body=${tBodyRead - tStart}ms model=${Date.now() - tBodyRead}ms`,
+      `[stt-timing] in=${audio.length}b wav=${wav.length}b body=${tBodyRead - tStart}ms convert=${tConvert - tBodyRead}ms model=${Date.now() - tConvert}ms`,
     );
     return NextResponse.json({ text: applyPokerFixups(text) });
   } catch (err) {
