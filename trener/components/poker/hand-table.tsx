@@ -41,14 +41,6 @@ const SEAT_RY = 0.35 * H;
 const FELT_RX = 0.4 * W;
 const FELT_RY = 0.27 * H;
 
-function plural(n: number, one: string, few: string, many: string): string {
-  const m10 = n % 10;
-  const m100 = n % 100;
-  if (m10 === 1 && m100 !== 11) return one;
-  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few;
-  return many;
-}
-
 function sizeLabel(amount: number, bigBlind: number | null): string {
   if (bigBlind && bigBlind > 0) {
     const bb = amount / bigBlind;
@@ -122,17 +114,11 @@ export function HandTable({ state, nick }: { state: TableState; nick: string | n
     .map((p) => `${p.p.x.toFixed(1)},${p.p.y.toFixed(1)}`)
     .join(" ");
 
-  const afterN = state.playersAfterHero;
-
   return (
     <div className="border border-border bg-card p-3">
-      <div className="mb-2 flex items-center justify-between">
+      <div className="mb-2">
         <span className="font-mono text-label uppercase tracking-label text-muted-foreground">
           Стол · {STREET_RU[state.street]}
-        </span>
-        <span className="font-mono text-label uppercase tracking-label text-muted-foreground">
-          После тебя в раздаче: <span className="text-primary">{afterN}</span>{" "}
-          {plural(afterN, "человек", "человека", "человек")}
         </span>
       </div>
 
