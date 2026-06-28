@@ -13,6 +13,16 @@ const DEFAULT_REGISTER_WINDOW_MS = 60 * 60 * 1000; // 1 час
 const DEFAULT_PASSWORD_RESET_TTL_MS = 60 * 60 * 1000; // ссылка живёт 1 час
 const DEFAULT_PASSWORD_RESET_MAX_PER_IP = 5;
 const DEFAULT_PASSWORD_RESET_WINDOW_MS = 60 * 60 * 1000; // 1 час
+// Вход/регистрация по «волшебной ссылке» (passwordless). Срок короче, чем у сброса
+// пароля: ссылка — это сам вход, держать её живой час незачем. Этим же сроком живёт
+// и подписанная cookie «намерения регистрации» между кликом и экраном согласия.
+const DEFAULT_MAGIC_LINK_TTL_MS = 15 * 60 * 1000; // ссылка живёт 15 минут
+const DEFAULT_MAGIC_LINK_MAX_PER_IP = 5;
+const DEFAULT_MAGIC_LINK_MAX_PER_EMAIL = 5;
+const DEFAULT_MAGIC_LINK_WINDOW_MS = 60 * 60 * 1000; // 1 час
+// Ссылка подтверждения закрытия аккаунта. Закрытие не срочное (в отличие от входа),
+// поэтому час, как у сброса пароля.
+const DEFAULT_ACCOUNT_CLOSURE_TTL_MS = 60 * 60 * 1000; // 1 час
 
 function intFromEnv(raw: string | undefined, fallback: number): number {
   const parsed = raw ? parseInt(raw, 10) : NaN;
@@ -57,6 +67,30 @@ export function getPasswordResetMaxPerIp(): number {
 
 export function getPasswordResetWindowMs(): number {
   return intFromEnv(process.env.AUTH_PASSWORD_RESET_WINDOW_MS, DEFAULT_PASSWORD_RESET_WINDOW_MS);
+}
+
+// Срок жизни ссылки входа по «волшебной ссылке» (и cookie намерения регистрации).
+export function getMagicLinkTtlMs(): number {
+  return intFromEnv(process.env.AUTH_MAGIC_LINK_TTL_MS, DEFAULT_MAGIC_LINK_TTL_MS);
+}
+
+// Сколько запросов ссылки входа с одного IP / на один email допускается за окно
+// (защита от заваливания ящика и от рассылки ссылок по чужим почтам).
+export function getMagicLinkMaxPerIp(): number {
+  return intFromEnv(process.env.AUTH_MAGIC_LINK_MAX_PER_IP, DEFAULT_MAGIC_LINK_MAX_PER_IP);
+}
+
+export function getMagicLinkMaxPerEmail(): number {
+  return intFromEnv(process.env.AUTH_MAGIC_LINK_MAX_PER_EMAIL, DEFAULT_MAGIC_LINK_MAX_PER_EMAIL);
+}
+
+export function getMagicLinkWindowMs(): number {
+  return intFromEnv(process.env.AUTH_MAGIC_LINK_WINDOW_MS, DEFAULT_MAGIC_LINK_WINDOW_MS);
+}
+
+// Срок жизни ссылки подтверждения закрытия аккаунта.
+export function getAccountClosureTtlMs(): number {
+  return intFromEnv(process.env.AUTH_ACCOUNT_CLOSURE_TTL_MS, DEFAULT_ACCOUNT_CLOSURE_TTL_MS);
 }
 
 // Лимитер считает попытки в памяти процесса. В тестах (vitest) выключен: весь

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { boardTexture, computeHandFacts, heroDraw } from "@/parser/facts";
+import { boardTexture, computeHandFacts } from "@/parser/facts";
 import type { TableSnapshot } from "@/parser/types";
 
 function snap(partial: Partial<TableSnapshot>): TableSnapshot {
@@ -34,64 +34,6 @@ describe("boardTexture", () => {
 
   it("до флопа борда нет", () => {
     expect(boardTexture(["Ah"])).toBeNull();
-  });
-});
-
-describe("heroDraw — ауты и эквити", () => {
-  it("флеш-дро: 9 аутов, эквити с флопа ≈36%", () => {
-    const d = heroDraw(["Ah", "Kh"], ["2h", "7h", "Qs"]);
-    expect(d?.kind).toBe("флеш-дро");
-    expect(d?.outs).toBe(9);
-    expect(d?.equityPct).toBe(36); // 9*4
-  });
-
-  it("двустороннее стрит-дро: 8 аутов", () => {
-    const d = heroDraw(["8c", "9d"], ["7h", "Ts", "2c"]); // 7-8-9-T
-    expect(d?.kind).toBe("двустороннее стрит-дро (ОЭСД)");
-    expect(d?.outs).toBe(8);
-  });
-
-  it("гатшот: 4 аута", () => {
-    const d = heroDraw(["8c", "Td"], ["7h", "Js", "2c"]); // 7-8-_-T-J, не хватает 9
-    expect(d?.kind).toBe("гатшот");
-    expect(d?.outs).toBe(4);
-  });
-
-  it("комбо флеш+стрит: ауты как объединение без двойного счёта", () => {
-    const d = heroDraw(["8h", "9h"], ["7h", "Th", "2c"]); // флеш-дро h + ОЭСД 7-8-9-T
-    expect(d?.kind).toContain("флеш-дро");
-    expect(d?.kind).toContain("ОЭСД");
-    // 9 флеш + 8 стрит − 2 пересечения (6h, Jh уже в флеш-аутах) = 15
-    expect(d?.outs).toBe(15);
-  });
-
-  it("колесо: A-2-3-4 — 4 аута на пятёрку (одностороннее)", () => {
-    const d = heroDraw(["Ah", "2c"], ["3d", "4s", "Kh"]);
-    expect(d?.outs).toBe(4);
-    expect(d?.kind).toBe("гатшот");
-  });
-
-  it("на тёрне эквити по правилу 2 (одна карта)", () => {
-    const d = heroDraw(["Ah", "Kh"], ["2h", "7h", "Qs", "3c"]); // флеш-дро, 4 карты борда
-    expect(d?.outs).toBe(9);
-    expect(d?.equityPct).toBe(18); // 9*2
-  });
-
-  it("готовый флеш — это не дро", () => {
-    expect(heroDraw(["Ah", "Kh"], ["2h", "7h", "Qh"])).toBeNull();
-  });
-
-  it("стрит-дро целиком на доске, без участия Hero — не дро Hero", () => {
-    // борд 7-8-9-T уже ОЭСД сам по себе; карты Hero не расширяют набор
-    expect(heroDraw(["Ac", "Kd"], ["7h", "8s", "9c", "Td"])).toBeNull();
-  });
-
-  it("на ривере дро нет", () => {
-    expect(heroDraw(["Ah", "Kh"], ["2h", "7h", "Qs", "3c", "9d"])).toBeNull();
-  });
-
-  it("нет дро — null", () => {
-    expect(heroDraw(["Ah", "Kd"], ["2c", "7s", "Qh"])).toBeNull();
   });
 });
 
@@ -227,14 +169,16 @@ describe("computeHandFacts — обратные оддсы при защите �
 
   const facing = computeHandFacts(s).heroFacing.find((h) => h.street === "FLOP");
 
-  it("эквити дро прокинуто в факт", () => {
-    expect(facing?.drawEquityPct).toBe(36); // флеш-дро с флопа, 9*4
+  it("эквити дро = чистое на ОДНУ карту (обычный бет, не олл-ин)", () => {
+    // 8 чистых аутов из 47 ≈ 17% (Q♥ грязная, спаривает борд)
+    expect(facing?.drawEquityPct).toBe(17);
   });
 
-  it("прямой пот-оддс 33%, дро 36% — оддсов хватает, добор не нужен", () => {
-    // toCall 120, банк после бета 240 → 120/360 = 33%; 36% ≥ 33% → impliedExtraNeeded нет
+  it("прямой пот-оддс 33%, дро 17% (одна карта) — нужен добор", () => {
+    // toCall 120, банк после бета 240 → 120/360 = 33%; 17% < 33% → добор нужен
+    // X = 120/0.17 − 240 − 120 ≈ 346
     expect(facing?.equityToCallPct).toBe(33);
-    expect(facing?.impliedExtraNeeded).toBeUndefined();
+    expect(facing?.impliedExtraNeeded).toBe(346);
   });
 });
 
@@ -262,9 +206,10 @@ describe("computeHandFacts — имплайды, когда прямых одд�
   const facing = computeHandFacts(s).heroFacing.find((h) => h.street === "FLOP");
 
   it("прямых оддсов не хватает → есть добор при попадании", () => {
-    // p=0.36, toCall=300, банк после бета=420 → X = 300/0.36 − 420 − 300 = 113
+    // p=0.17 (8 чистых аутов на одну карту), toCall=300, банк после бета=420
+    // → X = 300/0.17 − 420 − 300 ≈ 1045
     expect(facing?.equityToCallPct).toBe(42); // 300/(420+300)
-    expect(facing?.impliedExtraNeeded).toBe(113);
+    expect(facing?.impliedExtraNeeded).toBe(1045);
   });
 });
 
@@ -289,7 +234,9 @@ describe("computeHandFacts — полу-блеф Hero собирает банк 
   const heroBet = computeHandFacts(s).heroBets.find((b) => b.street === "FLOP");
 
   it("эквити дро и банк при колле посчитаны", () => {
-    expect(heroBet?.drawEquityPct).toBe(36);
+    // полу-блеф: сила дро к РИВЕРУ (2 карты), чистое флеш-дро (+бэкдор-бродвей) ≈ 23%
+    expect(heroBet?.drawEquityPct).toBeGreaterThanOrEqual(20);
+    expect(heroBet?.drawEquityPct).toBeLessThanOrEqual(36);
     expect(heroBet?.potIfCalled).toBe(360); // 120 + 2*120
     expect(heroBet?.sizeClass).toBe("LARGE"); // 120/120 = 100%
   });

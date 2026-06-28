@@ -85,6 +85,15 @@ function cmp(a: number[], b: number[]): number {
   return 0;
 }
 
+// Категория лучшей 5-карточной руки из набора карт (1 старшая … 9 стрит-флеш) —
+// единый эвалюатор для draws.ts (точный перебор аутов/эквити). Толерантен к 1+ картам:
+// с <5 картами стрит/флеш невозможны, вернёт пару/старшую. Кривые карты отбрасываются.
+export function handCategory(cards: string[]): number {
+  const cs = cards.map(parseCard).filter((c): c is Card => c !== null);
+  if (cs.length === 0) return 1;
+  return handValue(cs)[0];
+}
+
 export type MadeHand = {
   category: string; // ключ категории (HIGH/PAIR/TWO_PAIR/…)
   ru: string; // человеческое описание для промпта

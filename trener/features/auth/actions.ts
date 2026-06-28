@@ -4,7 +4,13 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/infrastructure/db/client";
 import { hashPassword, verifyPassword } from "./password";
-import { createSession, destroySession, requireSession } from "./session";
+import {
+  createSession,
+  destroySession,
+  requireSession,
+  readPendingRegistration,
+  clearPendingRegistration,
+} from "./session";
 import { clientIp, hitCount, recordHit, clearHits } from "./rate-limit";
 import {
   generateResetToken,
@@ -12,6 +18,13 @@ import {
   buildResetLink,
   buildResetEmail,
 } from "./password-reset";
+import { generateMagicToken, buildMagicLink, buildMagicLinkEmail } from "./magic-link";
+import {
+  generateClosureToken,
+  hashClosureToken,
+  buildClosureLink,
+  buildClosureEmail,
+} from "./account-closure";
 import { buildWelcomeEmail, buildPasswordChangedEmail } from "./auth-emails";
 import { safeSendEmail } from "@/infrastructure/adapters/email";
 import {
@@ -24,6 +37,11 @@ import {
   getPasswordResetTtlMs,
   getPasswordResetMaxPerIp,
   getPasswordResetWindowMs,
+  getMagicLinkTtlMs,
+  getMagicLinkMaxPerIp,
+  getMagicLinkMaxPerEmail,
+  getMagicLinkWindowMs,
+  getAccountClosureTtlMs,
 } from "@/config/auth";
 
 export type AuthFormState = { error?: string; success?: boolean };
@@ -184,6 +202,38 @@ export async function changePasswordAction(
   return { success: true };
 }
 
+// Задать первый пароль — для аккаунтов, заведённых по «волшебной ссылке» (passwordHash
+// NULL). В отличие от смены, текущий пароль не спрашиваем (его нет). Другие сессии НЕ
+// гасим: пароль только добавлен (не «угнан»), живые сессии — это сам игрок.
+export async function setPasswordAction(
+  _prevState: AuthFormState,
+  formData: FormData
+): Promise<AuthFormState> {
+  const session = await requireSession();
+  const newPassword = String(formData.get("newPassword") ?? "");
+  const newPasswordConfirm = String(formData.get("newPasswordConfirm") ?? "");
+
+  if (newPassword.length < MIN_PASSWORD_LENGTH) return { error: "Пароль должен быть не короче 8 символов" };
+  if (newPassword !== newPasswordConfirm) return { error: "Пароли не совпадают" };
+
+  const player = await prisma.player.findUnique({
+    where: { id: session.playerId },
+    select: { passwordHash: true, email: true },
+  });
+  // Защита от гонки/обхода: если пароль уже есть — это смена (нужен текущий), не «задать».
+  if (player?.passwordHash) return { error: "У аккаунта уже есть пароль — меняй его через смену пароля" };
+
+  const now = new Date();
+  const newHash = await hashPassword(newPassword);
+  await prisma.player.update({
+    where: { id: session.playerId },
+    data: { passwordHash: newHash, passwordChangedAt: now },
+  });
+
+  if (player?.email) await safeSendEmail(buildPasswordChangedEmail(player.email, now));
+  return { success: true };
+}
+
 // Запрос сброса пароля: шлём на email одноразовую ссылку. Ответ всегда одинаковый
 // (success), существует email или нет — чтобы форма не работала «прозвоном» чужих
 // почт (07-безопасность.md, раздел 2). Письмо шлём сразу (не через очередь): так
@@ -284,6 +334,88 @@ export async function resetPasswordAction(
   redirect("/login?reset=1");
 }
 
+// ─────────────── Вход/регистрация по «волшебной ссылке» (passwordless) ───────────────
+
+// Запрос ссылки входа: шлём на email одноразовую короткоживущую ссылку. В отличие от
+// сброса пароля, письмо уходит на ЛЮБОЙ корректный email (новый = регистрация), какой
+// именно случай — решит клик. Ответ всегда одинаковый (success) — форма не раскрывает,
+// есть ли уже такой аккаунт. Письмо шлём сразу (не через очередь): сырой токен нигде
+// не сохраняется, кроме письма (в базе — только его SHA-256).
+export async function requestMagicLinkAction(
+  _prevState: AuthFormState,
+  formData: FormData
+): Promise<AuthFormState> {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  if (!EMAIL_RE.test(email)) return { error: "Введи правильный email" };
+
+  const limited = isAuthRateLimitEnabled();
+  const ipKey = limited ? `magic-ip:${await clientIp()}` : "";
+  const emailKey = `magic-email:${email}`;
+  const overLimit =
+    limited &&
+    (hitCount(ipKey) >= getMagicLinkMaxPerIp() || hitCount(emailKey) >= getMagicLinkMaxPerEmail());
+
+  if (!overLimit) {
+    if (limited) {
+      recordHit(ipKey, getMagicLinkWindowMs());
+      recordHit(emailKey, getMagicLinkWindowMs());
+    }
+    // Гасим прежние неиспользованные ссылки этого email — рабочая только свежая.
+    await prisma.magicLinkToken.updateMany({
+      where: { email, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+    const { raw, hash } = generateMagicToken();
+    await prisma.magicLinkToken.create({
+      data: { email, tokenHash: hash, expiresAt: new Date(Date.now() + getMagicLinkTtlMs()) },
+    });
+    // Мягкая отправка: ошибку доставки наружу не выносим (не раскрываем исход).
+    await safeSendEmail(buildMagicLinkEmail(email, buildMagicLink(raw)));
+  }
+
+  // Одинаковый ответ при любом исходе (нет аккаунта / есть / лимит / отправлено).
+  return { success: true };
+}
+
+// Завершение регистрации по «волшебной ссылке»: токен уже проверен и погашен в
+// GET-роуте /enter/verify, подтверждённый email лежит в подписанной cookie намерения.
+// Здесь добираем согласие на обработку данных (обязательно, 07-безопасность.md) и ник,
+// создаём аккаунт без пароля и выдаём сессию. Пароля у такого аккаунта нет — вход
+// дальше по ссылке или через «забыл пароль» (passwordHash остаётся NULL).
+export async function completeRegistrationAction(
+  _prevState: AuthFormState,
+  formData: FormData
+): Promise<AuthFormState> {
+  const email = await readPendingRegistration();
+  if (!email || !EMAIL_RE.test(email)) {
+    return { error: "Ссылка устарела. Запроси новую ссылку для входа." };
+  }
+  const nickname = normalizeNickname(formData.get("nickname"));
+  const termsAccepted = formData.get("terms") === "on";
+  if (!termsAccepted) return { error: "Нужно согласиться с условиями обработки данных" };
+
+  const now = new Date();
+  // На случай гонки/двойной отправки: если аккаунт с этим email уже появился — не
+  // создаём второй (email @unique бросил бы), а просто входим в существующий.
+  const existing = await prisma.player.findUnique({ where: { email }, select: { id: true } });
+  let playerId: string;
+  if (existing) {
+    playerId = existing.id;
+  } else {
+    // sessionsValidFrom ставим явно из JS-времени — та же причина, что в registerAction
+    // (округление TIMESTAMP(3) в БД могло бы сделать метку больше iat свежей сессии).
+    const player = await prisma.player.create({
+      data: { email, nickname, termsAcceptedAt: now, sessionsValidFrom: now },
+    });
+    playerId = player.id;
+    await safeSendEmail(buildWelcomeEmail(email));
+  }
+
+  await clearPendingRegistration();
+  await createSession(playerId);
+  redirect("/");
+}
+
 // Выход на всех устройствах: сдвигаем sessionsValidFrom — гаснут ВСЕ сессии, включая
 // текущую (буквально «выйти на всех»), и уводим на вход. Подтверждения паролем не
 // требует — это безопасное действие (только разлогинивает), доступно вошедшему игроку.
@@ -299,25 +431,74 @@ export async function logoutEverywhereAction(): Promise<void> {
   redirect("/login");
 }
 
-// Закрытие аккаунта — мягкое (запрет 5): физического DELETE нет.
-// Ставим closedAt и анонимизируем (email/passwordHash/nickname → NULL), турниры
-// остаются (Tournament.player onDelete: Restrict). Подтверждение — текущим паролем.
-export async function closeAccountAction(
+// Запрос закрытия аккаунта: шлём на почту ссылку подтверждения. Само закрытие — по
+// кнопке на странице (confirmAccountCloseAction), НЕ по клику: иначе почтовый сканер
+// мог бы закрыть аккаунт. Работает одинаково для парольных и беспарольных аккаунтов
+// (владение ящиком = подтверждение). Требует сессии — закрывает СВОЙ аккаунт залогиненный.
+export async function requestAccountClosureAction(
+  _prevState: AuthFormState,
+  _formData: FormData
+): Promise<AuthFormState> {
+  const session = await requireSession();
+  const player = await prisma.player.findFirst({
+    where: { id: session.playerId, closedAt: null },
+    select: { id: true, email: true },
+  });
+  if (!player?.email) return { error: "Не получилось отправить ссылку. Напиши в поддержку: support@whygrid.app." };
+
+  // Гасим прежние неиспользованные ссылки — действительна только свежая.
+  await prisma.accountClosureToken.updateMany({
+    where: { playerId: player.id, usedAt: null },
+    data: { usedAt: new Date() },
+  });
+  const { raw, hash } = generateClosureToken();
+  await prisma.accountClosureToken.create({
+    data: { playerId: player.id, tokenHash: hash, expiresAt: new Date(Date.now() + getAccountClosureTtlMs()) },
+  });
+  await safeSendEmail(buildClosureEmail(player.email, buildClosureLink(raw)));
+
+  return { success: true };
+}
+
+// Подтверждение закрытия по ссылке (кнопка на странице → POST). Сессия НЕ требуется:
+// клик может прийти с другого устройства, владение ящиком — само подтверждение.
+// Закрытие мягкое (запрет 5): closedAt + анонимизация (email/passwordHash/nickname →
+// NULL), турниры остаются (Tournament.player onDelete: Restrict). После закрытия
+// closedAt != null гасит все сессии везде (проверка в requireSession/getCurrentPlayer).
+export async function confirmAccountCloseAction(
   _prevState: AuthFormState,
   formData: FormData
 ): Promise<AuthFormState> {
-  const session = await requireSession();
-  const password = String(formData.get("password") ?? "");
+  const token = String(formData.get("token") ?? "");
+  const INVALID = "Ссылка недействительна или устарела. Запроси закрытие заново из аккаунта.";
+  if (!token) return { error: INVALID };
 
-  const player = await prisma.player.findUnique({ where: { id: session.playerId } });
-  const valid = player?.passwordHash ? await verifyPassword(password, player.passwordHash) : false;
-  if (!valid) return { error: "Неверный пароль" };
-
-  await prisma.player.update({
-    where: { id: session.playerId },
-    data: { closedAt: new Date(), email: null, passwordHash: null, nickname: null },
+  const row = await prisma.accountClosureToken.findUnique({
+    where: { tokenHash: hashClosureToken(token) },
+    select: { playerId: true, usedAt: true, expiresAt: true },
   });
+  if (!row || row.usedAt || row.expiresAt < new Date()) return { error: INVALID };
 
+  // Аккаунт мог быть уже закрыт (повтор) — тогда ссылка недействительна.
+  const player = await prisma.player.findFirst({
+    where: { id: row.playerId, closedAt: null },
+    select: { id: true },
+  });
+  if (!player) return { error: INVALID };
+
+  const now = new Date();
+  await prisma.$transaction([
+    prisma.player.update({
+      where: { id: player.id },
+      data: { closedAt: now, email: null, passwordHash: null, nickname: null },
+    }),
+    prisma.accountClosureToken.updateMany({
+      where: { playerId: player.id, usedAt: null },
+      data: { usedAt: now },
+    }),
+  ]);
+
+  // Чистим cookie текущего устройства (на остальных сессия мертва по closedAt).
   await destroySession();
   redirect("/");
 }

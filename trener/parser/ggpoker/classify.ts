@@ -1,6 +1,10 @@
 import type { HandImportance, ParsedHandSnapshot, PlayerStyle, TableAction } from "../types";
 
-const MAX_CRITICAL_HANDS = 3;
+// Потолок критических раздач (каждая ведёт сократовский диалог «почему»). Число адаптивное:
+// берём все спорные потери, отсортированные по размеру, но не больше потолка. 7 — запас под
+// турниры-катастрофы (сплошные дорогие проигрыши), но ещё не «допрос»: 20 диалогов за раз
+// игрок не пройдёт, упор на несколько глубоких «почему», а не на количество.
+const MAX_CRITICAL_HANDS = 7;
 
 // Базовые ориентиры VPIP/PFR для микролимитного MTT (early-stage solid reg ~19/17-25/23,
 // малый разрыв VPIP-PFR = агрессивный, большой = пассивный).
@@ -34,7 +38,8 @@ export function isContestedDecision(actions: TableAction[]): boolean {
 }
 
 /**
- * Критические — до MAX_CRITICAL_HANDS спорных раздач с наибольшей потерей фишек.
+ * Критические — спорные раздачи с потерей фишек, отсортированные по размеру потери, до
+ * MAX_CRITICAL_HANDS штук (число адаптивное: сколько было дорогих ошибок, столько и берём).
  * Сильные — все спорные раздачи с выигрышем. Остальное — средние.
  */
 export function assignImportanceLevels(hands: ParsedHandSnapshot[]): HandImportance[] {

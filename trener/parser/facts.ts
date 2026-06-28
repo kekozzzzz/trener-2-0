@@ -2,6 +2,7 @@ import type { Street, TableAction, TableSnapshot } from "./types";
 import { bigBlindFromSnapshot } from "./big-blind";
 import { boardUpToStreet } from "./table-state";
 import { heroMadeHand } from "./made-hand";
+import { readHeroDraw, drawEquity, type DrawRead } from "./draws";
 import { handCode } from "@/config/poker/hand-codes";
 
 // Дешёвые детерминированные факты раздачи — общая покерная арифметика, которую
@@ -65,97 +66,8 @@ export function boardTexture(board: string[]): BoardTexture | null {
   return { cards: cards.length, suitedness, paired, connected };
 }
 
-// ─────────────────────── Дро и эквити от аутов ──────────────────────────────
-// Привязываем дро именно к картам Hero (не к доске вообще). Ауты считаем точным
-// перебором колоды; эквити — по правилу 2/4 (≈ ауты × 2 за улицу). Это
-// приблизительная оценка (грязные ауты не вычитаются) — помечаем «≈». На ривере
-// дро нет. Никаких чартов по памяти: только общая арифметика и логика.
-
-const SUITS = ["c", "d", "h", "s"];
-
-// Ранги, добавление которых достраивает стрит (туз учитываем как 14 и как 1).
-function straightCompletingRanks(ranks: number[]): Set<number> {
-  const present = new Set<number>(ranks);
-  if (present.has(14)) present.add(1);
-  const completing = new Set<number>();
-  for (let r = 2; r <= 14; r++) {
-    const withR = new Set(present);
-    withR.add(r);
-    if (r === 14) withR.add(1);
-    for (let start = 1; start <= 10; start++) {
-      let all = true;
-      for (let k = 0; k < 5; k++) if (!withR.has(start + k)) { all = false; break; }
-      if (all) { completing.add(r); break; }
-    }
-  }
-  return completing;
-}
-
-function hasMadeStraight(ranks: number[]): boolean {
-  const present = new Set<number>(ranks);
-  if (present.has(14)) present.add(1);
-  for (let start = 1; start <= 10; start++) {
-    let all = true;
-    for (let k = 0; k < 5; k++) if (!present.has(start + k)) { all = false; break; }
-    if (all) return true;
-  }
-  return false;
-}
-
-export type DrawInfo = { kind: string; outs: number; equityPct: number };
-
-// Дро Hero на флопе/тёрне (3–4 карты борда). null — если дро нет или это ривер.
-export function heroDraw(heroCards: string[], board: string[]): DrawInfo | null {
-  const hero = heroCards.map(parseCard).filter((c): c is Card => c !== null);
-  const boardC = board.map(parseCard).filter((c): c is Card => c !== null);
-  if (hero.length < 2 || boardC.length < 3 || boardC.length > 4) return null;
-
-  const seen = [...hero, ...boardC];
-  const seenKey = new Set(seen.map((c) => `${c.rank}${c.suit}`));
-  const suitCount = (cards: Card[], suit: string) => cards.filter((c) => c.suit === suit).length;
-
-  // Флеш-дро Hero: масть, где у Hero+борда ровно 4 карты и хотя бы одна — у Hero.
-  let flushSuit: string | null = null;
-  for (const suit of SUITS) {
-    if (suitCount(seen, suit) >= 5) return null; // флеш уже собран — это не дро
-    if (suitCount(seen, suit) === 4 && suitCount(hero, suit) >= 1) flushSuit = suit;
-  }
-
-  if (hasMadeStraight(seen.map((c) => c.rank))) return null; // стрит уже собран
-
-  // Стрит-дро Hero: карты Hero должны РАСШИРЯТЬ набор достраивающих рангов
-  // (иначе дро целиком на доске, не личное у Hero).
-  const completeWithHero = straightCompletingRanks(seen.map((c) => c.rank));
-  const completeBoardOnly = straightCompletingRanks(boardC.map((c) => c.rank));
-  const straightActive = completeWithHero.size > completeBoardOnly.size;
-  const completingRanks = straightActive ? completeWithHero : new Set<number>();
-
-  if (!flushSuit && completingRanks.size === 0) return null;
-
-  // Ауты — точным перебором оставшейся колоды (учёт пересечения флеша и стрита).
-  let outs = 0;
-  let straightOuts = 0;
-  for (let r = 2; r <= 14; r++) {
-    for (const suit of SUITS) {
-      if (seenKey.has(`${r}${suit}`)) continue;
-      const completesFlush = flushSuit !== null && suit === flushSuit;
-      const completesStraight = completingRanks.has(r);
-      if (completesFlush || completesStraight) outs++;
-      if (completesStraight) straightOuts++;
-    }
-  }
-
-  const streetsToCome = boardC.length === 3 ? 2 : 1;
-  const equityRaw = streetsToCome === 2 ? outs * 4 : outs * 2;
-  const equityPct = Math.min(equityRaw, 95);
-
-  const kinds: string[] = [];
-  if (flushSuit) kinds.push("флеш-дро");
-  if (straightOuts >= 8) kinds.push("двустороннее стрит-дро (ОЭСД)");
-  else if (straightOuts > 0) kinds.push("гатшот");
-
-  return { kind: kinds.join(" + "), outs, equityPct };
-}
+// Дро и эквити от аутов (чистые/грязные ауты, бэкдоры, точный перебор) живут в
+// ./draws (readHeroDraw, drawEquity) — единый эвалюатор рук с made-hand.ts.
 
 const SUITEDNESS_RU: Record<BoardTexture["suitedness"], string> = {
   MONOTONE: "три и более одной масти",
@@ -232,7 +144,7 @@ export type HandFacts = {
   effectiveStackBb: number | null;
   sprFlop: number | null;
   texture: BoardTexture | null;
-  draw: DrawInfo | null;
+  draw: DrawRead | null;
   bets: BetFact[];
   heroFacing: HeroFacingBet[];
   heroBets: HeroBet[];
@@ -256,8 +168,11 @@ function heroBetFact(snapshot: TableSnapshot, street: Street, risk: number, potB
     // если соперник коллирует: он доложит столько же → банк потолстеет на 2×risk
     potIfCalled: potBefore + 2 * risk,
   };
-  const draw = heroDraw(snapshot.heroCards, boardUpToStreet(snapshot.board, street));
-  if (draw) fact.drawEquityPct = draw.equityPct;
+  // Бет Hero с дро = полу-блеф: показываем силу дро к риверу (2 карты на флопе, 1 на
+  // тёрне) — это потенциал добора, если соперник коллирует. Берём чистое эквити.
+  const b = boardUpToStreet(snapshot.board, street);
+  const eq = drawEquity(snapshot.heroCards, b, b.length === 3 ? 2 : 1);
+  if (eq && eq.rawPct > 0) fact.drawEquityPct = eq.cleanPct > 0 ? eq.cleanPct : eq.rawPct;
   return fact;
 }
 
@@ -377,11 +292,17 @@ function walkPot(snapshot: TableSnapshot, bigBlind: number | null): HandFacts {
           toCall,
           equityToCallPct: pct(toCall / (pot + toCall)),
         };
-        // Обратные оддсы с дро: если прямой эквити не хватает, считаем добор при попадании.
-        const draw = heroDraw(snapshot.heroCards, boardUpToStreet(snapshot.board, street));
-        if (draw) {
-          fact.drawEquityPct = draw.equityPct;
-          const p = draw.equityPct / 100;
+        // Обратные оддсы с дро: если прямого эквити не хватает, считаем добор при
+        // попадании. Горизонт по цене именно ЭТОГО колла: против обычной ставки на
+        // флопе видно одну карту (тёрн), против олл-ина — обе. Берём чистое эквити.
+        const b = boardUpToStreet(snapshot.board, street);
+        const facingAllIn = a.action === "ALL_IN";
+        const cardsToCome = b.length === 3 && facingAllIn ? 2 : 1;
+        const eq = drawEquity(snapshot.heroCards, b, cardsToCome);
+        if (eq && eq.rawPct > 0) {
+          const equity = eq.cleanPct > 0 ? eq.cleanPct : eq.rawPct;
+          fact.drawEquityPct = equity;
+          const p = equity / 100;
           // нужное p ≥ toCall/(pot + toCall + X) → X = toCall/p − pot − toCall
           const extra = p > 0 ? toCall / p - pot - toCall : 0;
           if (extra > 0) fact.impliedExtraNeeded = Math.round(extra);
@@ -420,7 +341,7 @@ function walkPot(snapshot: TableSnapshot, bigBlind: number | null): HandFacts {
     effectiveStackBb,
     sprFlop,
     texture: boardTexture(snapshot.board),
-    draw: heroDraw(snapshot.heroCards, snapshot.board),
+    draw: readHeroDraw(snapshot.heroCards, snapshot.board),
     bets,
     heroFacing,
     heroBets,
@@ -480,20 +401,30 @@ export function renderHandFacts(snapshot: TableSnapshot): string {
   // Дро Hero ПО УЛИЦАМ (флоп/тёрн) — считаем на каждой, т.к. на полном борде (ривер)
   // дро уже нет, и иначе флоп/тёрн-дро вообще не попало бы в факты (так модель его
   // выдумывала или ставила не на ту улицу). Ривер пропускаем — там дро не бывает.
+  // Ауты/эквити — точным перебором (draws.ts): сырое и чистое (грязные ауты помечены),
+  // бэкдоры учтены. Эквити к риверу (на флопе — 2 карты, на тёрне — 1).
   let drawSeen = false;
   let prevDraw = "";
   for (const street of ["FLOP", "TURN"] as const) {
     const b = boardUpToStreet(snapshot.board, street);
     if (b.length < 3) continue;
-    const d = heroDraw(snapshot.heroCards, b);
+    const d = readHeroDraw(snapshot.heroCards, b);
     if (!d) continue;
     drawSeen = true;
-    const key = `${d.kind}|${d.outs}`;
+    const eq = drawEquity(snapshot.heroCards, b, b.length === 3 ? 2 : 1);
+    const eqStr = eq ? (eq.cleanPct === eq.rawPct ? `≈${eq.rawPct}%` : `≈${eq.cleanPct}–${eq.rawPct}%`) : "";
+    const key = `${d.kind}|${d.outsRaw}|${d.outsClean}|${eqStr}`;
     if (key === prevDraw) continue;
     prevDraw = key;
-    lines.push(
-      `Дро Hero на ${STREET_RU[street]}: ${d.kind} — ${d.outs} аутов, эквити до следующей улицы ≈${d.equityPct}% (грубо, 2/4).`,
-    );
+    if (d.backdoorOnly) {
+      lines.push(
+        `Дро Hero на ${STREET_RU[street]}: ${d.kind} — добор только раннер-раннером, эквити к риверу ${eqStr} (мало).`,
+      );
+    } else {
+      const cleanPart =
+        d.outsClean < d.outsRaw && d.taintReason ? `, из них ~${d.outsClean} чистых (${d.taintReason})` : "";
+      lines.push(`Дро Hero на ${STREET_RU[street]}: ${d.kind} — ${d.outsRaw} аутов${cleanPart}; эквити к риверу ${eqStr}.`);
+    }
   }
   if (snapshot.board.length >= 3 && !drawSeen)
     lines.push("Дро у Hero нет (ни флеш-дро, ни стрит-дро) — на дро ты не попал, не приписывай его.");

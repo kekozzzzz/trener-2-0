@@ -2,9 +2,7 @@
 
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
-import { closeAccountAction, type AuthFormState } from "@/features/auth/actions";
-import { PasswordInput } from "@/components/ui/password-input";
-import { Label } from "@/components/ui/label";
+import { requestAccountClosureAction, type AuthFormState } from "@/features/auth/actions";
 import { Button } from "@/components/ui/button";
 import { LoadingDots } from "@/components/ui/loading-dots";
 
@@ -16,32 +14,36 @@ function SubmitButton() {
     <Button type="submit" variant="outline" disabled={pending}>
       {pending ? (
         <>
-          Закрываем
+          Отправляем
           <LoadingDots />
         </>
       ) : (
-        "Закрыть аккаунт"
+        "Прислать ссылку для закрытия"
       )}
     </Button>
   );
 }
 
 export function CloseAccountForm() {
-  const [state, formAction] = useActionState(closeAccountAction, initialState);
+  const [state, formAction] = useActionState(requestAccountClosureAction, initialState);
+
+  if (state.success) {
+    return (
+      <p className="rounded-md border border-border bg-muted/40 p-4 text-small text-foreground">
+        Отправили на твою почту ссылку для подтверждения закрытия (проверь и «Спам»).
+        Аккаунт закроется только после того, как ты перейдёшь по ней и нажмёшь кнопку.
+        Ссылка действует час.
+      </p>
+    );
+  }
 
   return (
     <form action={formAction} className="space-y-6">
       <p className="text-small text-muted-foreground">
-        Аккаунт будет закрыт, email и пароль удалены без возможности восстановления. Разборы турниров
-        останутся в базе обезличенными. Подтверди паролем.
+        Закрытие необратимо: email и пароль удаляются, доступ к турнирам и разборам пропадёт
+        (сами разборы остаются в базе обезличенными). Для подтверждения пришлём ссылку на почту —
+        так аккаунт нельзя закрыть без доступа к ящику.
       </p>
-
-      <div className="space-y-2">
-        <Label htmlFor="password" className="font-mono text-label uppercase tracking-label text-muted-foreground">
-          Пароль
-        </Label>
-        <PasswordInput id="password" name="password" required autoComplete="current-password" />
-      </div>
 
       {state.error && <p className="text-small text-destructive">{state.error}</p>}
 

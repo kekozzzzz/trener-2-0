@@ -1,12 +1,17 @@
 import type { ParsedHand } from "@/parser/types";
 
-const CARD_TARGET_TOTAL = 10;
-const CARD_MAX_STRONG = 5;
+// Нижняя планка размера карточки: маленький турнир всё равно даёт ~10 раздач (добиваем
+// средними для контекста). Потолок: глубокий ран с кучей спорных раздач — не больше 20,
+// чтобы не разбавлять внимание и не растягивать ожидание.
+const CARD_MIN_TOTAL = 10;
+const CARD_MAX_TOTAL = 20;
 
 /**
- * Отбирает ~10 раздач турнира для карточки из полного списка размеченных раздач.
- * Соотношение CRITICAL/STRONG/MEDIUM не фиксировано — складывается из реальных данных
- * (CRITICAL уже ограничен до 3 в classify.ts, STRONG ограничен здесь до CARD_MAX_STRONG).
+ * Отбирает раздачи турнира для карточки из полного списка размеченных раздач. Размер не
+ * фиксирован — масштабируется от числа спорных раздач (CRITICAL + STRONG) в диапазоне
+ * [CARD_MIN_TOTAL, CARD_MAX_TOTAL]:
+ *  - спорные раздачи — главный материал, берём ВСЕ (до потолка), сильные не режем;
+ *  - средними добиваем только до нижней планки, когда спорных мало.
  * Результат — в хронологическом порядке исходного турнира.
  */
 export function selectHandsForCard(hands: ParsedHand[]): ParsedHand[] {
@@ -22,12 +27,16 @@ export function selectHandsForCard(hands: ParsedHand[]): ParsedHand[] {
     .filter(({ hand }) => hand.importanceLevel === "MEDIUM")
     .sort((a, b) => Math.abs(b.hand.chipResult) - Math.abs(a.hand.chipResult));
 
-  const remainingAfterCritical = CARD_TARGET_TOTAL - critical.length;
-  const strongTake = Math.min(strongPool.length, CARD_MAX_STRONG, remainingAfterCritical);
-  const remainingAfterStrong = remainingAfterCritical - strongTake;
-  const mediumTake = Math.min(mediumPool.length, remainingAfterStrong);
+  // Критические идут первыми, сильные — по размеру выигрыша; вместе это «спорные».
+  const contested = [...critical, ...strongPool];
+  const contestedTake = contested.slice(0, CARD_MAX_TOTAL);
 
-  const selected = [...critical, ...strongPool.slice(0, strongTake), ...mediumPool.slice(0, mediumTake)];
+  // Цель размера тянется за числом спорных, но в коридоре [MIN, MAX]. Средние добирают
+  // только нехватку до нижней планки (когда спорных меньше MIN).
+  const target = Math.min(Math.max(contested.length, CARD_MIN_TOTAL), CARD_MAX_TOTAL);
+  const mediumTake = Math.max(0, target - contestedTake.length);
+
+  const selected = [...contestedTake, ...mediumPool.slice(0, mediumTake)];
 
   return selected.sort((a, b) => a.index - b.index).map(({ hand }) => hand);
 }

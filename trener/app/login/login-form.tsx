@@ -57,6 +57,16 @@ export function LoginForm() {
 
       <SubmitButton />
 
+      <div className="flex items-center gap-3 text-label text-muted-foreground">
+        <span className="h-px flex-1 bg-border" />
+        <span className="font-mono uppercase tracking-label">или</span>
+        <span className="h-px flex-1 bg-border" />
+      </div>
+
+      <Link href="/enter" className="block text-center text-small text-foreground underline">
+        Войти по ссылке без пароля
+      </Link>
+
       <p className="text-small text-muted-foreground">
         Нет аккаунта?{" "}
         <Link href="/register" className="text-foreground underline">

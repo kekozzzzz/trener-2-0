@@ -46,12 +46,25 @@ export type DialogueRoundSummary = {
 // следующий вопрос формируется только после ответа на текущий) + черновик
 // вердикта из GENERATE_HAND_ANALYSIS (ориентир, куда ведёт диалог) + те же
 // посчитанные метрики раздачи/турнира, что и в HandAnalysisRequest.
+// Реальная прошлая раздача игрока в похожем споте — память тренера (Правило 1: похожесть
+// нашёл ПАРСЕР по отпечатку, не LLM; matchLevel посчитан детерминированно по числу совпавших
+// признаков). Модель только проговаривает приведённые раздачи, выдумывать новые не может.
+export type PriorSpot = {
+  matchLevel: "EXACT" | "SIMILAR"; // один-в-один / что-то подобное
+  cards: string[]; // карманные карты Hero в той раздаче
+  decision: string | null; // что игрок сделал (heroDecisionLabel)
+  reasoning: string | null; // что игрок тогда ответил в диалоге (если был), иначе null
+  chipResult: number;
+  when: string | null; // ссылка на тот турнир (имя/дата), для узнавания
+};
+
 export type NextQuestionRequest = {
   history: DialogueRoundSummary[];
   draftVerdict: string;
   chipResult: number;
   tableSnapshot: TableSnapshot;
   tournament: TournamentContext;
+  priorSpots?: PriorSpot[]; // похожие прошлые раздачи игрока (память) — опционально
 };
 
 export type NextQuestionResult = {

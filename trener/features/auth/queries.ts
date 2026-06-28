@@ -6,6 +6,7 @@ export async function getCurrentPlayer(): Promise<{
   email: string | null;
   nickname: string | null;
   passwordChangedAt: Date | null;
+  hasPassword: boolean; // есть ли у аккаунта пароль (у заведённых по ссылке его нет)
 } | null> {
   const session = await getSession();
   if (!session) return null;
@@ -19,8 +20,11 @@ export async function getCurrentPlayer(): Promise<{
       closedAt: null,
       sessionsValidFrom: { lte: new Date(session.iat) },
     },
-    select: { id: true, email: true, nickname: true, passwordChangedAt: true },
+    // passwordHash берём только чтобы вернуть булев флаг — сам хэш наружу не отдаём.
+    select: { id: true, email: true, nickname: true, passwordChangedAt: true, passwordHash: true },
   });
+  if (!player) return null;
 
-  return player;
+  const { passwordHash, ...rest } = player;
+  return { ...rest, hasPassword: Boolean(passwordHash) };
 }

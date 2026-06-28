@@ -3,6 +3,8 @@ import type { TableSnapshot } from "@/parser/types";
 import type { NextQuestionRequest } from "@/infrastructure/adapters/llm/types";
 import { getLlmAdapter } from "@/infrastructure/adapters/llm";
 import { applyRangeMarker, applyTableMarker } from "@/config/dialogue";
+import { findPriorSimilarSpots } from "@/features/memory/similar-spots";
+import type { SpotFingerprint } from "@/parser/spot-fingerprint";
 import { enqueue } from "../enqueue";
 
 type GenerateDialogueQuestionPayload = {
@@ -61,6 +63,18 @@ export const generateDialogueQuestionStep: StepHandler = async (task, db) => {
     );
   }
 
+  // Память тренера: похожие прошлые раздачи игрока по отпечатку спота (Правило 1 — похожесть
+  // нашёл парсер). Пусто, если у текущей раздачи нет отпечатка (старые до миграции) или похожих
+  // не нашлось — тогда блок в промпт не идёт, поведение прежнее.
+  const currentFp = (hand.spot ?? null) as unknown as SpotFingerprint | null;
+  const priorSpots = currentFp
+    ? await findPriorSimilarSpots(db, {
+        playerId: tournament.playerId,
+        currentHandId: hand.id,
+        currentFp,
+      })
+    : [];
+
   const request: NextQuestionRequest = {
     // ANSWER_RECEIVED гарантирует, что answer записан на каждом раунде (submitAnswer).
     history: dialogue.rounds.map((round) => ({
@@ -77,6 +91,7 @@ export const generateDialogueQuestionStep: StepHandler = async (task, db) => {
       resultBuyins: tournament.resultBuyins.toNumber(),
       styleDiagnosis: tournament.styleDiagnosis,
     },
+    priorSpots,
   };
 
   const result = await getLlmAdapter().generateNextQuestion(request, { playerId: tournament.playerId });
