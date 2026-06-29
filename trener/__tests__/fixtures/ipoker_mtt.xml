@@ -1,0 +1,133 @@
+<root><general>
+  <gametype>Holdem NL</gametype>
+  <tablename>Test, 777</tablename>
+  <nickname>kefirhero</nickname>
+  <tablesize>6</tablesize>
+  <tournamentcode>777</tournamentcode>
+  <tournamentname>Test MTT</tournamentname>
+  <buyin>&euro;5</buyin>
+  <totalbuyin>&euro;5</totalbuyin>
+  <startdate>2026-01-01 12:00:00</startdate>
+ </general><game gamecode="1001">
+  <general>
+   <startdate>2026-01-01 12:00:00</startdate>
+   <smallblind>10</smallblind>
+   <bigblind>20</bigblind>
+   <ante>5</ante>
+   <players>
+    <player seat="1" dealer="1" name="VillainA" chips="1000" win="0" bet="5"/>
+    <player seat="2" dealer="0" name="kefirhero" chips="1000" win="0" bet="15"/>
+    <player seat="3" dealer="0" name="BigStack" chips="1000" win="25" bet="25"/>
+   </players>
+  </general>
+  <round no="0">
+   <action player="VillainA" type="15" sum="5" no="1"/>
+   <action player="kefirhero" type="15" sum="5" no="2"/>
+   <action player="BigStack" type="15" sum="5" no="3"/>
+   <action player="kefirhero" type="1" sum="10" no="4"/>
+   <action player="BigStack" type="2" sum="20" no="5"/>
+  </round>
+  <round no="1">
+   <cards player="VillainA" type="Pocket">X X</cards>
+   <action player="VillainA" type="0" sum="0" no="6"/>
+   <cards player="kefirhero" type="Pocket">C2 D7</cards>
+   <action player="kefirhero" type="0" sum="0" no="7"/>
+  </round>
+ </game></root>
+<root><general>
+  <gametype>Holdem NL</gametype>
+  <tablename>Test, 777</tablename>
+  <nickname>kefirhero</nickname>
+  <tablesize>6</tablesize>
+  <tournamentcode>777</tournamentcode>
+  <tournamentname>Test MTT</tournamentname>
+  <buyin>&euro;5</buyin>
+  <totalbuyin>&euro;5</totalbuyin>
+  <startdate>2026-01-01 12:01:00</startdate>
+ </general><game gamecode="1002">
+  <general>
+   <startdate>2026-01-01 12:01:00</startdate>
+   <smallblind>10</smallblind>
+   <bigblind>20</bigblind>
+   <ante>5</ante>
+   <players>
+    <player seat="1" dealer="0" name="VillainA" chips="980" win="0" bet="115"/>
+    <player seat="2" dealer="1" name="kefirhero" chips="985" win="245" bet="115"/>
+    <player seat="3" dealer="0" name="BigStack" chips="1015" win="0" bet="15"/>
+   </players>
+  </general>
+  <round no="0">
+   <action player="VillainA" type="15" sum="5" no="1"/>
+   <action player="kefirhero" type="15" sum="5" no="2"/>
+   <action player="BigStack" type="15" sum="5" no="3"/>
+   <action player="BigStack" type="1" sum="10" no="4"/>
+   <action player="VillainA" type="2" sum="20" no="5"/>
+  </round>
+  <round no="1">
+   <cards player="kefirhero" type="Pocket">HA DA</cards>
+   <action player="kefirhero" type="23" sum="60" no="6"/>
+   <action player="BigStack" type="0" sum="0" no="7"/>
+   <action player="VillainA" type="3" sum="40" no="8"/>
+  </round>
+  <round no="2">
+   <cards type="Flop">SA C7 D2</cards>
+   <action player="VillainA" type="4" sum="0" no="9"/>
+   <action player="kefirhero" type="5" sum="50" no="10"/>
+   <action player="VillainA" type="3" sum="50" no="11"/>
+  </round>
+  <round no="3">
+   <cards type="Turn">H9</cards>
+   <action player="VillainA" type="4" sum="0" no="12"/>
+   <action player="kefirhero" type="4" sum="0" no="13"/>
+  </round>
+  <round no="4">
+   <cards type="River">S3</cards>
+   <action player="VillainA" type="4" sum="0" no="14"/>
+   <action player="kefirhero" type="4" sum="0" no="15"/>
+  </round>
+ </game></root>
+<root><general>
+  <gametype>Holdem NL</gametype>
+  <tablename>Test, 777</tablename>
+  <nickname>kefirhero</nickname>
+  <tablesize>6</tablesize>
+  <tournamentcode>777</tournamentcode>
+  <tournamentname>Test MTT</tournamentname>
+  <buyin>&euro;5</buyin>
+  <totalbuyin>&euro;5</totalbuyin>
+  <startdate>2026-01-01 12:05:00</startdate>
+ </general><game gamecode="1003">
+  <general>
+   <startdate>2026-01-01 12:05:00</startdate>
+   <smallblind>15</smallblind>
+   <bigblind>30</bigblind>
+   <ante>5</ante>
+   <players>
+    <player seat="1" dealer="0" name="VillainA" chips="970" win="0" bet="20"/>
+    <player seat="2" dealer="0" name="kefirhero" chips="1115" win="0" bet="1005"/>
+    <player seat="3" dealer="1" name="BigStack" chips="1005" win="2030" bet="1005"/>
+   </players>
+  </general>
+  <round no="0">
+   <action player="VillainA" type="15" sum="5" no="1"/>
+   <action player="kefirhero" type="15" sum="5" no="2"/>
+   <action player="BigStack" type="15" sum="5" no="3"/>
+   <action player="VillainA" type="1" sum="15" no="4"/>
+   <action player="kefirhero" type="2" sum="30" no="5"/>
+  </round>
+  <round no="1">
+   <cards player="kefirhero" type="Pocket">HK SK</cards>
+   <action player="BigStack" type="23" sum="1000" no="6"/>
+   <action player="VillainA" type="0" sum="0" no="7"/>
+   <action player="kefirhero" type="3" sum="970" no="8"/>
+  </round>
+  <round no="2">
+   <cards type="Flop">HA DQ C2</cards>
+  </round>
+  <round no="3">
+   <cards type="Turn">H9</cards>
+  </round>
+  <round no="4">
+   <cards type="River">S3</cards>
+  </round>
+ </game></root>

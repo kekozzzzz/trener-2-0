@@ -1,0 +1,86 @@
+PokerStars Hand #101: Tournament #555, $5+$0.50 USD Hold'em No Limit - Level (10/20) - 2026/01/01 12:00:00 UTC
+Table 'CHC_555 1' 6-max Seat #1 is the button
+Seat 1: Villain A (1000 in chips)
+Seat 2: kefirhero (1000 in chips)
+Seat 3: Big Stack (1000 in chips)
+Villain A: posts the ante 5
+kefirhero: posts the ante 5
+Big Stack: posts the ante 5
+kefirhero: posts small blind 10
+Big Stack: posts big blind 20
+*** HOLE CARDS ***
+Dealt to kefirhero [2c 7d]
+Villain A: folds
+kefirhero: folds
+Uncalled bet (10) returned to Big Stack
+Big Stack collected 25 from pot
+*** SUMMARY ***
+Total pot 25 | Rake 0
+Seat 1: Villain A (button) folded before Flop (didn't bet)
+Seat 2: kefirhero (small blind) folded before Flop
+Seat 3: Big Stack (big blind) collected (25)
+
+PokerStars Hand #102: Tournament #555, $5+$0.50 USD Hold'em No Limit - Level (10/20) - 2026/01/01 12:01:00 UTC
+Table 'CHC_555 1' 6-max Seat #2 is the button
+Seat 1: Villain A (975 in chips)
+Seat 2: kefirhero (985 in chips)
+Seat 3: Big Stack (1040 in chips)
+Villain A: posts the ante 5
+kefirhero: posts the ante 5
+Big Stack: posts the ante 5
+Big Stack: posts small blind 10
+Villain A: posts big blind 20
+*** HOLE CARDS ***
+Dealt to kefirhero [Ah Ad]
+kefirhero: raises 40 to 60
+Big Stack: folds
+Villain A: calls 40
+*** FLOP *** [As 7c 2d]
+Villain A: checks
+kefirhero: bets 50
+Villain A: calls 50
+*** TURN *** [As 7c 2d] [9h]
+Villain A: checks
+kefirhero: checks
+*** RIVER *** [As 7c 2d 9h] [3s]
+Villain A: checks
+kefirhero: checks
+*** SHOW DOWN ***
+kefirhero: shows [Ah Ad] (three of a kind, Aces)
+Villain A: shows [Kh Qd] (high card, King)
+kefirhero collected 245 from pot
+*** SUMMARY ***
+Total pot 245 | Rake 0
+Board [As 7c 2d 9h 3s]
+Seat 1: Villain A (big blind) showed [Kh Qd] and lost
+Seat 2: kefirhero (button) showed [Ah Ad] and won 245
+Seat 3: Big Stack (small blind) folded before Flop
+
+PokerStars Hand #103: Tournament #555, $5+$0.50 USD Hold'em No Limit - Level (15/30) - 2026/01/01 12:05:00 UTC
+Table 'CHC_555 1' 6-max Seat #3 is the button
+Seat 1: Villain A (970 in chips)
+Seat 2: kefirhero (1115 in chips)
+Seat 3: Big Stack (1000 in chips)
+Villain A: posts the ante 5
+kefirhero: posts the ante 5
+Big Stack: posts the ante 5
+Villain A: posts small blind 15
+kefirhero: posts big blind 30
+*** HOLE CARDS ***
+Dealt to kefirhero [Kh Ks]
+Big Stack: raises 970 to 1000 and is all-in
+Villain A: folds
+kefirhero: calls 970
+*** FLOP *** [Ah Qd 2c]
+*** TURN *** [Ah Qd 2c] [9h]
+*** RIVER *** [Ah Qd 2c 9h] [3s]
+*** SHOW DOWN ***
+Big Stack: shows [Ac Ad] (a pair of Aces)
+kefirhero: shows [Kh Ks] (a pair of Kings)
+Big Stack collected 2030 from pot
+*** SUMMARY ***
+Total pot 2030 | Rake 0
+Board [Ah Qd 2c 9h 3s]
+Seat 1: Villain A (small blind) folded before Flop
+Seat 2: kefirhero (big blind) showed [Kh Ks] and lost
+Seat 3: Big Stack (button) showed [Ac Ad] and won 2030

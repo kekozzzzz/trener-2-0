@@ -3,7 +3,8 @@ import { sniffTournamentKey } from "@/parser";
 export type MergeableFile = { fileBuffer: Buffer; originalFilename: string };
 
 // Первый таймстемп файла — для хронологичного порядка склейки многостольных файлов.
-const FIRST_TS = /(\d{4})\/(\d{2})\/(\d{2}) (\d{2}):(\d{2}):(\d{2})/;
+// Текстовые румы (GG/WPN/PS) — "YYYY/MM/DD HH:MM:SS"; iPoker XML — "YYYY-MM-DD HH:MM:SS".
+const FIRST_TS = /(\d{4})[/-](\d{2})[/-](\d{2}) (\d{2}):(\d{2}):(\d{2})/;
 function firstTimestamp(buffer: Buffer): number {
   const m = FIRST_TS.exec(buffer.toString("utf-8"));
   if (!m) return Number.POSITIVE_INFINITY;
