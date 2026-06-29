@@ -288,7 +288,7 @@ export default async function TournamentPage({
       analysis: { not: Prisma.DbNull },
     },
     orderBy: { createdAt: "asc" },
-    select: { id: true, importanceLevel: true, chipResult: true, tableData: true },
+    select: { id: true, importanceLevel: true, chipResult: true, tableData: true, viewedAt: true },
   });
 
   // Раздачи карточки, которые ещё разбираются (отобраны, но разбор не готов и диалога нет).
@@ -390,11 +390,16 @@ export default async function TournamentPage({
                 const dialogue = hand.dialogue!;
                 const snap = hand.tableData as unknown as TableSnapshot;
                 const label = heroDecisionLabel(snap);
+                // Разбор завершён (вердикт показан) → лаймовая обводка, как у просмотренных.
+                const done = dialogue.state === "VERDICT_SHOWN";
                 return (
                   <Link
                     key={hand.id}
                     href={`/tournament/${id}/hands/${hand.id}`}
-                    className="group flex items-center justify-between gap-4 border border-border bg-card p-6 transition-colors duration-150 ease-out hover:border-primary"
+                    className={cn(
+                      "group flex items-center justify-between gap-4 border bg-card p-6 transition-colors duration-150 ease-out hover:border-primary",
+                      done ? "border-primary" : "border-border"
+                    )}
                   >
                     <div className="flex min-w-0 items-center gap-4">
                       <HoleCards cards={snap.heroCards ?? []} />
@@ -403,7 +408,7 @@ export default async function TournamentPage({
                           <span className="font-mono text-label uppercase tracking-label text-muted-foreground">
                             Раздача {index + 1}
                           </span>
-                          <Badge variant={dialogue.state === "VERDICT_SHOWN" ? "outline" : "default"}>
+                          <Badge variant={dialogue.state === "VERDICT_SHOWN" ? "done" : "outline"}>
                             {DIALOGUE_STATE_LABEL[dialogue.state] ?? dialogue.state}
                           </Badge>
                         </div>
@@ -431,16 +436,26 @@ export default async function TournamentPage({
                 const label = heroDecisionLabel(snap);
                 const bb = bigBlindFromSnapshot(snap);
                 const bbResult = bb ? hand.chipResult / bb : null;
+                // Просмотрена → лаймовая обводка + бейдж «Просмотрено» (быстро видно, что уже разобрал).
+                const viewed = hand.viewedAt !== null;
                 return (
                   <Link
                     key={hand.id}
                     href={`/tournament/${id}/hands/${hand.id}`}
-                    className="group flex items-center justify-between gap-4 border border-border bg-card p-6 transition-colors duration-150 ease-out hover:border-primary"
+                    className={cn(
+                      "group flex items-center justify-between gap-4 border bg-card p-6 transition-colors duration-150 ease-out hover:border-primary",
+                      viewed ? "border-primary" : "border-border"
+                    )}
                   >
                     <div className="flex min-w-0 items-center gap-4">
                       <Badge variant="outline" className="shrink-0">
                         {IMPORTANCE_LABEL[hand.importanceLevel] ?? hand.importanceLevel}
                       </Badge>
+                      {viewed && (
+                        <Badge variant="done" className="shrink-0">
+                          Просмотрено
+                        </Badge>
+                      )}
                       <HoleCards cards={snap.heroCards ?? []} />
                       {label && (
                         <span className="truncate text-small text-muted-foreground">{label}</span>

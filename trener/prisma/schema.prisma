@@ -228,6 +228,7 @@ model Hand {
   analysis        Json?                                // JSONB: что сделано / что было бы оптимально — NULL, пока LLM не сгенерировала (только для selectedForCard; для остальных — по требованию, режим «Тренировка»)
   spot            Json?                                // отпечаток спота (parser/spot-fingerprint): позиция/роль/глубина/борд/попадание — основа памяти тренера, считает ПАРСЕР (Правило 1)
   spotKey         String?       @map("spot_key")       // канонический ключ отпечатка — для быстрого поиска похожих спотов игрока
+  viewedAt        DateTime?     @map("viewed_at")      // момент, когда игрок открыл разбор этой раздачи: простые STRONG/MEDIUM помечаем «Просмотрено» (критические «готовы» по вердикту диалога)
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
 

@@ -45,13 +45,17 @@ export function TournamentRow({ tournament }: { tournament: TournamentListItem }
   return (
     <Link
       href={`/tournament/${tournament.id}`}
-      className="group flex items-center justify-between gap-4 border border-border bg-card p-6 transition-colors duration-150 ease-out hover:border-primary"
+      className={cn(
+        "group flex items-center justify-between gap-4 border bg-card p-6 transition-colors duration-150 ease-out hover:border-primary",
+        tournament.fullyReviewed ? "border-primary" : "border-border"
+      )}
     >
       <div className="flex min-w-0 flex-col gap-2">
         <div className="flex flex-wrap items-center gap-3">
           <span className="truncate text-body text-foreground">
             {tournament.name ?? "Турнир"}
           </span>
+          {tournament.fullyReviewed && <Badge variant="done">Пройден</Badge>}
           {status.ready ? (
             tournament.styleDiagnosis && (
               <Badge variant="outline">{STYLE_LABEL[tournament.styleDiagnosis]}</Badge>

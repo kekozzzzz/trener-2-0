@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { submitAnswer } from "@/features/dialogue/actions";
 import { authorizeHand } from "@/features/auth/ownership";
 import { checkLlmMessageQuota } from "@/features/usage/limit";
+import { prisma } from "@/infrastructure/db/client";
 
 export type AnswerFormState = {
   error?: string;
@@ -45,4 +46,20 @@ export async function submitAnswerAction(
 
   revalidatePath(`/tournament/${tournamentId}/hands/${handId}`);
   return {};
+}
+
+// Отметить раздачу просмотренной: фиксируем момент первого открытия страницы разбора.
+// Используется для пометки «Просмотрено» на простых раздачах и подсветки турниров,
+// пройденных целиком. Идемпотентно — пишем только если viewedAt ещё пуст (updateMany
+// с фильтром, чтобы не перетирать первую дату и не плодить лишние записи в журнал).
+// Права проверяем через authorizeHand (защита от IDOR), на отказ молча выходим —
+// это фоновый сигнал прогресса, не показывает игроку ошибок.
+export async function markHandViewedAction(handId: string): Promise<void> {
+  const auth = await authorizeHand(handId);
+  if (!auth) return;
+
+  await prisma.hand.updateMany({
+    where: { id: handId, viewedAt: null },
+    data: { viewedAt: new Date() },
+  });
 }

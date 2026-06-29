@@ -18,6 +18,7 @@ import { WaitClient } from "./wait-client";
 import { ChatThread } from "./chat-thread";
 import { ChatForm } from "./chat-form";
 import { ChatWaitClient } from "./chat-wait-client";
+import { MarkViewed } from "./mark-viewed";
 import { cn } from "@/lib/utils";
 
 export default async function HandDialoguePage({
@@ -139,6 +140,8 @@ export default async function HandDialoguePage({
       </header>
 
       <section className="mx-auto max-w-5xl px-8 py-16">
+        {/* Фоновая отметка «просмотрено» при открытии разбора (см. mark-viewed.tsx). */}
+        <MarkViewed handId={handId} />
         <h1 className="text-h1">Разбор раздачи</h1>
 
         <div className="mt-8 border border-border bg-card p-6">
