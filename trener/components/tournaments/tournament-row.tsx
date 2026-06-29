@@ -12,6 +12,16 @@ const STYLE_LABEL: Record<PlayerStyle, string> = {
   AGGRESSIVE: "Агрессивный",
 };
 
+// Код площадки из HH → читаемая подпись. "WPN" — это сеть; игроки знают её скины
+// ACR/PokerKing, поэтому показываем их. Неизвестный код выводим как есть.
+const ROOM_LABEL: Record<string, string> = {
+  GGPoker: "GGPoker",
+  WPN: "ACR / PokerKing",
+};
+function roomLabel(room: string): string {
+  return ROOM_LABEL[room] ?? room;
+}
+
 // Статус → подпись и готовность. PARSED/CARD_READY показываем как готовый
 // разбор с метриками; остальные — бейджем без метрик.
 const STATUS: Record<TournamentStatus, { label: string; ready: boolean; failed: boolean }> = {
@@ -55,6 +65,7 @@ export function TournamentRow({ tournament }: { tournament: TournamentListItem }
           <span className="truncate text-body text-foreground">
             {tournament.name ?? "Турнир"}
           </span>
+          {tournament.room && <Badge variant="outline">{roomLabel(tournament.room)}</Badge>}
           {tournament.fullyReviewed && <Badge variant="done">Пройден</Badge>}
           {status.ready ? (
             tournament.styleDiagnosis && (
@@ -68,7 +79,6 @@ export function TournamentRow({ tournament }: { tournament: TournamentListItem }
         </div>
         <span className="font-mono text-label uppercase tracking-label text-muted-foreground">
           {dateFormat.format(tournament.playedAt)}
-          {tournament.room && ` · ${tournament.room}`}
         </span>
       </div>
 

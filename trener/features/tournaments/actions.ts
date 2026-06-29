@@ -1,6 +1,7 @@
 import { prisma } from "@/infrastructure/db/client";
 import { enqueue, kickWorker } from "@/infrastructure/queue";
-import { parseGGPokerMtt } from "@/parser/ggpoker";
+import { parseHandHistory } from "@/parser";
+import { mergeSameTournamentFiles } from "./merge-files";
 
 type UploadInput = {
   fileBuffer: Buffer;
@@ -18,7 +19,7 @@ export async function uploadTournament(input: UploadInput): Promise<UploadResult
 
   // Разбираем синхронно для валидации формата и получения метрик.
   // Метрики кладём в payload задачи — воркер применит их к турниру.
-  const parsed = parseGGPokerMtt(fileBuffer);
+  const parsed = parseHandHistory(fileBuffer);
 
   if (!parsed.ok) {
     return { ok: false, error: parsed.error.type };
@@ -87,6 +88,7 @@ export type BatchSummary = {
 // валить остальные. kickWorker внутри uploadTournament — single-flight, повторные
 // вызовы в цикле безвредны. Потолок/срез пачки и квоту проверяет точка входа
 // (app/analyze/page.tsx) ДО вызова — сюда приходят уже отобранные файлы.
+// Перед циклом склеиваем многостольные файлы одного турнира в один (mergeSameTournamentFiles).
 export async function uploadTournamentsBatch(
   items: BatchItem[],
   playerId: string,
@@ -97,13 +99,15 @@ export async function uploadTournamentsBatch(
   let firstTournamentId: string | null = null;
   let singleResult: UploadResult | null = null;
 
-  for (const item of items) {
+  const mergedItems = mergeSameTournamentFiles(items);
+
+  for (const item of mergedItems) {
     const result = await uploadTournament({
       fileBuffer: item.fileBuffer,
       originalFilename: item.originalFilename,
       playerId,
     });
-    if (items.length === 1) singleResult = result;
+    if (mergedItems.length === 1) singleResult = result;
 
     if (result.ok) {
       uploaded++;

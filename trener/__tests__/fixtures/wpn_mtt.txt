@@ -1,0 +1,96 @@
+Game Hand #1 - Tournament #999 - Holdem (No Limit) - Level 1 (10/20) - 2026/01/01 12:00:00 UTC
+Table '1' 6-max Seat #1 is the button
+Seat 1: Villain A (1000)
+Seat 2: hero99 (1000)
+Seat 3: Big Stack (1000)
+Villain A posts ante 5
+hero99 posts ante 5
+Big Stack posts ante 5
+hero99 posts the small blind 10
+Big Stack posts the big blind 20
+*** HOLE CARDS ***
+Main pot 35
+Dealt to hero99 [2c 7d]
+Villain A folds
+hero99 folds
+Uncalled bet (10) returned to Big Stack
+Big Stack does not show
+Big Stack collected 25 from pot
+*** SUMMARY ***
+Total pot 25
+Seat 1: Villain A (button) folded on the Pre-Flop and did not bet
+Seat 2: hero99 (small blind) folded on the Pre-Flop
+Seat 3: Big Stack (big blind) did not show and won 25
+
+Game Hand #2 - Tournament #999 - Holdem (No Limit) - Level 1 (10/20) - 2026/01/01 12:01:00 UTC
+Table '1' 6-max Seat #2 is the button
+Seat 1: Villain A (975)
+Seat 2: hero99 (985)
+Seat 3: Big Stack (1040)
+Villain A posts ante 5
+hero99 posts ante 5
+Big Stack posts ante 5
+Big Stack posts the small blind 10
+Villain A posts the big blind 20
+*** HOLE CARDS ***
+Main pot 35
+Dealt to hero99 [Ah Ad]
+hero99 raises 60 to 60
+Big Stack folds
+Villain A calls 40
+*** FLOP *** [As 7c 2d]
+Main pot 145
+Villain A checks
+hero99 bets 50
+Villain A calls 50
+*** TURN *** [As 7c 2d] [9h]
+Main pot 245
+Villain A checks
+hero99 checks
+*** RIVER *** [As 7c 2d 9h] [3s]
+Main pot 245
+Villain A checks
+hero99 checks
+*** SHOW DOWN ***
+hero99 shows [Ah Ad] (three of a kind, Aces)
+Villain A shows [Kh Qd] (high card, King)
+hero99 collected 245 from main pot
+*** SUMMARY ***
+Total pot 245
+Board [As 7c 2d 9h 3s]
+Seat 1: Villain A (big blind) showed [Kh Qd] and lost with a high card, King
+Seat 2: hero99 (button) showed [Ah Ad] and won 245 with three of a kind, Aces
+Seat 3: Big Stack (small blind) folded on the Pre-Flop
+
+Game Hand #3 - Tournament #999 - Holdem (No Limit) - Level 2 (15/30) - 2026/01/01 12:05:00 UTC
+Table '1' 6-max Seat #3 is the button
+Seat 1: Villain A (970)
+Seat 2: hero99 (1115)
+Seat 3: Big Stack (1000)
+Villain A posts ante 5
+hero99 posts ante 5
+Big Stack posts ante 5
+Villain A posts the small blind 15
+hero99 posts the big blind 30
+*** HOLE CARDS ***
+Main pot 75
+Dealt to hero99 [Kh Ks]
+Big Stack raises 970 to 1000 and is all-in
+Villain A folds
+hero99 calls 970
+*** FLOP *** [Ah Qd 2c]
+Main pot 2030
+*** TURN *** [Ah Qd 2c] [9h]
+Main pot 2030
+*** RIVER *** [Ah Qd 2c 9h] [3s]
+Main pot 2030
+*** SHOW DOWN ***
+Big Stack shows [Ac Ad] (a pair of Aces)
+hero99 shows [Kh Ks] (a pair of Kings)
+Big Stack collected 2030 from main pot
+*** SUMMARY ***
+Total pot 2030
+Board [Ah Qd 2c 9h 3s]
+Seat 1: Villain A (small blind) folded on the Pre-Flop
+Seat 2: hero99 (big blind) showed [Kh Ks] and lost with a pair of Kings
+Seat 3: Big Stack (button) showed [Ac Ad] and won 2030 with a pair of Aces
