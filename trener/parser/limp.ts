@@ -40,6 +40,10 @@ export function detectHeroLimp(snapshot: TableSnapshot): HeroLimp | null {
 
     // Первое добровольное действие — Hero. Лимп только если это колл и впереди не рейзили.
     if (a.action !== "CALL" || raisedBefore) return null;
+    // Исключение: SB при фолде до Hero (хедз-ап против BB, лимперов впереди нет) —
+    // комплит малого блайнда не утечка: BB часто чекнет, Hero дёшево смотрит флоп
+    // за полблайнда. Сильной рукой здесь рейзят, но сам по себе лимп тут не флагаем.
+    if (heroSeat.position === "SB" && limpersBefore === 0) return null;
     const code = handCode(snapshot.heroCards);
     if (!code) return null;
     return { position: heroSeat.position, code, kind: limpersBefore > 0 ? "OVER" : "OPEN" };

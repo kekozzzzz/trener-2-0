@@ -99,7 +99,7 @@ describe("detectHeroLimp — лимп Hero на префлопе", () => {
     expect(detectHeroLimp(s)).toBeNull();
   });
 
-  it("малый блайнд завершает (колл до BB) при фолдах → лимп SB (OPEN)", () => {
+  it("малый блайнд завершает (колл до BB) при фолдах → НЕ утечка (SB-комплит против BB)", () => {
     const s = snap({
       heroCards: ["Qd", "9d"],
       heroPosition: "SB",
@@ -108,6 +108,8 @@ describe("detectHeroLimp — лимп Hero на префлопе", () => {
         { street: "PREFLOP", actor: "Hero", action: "CALL", amount: 50 },
       ],
     });
-    expect(detectHeroLimp(s)).toEqual({ position: "SB", code: "Q9s", kind: "OPEN" });
+    // SB при фолде до Hero: лимп против одного BB нормален (BB часто чекнет,
+    // дёшево видим флоп) — детектор его не флагает.
+    expect(detectHeroLimp(s)).toBeNull();
   });
 });

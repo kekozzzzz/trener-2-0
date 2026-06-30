@@ -65,17 +65,18 @@ describe("aggregatePlayerCharacteristic", () => {
 
   it("агрегирует открывашки шире нормы по всем раздачам: частота + сортировка", () => {
     const hands = [
-      openSnap(["Kc", "8c"], "EARLY"), // K8s с ранней — шире нормы
-      openSnap(["Kd", "8d"], "EARLY"), // ещё раз K8s
-      openSnap(["Qc", "8c"], "EARLY"), // Q8s с ранней — шире нормы
+      openSnap(["Kc", "4c"], "EARLY"), // K4s с ранней — шире нормы (чарт K6s+)
+      openSnap(["Kd", "4d"], "EARLY"), // ещё раз K4s
+      openSnap(["Qc", "6c"], "EARLY"), // Q6s с ранней — шире нормы (чарт Q8s+)
       openSnap(["Ac", "Kc"], "EARLY"), // AKs — в диапазоне, не флаг
     ];
 
     const facts = aggregatePlayerCharacteristic([t(40, 0, 100, "LOOSE")], hands);
 
+    // Hero-место EARLY без positionName → чарт-позиция MP (см. openChartPosition).
     expect(facts!.openLeak).toEqual([
-      { position: "EARLY", code: "K8s", count: 2 },
-      { position: "EARLY", code: "Q8s", count: 1 },
+      { position: "MP", code: "K4s", count: 2 },
+      { position: "MP", code: "Q6s", count: 1 },
     ]);
   });
 

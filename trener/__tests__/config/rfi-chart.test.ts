@@ -22,30 +22,36 @@ describe("handCode / handLabel", () => {
 });
 
 describe("isOpenSignificantlyWide — заметно шире нормы", () => {
-  it("EARLY: K7s заметно шире, K9s граница (молчим), KTs в чарте", () => {
-    expect(isOpenSignificantlyWide("EARLY", "K7s")).toBe(true);
-    expect(isOpenSignificantlyWide("EARLY", "K9s")).toBe(false); // полоса допуска
-    expect(isOpenSignificantlyWide("EARLY", "KTs")).toBe(false); // открытие
+  it("MP: K4s заметно шире, K5s граница (молчим), K8s в чарте", () => {
+    expect(isOpenSignificantlyWide("MP", "K4s")).toBe(true);
+    expect(isOpenSignificantlyWide("MP", "K5s")).toBe(false); // полоса допуска от K6s
+    expect(isOpenSignificantlyWide("MP", "K8s")).toBe(false); // открытие
   });
 
-  it("EARLY офсьют QJo шире нормы (чарт только AJo+/KQo)", () => {
-    expect(isOpenSignificantlyWide("EARLY", "QJo")).toBe(true);
-    expect(isOpenSignificantlyWide("EARLY", "KJo")).toBe(false); // допуск от KQo
+  it("MP офсьют: QJo/JTo в чарте, Q9o шире нормы", () => {
+    expect(isOpenSignificantlyWide("MP", "QJo")).toBe(false);
+    expect(isOpenSignificantlyWide("MP", "JTo")).toBe(false);
+    expect(isOpenSignificantlyWide("MP", "Q9o")).toBe(true);
   });
 
-  it("CO: K7s в чарте (K7s+), K5s шире (допуск только K6s)", () => {
-    expect(isOpenSignificantlyWide("CO", "K7s")).toBe(false);
-    expect(isOpenSignificantlyWide("CO", "K5s")).toBe(true);
+  it("UTG чуть тайтовее MP по офсьюту: JTo шире с UTG, но в чарте с MP", () => {
+    expect(isOpenSignificantlyWide("UTG", "JTo")).toBe(true);
+    expect(isOpenSignificantlyWide("MP", "JTo")).toBe(false);
   });
 
-  it("BTN широкий: K2s шире, K3s граница", () => {
-    expect(isOpenSignificantlyWide("BTN", "K2s")).toBe(true);
-    expect(isOpenSignificantlyWide("BTN", "K3s")).toBe(false);
+  it("CO: Q5s в чарте (Q5s+), Q3s шире (допуск только Q4s)", () => {
+    expect(isOpenSignificantlyWide("CO", "Q5s")).toBe(false);
+    expect(isOpenSignificantlyWide("CO", "Q3s")).toBe(true);
+  });
+
+  it("BTN широкий: J5s в чарте, мусор 72o шире", () => {
+    expect(isOpenSignificantlyWide("BTN", "J5s")).toBe(false);
+    expect(isOpenSignificantlyWide("BTN", "72o")).toBe(true);
   });
 
   it("пары никогда не шире (все в 22+)", () => {
-    expect(isOpenSignificantlyWide("EARLY", "22")).toBe(false);
-    expect(isOpenSignificantlyWide("EARLY", "55")).toBe(false);
+    expect(isOpenSignificantlyWide("MP", "22")).toBe(false);
+    expect(isOpenSignificantlyWide("MP", "55")).toBe(false);
   });
 
   it("позиции вне чарта (BB/OTHER) не судим", () => {

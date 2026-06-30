@@ -9,7 +9,8 @@
 import type { TournamentSummaryRequest } from "@/infrastructure/adapters/llm/types";
 
 const POSITION_RU: Record<string, string> = {
-  EARLY: "ранней позиции",
+  UTG: "UTG (ранней позиции)",
+  MP: "средней позиции (MP)",
   HJ: "хайджека",
   CO: "катоффа",
   BTN: "баттона",

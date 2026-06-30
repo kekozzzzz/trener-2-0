@@ -1,7 +1,7 @@
-import type { Position, TableSnapshot } from "./types";
+import type { TableSnapshot } from "./types";
 import { bigBlindFromSnapshot } from "./big-blind";
 import { handCode } from "@/config/poker/hand-codes";
-import { OPEN_MIN_STACK_BB } from "@/config/poker/rfi-chart";
+import { OPEN_MIN_STACK_BB, openChartPosition } from "@/config/poker/rfi-chart";
 
 // Детектор «открылся первым» (raise-first-in). Правило 1: факт открытия и код руки
 // считает парсер из снимка, не LLM. Сверку с чартом делает config/poker/rfi-chart.
@@ -11,7 +11,10 @@ import { OPEN_MIN_STACK_BB } from "@/config/poker/rfi-chart";
 // вынужденные, не в счёт). Лимп или рейз впереди → это не RFI (изоляция/3-бет),
 // олл-ин впереди → тоже нет. Олл-ин Hero первым — пуш-фолд, не RFI-чарт, пропускаем.
 
-export type HeroOpen = { position: Position; code: string };
+// position — позиция ЧАРТА (UTG/MP/HJ/CO/BTN/SB), сведённая из снимка через
+// openChartPosition (ранние разводятся на UTG/MP по positionName). Несудимые места
+// (BB/OTHER) возвращаются как есть — их отсеет isOpenPosition у потребителя.
+export type HeroOpen = { position: string; code: string };
 
 export function detectHeroOpen(snapshot: TableSnapshot): HeroOpen | null {
   // Короткий стек — это пуш-фолд, RFI-чарт неприменим (в сомнении не флагать).
@@ -33,7 +36,8 @@ export function detectHeroOpen(snapshot: TableSnapshot): HeroOpen | null {
     if (a.action !== "RAISE") return null;
     const code = handCode(snapshot.heroCards);
     if (!code) return null;
-    return { position: heroSeat.position, code };
+    const position = openChartPosition(heroSeat.position, heroSeat.positionName) ?? heroSeat.position;
+    return { position, code };
   }
 
   return null;
