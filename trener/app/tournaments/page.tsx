@@ -7,6 +7,7 @@ import { getPlayerCharacteristic } from "@/features/profile/queries";
 import { CHARACTERISTIC_RELIABLE_FROM } from "@/config/profile";
 import { PageHeader } from "@/components/page-header";
 import { TournamentRow } from "@/components/tournaments/tournament-row";
+import { PlayerCharts } from "@/components/profile/player-charts";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -65,6 +66,7 @@ export default async function TournamentsPage({
                 ? `Собрано по всей твоей дистанции (учтено турниров: ${characteristic.tournamentsCounted}).`
                 : `Пока учтено турниров: ${characteristic.tournamentsCounted}. Картина предварительная — станет более точной примерно от ${CHARACTERISTIC_RELIABLE_FROM} турниров.`}
             </p>
+            <PlayerCharts />
           </div>
         )}
 

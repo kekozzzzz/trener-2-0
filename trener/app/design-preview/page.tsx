@@ -41,6 +41,10 @@ import {
 import { ChevronDown, Trash2 } from "lucide-react";
 import { HandTable } from "@/components/poker/hand-table";
 import { RangeGrid } from "@/components/poker/range-grid";
+import { OpenChartPanel } from "@/components/profile/open-chart-panel";
+import { GRID_RANKS, cellCode } from "@/config/poker/hand-grid";
+import { isOpenSignificantlyWide, type OpenPosition } from "@/config/poker/rfi-chart";
+import type { OpenChartCell, OpenChartFacts } from "@/features/profile/open-chart";
 import { tableStateUpTo } from "@/parser/table-state";
 import type { TableSnapshot } from "@/parser/types";
 
@@ -98,6 +102,42 @@ const flopSnapshot: TableSnapshot = {
     { street: "FLOP", actor: "Hero", action: "BET", amount: 500 },
   ],
   potTotal: 1450,
+};
+
+// Демо-карта открываний для превью кнопки «Твои чарты». Зелёная зона (в рамках нормы)
+// строится по текущему RFI-чарту, лаймовые «утечки» заданы явно — так превью не зависит
+// от правок чарта в соседней сессии. Счётчики у не-широких рук не показываются.
+const WIDE_DEMO: Record<OpenPosition, [string, number][]> = {
+  UTG: [["K4s", 3], ["Q6s", 2], ["J6s", 2], ["A7o", 4], ["98o", 1]],
+  MP: [["K4s", 3], ["Q6s", 2], ["J6s", 2], ["A8o", 4], ["98o", 1]],
+  HJ: [["K6s", 3], ["J7s", 2], ["T7s", 2], ["A6o", 3], ["K8o", 1]],
+  CO: [["K4s", 4], ["95s", 2], ["85s", 2], ["Q7o", 3], ["J8o", 1]],
+  BTN: [["K2s", 5], ["Q4s", 3], ["J5s", 3], ["94s", 2], ["84o", 2], ["72o", 1]],
+  SB: [["K3s", 3], ["Q5s", 2], ["96s", 2], ["J6o", 2], ["T7o", 1]],
+};
+
+function buildDemoPosition(pos: OpenPosition): OpenChartCell[] {
+  const wide = new Set(WIDE_DEMO[pos].map(([code]) => code));
+  const cells: OpenChartCell[] = [];
+  const size = GRID_RANKS.length;
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      const code = cellCode(r, c);
+      if (wide.has(code)) continue; // лаймовые добавим ниже
+      if (!isOpenSignificantlyWide(pos, code)) cells.push({ code, count: 4, wide: false });
+    }
+  }
+  for (const [code, count] of WIDE_DEMO[pos]) cells.push({ code, count, wide: true });
+  return cells;
+}
+
+const demoOpenChart: OpenChartFacts = {
+  UTG: buildDemoPosition("UTG"),
+  MP: buildDemoPosition("MP"),
+  HJ: buildDemoPosition("HJ"),
+  CO: buildDemoPosition("CO"),
+  BTN: buildDemoPosition("BTN"),
+  SB: buildDemoPosition("SB"),
 };
 
 const palette = [
@@ -336,6 +376,19 @@ export default function DesignPreviewPage() {
             Соперник пошёл в олл-ин с BB. Какой диапазон рук ты ему даёшь под этот пуш?
           </p>
           <RangeGrid />
+        </div>
+      </section>
+
+      {/* Чарт открываний игрока («Твои чарты») */}
+      <section className="space-y-4">
+        <h2 className="text-h2">Чарт открываний игрока</h2>
+        <p className="max-w-2xl text-body text-muted-foreground">
+          Зеркало «как ты открываешься» под профилем на «Мои турниры». Переключи позиции —
+          лаймом горят руки, которые игрок открывает широко (со счётчиком), серым — обычный
+          опен, пусто — не открывает. Базовый чарт как «эталон» не показан.
+        </p>
+        <div className="border border-border bg-card p-6">
+          <OpenChartPanel chart={demoOpenChart} tournamentsCounted={42} />
         </div>
       </section>
 
