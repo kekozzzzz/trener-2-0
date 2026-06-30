@@ -1,0 +1,83 @@
+Winamax Poker - Tournament "Test MTT" buyIn: 5€ + 0.50€ level: 1 - HandId: #111-1-1 - Holdem no limit (5/10/20) - 2024/01/01 12:00:00 UTC
+Table: 'Test MTT(555)#001' 6-max (real money) Seat #1 is the button
+Seat 1: Villain A (1000)
+Seat 2: kefirhero (1000)
+Seat 3: Big Stack (1000)
+*** ANTE/BLINDS ***
+Villain A posts ante 5
+kefirhero posts ante 5
+Big Stack posts ante 5
+kefirhero posts small blind 10
+Big Stack posts big blind 20
+Dealt to kefirhero [2c 7d]
+*** PRE-FLOP ***
+Villain A folds
+kefirhero folds
+Uncalled bet (10) returned to Big Stack
+Big Stack collected 25 from pot
+*** SUMMARY ***
+Total pot 25 | No rake
+Seat 3: Big Stack (big blind) won 25
+
+Winamax Poker - Tournament "Test MTT" buyIn: 5€ + 0.50€ level: 1 - HandId: #111-2-2 - Holdem no limit (5/10/20) - 2024/01/01 12:01:00 UTC
+Table: 'Test MTT(555)#001' 6-max (real money) Seat #2 is the button
+Seat 1: Villain A (975)
+Seat 2: kefirhero (985)
+Seat 3: Big Stack (1040)
+*** ANTE/BLINDS ***
+Villain A posts ante 5
+kefirhero posts ante 5
+Big Stack posts ante 5
+Big Stack posts small blind 10
+Villain A posts big blind 20
+Dealt to kefirhero [Ah Ad]
+*** PRE-FLOP ***
+kefirhero raises 40 to 60
+Big Stack folds
+Villain A calls 40
+*** FLOP *** [As 7c 2d]
+Villain A checks
+kefirhero bets 50
+Villain A calls 50
+*** TURN *** [As 7c 2d][9h]
+Villain A checks
+kefirhero checks
+*** RIVER *** [As 7c 2d 9h][3s]
+Villain A checks
+kefirhero checks
+*** SHOW DOWN ***
+kefirhero shows [Ah Ad] (Three of a kind : Aces)
+Villain A shows [Kh Qd] (High card : King)
+kefirhero collected 245 from pot
+*** SUMMARY ***
+Total pot 245 | No rake
+Board: [As 7c 2d 9h 3s]
+Seat 2: kefirhero (button) won 245
+
+Winamax Poker - Tournament "Test MTT" buyIn: 5€ + 0.50€ level: 2 - HandId: #111-3-3 - Holdem no limit (5/15/30) - 2024/01/01 12:05:00 UTC
+Table: 'Test MTT(555)#001' 6-max (real money) Seat #3 is the button
+Seat 1: Villain A (970)
+Seat 2: kefirhero (1115)
+Seat 3: Big Stack (1000)
+*** ANTE/BLINDS ***
+Villain A posts ante 5
+kefirhero posts ante 5
+Big Stack posts ante 5
+Villain A posts small blind 15
+kefirhero posts big blind 30
+Dealt to kefirhero [Kh Ks]
+*** PRE-FLOP ***
+Big Stack raises 970 to 1000 and is all-in
+Villain A folds
+kefirhero calls 970
+*** FLOP *** [Ah Qd 2c]
+*** TURN *** [Ah Qd 2c][9h]
+*** RIVER *** [Ah Qd 2c 9h][3s]
+*** SHOW DOWN ***
+Big Stack shows [Ac Ad] (One pair : Aces)
+kefirhero shows [Kh Ks] (One pair : Kings)
+Big Stack collected 2030 from pot
+*** SUMMARY ***
+Total pot 2030 | No rake
+Board: [Ah Qd 2c 9h 3s]
+Seat 3: Big Stack (button) won 2030

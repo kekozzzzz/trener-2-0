@@ -80,7 +80,7 @@ export function parsePokerStarsMtt(buffer: Buffer): ParseResult {
   }
 
   const heroSeatRe = new RegExp("^Seat \\d+: " + escapeRe(heroName) + " \\(", "m");
-  const heroStackRe = new RegExp("^Seat \\d+: " + escapeRe(heroName) + " \\(([\\d,]+) in chips\\)", "m");
+  const heroStackRe = new RegExp("^Seat \\d+: " + escapeRe(heroName) + " \\(([\\d,]+) in chips", "m");
   const heroVoluntaryRe = new RegExp("^" + escapeRe(heroName) + ": (?:calls|bets|raises)", "m");
   const heroRaiseRe = new RegExp("^" + escapeRe(heroName) + ": raises", "m");
 

@@ -5,7 +5,8 @@ import { resolvePositions } from "../shared/positions";
 // МОГУТ содержать пробелы. Поэтому экшены матчим по списку имён из Seat-строк
 // (как WPN), а разделитель — "<ник>: ". Стек "(N in chips)", суммы целые.
 
-const SEAT_LINE = /^Seat (\d+): (.+?) \(([\d,]+) in chips\)$/gm;
+// Допускаем суффикс после стека: в KO-турнирах PokerStars — "(2995 in chips, $15 bounty)".
+const SEAT_LINE = /^Seat (\d+): (.+?) \(([\d,]+) in chips[^)]*\)/gm;
 const BUTTON_SEAT = /Seat #(\d+) is the button/;
 const TABLE_MAX = /(\d+)-max/;
 const BOARD_LINE = /^Board \[(.+?)\]$/m;

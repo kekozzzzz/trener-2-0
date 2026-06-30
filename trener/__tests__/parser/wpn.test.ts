@@ -67,7 +67,7 @@ describe("parseWpnMtt — формат ACR / PokerKing (WPN)", () => {
   });
 
   it("роутер отклоняет нераспознанный формат", () => {
-    const result = parseHandHistory(Buffer.from("Winamax Poker - Tournament \"X\" ..."));
+    const result = parseHandHistory(Buffer.from("какой-то посторонний текст, не покерный HH"));
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.type).toBe("UNSUPPORTED_FORMAT");

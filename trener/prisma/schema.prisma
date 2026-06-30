@@ -208,6 +208,29 @@ model HhFile {
   @@map("hh_files")
 }
 
+// ─────────── Присланный файл нераспознанного формата (образец нового рума) ────
+// Когда загружают файл, который мы не смогли разобрать, складываем его в приватное
+// S3 (если хранилище настроено) и пишем сюда строку для учёта: что за формат пришёл,
+// чтобы потом написать парсер. НЕ привязан к турниру (турнира нет — файл не разобран).
+// Сам файл в S3 авто-удаляется через 90 дней (lifecycle бакета); эта запись остаётся
+// как лог. Бинарь/нечитаемое в S3 НЕ кладём (storage_key = NULL), но факт фиксируем.
+
+model UnrecognizedUpload {
+  id               String   @id @default(uuid()) @db.Uuid
+  playerId         String?  @map("player_id") @db.Uuid       // кто загрузил (контекст; без FK — игрок может удалиться)
+  signature        String                                     // строка-сигнатура заголовка (без ников/карт)
+  reason           String                                     // почему не распознан (из diagnoseParse)
+  storageKey       String?  @map("storage_key")               // ключ в S3; NULL — хранилище выкл. или файл бинарный
+  originalFilename String   @map("original_filename")         // имя файла (очищенное), для ориентира
+  sizeBytes        Int      @map("size_bytes")
+  sha256           String?                                    // хэш файла — для дедупа одинаковых присылок
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt], map: "idx_unrecognized_uploads_recent")
+  @@index([sha256], map: "idx_unrecognized_uploads_sha")
+  @@map("unrecognized_uploads")
+}
+
 // ─────────────────────────── Раздача ─────────────────────────────────────────
 // Одна игровая ситуация, отобранная парсером для разбора.
 // Удаляется каскадом вместе с турниром — отдельного deleted_at нет.

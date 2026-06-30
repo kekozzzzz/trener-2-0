@@ -1,7 +1,75 @@
+import { createHash, randomUUID } from "crypto";
 import { prisma } from "@/infrastructure/db/client";
 import { enqueue, kickWorker } from "@/infrastructure/queue";
-import { parseHandHistory } from "@/parser";
+import { parseHandHistory, diagnoseParse, type ParseAnomaly } from "@/parser";
+import { safeNotifyAdmin } from "@/infrastructure/adapters/notify";
+import { safeStore } from "@/infrastructure/adapters/storage";
+import { isStorageConfigured } from "@/config/storage";
 import { mergeSameTournamentFiles } from "./merge-files";
+
+// Сторож разбора: если присланный файл не распознан / разобран подозрительно —
+// сигналим админу в Telegram (бот-сторож), чтобы прицельно подстроить парсер под
+// новый рум, а не ждать жалобы. Шлём только метку рума и строку-сигнатуру заголовка
+// (без HH-файла и ников). Антиспам: одна и та же сигнатура — не чаще раза в 10 минут
+// (пачка файлов одного незнакомого формата не зальёт чат).
+const ALERT_THROTTLE_MS = 10 * 60 * 1000;
+const lastAlertAt = new Map<string, number>();
+
+function alertAdmin(anomaly: ParseAnomaly): void {
+  const now = Date.now();
+  if (now - (lastAlertAt.get(anomaly.signature) ?? 0) < ALERT_THROTTLE_MS) return;
+  lastAlertAt.set(anomaly.signature, now);
+  void safeNotifyAdmin(
+    `⚠️ Разбор HH требует внимания\nПричина: ${anomaly.reason}\nСигнатура: ${anomaly.signature}`,
+  );
+}
+
+// Очищаем имя файла пользователя перед записью в БД: только базовое имя (без пути —
+// защита от «../»), без управляющих символов, ограниченной длины.
+function safeName(name: string): string {
+  const base = name.split(/[\\/]/).pop() ?? name;
+  let out = "";
+  for (const ch of base) {
+    const code = ch.codePointAt(0) ?? 0;
+    out += code < 0x20 || code === 0x7f ? "_" : ch;
+  }
+  return out.slice(0, 200) || "file";
+}
+
+// Откладываем образец нераспознанного файла, чтобы потом написать парсер нового рума.
+// Текст кладём в приватное S3 (ключ генерим САМИ — не из имени пользователя), бинарь/
+// нечитаемое НЕ кладём (storable=false), но факт фиксируем записью. Всё мягко: сбой
+// хранилища/записи не роняет загрузку. Без настроенного S3 (дев/тесты) — ничего не делаем.
+async function archiveUnrecognized(
+  fileBuffer: Buffer,
+  originalFilename: string,
+  playerId: string,
+  anomaly: ParseAnomaly,
+): Promise<void> {
+  if (!isStorageConfigured()) return;
+  try {
+    const sha256 = createHash("sha256").update(fileBuffer).digest("hex");
+    let storageKey: string | null = null;
+    if (anomaly.storable) {
+      const day = new Date().toISOString().slice(0, 10);
+      const key = `unrecognized/${day}/${randomUUID()}.txt`;
+      if (await safeStore(key, fileBuffer, "text/plain; charset=utf-8")) storageKey = key;
+    }
+    await prisma.unrecognizedUpload.create({
+      data: {
+        playerId,
+        signature: anomaly.signature,
+        reason: anomaly.reason,
+        storageKey,
+        originalFilename: safeName(originalFilename),
+        sizeBytes: fileBuffer.length,
+        sha256,
+      },
+    });
+  } catch (err) {
+    console.error("[unrecognized] не удалось сохранить образец:", err);
+  }
+}
 
 type UploadInput = {
   fileBuffer: Buffer;
@@ -15,13 +83,17 @@ export type UploadResult =
   | { ok: false; error: "DUPLICATE"; existingTournamentId: string };
 
 export async function uploadTournament(input: UploadInput): Promise<UploadResult> {
-  const { fileBuffer, originalFilename: _originalFilename, playerId } = input;
+  const { fileBuffer, originalFilename, playerId } = input;
 
   // Разбираем синхронно для валидации формата и получения метрик.
   // Метрики кладём в payload задачи — воркер применит их к турниру.
   const parsed = parseHandHistory(fileBuffer);
+  const anomaly = diagnoseParse(parsed, fileBuffer);
+  if (anomaly) alertAdmin(anomaly);
 
   if (!parsed.ok) {
+    // Файл не распознан/не разобран — откладываем образец под будущий парсер рума.
+    if (anomaly) await archiveUnrecognized(fileBuffer, originalFilename, playerId, anomaly);
     return { ok: false, error: parsed.error.type };
   }
 

@@ -1,0 +1,74 @@
+***** 888poker Hand History for Game 1001 *****
+10/20 Blinds No Limit Holdem - *** 01 01 2024 12:00:00
+Tournament #555 $5 + $0.5 - Table #1 6 Max (Real Money)
+Seat 1 is the button
+Total number of players : 3
+Seat 1: Villain A ( 1,000 )
+Seat 2: kefirhero ( 1,000 )
+Seat 3: Big Stack ( 1,000 )
+Villain A posts ante [5]
+kefirhero posts ante [5]
+Big Stack posts ante [5]
+kefirhero posts small blind [10]
+Big Stack posts big blind [20]
+** Dealing down cards **
+Dealt to kefirhero [ 2c, 7d ]
+Villain A folds
+kefirhero folds
+** Summary **
+Big Stack collected [ 25 ]
+
+***** 888poker Hand History for Game 1002 *****
+10/20 Blinds No Limit Holdem - *** 01 01 2024 12:01:00
+Tournament #555 $5 + $0.5 - Table #1 6 Max (Real Money)
+Seat 2 is the button
+Total number of players : 3
+Seat 1: Villain A ( 975 )
+Seat 2: kefirhero ( 985 )
+Seat 3: Big Stack ( 1,040 )
+Villain A posts ante [5]
+kefirhero posts ante [5]
+Big Stack posts ante [5]
+Big Stack posts small blind [10]
+Villain A posts big blind [20]
+** Dealing down cards **
+Dealt to kefirhero [ Ah, Ad ]
+kefirhero raises [60]
+Big Stack folds
+Villain A calls [40]
+** Dealing flop ** [ As, 7c, 2d ]
+Villain A checks
+kefirhero bets [50]
+Villain A calls [50]
+** Dealing turn ** [ 9h ]
+Villain A checks
+kefirhero checks
+** Dealing river ** [ 3s ]
+Villain A checks
+kefirhero checks
+** Summary **
+kefirhero collected [ 245 ]
+
+***** 888poker Hand History for Game 1003 *****
+15/30 Blinds No Limit Holdem - *** 01 01 2024 12:05:00
+Tournament #555 $5 + $0.5 - Table #1 6 Max (Real Money)
+Seat 3 is the button
+Total number of players : 3
+Seat 1: Villain A ( 970 )
+Seat 2: kefirhero ( 1,115 )
+Seat 3: Big Stack ( 1,005 )
+Villain A posts ante [5]
+kefirhero posts ante [5]
+Big Stack posts ante [5]
+Villain A posts small blind [15]
+kefirhero posts big blind [30]
+** Dealing down cards **
+Dealt to kefirhero [ Kh, Ks ]
+Big Stack raises [1000]
+Villain A folds
+kefirhero calls [970]
+** Dealing flop ** [ Ah, Qd, 2c ]
+** Dealing turn ** [ 9h ]
+** Dealing river ** [ 3s ]
+** Summary **
+Big Stack collected [ 2030 ]
