@@ -1,5 +1,6 @@
 import { prisma } from "@/infrastructure/db/client";
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { getDialogue } from "@/features/dialogue/queries";
 import { getChat } from "@/features/chat/queries";
@@ -28,6 +29,7 @@ export default async function HandDialoguePage({
   params: Promise<{ id: string; handId: string }>;
 }) {
   const { id, handId } = await params;
+  const t = await getTranslations("HandReview");
   const session = await requireSession();
 
   const hand = await prisma.hand.findUnique({
@@ -73,14 +75,13 @@ export default async function HandDialoguePage({
             </div>
           </header>
           <section className="mx-auto max-w-5xl px-8 py-16">
-            <h1 className="text-h1">Разбор под замком</h1>
+            <h1 className="text-h1">{t("lockedTitle")}</h1>
             <p className="mt-4 max-w-2xl text-body text-muted-foreground">
-              Разбор этого турнира ещё не открыт. Метрики доступны на странице турнира — там же
-              можно открыть разбор по подписке.
+              {t("lockedBody")}
             </p>
             <div className="mt-8 font-mono text-label uppercase tracking-label">
               <Link href={`/tournament/${id}`} className="text-muted-foreground transition-colors hover:text-foreground">
-                ← К турниру
+                {t("backToTournament")}
               </Link>
             </div>
           </section>
@@ -143,7 +144,7 @@ export default async function HandDialoguePage({
       <section className="mx-auto max-w-5xl px-8 py-16">
         {/* Фоновая отметка «просмотрено» при открытии разбора (см. mark-viewed.tsx). */}
         <MarkViewed handId={handId} />
-        <h1 className="text-h1">Разбор раздачи</h1>
+        <h1 className="text-h1">{t("title")}</h1>
 
         <div className="mt-8 border border-border bg-card p-6">
           {played && <p className="text-body text-muted-foreground">{played}</p>}
@@ -160,7 +161,7 @@ export default async function HandDialoguePage({
               </p>
               <p className="mt-1 font-mono text-small text-muted-foreground">
                 {chipSign}
-                {chipResult} фишек
+                {chipResult} {t("chips")}
               </p>
             </>
           ) : (
@@ -174,7 +175,7 @@ export default async function HandDialoguePage({
                 {chipSign}
                 {chipResult}
               </p>
-              <p className="mt-1 font-mono text-label uppercase tracking-label text-muted-foreground">фишек</p>
+              <p className="mt-1 font-mono text-label uppercase tracking-label text-muted-foreground">{t("chips")}</p>
             </>
           )}
         </div>
@@ -187,13 +188,13 @@ export default async function HandDialoguePage({
 
         {historyRounds.length > 0 && (
           <div className="mt-16 space-y-8">
-            <h2 className="text-h2">История</h2>
+            <h2 className="text-h2">{t("historyTitle")}</h2>
             {historyRounds.map((round) => {
               const { tableActionIndex, text } = splitMarkers(round.question);
               return (
                 <div key={round.roundNumber} className="space-y-2">
                   <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
-                    Вопрос {round.roundNumber}
+                    {t("questionLabel", { number: round.roundNumber })}
                   </p>
                   {tableActionIndex !== null && showTableForRound.get(round.roundNumber) && (
                     <HandTable state={tableStateUpTo(snapshot, tableActionIndex)} nick={nick} />
@@ -217,7 +218,7 @@ export default async function HandDialoguePage({
                 <ScrollToLatest handId={handId} />
                 <div className="space-y-2">
                   <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
-                    Вопрос {openRound.roundNumber}
+                    {t("questionLabel", { number: openRound.roundNumber })}
                   </p>
                   {tableActionIndex !== null && showTableForRound.get(openRound.roundNumber) && (
                     <HandTable state={tableStateUpTo(snapshot, tableActionIndex)} nick={nick} />
@@ -238,7 +239,7 @@ export default async function HandDialoguePage({
             {dialogue.state === "VERDICT_SHOWN" && (
               <div className="space-y-4">
                 <ScrollToLatest handId={handId} />
-                <h2 className="text-h2">Вердикт</h2>
+                <h2 className="text-h2">{t("verdictTitle")}</h2>
                 <div className="border border-primary bg-card p-6">
                   <p className="text-body text-foreground">{personalizeHero(dialogue.verdict, nick)}</p>
                 </div>
@@ -250,11 +251,11 @@ export default async function HandDialoguePage({
         {/* Простая раздача (без сократовского диалога): показываем разбор сразу. */}
         {!dialogue && analysis && (
           <div className="mt-16 space-y-4">
-            <h2 className="text-h2">Разбор</h2>
+            <h2 className="text-h2">{t("reviewTitle")}</h2>
             {analysis.optimal && (
               <div className="space-y-2">
                 <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
-                  Как можно было
+                  {t("howItCouldBe")}
                 </p>
                 <p className="text-body text-foreground">{personalizeHero(analysis.optimal, nick)}</p>
               </div>
@@ -269,7 +270,7 @@ export default async function HandDialoguePage({
 
         {chat?.available && (
           <div className="mt-16 space-y-4">
-            <h2 className="text-h2">Чат</h2>
+            <h2 className="text-h2">{t("chatTitle")}</h2>
             {chat.messages.length > 0 && (
               <ChatThread
                 messages={chat.messages.map((m) => ({ ...m, text: personalizeHero(m.text, nick) }))}
@@ -281,7 +282,7 @@ export default async function HandDialoguePage({
 
         <div className="mt-16 border-t border-border pt-8 font-mono text-label uppercase tracking-label">
           <Link href={`/tournament/${id}`} className="text-muted-foreground transition-colors hover:text-foreground">
-            ← К турниру
+            {t("backToTournament")}
           </Link>
         </div>
       </section>

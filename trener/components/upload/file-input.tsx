@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useTranslations } from "next-intl"
 
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -13,15 +14,16 @@ interface FileInputProps {
   multiple?: boolean
 }
 
-// Подпись по числу выбранных: 0 — заглушка, 1 — имя файла, много — счётчик.
-function selectionLabel(names: string[]): string {
-  if (names.length === 0) return "Файл не выбран"
-  if (names.length === 1) return names[0]
-  return `Выбрано файлов: ${names.length}`
-}
-
 export function FileInput({ id, name, accept, required, multiple }: FileInputProps) {
   const [names, setNames] = React.useState<string[]>([])
+  const t = useTranslations("FileInput")
+
+  // Подпись по числу выбранных: 0 — заглушка, 1 — имя файла, много — счётчик.
+  const selectionLabel = (): string => {
+    if (names.length === 0) return t("noFile")
+    if (names.length === 1) return names[0]
+    return t("selectedCount", { count: names.length })
+  }
 
   return (
     <div className="space-y-2">
@@ -35,12 +37,12 @@ export function FileInput({ id, name, accept, required, multiple }: FileInputPro
             names.length > 0 ? "text-foreground" : "text-muted-foreground"
           )}
         >
-          {selectionLabel(names)}
+          {selectionLabel()}
         </span>
         <span
           className={cn(buttonVariants({ variant: "outline", size: "sm" }), "w-full sm:w-auto sm:shrink-0")}
         >
-          {multiple ? "Выбрать файлы" : "Выбрать файл"}
+          {multiple ? t("chooseFiles") : t("chooseFile")}
         </span>
         <input
           id={id}

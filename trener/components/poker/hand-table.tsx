@@ -1,4 +1,5 @@
 import type { TableState, SeatState, SeatAction } from "@/parser/table-state";
+import { getTranslations } from "next-intl/server";
 import { personalizeHero } from "@/lib/hero-name";
 import { cn } from "@/lib/utils";
 
@@ -10,23 +11,14 @@ import { cn } from "@/lib/utils";
 // (N-max), карты чёрные с лаймом, рубашки живых соперников с логотипом бренда,
 // единственный акцент — лайм (Hero + точка решения).
 
-const STREET_RU: Record<TableState["street"], string> = {
-  PREFLOP: "Префлоп",
-  FLOP: "Флоп",
-  TURN: "Тёрн",
-  RIVER: "Ривер",
-};
-
-const ACTION_RU: Record<SeatAction["action"], string> = {
-  POST_ANTE: "анте",
-  POST_SB: "малый блайнд",
-  POST_BB: "большой блайнд",
-  FOLD: "фолд",
-  CHECK: "чек",
-  CALL: "колл",
-  BET: "бет",
-  RAISE: "рейз",
-  ALL_IN: "олл-ин",
+// Подписи улиц/действий берём из словаря (язык интерфейса игрока). Ключи фиксированы,
+// значения — переведённые термины.
+type TableLabels = {
+  street: Record<TableState["street"], string>;
+  action: Record<SeatAction["action"], string>;
+  table: string;
+  beforeFlop: string;
+  pot: string;
 };
 
 const SUIT_GLYPH: Record<string, string> = { c: "♣", d: "♦", h: "♥", s: "♠" };
@@ -49,8 +41,8 @@ function sizeLabel(amount: number, bigBlind: number | null): string {
   return `${amount}`;
 }
 
-function actionLabel(a: SeatAction, bigBlind: number | null): string {
-  const name = ACTION_RU[a.action];
+function actionLabel(a: SeatAction, bigBlind: number | null, labels: TableLabels): string {
+  const name = labels.action[a.action];
   if (a.amount != null && (a.action === "BET" || a.action === "RAISE" || a.action === "CALL" || a.action === "ALL_IN")) {
     return `${name} ${sizeLabel(a.amount, bigBlind)}`;
   }
@@ -89,7 +81,30 @@ function CardBack() {
 
 const pct = (x: number, y: number) => ({ left: `${(x / W) * 100}%`, top: `${(y / H) * 100}%` });
 
-export function HandTable({ state, nick }: { state: TableState; nick: string | null }) {
+export async function HandTable({ state, nick }: { state: TableState; nick: string | null }) {
+  const t = await getTranslations("HandTable");
+  const labels: TableLabels = {
+    street: {
+      PREFLOP: t("preflop"),
+      FLOP: t("flop"),
+      TURN: t("turn"),
+      RIVER: t("river"),
+    },
+    action: {
+      POST_ANTE: t("actionAnte"),
+      POST_SB: t("actionSb"),
+      POST_BB: t("actionBb"),
+      FOLD: t("actionFold"),
+      CHECK: t("actionCheck"),
+      CALL: t("actionCall"),
+      BET: t("actionBet"),
+      RAISE: t("actionRaise"),
+      ALL_IN: t("actionAllIn"),
+    },
+    table: t("table"),
+    beforeFlop: t("beforeFlop"),
+    pot: t("pot"),
+  };
   const bySeat = new Map(state.seats.map((s) => [s.seatNumber, s]));
   const heroSeat = state.seats.find((s) => s.isHero)?.seatNumber ?? 1;
   const maxSeatNo = Math.max(...state.seats.map((s) => s.seatNumber));
@@ -118,7 +133,7 @@ export function HandTable({ state, nick }: { state: TableState; nick: string | n
     <div className="border border-border bg-card p-3">
       <div className="mb-2">
         <span className="font-mono text-label uppercase tracking-label text-muted-foreground">
-          Стол · {STREET_RU[state.street]}
+          {labels.table} · {labels.street[state.street]}
         </span>
       </div>
 
@@ -140,11 +155,11 @@ export function HandTable({ state, nick }: { state: TableState; nick: string | n
             {state.board.length > 0 ? (
               state.board.map((c, i) => <Card key={`${c}-${i}`} card={c} board />)
             ) : (
-              <span className="font-mono text-label uppercase tracking-label text-muted-foreground">до флопа</span>
+              <span className="font-mono text-label uppercase tracking-label text-muted-foreground">{labels.beforeFlop}</span>
             )}
           </div>
           <div className="font-mono text-label uppercase tracking-label text-muted-foreground">
-            Банк <span className="text-primary">{sizeLabel(state.potSoFar, state.bigBlind)}</span>
+            {labels.pot} <span className="text-primary">{sizeLabel(state.potSoFar, state.bigBlind)}</span>
           </div>
         </div>
 
@@ -252,7 +267,7 @@ export function HandTable({ state, nick }: { state: TableState; nick: string | n
                       )}
                     >
                       {seat.isCurrent ? "▸ " : ""}
-                      {actionLabel(seat.lastAction, state.bigBlind)}
+                      {actionLabel(seat.lastAction, state.bigBlind, labels)}
                     </div>
                   )}
                 </div>

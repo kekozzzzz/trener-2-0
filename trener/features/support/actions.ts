@@ -1,5 +1,6 @@
 "use server";
 
+import { getTranslations } from "next-intl/server";
 import { clientIp, hitCount, recordHit } from "@/features/auth/rate-limit";
 import { getCurrentPlayer } from "@/features/auth/queries";
 import { getNotifyAdapter } from "@/infrastructure/adapters/notify";
@@ -31,23 +32,24 @@ export async function sendSupportMessageAction(
   const honeypot = String(formData.get("company") ?? "").trim();
   if (honeypot) return { success: true };
 
+  const t = await getTranslations("Errors");
   const message = String(formData.get("message") ?? "").trim();
   const replyEmail = String(formData.get("email") ?? "").trim();
 
   if (message.length < MIN_MESSAGE_LENGTH) {
-    return { error: "Напишите, пожалуйста, чуть подробнее — в чём вопрос." };
+    return { error: t("supportMessageTooShort") };
   }
 
   // Почта необязательна, но если указана — проверим форму, чтобы было куда ответить.
   if (replyEmail && !EMAIL_RE.test(replyEmail)) {
-    return { error: "Проверьте адрес почты — на него мы ответим." };
+    return { error: t("supportInvalidEmail") };
   }
 
   // Антиспам по IP: не даём завалить Telegram владельца потоком сообщений.
   const ip = await clientIp();
   const key = `support:${ip}`;
   if (hitCount(key) >= getSupportMaxPerIp()) {
-    return { error: "Слишком много сообщений. Подождите немного и попробуйте снова." };
+    return { error: t("supportTooManyMessages") };
   }
   recordHit(key, getSupportWindowMs());
 
@@ -72,7 +74,7 @@ export async function sendSupportMessageAction(
   } catch (err) {
     console.error("[support] не удалось доставить сообщение в Telegram:", err);
     return {
-      error: `Не получилось отправить. Напишите напрямую: ${OPERATOR.contactEmail}`,
+      error: t("supportSendFailed", { email: OPERATOR.contactEmail }),
     };
   }
 

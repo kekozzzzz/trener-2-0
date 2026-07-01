@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { useFormStatus } from "react-dom";
+import { useTranslations } from "next-intl";
 import { completeRegistrationAction, type AuthFormState } from "@/features/auth/actions";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,16 +15,17 @@ const initialState: AuthFormState = {};
 
 function SubmitButton() {
   const { pending } = useFormStatus();
+  const t = useTranslations("MagicLink");
 
   return (
     <Button type="submit" disabled={pending} className="w-full">
       {pending ? (
         <>
-          Создаём аккаунт
+          {t("completeRegistering")}
           <LoadingDots />
         </>
       ) : (
-        "Готово, войти"
+        t("completeSubmit")
       )}
     </Button>
   );
@@ -31,33 +33,35 @@ function SubmitButton() {
 
 export function CompleteForm() {
   const [state, formAction] = useActionState(completeRegistrationAction, initialState);
+  const t = useTranslations("MagicLink");
 
   return (
     <form action={formAction} className="space-y-6">
       <div className="space-y-2">
         <Label htmlFor="nickname" className="font-mono text-label uppercase tracking-label text-muted-foreground">
-          Покерный ник <span className="normal-case tracking-normal">(необязательно)</span>
+          {t("nicknameLabel")} <span className="normal-case tracking-normal">{t("nicknameOptional")}</span>
         </Label>
         <Input id="nickname" name="nickname" type="text" maxLength={40} autoComplete="off" />
         <p className="text-small text-muted-foreground">
-          Будем показывать его в разборах вместо «Hero». Можно добавить позже в аккаунте.
+          {t("nicknameHint")}
         </p>
       </div>
 
       <label className="flex items-start gap-3 text-small text-muted-foreground">
         <input type="checkbox" name="terms" required className="mt-1 size-4 accent-primary" />
         <span>
-          Принимаю{" "}
+          {t("termsAccept")}{" "}
           <Link href="/legal#oferta" className="text-foreground underline">
-            оферту
+            {t("termsOffer")}
           </Link>{" "}
-          и{" "}
+          {t("termsAnd")}{" "}
           <Link href="/legal#privacy" className="text-foreground underline">
-            политику конфиденциальности
+            {t("termsPrivacy")}
           </Link>{" "}
-          и даю согласие на обработку моих данных, включая передачу обезличенных
-          данных для анализа во внешнюю ИИ-модель {AI_PROCESSOR.name} (
-          {AI_PROCESSOR.country}).
+          {t("termsConsent", {
+            processorName: AI_PROCESSOR.name,
+            processorCountry: AI_PROCESSOR.country,
+          })}
         </span>
       </label>
 
@@ -66,9 +70,9 @@ export function CompleteForm() {
       <SubmitButton />
 
       <p className="text-small text-muted-foreground">
-        Ошиблись почтой?{" "}
+        {t("wrongEmail")}{" "}
         <Link href="/enter" className="text-foreground underline">
-          Начать заново
+          {t("startOver")}
         </Link>
       </p>
     </form>

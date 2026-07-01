@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { GRID_RANKS, cellCode, combosOf, percentOf } from "@/config/poker/hand-grid";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +11,7 @@ const SIZE = GRID_RANKS.length; // 13
 // руки, которые даёт оппоненту. Внутреннее состояние — Set кодов; наверх отдаём
 // плоский список через onChange. «N комбо · X%» считает код (config/poker/hand-grid).
 export function RangeGrid({ onChange }: { onChange?: (codes: string[]) => void }) {
+  const t = useTranslations("RangeGrid");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   // Режим протягивания: true — добавляем руки под курсором, false — снимаем,
   // null — не тащим. Ref, чтобы не пере-рендерить во время движения.
@@ -100,10 +102,10 @@ export function RangeGrid({ onChange }: { onChange?: (codes: string[]) => void }
         <p className="font-mono text-small text-muted-foreground">
           {combos > 0 ? (
             <>
-              <span className="text-primary">{combos}</span> комбо · {percent.toFixed(1)}%
+              <span className="text-primary">{combos}</span> {t("combos")} · {percent.toFixed(1)}%
             </>
           ) : (
-            "Отметь руки на сетке"
+            t("markHands")
           )}
         </p>
         {combos > 0 && (
@@ -112,7 +114,7 @@ export function RangeGrid({ onChange }: { onChange?: (codes: string[]) => void }
             onClick={() => update(() => new Set())}
             className="font-mono text-label uppercase tracking-label text-muted-foreground transition-colors hover:text-foreground"
           >
-            Очистить
+            {t("clear")}
           </button>
         )}
       </div>

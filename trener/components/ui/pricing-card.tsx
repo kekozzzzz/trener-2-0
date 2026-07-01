@@ -13,7 +13,7 @@ interface PricingCardProps {
   title: string
   description: string
   priceLabel: string // уже отформатированная цена, напр. «$9» (числа — в моно, см. дизайн-систему)
-  period?: string
+  period: string // подпись периода (локализуется вызывающим, напр. «в месяц»)
   volumeNote?: string // строка различия тарифов по объёму (без абсолютных чисел), напр. «× 3 объёма»
   features?: PricingFeatureGroup[] // если не передан — блок «что входит» не рисуем (он общий, ниже колонок)
   // CTA: либо готовый элемент (кнопка оплаты — клиентский компонент), либо ссылка.
@@ -26,11 +26,11 @@ export function PricingCard({
   title,
   description,
   priceLabel,
-  period = "в месяц",
+  period,
   volumeNote,
   features,
   cta,
-  buttonText = "Начать",
+  buttonText,
   buttonHref = "#upload",
 }: PricingCardProps) {
   return (

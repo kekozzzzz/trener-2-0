@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { triggerWorkerAction } from "@/app/status/actions";
 import { Button } from "@/components/ui/button";
 import { LoadingDots } from "@/components/ui/loading-dots";
@@ -12,6 +13,7 @@ type ChatResponse = {
 
 export function ChatWaitClient({ handId }: { handId: string }) {
   const router = useRouter();
+  const t = useTranslations("Chat");
   const [workerError, setWorkerError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const inFlight = useRef(false);
@@ -40,9 +42,9 @@ export function ChatWaitClient({ handId }: { handId: string }) {
     setRunning(true);
     try {
       const result = await triggerWorkerAction();
-      if (!result.ok) setWorkerError("Воркер занят или вернул ошибку");
+      if (!result.ok) setWorkerError(t("workerBusy"));
     } catch {
-      setWorkerError("Не удалось запустить воркер");
+      setWorkerError(t("workerFailed"));
     } finally {
       setRunning(false);
     }
@@ -52,11 +54,11 @@ export function ChatWaitClient({ handId }: { handId: string }) {
   return (
     <div className="flex flex-wrap items-center gap-4">
       <p className="flex items-center gap-2 font-mono text-label uppercase tracking-label text-muted-foreground">
-        Готовим ответ
+        {t("preparingReply")}
         <LoadingDots />
       </p>
       <Button variant="outline" onClick={triggerWorker} disabled={running}>
-        Запустить воркер
+        {t("runWorker")}
       </Button>
       {workerError && <span className="text-small text-destructive">{workerError}</span>}
     </div>

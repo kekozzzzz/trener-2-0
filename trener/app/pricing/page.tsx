@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { Check } from "lucide-react";
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { AuthNav } from "@/components/auth-nav";
 import { Wordmark } from "@/components/ui/wordmark";
 import { PricingCard } from "@/components/ui/pricing-card";
@@ -12,29 +14,33 @@ import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import { indexable } from "@/lib/seo";
 
-export const metadata = {
-  ...indexable,
-  title: "Тарифы",
-  description:
-    "Первый разбор турнира в Whygrid — бесплатно. Дальше подписка с разбором-диалогом твоих раздач: тренер ведёт вопросами, парсер считает числа. Без скрытых платежей.",
-};
-
-// Возможности ОДИНАКОВЫ на всех тарифах: отличаются только числом разборов за месяц
-// (tournamentLimit). Поэтому список «что входит» — один общий блок под колонками.
-const SHARED_FEATURES = [
-  "Сократовский диалог «почему» по ключевым раздачам",
-  "Чат по любой раздаче карточки",
-  "Общая картина турнира",
-  "Точные числа от парсера, а не догадки ИИ",
-];
-
-// Различие тарифов для пользователя — видимое число разборов турниров в месяц.
-// Загрузка и метрики бесплатны и безлимитны; лимит тратит только запуск разбора.
-function volumeNote(tournamentLimit: number): string {
-  return `${tournamentLimit} разборов турниров в месяц`;
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Meta");
+  return {
+    ...indexable,
+    title: t("pricingTitle"),
+    description: t("pricingDescription"),
+  };
 }
 
 export default async function PricingPage() {
+  const t = await getTranslations("Pricing");
+  const tc = await getTranslations("Common");
+
+  // Возможности ОДИНАКОВЫ на всех тарифах: отличаются только числом разборов за месяц
+  // (tournamentLimit). Поэтому список «что входит» — один общий блок под колонками.
+  const SHARED_FEATURES = [
+    t("feature1"),
+    t("feature2"),
+    t("feature3"),
+    t("feature4"),
+  ];
+
+  // Различие тарифов для пользователя — видимое число разборов турниров в месяц.
+  // Загрузка и метрики бесплатны и безлимитны; лимит тратит только запуск разбора.
+  const volumeNote = (tournamentLimit: number): string =>
+    t("volumeNote", { limit: tournamentLimit });
+
   const session = await getSession();
   const state = session ? await getSubscriptionState(session.playerId) : null;
   const currentPlan = state?.hasAccess ? state.planCode : null;
@@ -56,13 +62,12 @@ export default async function PricingPage() {
 
       <section className="mx-auto max-w-5xl px-8 py-16 sm:py-24">
         <div className="mx-auto max-w-2xl space-y-4 text-center">
-          <h1 className="text-h1">Тарифы</h1>
+          <h1 className="text-h1">{t("title")}</h1>
           <p className="text-body text-muted-foreground">
-            Первый турнир — бесплатно после регистрации. Дальше выбирай тариф по тому,
-            как много играешь: возможности у всех одинаковые, разница — в объёме разборов.
+            {t("subtitle")}
           </p>
           <p className="text-small text-muted-foreground">
-            Цены указаны в долларах. Оплата — в рублях по курсу ЦБ РФ на день платежа.
+            {t("currencyNote")}
           </p>
         </div>
 
@@ -75,7 +80,7 @@ export default async function PricingPage() {
               // Гость: сначала регистрация, оплата — уже из кабинета/со страницы цен.
               cta = (
                 <Link href="/register" className={cn(buttonVariants(), "w-full justify-center")}>
-                  Начать
+                  {t("ctaStart")}
                 </Link>
               );
             } else if (isCurrent) {
@@ -84,30 +89,29 @@ export default async function PricingPage() {
                   href="/account"
                   className={cn(buttonVariants({ variant: "outline" }), "w-full justify-center")}
                 >
-                  Текущий тариф
+                  {t("ctaCurrent")}
                 </Link>
               );
             } else if (currentPlan) {
               // Подписчик меняет тариф → switch (апгрейд сразу с зачётом, даунгрейд —
               // со следующего периода).
               cta = (
-                <CheckoutButton planCode={plan.code} label="Перейти на этот" mode="switch" />
+                <CheckoutButton planCode={plan.code} label={t("ctaSwitch")} mode="switch" />
               );
             } else if (recurringOn) {
               // Новая подписка: два способа оплаты.
               cta = (
                 <div className="space-y-2">
-                  <CheckoutButton planCode={plan.code} label="Подписка картой" recurring />
-                  <CheckoutButton planCode={plan.code} label="Разовая оплата (СБП и др.)" variant="outline" />
+                  <CheckoutButton planCode={plan.code} label={t("ctaCard")} recurring />
+                  <CheckoutButton planCode={plan.code} label={t("ctaOneTime")} variant="outline" />
                   <p className="text-small text-muted-foreground">
-                    Картой — продлевается автоматически каждый месяц. Разовая — любой способ,
-                    без автопродления.
+                    {t("paymentNote")}
                   </p>
                 </div>
               );
             } else {
               // Рекуррент выключен — только разовая оплата.
-              cta = <CheckoutButton planCode={plan.code} label="Оформить" />;
+              cta = <CheckoutButton planCode={plan.code} label={t("ctaSubscribe")} />;
             }
 
             return (
@@ -116,6 +120,7 @@ export default async function PricingPage() {
                 title={plan.title}
                 description={plan.description}
                 priceLabel={formatUsd(plan.priceUsd)}
+                period={tc("perMonth")}
                 volumeNote={volumeNote(plan.tournamentLimit)}
                 cta={cta}
               />
@@ -126,7 +131,7 @@ export default async function PricingPage() {
         {/* Общий блок: что входит в ЛЮБОЙ тариф (одинаково для всех). */}
         <div className="mt-4 border border-border bg-card p-8">
           <h2 className="font-mono text-label uppercase tracking-label text-muted-foreground">
-            Входит в любой тариф
+            {t("includedTitle")}
           </h2>
           <ul className="mt-6 grid gap-3 sm:grid-cols-2">
             {SHARED_FEATURES.map((item) => (

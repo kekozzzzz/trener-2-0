@@ -1,6 +1,7 @@
 "use client";
 
 import { CircleHelp } from "lucide-react";
+import { useTranslations } from "next-intl";
 import {
   Dialog,
   DialogContent,
@@ -17,45 +18,20 @@ import { Button } from "@/components/ui/button";
 // бизнес-конфиг — живёт рядом с компонентом.
 type Term = { short: string; full: string; desc: string };
 
-const TERMS: Term[] = [
-  {
-    short: "VPIP",
-    full: "Voluntarily Put In Pot",
-    desc: "Как часто ты добровольно заходишь в банк до флопа — коллом или рейзом (блайнды не в счёт). Грубо показывает, насколько лузово ты играешь: высокий — много рук, низкий — тайтово.",
-  },
-  {
-    short: "PFR",
-    full: "Preflop Raise",
-    desc: "Как часто ты входишь в банк именно рейзом до флопа. Разрыв между VPIP и PFR показывает, сколько ты просто коллируешь вместо того, чтобы давить рейзом.",
-  },
-  {
-    short: "RFI",
-    full: "Raise First In",
-    desc: "Открытие рейзом, когда до тебя в банк ещё никто не вошёл. «Открывашка» — это и есть RFI. У каждой позиции свой нормальный диапазон открытия.",
-  },
-  {
-    short: "SPR",
-    full: "Stack-to-Pot Ratio",
-    desc: "Отношение эффективного стека к размеру банка на флопе. Маленький SPR — банк уже большой относительно стеков, проще ставить всё; большой — есть простор для манёвра.",
-  },
-  {
-    short: "BB",
-    full: "большой блайнд",
-    desc: "В больших блайндах меряют стек и результат раздачи: «15 BB» понятнее, чем «383 304 фишки», потому что не зависит от уровня блайндов.",
-  },
-  {
-    short: "AF",
-    full: "фактор агрессии",
-    desc: "Сколько у тебя агрессивных действий после флопа (ставка, рейз) на одно пассивное (колл). Выше — агрессивнее ведёшь раздачу.",
-  },
-  {
-    short: "Пот-оддсы",
-    full: "шансы банка",
-    desc: "Сколько нужно доставить относительно того, что уже лежит в банке. Сравниваешь со своими шансами улучшить руку, чтобы понять, выгоден ли колл.",
-  },
-];
-
 export function MetricsGlossary() {
+  const t = useTranslations("Glossary");
+  // Список терминов: короткое обозначение фиксировано (VPIP и т.д.), расшифровка и
+  // описание — из словаря по языку интерфейса.
+  const TERMS: Term[] = [
+    { short: "VPIP", full: t("vpipFull"), desc: t("vpipDesc") },
+    { short: "PFR", full: t("pfrFull"), desc: t("pfrDesc") },
+    { short: "RFI", full: t("rfiFull"), desc: t("rfiDesc") },
+    { short: "SPR", full: t("sprFull"), desc: t("sprDesc") },
+    { short: "BB", full: t("bbFull"), desc: t("bbDesc") },
+    { short: "AF", full: t("afFull"), desc: t("afDesc") },
+    { short: t("potOddsShort"), full: t("potOddsFull"), desc: t("potOddsDesc") },
+  ];
+
   return (
     <Dialog>
       <DialogTrigger
@@ -63,7 +39,7 @@ export function MetricsGlossary() {
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="Что значат метрики и сокращения"
+            aria-label={t("helpLabel")}
           />
         }
       >
@@ -72,10 +48,10 @@ export function MetricsGlossary() {
       <DialogContent className="rounded-none sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="font-mono text-label uppercase tracking-label text-muted-foreground">
-            Что значат сокращения
+            {t("title")}
           </DialogTitle>
           <DialogDescription className="sr-only">
-            Расшифровка метрик и покерных сокращений
+            {t("srDescription")}
           </DialogDescription>
         </DialogHeader>
         <dl className="-mr-2 max-h-[70vh] space-y-6 overflow-y-auto pr-2">

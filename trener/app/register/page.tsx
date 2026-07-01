@@ -1,11 +1,14 @@
 import { noindex } from "@/lib/seo";
 export const metadata = noindex;
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { Wordmark } from "@/components/ui/wordmark";
 import { RegisterForm } from "./register-form";
 
-export default function RegisterPage() {
+export default async function RegisterPage() {
+  const t = await getTranslations("Register");
+
   return (
     <main>
       <header className="border-b border-border">
@@ -20,9 +23,9 @@ export default function RegisterPage() {
         <BlurFade direction="up" offset={8} blur="0px" duration={0.3}>
           <div className="mx-auto max-w-md space-y-8">
             <div className="space-y-2 text-center">
-              <h1 className="text-h1">Регистрация</h1>
+              <h1 className="text-h1">{t("title")}</h1>
               <p className="text-body text-muted-foreground">
-                Создай аккаунт, чтобы загружать турниры и проходить разбор.
+                {t("subtitle")}
               </p>
             </div>
             <RegisterForm />

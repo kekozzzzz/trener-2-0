@@ -6,17 +6,19 @@
 // на сервере, сюда приходит только URL или код результата.
 
 import { useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 import { startCheckout, switchPlan } from "@/features/subscription/actions";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 
 type Mode = "new" | "switch";
 
-const ERROR_TEXT: Record<string, string> = {
-  UNKNOWN_PLAN: "Тариф не найден. Обнови страницу.",
-  SAME_PLAN: "Это твой текущий тариф.",
-  NO_SUBSCRIPTION: "Нет активной подписки — оформи тариф заново.",
-  PROVIDER_ERROR: "Не удалось открыть оплату. Попробуй ещё раз.",
+// Код ошибки экшена → ключ в словаре. Неизвестный код — общий текст.
+const ERROR_KEY: Record<string, string> = {
+  UNKNOWN_PLAN: "errorUnknownPlan",
+  SAME_PLAN: "errorSamePlan",
+  NO_SUBSCRIPTION: "errorNoSubscription",
+  PROVIDER_ERROR: "errorProviderError",
 };
 
 export function CheckoutButton({
@@ -34,6 +36,7 @@ export function CheckoutButton({
   recurring?: boolean;
   variant?: "default" | "outline";
 }) {
+  const t = useTranslations("Subscription");
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
 
@@ -47,12 +50,13 @@ export function CheckoutButton({
         window.location.href = res.confirmationUrl;
       } else if (res.ok && "applied" in res) {
         // Апгрейд применён сразу (копеечная доплата за остаток периода не списывалась).
-        setMessage("Тариф повышен. Полная цена спишется при следующем продлении.");
+        setMessage(t("upgradeApplied"));
       } else if (res.ok) {
         // Даунгрейд запланирован со следующего периода (оплата сейчас не нужна).
-        setMessage("Тариф сменится со следующего периода. Текущий доступ сохраняется до конца оплаченного периода.");
+        setMessage(t("downgradeScheduled"));
       } else {
-        setMessage(ERROR_TEXT[res.error] ?? "Что-то пошло не так. Попробуй ещё раз.");
+        const key = ERROR_KEY[res.error];
+        setMessage(key ? t(key) : t("errorGeneric"));
       }
     });
   }
@@ -65,7 +69,7 @@ export function CheckoutButton({
         disabled={pending}
         className={cn(buttonVariants({ variant }), "w-full justify-center disabled:opacity-60")}
       >
-        {pending ? "Открываем оплату…" : label}
+        {pending ? t("openingPayment") : label}
       </button>
       {message && <p className="text-small text-muted-foreground">{message}</p>}
     </div>

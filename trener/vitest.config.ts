@@ -6,6 +6,10 @@ export default defineConfig({
     environment: "node",
     globals: true,
     testTimeout: 15000,
+    // Глобальный мок i18n-границы (next-intl/server) для всех тестов — см. __tests__/setup.ts.
+    // Серверные экшены переводят тексты ошибок через getTranslations, которому в юнит-тестах
+    // не хватает контекста запроса; мок отдаёт русский текст из словаря.
+    setupFiles: ["./__tests__/setup.ts"],
     // Тесты используют общую БД — параллельное выполнение файлов вызывает интерференцию.
     fileParallelism: false,
     env: {

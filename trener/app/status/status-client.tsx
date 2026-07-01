@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { triggerWorkerAction } from "./actions";
 
 type Tournament = {
@@ -34,20 +35,21 @@ function usd(v: number): string {
   return `$${v.toFixed(Math.abs(v) >= 1 ? 2 : 4)}`;
 }
 
+// Значения — ключи перевода в namespace Status (см. messages/*.json).
 const TOURNAMENT_LABEL: Record<string, string> = {
-  UPLOADED:   "ожидание",
-  PARSING:    "разбирается",
-  PARSED:     "готово",
-  CARD_READY: "готово",
-  FAILED:     "ошибка",
+  UPLOADED:   "tournamentUploaded",
+  PARSING:    "tournamentParsing",
+  PARSED:     "tournamentParsed",
+  CARD_READY: "tournamentParsed",
+  FAILED:     "tournamentFailed",
 };
 
 const TASK_LABEL: Record<string, string> = {
-  PENDING:    "ожидание",
-  PROCESSING: "в работе",
-  DONE:       "готово",
-  FAILED:     "ошибка",
-  POISONED:   "карантин",
+  PENDING:    "taskPending",
+  PROCESSING: "taskProcessing",
+  DONE:       "taskDone",
+  FAILED:     "taskFailedLabel",
+  POISONED:   "taskPoisoned",
 };
 
 const BADGE_STYLE: Record<string, React.CSSProperties> = {
@@ -83,6 +85,7 @@ function time(iso: string) {
 }
 
 export function StatusClient() {
+  const t = useTranslations("Status");
   const [data, setData] = useState<{ tournaments: Tournament[]; tasks: Task[]; cost?: CostReport | null } | null>(null);
   const [loading, setLoading] = useState(false);
   const [workerError, setWorkerError] = useState<string | null>(null);
@@ -105,9 +108,9 @@ export function StatusClient() {
     setWorkerError(null);
     try {
       const result = await triggerWorkerAction();
-      if (!result.ok) setWorkerError("Воркер занят или вернул ошибку");
+      if (!result.ok) setWorkerError(t("workerBusy"));
     } catch {
-      setWorkerError("Не удалось запустить воркер");
+      setWorkerError(t("workerFailed"));
     }
     await fetchStatus();
   }
@@ -118,7 +121,7 @@ export function StatusClient() {
     return () => clearInterval(id);
   }, [fetchStatus]);
 
-  if (!data) return <p>Загружаем...</p>;
+  if (!data) return <p>{t("loading")}</p>;
 
   const { tournaments, tasks, cost } = data;
 
@@ -129,7 +132,7 @@ export function StatusClient() {
     <>
       <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "0.5rem" }}>
         <span style={{ fontSize: "0.8em", color: "#6b7280" }}>
-          {loading ? "обновляем..." : "обновляется каждые 3 сек"}
+          {loading ? t("refreshing") : t("autoRefresh")}
         </span>
         {hasPending && (
           <button
@@ -143,7 +146,7 @@ export function StatusClient() {
               background: "#f9fafb",
             }}
           >
-            Запустить воркер
+            {t("runWorker")}
           </button>
         )}
         {workerError && (
@@ -154,22 +157,22 @@ export function StatusClient() {
       {cost && (
         <div style={{ marginTop: "1rem", padding: "0.75rem 1rem", border: "1px solid #e5e7eb", borderRadius: "6px", background: "#fafafa" }}>
           <h2 style={{ marginTop: 0 }}>
-            💸 Расходы Claude · 30 дней{" "}
-            <span style={{ fontSize: "0.6em", color: "#9ca3af", fontWeight: "normal" }}>видно только тебе</span>
+            💸 {t("costTitle")}{" "}
+            <span style={{ fontSize: "0.6em", color: "#9ca3af", fontWeight: "normal" }}>{t("costVisibleOnlyToYou")}</span>
           </h2>
           <p style={{ margin: "0.25rem 0" }}>
-            Запросов: <b>{cost.totalRequests}</b> · Потрачено: <b>{usd(cost.totalCostUsd)}</b> · Кэш:{" "}
+            {t("costRequests")}: <b>{cost.totalRequests}</b> · {t("costSpent")}: <b>{usd(cost.totalCostUsd)}</b> · {t("costCache")}:{" "}
             <b style={{ color: cost.cacheNetUsd >= 0 ? "#065f46" : "#991b1b" }}>
-              {cost.cacheNetUsd >= 0 ? `сэкономил ${usd(cost.cacheNetUsd)}` : `стоил лишних ${usd(-cost.cacheNetUsd)}`}
+              {cost.cacheNetUsd >= 0 ? t("costCacheSaved", { amount: usd(cost.cacheNetUsd) }) : t("costCacheExtra", { amount: usd(-cost.cacheNetUsd) })}
             </b>
           </p>
           {cost.topPlayers.length > 0 && (
             <table style={{ borderCollapse: "collapse", marginTop: "0.5rem" }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid #e5e7eb" }}>
-                  <th style={{ textAlign: "left", padding: "4px 1.5rem 4px 0", fontWeight: "normal", color: "#6b7280" }}>Игрок</th>
-                  <th style={{ textAlign: "left", padding: "4px 1.5rem 4px 0", fontWeight: "normal", color: "#6b7280" }}>Запросов</th>
-                  <th style={{ textAlign: "left", padding: "4px 0", fontWeight: "normal", color: "#6b7280" }}>Потрачено</th>
+                  <th style={{ textAlign: "left", padding: "4px 1.5rem 4px 0", fontWeight: "normal", color: "#6b7280" }}>{t("colPlayer")}</th>
+                  <th style={{ textAlign: "left", padding: "4px 1.5rem 4px 0", fontWeight: "normal", color: "#6b7280" }}>{t("costRequests")}</th>
+                  <th style={{ textAlign: "left", padding: "4px 0", fontWeight: "normal", color: "#6b7280" }}>{t("costSpent")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -186,32 +189,32 @@ export function StatusClient() {
         </div>
       )}
 
-      <h2 style={{ marginTop: "1rem" }}>Турниры</h2>
+      <h2 style={{ marginTop: "1rem" }}>{t("tournamentsHeading")}</h2>
       {tournaments.length === 0 ? (
-        <p style={{ color: "#6b7280" }}>Нет загруженных турниров. <a href="/analyze">Загрузить файл →</a></p>
+        <p style={{ color: "#6b7280" }}>{t("noTournaments")} <a href="/analyze">{t("uploadFileArrow")}</a></p>
       ) : (
         <table style={{ borderCollapse: "collapse", width: "100%", marginTop: "0.5rem" }}>
           <thead>
             <tr style={{ borderBottom: "1px solid #e5e7eb" }}>
-              <th style={{ textAlign: "left", padding: "4px 1rem 4px 0", fontWeight: "normal", color: "#6b7280" }}>Время</th>
-              <th style={{ textAlign: "left", padding: "4px 1rem 4px 0", fontWeight: "normal", color: "#6b7280" }}>Статус</th>
-              <th style={{ textAlign: "left", padding: "4px 0", fontWeight: "normal", color: "#6b7280" }}>Результат</th>
+              <th style={{ textAlign: "left", padding: "4px 1rem 4px 0", fontWeight: "normal", color: "#6b7280" }}>{t("colTime")}</th>
+              <th style={{ textAlign: "left", padding: "4px 1rem 4px 0", fontWeight: "normal", color: "#6b7280" }}>{t("colStatus")}</th>
+              <th style={{ textAlign: "left", padding: "4px 0", fontWeight: "normal", color: "#6b7280" }}>{t("colResult")}</th>
             </tr>
           </thead>
           <tbody>
-            {tournaments.map((t) => (
-              <tr key={t.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                <td style={{ padding: "6px 1rem 6px 0" }}>{time(t.createdAt)}</td>
+            {tournaments.map((row) => (
+              <tr key={row.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                <td style={{ padding: "6px 1rem 6px 0" }}>{time(row.createdAt)}</td>
                 <td style={{ padding: "6px 1rem 6px 0" }}>
-                  <Badge status={t.status} label={TOURNAMENT_LABEL[t.status] ?? t.status} />
+                  <Badge status={row.status} label={TOURNAMENT_LABEL[row.status] ? t(TOURNAMENT_LABEL[row.status]) : row.status} />
                 </td>
                 <td style={{ padding: "6px 0" }}>
-                  {(t.status === "PARSED" || t.status === "CARD_READY") && t.vpipPercent != null ? (
-                    <a href={`/tournament/${t.id}`}>
-                      VPIP {Number(t.vpipPercent).toFixed(1)}% · {t.handsCount} рук →
+                  {(row.status === "PARSED" || row.status === "CARD_READY") && row.vpipPercent != null ? (
+                    <a href={`/tournament/${row.id}`}>
+                      VPIP {Number(row.vpipPercent).toFixed(1)}% · {row.handsCount} {t("handsShort")} →
                     </a>
-                  ) : t.status === "FAILED" ? (
-                    <span style={{ color: "#991b1b" }}>формат не поддерживается</span>
+                  ) : row.status === "FAILED" ? (
+                    <span style={{ color: "#991b1b" }}>{t("unsupportedFormat")}</span>
                   ) : (
                     <span style={{ color: "#9ca3af" }}>—</span>
                   )}
@@ -222,34 +225,34 @@ export function StatusClient() {
         </table>
       )}
 
-      <h2 style={{ marginTop: "1.5rem" }}>Очередь задач</h2>
+      <h2 style={{ marginTop: "1.5rem" }}>{t("queueHeading")}</h2>
       {tasks.length === 0 ? (
-        <p style={{ color: "#6b7280" }}>Нет задач в очереди.</p>
+        <p style={{ color: "#6b7280" }}>{t("noTasks")}</p>
       ) : (
         <table style={{ borderCollapse: "collapse", width: "100%", marginTop: "0.5rem" }}>
           <thead>
             <tr style={{ borderBottom: "1px solid #e5e7eb" }}>
-              <th style={{ textAlign: "left", padding: "4px 1rem 4px 0", fontWeight: "normal", color: "#6b7280" }}>Время</th>
-              <th style={{ textAlign: "left", padding: "4px 1rem 4px 0", fontWeight: "normal", color: "#6b7280" }}>Тип</th>
-              <th style={{ textAlign: "left", padding: "4px 1rem 4px 0", fontWeight: "normal", color: "#6b7280" }}>Статус</th>
-              <th style={{ textAlign: "left", padding: "4px 0", fontWeight: "normal", color: "#6b7280" }}>Ошибка</th>
+              <th style={{ textAlign: "left", padding: "4px 1rem 4px 0", fontWeight: "normal", color: "#6b7280" }}>{t("colTime")}</th>
+              <th style={{ textAlign: "left", padding: "4px 1rem 4px 0", fontWeight: "normal", color: "#6b7280" }}>{t("colType")}</th>
+              <th style={{ textAlign: "left", padding: "4px 1rem 4px 0", fontWeight: "normal", color: "#6b7280" }}>{t("colStatus")}</th>
+              <th style={{ textAlign: "left", padding: "4px 0", fontWeight: "normal", color: "#6b7280" }}>{t("colError")}</th>
             </tr>
           </thead>
           <tbody>
-            {tasks.map((t) => (
-              <tr key={t.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                <td style={{ padding: "6px 1rem 6px 0" }}>{time(t.createdAt)}</td>
-                <td style={{ padding: "6px 1rem 6px 0" }}>{t.type}</td>
+            {tasks.map((task) => (
+              <tr key={task.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                <td style={{ padding: "6px 1rem 6px 0" }}>{time(task.createdAt)}</td>
+                <td style={{ padding: "6px 1rem 6px 0" }}>{task.type}</td>
                 <td style={{ padding: "6px 1rem 6px 0" }}>
-                  <Badge status={t.status} label={TASK_LABEL[t.status] ?? t.status} />
-                  {t.attempt > 1 && (
+                  <Badge status={task.status} label={TASK_LABEL[task.status] ? t(TASK_LABEL[task.status]) : task.status} />
+                  {task.attempt > 1 && (
                     <span style={{ color: "#6b7280", fontSize: "0.8em", marginLeft: "4px" }}>
-                      (попытка {t.attempt})
+                      ({t("attempt", { n: task.attempt })})
                     </span>
                   )}
                 </td>
                 <td style={{ padding: "6px 0", color: "#991b1b", fontSize: "0.85em" }}>
-                  {t.status === "FAILED" || t.status === "POISONED" ? "не удалось обработать" : ""}
+                  {task.status === "FAILED" || task.status === "POISONED" ? t("taskFailed") : ""}
                 </td>
               </tr>
             ))}

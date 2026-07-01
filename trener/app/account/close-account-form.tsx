@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
+import { useTranslations } from "next-intl";
 import { requestAccountClosureAction, type AuthFormState } from "@/features/auth/actions";
 import { Button } from "@/components/ui/button";
 import { LoadingDots } from "@/components/ui/loading-dots";
@@ -10,15 +11,16 @@ const initialState: AuthFormState = {};
 
 function SubmitButton() {
   const { pending } = useFormStatus();
+  const t = useTranslations("CloseAccount");
   return (
     <Button type="submit" variant="outline" disabled={pending}>
       {pending ? (
         <>
-          Отправляем
+          {t("requestSending")}
           <LoadingDots />
         </>
       ) : (
-        "Прислать ссылку для закрытия"
+        t("requestSubmit")
       )}
     </Button>
   );
@@ -26,13 +28,12 @@ function SubmitButton() {
 
 export function CloseAccountForm() {
   const [state, formAction] = useActionState(requestAccountClosureAction, initialState);
+  const t = useTranslations("CloseAccount");
 
   if (state.success) {
     return (
       <p className="rounded-md border border-border bg-muted/40 p-4 text-small text-foreground">
-        Отправили на твою почту ссылку для подтверждения закрытия (проверь и «Спам»).
-        Аккаунт закроется только после того, как ты перейдёшь по ней и нажмёшь кнопку.
-        Ссылка действует час.
+        {t("requestSentNotice")}
       </p>
     );
   }
@@ -40,9 +41,7 @@ export function CloseAccountForm() {
   return (
     <form action={formAction} className="space-y-6">
       <p className="text-small text-muted-foreground">
-        Закрытие необратимо: email и пароль удаляются, доступ к турнирам и разборам пропадёт
-        (сами разборы остаются в базе обезличенными). Для подтверждения пришлём ссылку на почту —
-        так аккаунт нельзя закрыть без доступа к ящику.
+        {t("requestWarning")}
       </p>
 
       {state.error && <p className="text-small text-destructive">{state.error}</p>}

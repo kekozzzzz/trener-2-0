@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
 
 // Заголовки безопасности на каждый ответ (defense-in-depth поверх уже закрытого
 // XSS — React экранирует текст, dangerouslySetInnerHTML запрещён,
@@ -46,4 +47,7 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// next-intl читает конфиг запроса из i18n/request.ts (язык из куки, сообщения из messages/).
+const withNextIntl = createNextIntlPlugin();
+
+export default withNextIntl(nextConfig);

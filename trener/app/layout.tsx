@@ -1,6 +1,8 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { cn } from "@/lib/utils";
 import { getAppBaseUrl } from "@/config/app";
 
@@ -31,28 +33,40 @@ const jetbrainsMono = localFont({
 // Базовые метаданные на весь сайт. Заголовок и описание главной — здесь (template
 // «%s — Whygrid» добавляет суффикс к заголовкам вложенных страниц). По умолчанию
 // сайт индексируется; приватные страницы перекрывают это через `noindex` (lib/seo.ts).
-export const metadata: Metadata = {
-  metadataBase: new URL(getAppBaseUrl()),
-  title: {
-    default: "Whygrid — разбор покерных турниров с AI-тренером",
-    template: "%s — Whygrid",
-  },
-  description:
-    "Сократовский AI-тренер для турнирного покера. Парсер точно считает твои раздачи, а тренер ведёт вопросами — пока ты сам не увидишь, где теряешь фишки. Первый разбор турнира — бесплатно.",
-  applicationName: "Whygrid",
-  openGraph: { type: "website", siteName: "Whygrid", locale: "ru_RU" },
-  // По умолчанию ЗАКРЫТО от поиска — публичные страницы открываются точечно через
-  // `indexable` (lib/seo.ts). Так будущие страницы не утекают в Google автоматически.
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const t = await getTranslations("Meta");
+  return {
+    metadataBase: new URL(getAppBaseUrl()),
+    title: {
+      default: t("siteTitle"),
+      template: "%s — Whygrid",
+    },
+    description: t("siteDescription"),
+    applicationName: "Whygrid",
+    openGraph: {
+      type: "website",
+      siteName: "Whygrid",
+      locale: locale === "en" ? "en_US" : "ru_RU",
+    },
+    // По умолчанию ЗАКРЫТО от поиска — публичные страницы открываются точечно через
+    // `indexable` (lib/seo.ts). Так будущие страницы не утекают в Google автоматически.
+    robots: { index: false, follow: false },
+  };
+}
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
     <html
-      lang="ru"
+      lang={locale}
       className={cn("font-sans", inter.variable, interHeading.variable, jetbrainsMono.variable)}
     >
-      <body>{children}</body>
+      <body>
+        <NextIntlClientProvider messages={messages}>{children}</NextIntlClientProvider>
+      </body>
     </html>
   );
 }

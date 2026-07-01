@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
+import { useTranslations } from "next-intl";
 import { confirmAccountCloseAction, type AuthFormState } from "@/features/auth/actions";
 import { Button } from "@/components/ui/button";
 import { LoadingDots } from "@/components/ui/loading-dots";
@@ -10,15 +11,16 @@ const initialState: AuthFormState = {};
 
 function SubmitButton() {
   const { pending } = useFormStatus();
+  const t = useTranslations("CloseAccount");
   return (
     <Button type="submit" variant="outline" disabled={pending} className="w-full">
       {pending ? (
         <>
-          Закрываем
+          {t("confirmClosing")}
           <LoadingDots />
         </>
       ) : (
-        "Да, закрыть аккаунт навсегда"
+        t("confirmSubmit")
       )}
     </Button>
   );

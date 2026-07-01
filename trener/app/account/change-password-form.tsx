@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
+import { useTranslations } from "next-intl";
 import { changePasswordAction, type AuthFormState } from "@/features/auth/actions";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
@@ -12,15 +13,17 @@ const initialState: AuthFormState = {};
 
 function SubmitButton() {
   const { pending } = useFormStatus();
+  const t = useTranslations("ChangePassword");
+  const tc = useTranslations("Common");
   return (
     <Button type="submit" disabled={pending}>
       {pending ? (
         <>
-          Сохраняем
+          {tc("saving")}
           <LoadingDots />
         </>
       ) : (
-        "Сменить пароль"
+        t("submit")
       )}
     </Button>
   );
@@ -28,32 +31,33 @@ function SubmitButton() {
 
 export function ChangePasswordForm() {
   const [state, formAction] = useActionState(changePasswordAction, initialState);
+  const t = useTranslations("ChangePassword");
 
   return (
     <form action={formAction} className="space-y-6">
       <div className="space-y-2">
         <Label htmlFor="currentPassword" className="font-mono text-label uppercase tracking-label text-muted-foreground">
-          Текущий пароль
+          {t("currentPassword")}
         </Label>
         <PasswordInput id="currentPassword" name="currentPassword" required autoComplete="current-password" />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="newPassword" className="font-mono text-label uppercase tracking-label text-muted-foreground">
-          Новый пароль
+          {t("newPassword")}
         </Label>
         <PasswordInput id="newPassword" name="newPassword" required minLength={8} autoComplete="new-password" />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="newPasswordConfirm" className="font-mono text-label uppercase tracking-label text-muted-foreground">
-          Повтори новый пароль
+          {t("newPasswordConfirm")}
         </Label>
         <PasswordInput id="newPasswordConfirm" name="newPasswordConfirm" required minLength={8} autoComplete="new-password" />
       </div>
 
       {state.error && <p className="text-small text-destructive">{state.error}</p>}
-      {state.success && <p className="text-small text-primary">Пароль обновлён.</p>}
+      {state.success && <p className="text-small text-primary">{t("success")}</p>}
 
       <SubmitButton />
     </form>

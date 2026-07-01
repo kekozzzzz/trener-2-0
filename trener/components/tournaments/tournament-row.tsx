@@ -1,19 +1,22 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import type { PlayerStyle, TournamentStatus } from "@prisma/client";
 import { Badge } from "@/components/ui/badge";
 import type { TournamentListItem } from "@/features/tournaments/queries";
 import { cn } from "@/lib/utils";
 
-const STYLE_LABEL: Record<PlayerStyle, string> = {
-  LOOSE: "Лузовый",
-  TIGHT: "Тайтовый",
-  PASSIVE: "Пассивный",
-  AGGRESSIVE: "Агрессивный",
+// Стиль игрока → ключ подписи в словаре.
+const STYLE_KEY: Record<PlayerStyle, string> = {
+  LOOSE: "styleLoose",
+  TIGHT: "styleTight",
+  PASSIVE: "stylePassive",
+  AGGRESSIVE: "styleAggressive",
 };
 
 // Код площадки из HH → читаемая подпись. "WPN" — это сеть; игроки знают её скины
-// ACR/PokerKing, поэтому показываем их. Неизвестный код выводим как есть.
+// ACR/PokerKing, поэтому показываем их. Неизвестный код выводим как есть. Названия
+// румов не переводим.
 const ROOM_LABEL: Record<string, string> = {
   GGPoker: "GGPoker",
   WPN: "ACR / PokerKing",
@@ -22,14 +25,14 @@ function roomLabel(room: string): string {
   return ROOM_LABEL[room] ?? room;
 }
 
-// Статус → подпись и готовность. PARSED/CARD_READY показываем как готовый
+// Статус → ключ подписи и готовность. PARSED/CARD_READY показываем как готовый
 // разбор с метриками; остальные — бейджем без метрик.
-const STATUS: Record<TournamentStatus, { label: string; ready: boolean; failed: boolean }> = {
-  UPLOADED: { label: "в очереди", ready: false, failed: false },
-  PARSING: { label: "разбираем", ready: false, failed: false },
-  PARSED: { label: "готов", ready: true, failed: false },
-  CARD_READY: { label: "готов", ready: true, failed: false },
-  FAILED: { label: "ошибка", ready: false, failed: true },
+const STATUS: Record<TournamentStatus, { labelKey: string; ready: boolean; failed: boolean }> = {
+  UPLOADED: { labelKey: "statusQueued", ready: false, failed: false },
+  PARSING: { labelKey: "statusParsing", ready: false, failed: false },
+  PARSED: { labelKey: "statusReady", ready: true, failed: false },
+  CARD_READY: { labelKey: "statusReady", ready: true, failed: false },
+  FAILED: { labelKey: "statusFailed", ready: false, failed: true },
 };
 
 // timeZone UTC — playedAt хранится в UTC из компонентов HH-файла, показываем дату ровно как в файле.
@@ -49,7 +52,8 @@ function Metric({ label, children }: { label: string; children: React.ReactNode 
   );
 }
 
-export function TournamentRow({ tournament }: { tournament: TournamentListItem }) {
+export async function TournamentRow({ tournament }: { tournament: TournamentListItem }) {
+  const t = await getTranslations("TournamentRow");
   const status = STATUS[tournament.status];
 
   return (
@@ -63,17 +67,17 @@ export function TournamentRow({ tournament }: { tournament: TournamentListItem }
       <div className="flex min-w-0 flex-col gap-2">
         <div className="flex flex-wrap items-center gap-3">
           <span className="truncate text-body text-foreground">
-            {tournament.name ?? "Турнир"}
+            {tournament.name ?? t("tournament")}
           </span>
           {tournament.room && <Badge variant="outline">{roomLabel(tournament.room)}</Badge>}
-          {tournament.fullyReviewed && <Badge variant="done">Пройден</Badge>}
+          {tournament.fullyReviewed && <Badge variant="done">{t("passed")}</Badge>}
           {status.ready ? (
             tournament.styleDiagnosis && (
-              <Badge variant="outline">{STYLE_LABEL[tournament.styleDiagnosis]}</Badge>
+              <Badge variant="outline">{t(STYLE_KEY[tournament.styleDiagnosis])}</Badge>
             )
           ) : (
             <Badge variant="outline" className={cn(status.failed && "border-destructive text-destructive")}>
-              {status.label}
+              {t(status.labelKey)}
             </Badge>
           )}
         </div>
@@ -85,7 +89,7 @@ export function TournamentRow({ tournament }: { tournament: TournamentListItem }
       <div className="flex items-center gap-6">
         {status.ready && (
           <>
-            <Metric label="VPIP">{tournament.vpipPercent != null ? `${tournament.vpipPercent.toFixed(1)}%` : "—"}</Metric>
+            <Metric label={t("vpip")}>{tournament.vpipPercent != null ? `${tournament.vpipPercent.toFixed(1)}%` : "—"}</Metric>
           </>
         )}
         <ArrowRight className="size-4 text-muted-foreground transition-colors duration-150 ease-out group-hover:text-primary" />

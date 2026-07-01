@@ -1,4 +1,6 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { AuthNav } from "@/components/auth-nav";
 import { Wordmark } from "@/components/ui/wordmark";
 import { cn } from "@/lib/utils";
@@ -6,14 +8,17 @@ import { buttonVariants } from "@/components/ui/button";
 import { indexable } from "@/lib/seo";
 import { HandHistoryGuide } from "@/components/upload/hand-history-guide";
 
-export const metadata = {
-  ...indexable,
-  title: "Как выгрузить руки",
-  description:
-    "Пошагово: как включить сохранение истории рук и найти файлы в GGPoker, PokerStars, Winamax, 888poker, ACR / PokerKing, Red Star Poker (iPoker) и BetOnline (Chico), чтобы загрузить турнир в Whygrid на разбор.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Meta");
+  return {
+    ...indexable,
+    title: t("howToExportTitle"),
+    description: t("howToExportDescription"),
+  };
+}
 
-export default function HowToExportPage() {
+export default async function HowToExportPage() {
+  const t = await getTranslations("HowToExport");
   return (
     <main>
       <header className="border-b border-border">
@@ -27,13 +32,9 @@ export default function HowToExportPage() {
 
       <section className="mx-auto max-w-5xl px-8 py-16 sm:py-24">
         <div className="max-w-2xl space-y-4">
-          <h1 className="text-h1">Как выгрузить руки</h1>
+          <h1 className="text-h1">{t("title")}</h1>
           <p className="text-body text-muted-foreground">
-            Разбор строится на файлах истории рук из твоего покер-клиента. Почти везде
-            всё одинаково: один раз включаешь сохранение истории в настройках, находишь
-            папку с файлами и загружаешь их к нам. Рум определится сам, ники соперников
-            обезличиваются, первый разбор — бесплатный. Загрузить можно сразу несколько
-            файлов. Выбери свой рум:
+            {t("intro")}
           </p>
         </div>
 
@@ -43,10 +44,10 @@ export default function HowToExportPage() {
 
         <div className="mt-8 flex flex-col items-start gap-4 border border-border bg-card p-8 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-body text-muted-foreground">
-            Нашёл файлы — загрузи турнир, первый разбор бесплатный.
+            {t("ctaNote")}
           </p>
           <Link href="/analyze" className={cn(buttonVariants(), "shrink-0")}>
-            Загрузить турнир
+            {t("ctaButton")}
           </Link>
         </div>
       </section>

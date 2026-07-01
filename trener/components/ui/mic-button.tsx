@@ -16,6 +16,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Mic, Square } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { LoadingDots } from "@/components/ui/loading-dots";
 
@@ -52,6 +53,7 @@ export function MicButton({
   onTranscript: (text: string) => void;
   disabled?: boolean;
 }) {
+  const t = useTranslations("MicButton");
   const [status, setStatus] = useState<Status>("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -149,8 +151,8 @@ export function MicButton({
       if (!res.ok) {
         setErrorMsg(
           res.status === 429
-            ? "Слишком много надиктовок, подожди немного"
-            : "Не удалось распознать, попробуй ещё раз",
+            ? t("errorTooMany")
+            : t("errorRecognize"),
         );
         setStatus("error");
         return;
@@ -160,7 +162,7 @@ export function MicButton({
       if (text) onTranscriptRef.current(text);
       setStatus("idle");
     } catch {
-      setErrorMsg("Не удалось распознать, попробуй ещё раз");
+      setErrorMsg(t("errorRecognize"));
       setStatus("error");
     }
   }
@@ -180,12 +182,12 @@ export function MicButton({
       const name = (err as { name?: string })?.name ?? "";
       setErrorMsg(
         name === "NotFoundError" || name === "DevicesNotFoundError"
-          ? "Микрофон не найден - проверь, что он подключён и включён в системе"
+          ? t("errorMicNotFound")
           : name === "NotReadableError" || name === "TrackStartError"
-            ? "Микрофон занят другой программой - закрой её и попробуй снова"
+            ? t("errorMicBusy")
             : name === "NotAllowedError" || name === "SecurityError" || name === "PermissionDeniedError"
-              ? "Доступ к микрофону запрещён - разреши его в настройках браузера и Windows"
-              : "Не удалось включить микрофон - проверь его подключение и разрешения",
+              ? t("errorMicDenied")
+              : t("errorMicGeneric"),
       );
       setStatus("error");
       return;
@@ -222,7 +224,7 @@ export function MicButton({
       setStatus("recording");
     } catch {
       releaseStream();
-      setErrorMsg("Микрофон не сработал, попробуй ещё раз");
+      setErrorMsg(t("errorMicStart"));
       setStatus("error");
     }
   }
@@ -244,13 +246,13 @@ export function MicButton({
         type="button"
         variant="outline"
         size="icon"
-        aria-label={recording ? "Остановить запись" : "Надиктовать ответ голосом"}
+        aria-label={recording ? t("ariaStop") : t("ariaDictate")}
         title={
           status === "unsupported"
-            ? "Голосовой ввод недоступен в этом браузере"
+            ? t("titleUnsupported")
             : recording
-              ? "Остановить запись"
-              : "Надиктовать голосом"
+              ? t("titleStop")
+              : t("titleDictate")
         }
         disabled={disabled || transcribing || status === "unsupported"}
         onClick={recording ? stop : start}
@@ -265,12 +267,12 @@ export function MicButton({
         aria-live="polite"
       >
         <canvas ref={canvasRef} width={140} height={24} aria-hidden="true" className="text-primary" />
-        <span className="font-mono text-label uppercase tracking-label">Слушаю</span>
+        <span className="font-mono text-label uppercase tracking-label">{t("listening")}</span>
       </span>
 
       {transcribing && (
         <span className="font-mono text-label uppercase tracking-label text-muted-foreground" aria-live="polite">
-          Распознаю
+          {t("recognizing")}
           <LoadingDots />
         </span>
       )}

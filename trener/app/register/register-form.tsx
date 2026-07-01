@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { useFormStatus } from "react-dom";
+import { useTranslations } from "next-intl";
 import { registerAction, type AuthFormState } from "@/features/auth/actions";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -15,16 +16,17 @@ const initialState: AuthFormState = {};
 
 function SubmitButton() {
   const { pending } = useFormStatus();
+  const t = useTranslations("Register");
 
   return (
     <Button type="submit" disabled={pending} className="w-full">
       {pending ? (
         <>
-          Регистрируем
+          {t("registering")}
           <LoadingDots />
         </>
       ) : (
-        "Зарегистрироваться"
+        t("submit")
       )}
     </Button>
   );
@@ -32,36 +34,38 @@ function SubmitButton() {
 
 export function RegisterForm() {
   const [state, formAction] = useActionState(registerAction, initialState);
+  const t = useTranslations("Register");
+  const tc = useTranslations("Common");
 
   return (
     <form action={formAction} className="space-y-6">
       <div className="space-y-2">
         <Label htmlFor="email" className="font-mono text-label uppercase tracking-label text-muted-foreground">
-          Email
+          {tc("email")}
         </Label>
         <Input id="email" name="email" type="email" required autoComplete="email" />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="nickname" className="font-mono text-label uppercase tracking-label text-muted-foreground">
-          Покерный ник <span className="normal-case tracking-normal">(необязательно)</span>
+          {t("nicknameLabel")} <span className="normal-case tracking-normal">{t("nicknameOptional")}</span>
         </Label>
         <Input id="nickname" name="nickname" type="text" maxLength={40} autoComplete="off" />
         <p className="text-small text-muted-foreground">
-          Будем показывать его в разборах вместо «Hero». Можно добавить позже в аккаунте.
+          {t("nicknameHint")}
         </p>
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="password" className="font-mono text-label uppercase tracking-label text-muted-foreground">
-          Пароль
+          {t("password")}
         </Label>
         <PasswordInput id="password" name="password" required minLength={8} autoComplete="new-password" />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="passwordConfirm" className="font-mono text-label uppercase tracking-label text-muted-foreground">
-          Повтори пароль
+          {t("passwordConfirm")}
         </Label>
         <PasswordInput id="passwordConfirm" name="passwordConfirm" required minLength={8} autoComplete="new-password" />
       </div>
@@ -69,17 +73,18 @@ export function RegisterForm() {
       <label className="flex items-start gap-3 text-small text-muted-foreground">
         <input type="checkbox" name="terms" required className="mt-1 size-4 accent-primary" />
         <span>
-          Принимаю{" "}
+          {t("termsAccept")}{" "}
           <Link href="/legal#oferta" className="text-foreground underline">
-            оферту
+            {t("termsOffer")}
           </Link>{" "}
-          и{" "}
+          {t("termsAnd")}{" "}
           <Link href="/legal#privacy" className="text-foreground underline">
-            политику конфиденциальности
+            {t("termsPrivacy")}
           </Link>{" "}
-          и даю согласие на обработку моих данных, включая передачу обезличенных
-          данных для анализа во внешнюю ИИ-модель {AI_PROCESSOR.name} (
-          {AI_PROCESSOR.country}).
+          {t("termsConsent", {
+            processorName: AI_PROCESSOR.name,
+            processorCountry: AI_PROCESSOR.country,
+          })}
         </span>
       </label>
 
@@ -89,18 +94,18 @@ export function RegisterForm() {
 
       <div className="flex items-center gap-3 text-label text-muted-foreground">
         <span className="h-px flex-1 bg-border" />
-        <span className="font-mono uppercase tracking-label">или</span>
+        <span className="font-mono uppercase tracking-label">{tc("or")}</span>
         <span className="h-px flex-1 bg-border" />
       </div>
 
       <Link href="/enter" className="block text-center text-small text-foreground underline">
-        Зарегистрироваться по ссылке, без пароля
+        {t("passwordlessLink")}
       </Link>
 
       <p className="text-small text-muted-foreground">
-        Уже есть аккаунт?{" "}
+        {t("hasAccount")}{" "}
         <Link href="/login" className="text-foreground underline">
-          Войти
+          {t("signIn")}
         </Link>
       </p>
     </form>

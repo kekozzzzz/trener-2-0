@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { useFormStatus } from "react-dom";
+import { useTranslations } from "next-intl";
 import { requestMagicLinkAction, type AuthFormState } from "@/features/auth/actions";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,16 +14,17 @@ const initialState: AuthFormState = {};
 
 function SubmitButton() {
   const { pending } = useFormStatus();
+  const t = useTranslations("MagicLink");
 
   return (
     <Button type="submit" disabled={pending} className="w-full">
       {pending ? (
         <>
-          Отправляем
+          {t("sending")}
           <LoadingDots />
         </>
       ) : (
-        "Прислать ссылку для входа"
+        t("submit")
       )}
     </Button>
   );
@@ -30,18 +32,19 @@ function SubmitButton() {
 
 export function EnterForm() {
   const [state, formAction] = useActionState(requestMagicLinkAction, initialState);
+  const t = useTranslations("MagicLink");
+  const tc = useTranslations("Common");
 
   // Ответ одинаков, есть такой аккаунт или нет, — не раскрываем существование почты.
   if (state.success) {
     return (
       <div className="space-y-6">
         <p className="rounded-md border border-border bg-muted/40 p-4 text-small text-foreground">
-          Проверь почту — отправили ссылку для входа (загляни и в папку «Спам»). Ссылка
-          действует 15 минут и сработает один раз.
+          {t("sentNotice")}
         </p>
         <p className="text-small text-muted-foreground">
           <Link href="/login" className="text-foreground underline">
-            Войти по паролю
+            {t("signInWithPassword")}
           </Link>
         </p>
       </div>
@@ -52,7 +55,7 @@ export function EnterForm() {
     <form action={formAction} className="space-y-6">
       <div className="space-y-2">
         <Label htmlFor="email" className="font-mono text-label uppercase tracking-label text-muted-foreground">
-          Email
+          {tc("email")}
         </Label>
         <Input id="email" name="email" type="email" required autoComplete="email" />
       </div>
@@ -62,9 +65,9 @@ export function EnterForm() {
       <SubmitButton />
 
       <p className="text-small text-muted-foreground">
-        Удобнее с паролем?{" "}
+        {t("preferPassword")}{" "}
         <Link href="/login" className="text-foreground underline">
-          Войти по паролю
+          {t("signInWithPassword")}
         </Link>
       </p>
     </form>

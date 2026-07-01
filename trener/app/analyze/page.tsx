@@ -2,6 +2,7 @@ import { noindex } from "@/lib/seo";
 export const metadata = noindex;
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { uploadTournamentsBatch, type BatchItem } from "@/features/tournaments/actions";
 import { recentTournaments } from "@/features/tournaments/queries";
 import { requireSession } from "@/features/auth/session";
@@ -75,26 +76,28 @@ async function handleUpload(formData: FormData) {
   redirect(`/tournaments?${params.toString()}`);
 }
 
-const UPLOAD_ERROR_TEXT: Record<string, string> = {
-  UNSUPPORTED_FORMAT:
-    "Формат не распознан. Поддерживаем GGPoker, PokerStars, Winamax, 888poker, ACR / PokerKing, Red Star Poker и BetOnline.",
-  TOO_LARGE: "Файл больше 5 МБ — загрузи файл поменьше.",
-  RATE_LIMITED: "Слишком много загрузок за час. Подожди немного и попробуй снова.",
-  PAYWALL: "Первый турнир ты уже разобрал бесплатно. Оформи подписку, чтобы разбирать дальше.",
-  LIMIT_REACHED: "Лимит этого периода исчерпан — он обновится с началом нового периода подписки.",
+// Код ошибки из query → ключ в словаре Analyze. Неизвестный код → общий текст ошибки.
+const UPLOAD_ERROR_KEY: Record<string, string> = {
+  UNSUPPORTED_FORMAT: "errorUnsupportedFormat",
+  TOO_LARGE: "errorTooLarge",
+  RATE_LIMITED: "errorRateLimited",
+  PAYWALL: "errorPaywall",
+  LIMIT_REACHED: "errorLimitReached",
 };
 
-function UploadError({ error }: { error: string }) {
+async function UploadError({ error }: { error: string }) {
+  const t = await getTranslations("Analyze");
+  const key = UPLOAD_ERROR_KEY[error];
   return (
     <div className="relative border border-destructive p-4">
       <ShineBorder shineColor="#FF5C5C" borderWidth={1} duration={1} style={{ animationIterationCount: 1 }} />
-      <p className="text-small text-destructive">{UPLOAD_ERROR_TEXT[error] ?? "Ошибка разбора файла"}</p>
+      <p className="text-small text-destructive">{key ? t(key) : t("errorGeneric")}</p>
       {error === "PAYWALL" && (
         <Link
           href="/pricing"
           className="mt-2 inline-block font-mono text-label uppercase tracking-label text-primary transition-colors hover:text-foreground"
         >
-          Посмотреть тарифы →
+          {t("viewPlans")}
         </Link>
       )}
     </div>
@@ -108,6 +111,7 @@ export default async function AnalyzePage({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
+  const t = await getTranslations("Analyze");
   const { playerId } = await requireSession();
   const { error } = await searchParams;
   const recent = await recentTournaments(playerId, 5);
@@ -119,10 +123,9 @@ export default async function AnalyzePage({
       <section className="mx-auto max-w-5xl px-8 py-16">
         <div className="mx-auto max-w-2xl space-y-8 text-center">
           <div className="space-y-2">
-            <h1 className="text-h1">Загрузить турниры</h1>
+            <h1 className="text-h1">{t("title")}</h1>
             <p className="text-small text-muted-foreground">
-              Файлы раздач в .txt или .xml, до 5 МБ каждый. Можно выбрать сразу
-              несколько — рум определится сам.
+              {t("subtitle")}
             </p>
           </div>
 
@@ -131,7 +134,7 @@ export default async function AnalyzePage({
           <form action={handleUpload} encType="multipart/form-data" className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="file" className="font-mono text-label uppercase tracking-label text-muted-foreground">
-                Файлы раздач (.txt, .xml)
+                {t("fileLabel")}
               </Label>
               <FileInput id="file" name="file" accept=".txt,.xml" required multiple />
             </div>
@@ -145,20 +148,20 @@ export default async function AnalyzePage({
       <section className="border-t border-border">
         <div className="mx-auto max-w-5xl px-8 py-16">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <h2 className="text-h2">Последние турниры</h2>
+            <h2 className="text-h2">{t("recentTitle")}</h2>
             {recent.length > 0 && (
               <Link
                 href="/tournaments"
                 className="font-mono text-label uppercase tracking-label text-muted-foreground transition-colors hover:text-foreground"
               >
-                Все турниры →
+                {t("allTournaments")}
               </Link>
             )}
           </div>
 
           {recent.length === 0 ? (
             <p className="mt-8 text-body text-muted-foreground">
-              Пока ни одного турнира. Загрузи первый — он появится здесь.
+              {t("recentEmpty")}
             </p>
           ) : (
             <div className="mt-8 space-y-4">

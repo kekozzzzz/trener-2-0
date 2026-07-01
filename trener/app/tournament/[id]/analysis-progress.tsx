@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { LoadingDots } from "@/components/ui/loading-dots";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +29,7 @@ type StageState = "done" | "active" | "pending";
 const MAX_POLLS = 120;
 
 // Русское склонение существительного после числа: 1 раздача, 3 раздачи, 10 раздач.
+// Формы приходят из словаря (для английского все три совпадают — «hand/hands»).
 function plural(n: number, forms: readonly [string, string, string]): string {
   const mod10 = n % 10;
   const mod100 = n % 100;
@@ -35,8 +37,6 @@ function plural(n: number, forms: readonly [string, string, string]): string {
   if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return forms[1];
   return forms[2];
 }
-
-const HAND = ["раздачу", "раздачи", "раздач"] as const;
 
 function StageRow({
   state,
@@ -73,6 +73,8 @@ function StageRow({
 
 export function AnalysisProgress({ tournamentId }: { tournamentId: string }) {
   const router = useRouter();
+  const t = useTranslations("AnalysisProgress");
+  const HAND = [t("handOne"), t("handFew"), t("handMany")] as const;
   const [data, setData] = useState<StatusResponse | null>(null);
   const inFlight = useRef(false);
   const polls = useRef(0);
@@ -132,17 +134,17 @@ export function AnalysisProgress({ tournamentId }: { tournamentId: string }) {
 
   return (
     <ul className="space-y-4">
-      <StageRow state="done">Разобрали файл и посчитали твою статистику</StageRow>
+      <StageRow state="done">{t("stageParsed")}</StageRow>
 
       <StageRow state={stage2}>
         {handsKnown ? (
           <>
-            Выбрали <span className="font-mono text-foreground">{total}</span>{" "}
-            {plural(total, HAND)} — в них было что решать
+            {t("stageSelectedPrefix")} <span className="font-mono text-foreground">{total}</span>{" "}
+            {plural(total, HAND)} {t("stageSelectedSuffix")}
           </>
         ) : (
           <span className="flex items-center gap-2">
-            Выбираем раздачи, где было что решать
+            {t("stageSelectingActive")}
             <LoadingDots />
           </span>
         )}
@@ -151,30 +153,30 @@ export function AnalysisProgress({ tournamentId }: { tournamentId: string }) {
       <StageRow state={stage3}>
         {stage3 === "done" ? (
           <>
-            Разобрали все <span className="font-mono text-foreground">{total}</span>{" "}
+            {t("stageReviewedAll")} <span className="font-mono text-foreground">{total}</span>{" "}
             {plural(total, HAND)}
           </>
         ) : stage3 === "active" ? (
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span>Разбираем их по одной:</span>
+            <span>{t("stageReviewingPrefix")}</span>
             <span className="font-mono">
-              <span className="text-primary">{ready}</span> из {total}
+              <span className="text-primary">{ready}</span> {t("stageReviewingOf")} {total}
             </span>
             <LoadingDots />
           </span>
         ) : (
-          "Разбираем каждую раздачу отдельно"
+          t("stageReviewingPending")
         )}
       </StageRow>
 
       <StageRow state={stage4}>
         {stage4 === "active" ? (
           <span className="flex items-center gap-2">
-            Собираем общую картину турнира
+            {t("stageSummary")}
             <LoadingDots />
           </span>
         ) : (
-          "Собираем общую картину турнира"
+          t("stageSummary")
         )}
       </StageRow>
     </ul>

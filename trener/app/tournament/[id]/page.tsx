@@ -1,6 +1,7 @@
 import { prisma } from "@/infrastructure/db/client";
 import { Prisma } from "@prisma/client";
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { requireSession } from "@/features/auth/session";
@@ -21,17 +22,6 @@ import { ParsingWaitClient } from "./parsing-wait-client";
 import { AnalysisProgress } from "./analysis-progress";
 import { MetricsGlossary } from "@/components/metrics/glossary";
 import { LoadingDots } from "@/components/ui/loading-dots";
-
-const DIALOGUE_STATE_LABEL: Record<string, string> = {
-  QUESTION_ASKED: "в работе",
-  ANSWER_RECEIVED: "в работе",
-  VERDICT_SHOWN: "разбор завершён",
-};
-
-const IMPORTANCE_LABEL: Record<string, string> = {
-  STRONG: "Сильная",
-  MEDIUM: "Средняя",
-};
 
 // timeZone UTC — playedAt хранится в UTC из HH-файла, показываем дату ровно как в файле.
 const dateFormat = new Intl.DateTimeFormat("ru-RU", {
@@ -97,6 +87,13 @@ export default async function TournamentPage({
 }) {
   const { id } = await params;
   const { duplicate, error } = await searchParams;
+  const t = await getTranslations("Tournament");
+  // Уровень важности раздачи → подпись. Неизвестный уровень выводим кодом как есть.
+  const importanceLabel = (level: string) =>
+    level === "STRONG" ? t("importanceStrong") : level === "MEDIUM" ? t("importanceMedium") : level;
+  // Состояние диалога → подпись бейджа. QUESTION_ASKED/ANSWER_RECEIVED — «в работе».
+  const dialogueLabel = (state: string) =>
+    state === "VERDICT_SHOWN" ? t("dialogueDone") : t("dialogueInProgress");
   const session = await requireSession();
   const tournament = await prisma.tournament.findUnique({ where: { id } });
 
@@ -108,10 +105,10 @@ export default async function TournamentPage({
         <PageHeader />
         <section className="mx-auto max-w-5xl px-8 py-16 sm:py-24">
           <div className="max-w-2xl space-y-6">
-            <h1 className="text-h1">Разбираем файл</h1>
+            <h1 className="text-h1">{t("parsingTitle")}</h1>
             <ParsingWaitClient tournamentId={tournament.id} />
             <Link href="/analyze" className={cn(buttonVariants({ variant: "ghost" }))}>
-              ← Загрузить ещё
+              {t("uploadMore")}
             </Link>
           </div>
         </section>
@@ -125,14 +122,14 @@ export default async function TournamentPage({
         <PageHeader />
         <section className="mx-auto max-w-5xl px-8 py-16 sm:py-24">
           <div className="max-w-2xl space-y-6">
-            <h1 className="text-h1">Ошибка разбора</h1>
+            <h1 className="text-h1">{t("failedTitle")}</h1>
             <div className="border border-destructive p-4">
               <p className="text-small text-destructive">
-                Файл не удалось разобрать. Убедись, что это MTT-турнир GGPoker.
+                {t("failedBody")}
               </p>
             </div>
             <Link href="/analyze" className={cn(buttonVariants())}>
-              ← Попробовать снова
+              {t("tryAgain")}
             </Link>
           </div>
         </section>
@@ -162,7 +159,7 @@ export default async function TournamentPage({
       <main>
         <PageHeader />
         <section className="mx-auto max-w-5xl px-8 py-16">
-          <h1 className="text-h1">{tournament.name ?? "Результаты турнира"}</h1>
+          <h1 className="text-h1">{tournament.name ?? t("resultsTitle")}</h1>
           <p className="mt-2 font-mono text-label uppercase tracking-label text-muted-foreground">
             {dateFormat.format(tournament.playedAt)}
             {tournament.room && ` · ${tournament.room}`}
@@ -171,57 +168,53 @@ export default async function TournamentPage({
           {error === "LIMIT_REACHED" && (
             <div className="mt-8 border border-destructive p-4">
               <p className="text-small text-destructive">
-                Лимит этого периода исчерпан — он обновится с началом нового периода подписки.
+                {t("errorLimitReached")}
               </p>
             </div>
           )}
           {error === "RATE_LIMITED" && (
             <div className="mt-8 border border-destructive p-4">
               <p className="text-small text-destructive">
-                Слишком много разборов за час. Подожди немного и попробуй снова.
+                {t("errorRateLimited")}
               </p>
             </div>
           )}
 
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
-            <StatCard label="VPIP">
+            <StatCard label={t("vpip")}>
               <p className="mt-2 font-mono text-h2 text-foreground">{vpipLocked}%</p>
             </StatCard>
-            <StatCard label="Рук сыграно">
+            <StatCard label={t("handsPlayed")}>
               <p className="mt-2 font-mono text-h2 text-foreground">{handsLocked}</p>
             </StatCard>
           </div>
 
           <div className="mt-16 border border-primary bg-card p-6">
             <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
-              {canUnlock ? "Разбор этого турнира" : "Разбор под замком"}
+              {canUnlock ? t("reviewThisTournament") : t("reviewLocked")}
             </p>
             <p className="mt-2 text-body text-foreground">
-              {canUnlock
-                ? "Метрики этого турнира уже посчитаны. Нажми «Разобрать» — тренер разберёт ключевые раздачи, проведёт сократовский диалог и соберёт общую картину."
-                : "Метрики этого турнира уже посчитаны. Полный разбор — сократовский диалог по ключевым раздачам, разборы ошибок и общая картина — откроется по подписке."}
+              {canUnlock ? t("reviewUnlockedBody") : t("reviewLockedBody")}
             </p>
             {canUnlock ? (
               <form action={unlockTournamentAnalysisAction} className="mt-4">
                 <input type="hidden" name="tournamentId" value={tournament.id} />
                 <button type="submit" className={cn(buttonVariants())}>
-                  Разобрать этот турнир
+                  {t("unlockButton")}
                 </button>
               </form>
             ) : (
               <Link href="/pricing" className={cn(buttonVariants(), "mt-4 inline-flex")}>
-                Оформить подписку →
+                {t("subscribeButton")}
               </Link>
             )}
           </div>
 
           {lockedHands.length > 0 && (
             <div className="mt-16">
-              <h2 className="text-h2">Раздачи</h2>
+              <h2 className="text-h2">{t("handsTitle")}</h2>
               <p className="mt-2 text-small text-muted-foreground">
-                {canUnlock
-                  ? "Результаты по ключевым раздачам. Нажми «Разобрать» — и тренер разберёт их."
-                  : "Результаты по ключевым раздачам. Разбор откроется после подписки."}
+                {canUnlock ? t("handsUnlockedNote") : t("handsLockedNote")}
               </p>
               <div className="mt-8 space-y-4">
                 {lockedHands.map((hand) => {
@@ -234,7 +227,7 @@ export default async function TournamentPage({
                       className="flex items-center justify-between gap-4 border border-border bg-card p-6"
                     >
                       <Badge variant="outline">
-                        {IMPORTANCE_LABEL[hand.importanceLevel] ?? hand.importanceLevel}
+                        {importanceLabel(hand.importanceLevel)}
                       </Badge>
                       <div className="flex flex-col items-end">
                         <span
@@ -248,7 +241,7 @@ export default async function TournamentPage({
                         {bbResult !== null && (
                           <span className="font-mono text-small text-muted-foreground">
                             {sign}
-                            {hand.chipResult} фишек
+                            {hand.chipResult} {t("chips")}
                           </span>
                         )}
                       </div>
@@ -261,7 +254,7 @@ export default async function TournamentPage({
 
           <div className="mt-16 border-t border-border pt-8 font-mono text-label uppercase tracking-label">
             <Link href="/analyze" className="text-muted-foreground transition-colors hover:text-foreground">
-              ← Загрузить ещё
+              {t("uploadMore")}
             </Link>
           </div>
         </section>
@@ -329,12 +322,12 @@ export default async function TournamentPage({
         {duplicate && (
           <div className="mb-8 border border-border bg-card p-4">
             <p className="text-small text-muted-foreground">
-              Этот турнир уже был загружен — вот его разбор. Повторно он не добавляется.
+              {t("duplicateNote")}
             </p>
           </div>
         )}
 
-        <h1 className="text-h1">{tournament.name ?? "Результаты турнира"}</h1>
+        <h1 className="text-h1">{tournament.name ?? t("resultsTitle")}</h1>
         <p className="mt-2 font-mono text-label uppercase tracking-label text-muted-foreground">
           {dateFormat.format(tournament.playedAt)}
           {tournament.room && ` · ${tournament.room}`}
@@ -350,14 +343,14 @@ export default async function TournamentPage({
 
         {/* Общая картина — наверху. Готова → показываем; ещё собирается → плейсхолдер. */}
         <div className="mt-16">
-          <h2 className="text-h2">Общая картина</h2>
+          <h2 className="text-h2">{t("overviewTitle")}</h2>
           {summary?.overview ? (
             <p className="mt-4 max-w-3xl text-body text-foreground">
               {renderOverview(summary.overview, id, nick)}
             </p>
           ) : (
             <p className="mt-4 flex items-center gap-2 text-body text-muted-foreground">
-              Собираем общую картину турнира
+              {t("overviewLoading")}
               <LoadingDots />
             </p>
           )}
@@ -365,25 +358,24 @@ export default async function TournamentPage({
 
         <div className="mt-16 flex items-center justify-between gap-4">
           <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
-            Метрики
+            {t("metrics")}
           </p>
           <MetricsGlossary />
         </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <StatCard label="VPIP">
+          <StatCard label={t("vpip")}>
             <p className="mt-2 font-mono text-h2 text-foreground">{vpip}%</p>
           </StatCard>
-          <StatCard label="Рук сыграно">
+          <StatCard label={t("handsPlayed")}>
             <p className="mt-2 font-mono text-h2 text-foreground">{hands}</p>
           </StatCard>
         </div>
 
         {handsForDialogue.length > 0 && (
           <div className="mt-16">
-            <h2 className="text-h2">Критические раздачи</h2>
+            <h2 className="text-h2">{t("criticalHandsTitle")}</h2>
             <p className="mt-2 text-small text-muted-foreground">
-              Парсер выбрал самые решающие раздачи турнира — по ним тренер сам ведёт разбор
-              и задаёт вопрос «почему».
+              {t("criticalHandsNote")}
             </p>
             <div className="mt-8 space-y-4">
               {handsForDialogue.map((hand, index) => {
@@ -406,10 +398,10 @@ export default async function TournamentPage({
                       <div className="flex min-w-0 flex-col gap-1">
                         <div className="flex flex-wrap items-center gap-3">
                           <span className="font-mono text-label uppercase tracking-label text-muted-foreground">
-                            Раздача {index + 1}
+                            {t("handLabel", { index: index + 1 })}
                           </span>
                           <Badge variant={dialogue.state === "VERDICT_SHOWN" ? "done" : "outline"}>
-                            {DIALOGUE_STATE_LABEL[dialogue.state] ?? dialogue.state}
+                            {dialogueLabel(dialogue.state)}
                           </Badge>
                         </div>
                         {label && <span className="text-small text-muted-foreground">{label}</span>}
@@ -425,9 +417,9 @@ export default async function TournamentPage({
 
         {simpleHands.length > 0 && (
           <div className="mt-16">
-            <h2 className="text-h2">Сильные и средние раздачи</h2>
+            <h2 className="text-h2">{t("strongMediumTitle")}</h2>
             <p className="mt-2 text-small text-muted-foreground">
-              Тоже заметные руки — разбор по ним уже готов. Зайди в любую и спроси, если есть вопрос.
+              {t("strongMediumNote")}
             </p>
             <div className="mt-8 space-y-4">
               {simpleHands.map((hand) => {
@@ -449,11 +441,11 @@ export default async function TournamentPage({
                   >
                     <div className="flex min-w-0 items-center gap-4">
                       <Badge variant="outline" className="shrink-0">
-                        {IMPORTANCE_LABEL[hand.importanceLevel] ?? hand.importanceLevel}
+                        {importanceLabel(hand.importanceLevel)}
                       </Badge>
                       {viewed && (
                         <Badge variant="done" className="shrink-0">
-                          Просмотрено
+                          {t("viewed")}
                         </Badge>
                       )}
                       <HoleCards cards={snap.heroCards ?? []} />
@@ -474,7 +466,7 @@ export default async function TournamentPage({
                         {bbResult !== null && (
                           <span className="font-mono text-small text-muted-foreground">
                             {sign}
-                            {hand.chipResult} фишек
+                            {hand.chipResult} {t("chips")}
                           </span>
                         )}
                       </div>
@@ -489,9 +481,9 @@ export default async function TournamentPage({
 
         {processing && pendingHands.length > 0 && (
           <div className="mt-16">
-            <h2 className="text-h2">Разбираем сейчас</h2>
+            <h2 className="text-h2">{t("reviewingNowTitle")}</h2>
             <p className="mt-2 text-small text-muted-foreground">
-              Тренер смотрит эти раздачи — они появятся выше, как будут готовы.
+              {t("reviewingNowNote")}
             </p>
             <div className="mt-8 space-y-4">
               {pendingHands.map((hand) => {
@@ -509,7 +501,7 @@ export default async function TournamentPage({
                       )}
                     </div>
                     <span className="flex shrink-0 items-center gap-2 font-mono text-label uppercase tracking-label text-muted-foreground">
-                      Разбираем
+                      {t("reviewing")}
                       <LoadingDots />
                     </span>
                   </div>
@@ -521,7 +513,7 @@ export default async function TournamentPage({
 
         <div className="mt-16 border-t border-border pt-8 font-mono text-label uppercase tracking-label">
           <Link href="/analyze" className="text-muted-foreground transition-colors hover:text-foreground">
-            ← Загрузить ещё
+            {t("uploadMore")}
           </Link>
         </div>
       </section>

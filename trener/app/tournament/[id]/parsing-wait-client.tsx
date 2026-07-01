@@ -2,16 +2,13 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { LoadingDots } from "@/components/ui/loading-dots";
-
-const MESSAGES = [
-  "Считаем VPIP, потери в фишках, SPR...",
-  "Раскладываем раздачи турнира...",
-  "Выбираем раздачи для разбора...",
-];
 
 export function ParsingWaitClient({ tournamentId }: { tournamentId: string }) {
   const router = useRouter();
+  const t = useTranslations("ParsingWait");
+  const MESSAGES = [t("metrics"), t("layout"), t("selecting")];
   const [messageIndex, setMessageIndex] = useState(0);
   const inFlight = useRef(false);
 

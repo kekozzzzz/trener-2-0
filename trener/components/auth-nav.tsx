@@ -1,24 +1,28 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { getCurrentPlayer } from "@/features/auth/queries";
 import { logoutAction } from "@/features/auth/actions";
 import { buttonVariants } from "@/components/ui/button";
+import { LangSwitcher } from "@/components/lang-switcher";
 import { cn } from "@/lib/utils";
 
 export async function AuthNav() {
   const player = await getCurrentPlayer();
+  const t = await getTranslations("Nav");
 
   if (!player) {
     return (
       <nav className="flex items-center gap-4 font-mono text-label uppercase tracking-label">
         <Link href="/pricing" className="text-muted-foreground transition-colors hover:text-foreground">
-          Тарифы
+          {t("pricing")}
         </Link>
         <Link href="/login" className="text-muted-foreground transition-colors hover:text-foreground">
-          Войти
+          {t("login")}
         </Link>
         <Link href="/register" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
-          Регистрация
+          {t("register")}
         </Link>
+        <LangSwitcher />
       </nav>
     );
   }
@@ -28,16 +32,17 @@ export async function AuthNav() {
       {/* «Разбор» (загрузка) убран из меню — загрузить турнир можно со страницы «Мои
           турниры». «Тарифы» убраны — смена/выбор тарифа живёт в «Аккаунте». */}
       <Link href="/tournaments" className="text-muted-foreground transition-colors hover:text-foreground">
-        Мои турниры
+        {t("myTournaments")}
       </Link>
       <Link href="/account" className="text-muted-foreground transition-colors hover:text-foreground">
-        Аккаунт
+        {t("account")}
       </Link>
       <form action={logoutAction}>
         <button type="submit" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
-          Выйти
+          {t("logout")}
         </button>
       </form>
+      <LangSwitcher />
     </nav>
   );
 }

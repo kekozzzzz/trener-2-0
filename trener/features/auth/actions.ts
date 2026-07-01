@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { prisma } from "@/infrastructure/db/client";
 import { hashPassword, verifyPassword } from "./password";
 import {
@@ -56,22 +57,22 @@ function normalizeNickname(raw: FormDataEntryValue | null): string | null {
   const value = String(raw ?? "").trim().slice(0, MAX_NICKNAME_LENGTH);
   return value.length > 0 ? value : null;
 }
-const TOO_MANY_ATTEMPTS = "Слишком много попыток. Подождите несколько минут и попробуйте снова.";
 
 export async function registerAction(
   _prevState: AuthFormState,
   formData: FormData
 ): Promise<AuthFormState> {
+  const t = await getTranslations("Errors");
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
   const passwordConfirm = String(formData.get("passwordConfirm") ?? "");
   const nickname = normalizeNickname(formData.get("nickname"));
   const termsAccepted = formData.get("terms") === "on";
 
-  if (!EMAIL_RE.test(email)) return { error: "Введи правильный email" };
-  if (password.length < MIN_PASSWORD_LENGTH) return { error: "Пароль должен быть не короче 8 символов" };
-  if (password !== passwordConfirm) return { error: "Пароли не совпадают" };
-  if (!termsAccepted) return { error: "Нужно согласиться с условиями обработки данных" };
+  if (!EMAIL_RE.test(email)) return { error: t("invalidEmail") };
+  if (password.length < MIN_PASSWORD_LENGTH) return { error: t("passwordTooShort") };
+  if (password !== passwordConfirm) return { error: t("passwordsDontMatch") };
+  if (!termsAccepted) return { error: t("termsRequired") };
 
   // Лимит регистраций по IP (architecture/07-безопасность.md, раздел 2): тормоз
   // массового создания фейков и «прозвона» занятых email. Считаем КАЖДУЮ попытку,
@@ -80,13 +81,13 @@ export async function registerAction(
   const limited = isAuthRateLimitEnabled();
   const registerIpKey = limited ? `register-ip:${await clientIp()}` : "";
   if (limited && hitCount(registerIpKey) >= getRegisterMaxPerIp()) {
-    return { error: TOO_MANY_ATTEMPTS };
+    return { error: t("tooManyAttempts") };
   }
 
   const existing = await prisma.player.findUnique({ where: { email } });
   if (existing) {
     if (limited) recordHit(registerIpKey, getRegisterWindowMs());
-    return { error: "Этот email уже зарегистрирован" };
+    return { error: t("emailTaken") };
   }
 
   const passwordHash = await hashPassword(password);
@@ -126,6 +127,7 @@ export async function loginAction(
   _prevState: AuthFormState,
   formData: FormData
 ): Promise<AuthFormState> {
+  const t = await getTranslations("Errors");
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
 
@@ -140,7 +142,7 @@ export async function loginAction(
     (hitCount(loginEmailKey) >= getLoginMaxFailuresPerEmail() ||
       hitCount(loginIpKey) >= getLoginMaxFailuresPerIp())
   ) {
-    return { error: TOO_MANY_ATTEMPTS };
+    return { error: t("tooManyAttempts") };
   }
 
   const player = await prisma.player.findUnique({ where: { email } });
@@ -151,7 +153,7 @@ export async function loginAction(
       recordHit(loginEmailKey, getLoginWindowMs());
       recordHit(loginIpKey, getLoginWindowMs());
     }
-    return { error: "Неверный email или пароль" };
+    return { error: t("wrongEmailOrPassword") };
   }
 
   // Успех — снимаем счётчик email (по IP не трогаем: с того же IP мог идти
@@ -170,18 +172,19 @@ export async function changePasswordAction(
   _prevState: AuthFormState,
   formData: FormData
 ): Promise<AuthFormState> {
+  const t = await getTranslations("Errors");
   const session = await requireSession();
   const currentPassword = String(formData.get("currentPassword") ?? "");
   const newPassword = String(formData.get("newPassword") ?? "");
   const newPasswordConfirm = String(formData.get("newPasswordConfirm") ?? "");
 
-  if (newPassword.length < MIN_PASSWORD_LENGTH) return { error: "Новый пароль должен быть не короче 8 символов" };
-  if (newPassword !== newPasswordConfirm) return { error: "Новые пароли не совпадают" };
-  if (newPassword === currentPassword) return { error: "Новый пароль совпадает с текущим" };
+  if (newPassword.length < MIN_PASSWORD_LENGTH) return { error: t("newPasswordTooShort") };
+  if (newPassword !== newPasswordConfirm) return { error: t("newPasswordsDontMatch") };
+  if (newPassword === currentPassword) return { error: t("newPasswordSameAsCurrent") };
 
   const player = await prisma.player.findUnique({ where: { id: session.playerId } });
   const valid = player?.passwordHash ? await verifyPassword(currentPassword, player.passwordHash) : false;
-  if (!valid) return { error: "Неверный текущий пароль" };
+  if (!valid) return { error: t("wrongCurrentPassword") };
 
   // Сдвигаем sessionsValidFrom — все ранее выданные куки (включая возможную
   // угнанную) становятся недействительны. passwordChangedAt — для показа в кабинете.
@@ -209,19 +212,20 @@ export async function setPasswordAction(
   _prevState: AuthFormState,
   formData: FormData
 ): Promise<AuthFormState> {
+  const t = await getTranslations("Errors");
   const session = await requireSession();
   const newPassword = String(formData.get("newPassword") ?? "");
   const newPasswordConfirm = String(formData.get("newPasswordConfirm") ?? "");
 
-  if (newPassword.length < MIN_PASSWORD_LENGTH) return { error: "Пароль должен быть не короче 8 символов" };
-  if (newPassword !== newPasswordConfirm) return { error: "Пароли не совпадают" };
+  if (newPassword.length < MIN_PASSWORD_LENGTH) return { error: t("passwordTooShort") };
+  if (newPassword !== newPasswordConfirm) return { error: t("passwordsDontMatch") };
 
   const player = await prisma.player.findUnique({
     where: { id: session.playerId },
     select: { passwordHash: true, email: true },
   });
   // Защита от гонки/обхода: если пароль уже есть — это смена (нужен текущий), не «задать».
-  if (player?.passwordHash) return { error: "У аккаунта уже есть пароль — меняй его через смену пароля" };
+  if (player?.passwordHash) return { error: t("passwordAlreadySet") };
 
   const now = new Date();
   const newHash = await hashPassword(newPassword);
@@ -242,8 +246,9 @@ export async function requestPasswordResetAction(
   _prevState: AuthFormState,
   formData: FormData
 ): Promise<AuthFormState> {
+  const t = await getTranslations("Errors");
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  if (!EMAIL_RE.test(email)) return { error: "Введи правильный email" };
+  if (!EMAIL_RE.test(email)) return { error: t("invalidEmail") };
 
   // Лимит запросов: по IP и по email — против заваливания ящика и перебора почт.
   const limited = isAuthRateLimitEnabled();
@@ -290,14 +295,15 @@ export async function resetPasswordAction(
   _prevState: AuthFormState,
   formData: FormData
 ): Promise<AuthFormState> {
+  const t = await getTranslations("Errors");
   const token = String(formData.get("token") ?? "");
   const newPassword = String(formData.get("newPassword") ?? "");
   const newPasswordConfirm = String(formData.get("newPasswordConfirm") ?? "");
 
-  if (newPassword.length < MIN_PASSWORD_LENGTH) return { error: "Пароль должен быть не короче 8 символов" };
-  if (newPassword !== newPasswordConfirm) return { error: "Пароли не совпадают" };
+  if (newPassword.length < MIN_PASSWORD_LENGTH) return { error: t("passwordTooShort") };
+  if (newPassword !== newPasswordConfirm) return { error: t("passwordsDontMatch") };
 
-  const INVALID = "Ссылка недействительна или устарела. Запроси сброс пароля заново.";
+  const INVALID = t("resetLinkInvalid");
   if (!token) return { error: INVALID };
 
   const row = await prisma.passwordResetToken.findUnique({
@@ -345,8 +351,9 @@ export async function requestMagicLinkAction(
   _prevState: AuthFormState,
   formData: FormData
 ): Promise<AuthFormState> {
+  const t = await getTranslations("Errors");
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  if (!EMAIL_RE.test(email)) return { error: "Введи правильный email" };
+  if (!EMAIL_RE.test(email)) return { error: t("invalidEmail") };
 
   const limited = isAuthRateLimitEnabled();
   const ipKey = limited ? `magic-ip:${await clientIp()}` : "";
@@ -386,13 +393,14 @@ export async function completeRegistrationAction(
   _prevState: AuthFormState,
   formData: FormData
 ): Promise<AuthFormState> {
+  const t = await getTranslations("Errors");
   const email = await readPendingRegistration();
   if (!email || !EMAIL_RE.test(email)) {
-    return { error: "Ссылка устарела. Запроси новую ссылку для входа." };
+    return { error: t("magicLinkExpired") };
   }
   const nickname = normalizeNickname(formData.get("nickname"));
   const termsAccepted = formData.get("terms") === "on";
-  if (!termsAccepted) return { error: "Нужно согласиться с условиями обработки данных" };
+  if (!termsAccepted) return { error: t("termsRequired") };
 
   const now = new Date();
   // На случай гонки/двойной отправки: если аккаунт с этим email уже появился — не
@@ -439,12 +447,13 @@ export async function requestAccountClosureAction(
   _prevState: AuthFormState,
   _formData: FormData
 ): Promise<AuthFormState> {
+  const t = await getTranslations("Errors");
   const session = await requireSession();
   const player = await prisma.player.findFirst({
     where: { id: session.playerId, closedAt: null },
     select: { id: true, email: true },
   });
-  if (!player?.email) return { error: "Не получилось отправить ссылку. Напиши в поддержку: support@whygrid.app." };
+  if (!player?.email) return { error: t("closureLinkSendFailed") };
 
   // Гасим прежние неиспользованные ссылки — действительна только свежая.
   await prisma.accountClosureToken.updateMany({
@@ -469,8 +478,9 @@ export async function confirmAccountCloseAction(
   _prevState: AuthFormState,
   formData: FormData
 ): Promise<AuthFormState> {
+  const t = await getTranslations("Errors");
   const token = String(formData.get("token") ?? "");
-  const INVALID = "Ссылка недействительна или устарела. Запроси закрытие заново из аккаунта.";
+  const INVALID = t("closureLinkInvalid");
   if (!token) return { error: INVALID };
 
   const row = await prisma.accountClosureToken.findUnique({

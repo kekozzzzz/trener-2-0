@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { GRID_RANKS, cellCode } from "@/config/poker/hand-grid";
 import { OPEN_CHART_FLAG_MIN_COUNT } from "@/config/profile";
 import type { OpenChartCell } from "@/features/profile/open-chart";
@@ -23,6 +24,7 @@ export function OpenChartGrid({
   cells: OpenChartCell[];
   variant?: "raise" | "limp";
 }) {
+  const t = useTranslations("PlayerCharts");
   const byCode = new Map(cells.map((c) => [c.code, c]));
   const isLimp = variant === "limp";
 
@@ -44,7 +46,7 @@ export function OpenChartGrid({
           return (
             <div
               key={code}
-              title={cell ? `${code}: ${isLimp ? "лимп" : "открыто"} ${cell.count}` : code}
+              title={cell ? `${code}: ${isLimp ? t("cellLimp") : t("cellOpened")} ${cell.count}` : code}
               className={cn(
                 "flex aspect-square flex-col items-center justify-center border font-mono leading-none",
                 flagged && "border-primary bg-primary text-primary-foreground",

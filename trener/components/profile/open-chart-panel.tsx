@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import type { OpenPosition } from "@/config/poker/rfi-chart";
 import type { OpenChartFacts } from "@/features/profile/open-chart";
 import { CHARACTERISTIC_RELIABLE_FROM } from "@/config/profile";
@@ -28,6 +29,7 @@ export function OpenChartPanel({
   chart: OpenChartFacts;
   tournamentsCounted: number;
 }) {
+  const t = useTranslations("PlayerCharts");
   const [pos, setPos] = useState<OpenPosition>("BTN");
   const [sbView, setSbView] = useState<"raise" | "limp">("raise");
   const reliable = tournamentsCounted >= CHARACTERISTIC_RELIABLE_FROM;
@@ -37,11 +39,9 @@ export function OpenChartPanel({
 
   return (
     <>
-      <h3 className="text-h3">{isSbLimp ? "Как ты лимпуешь со SB" : "Как ты открываешься"}</h3>
+      <h3 className="text-h3">{isSbLimp ? t("sbLimpTitle") : t("openTitle")}</h3>
       <p className="mt-2 max-w-2xl text-small text-muted-foreground">
-        {isSbLimp
-          ? "Руки, которыми ты завершаешь блайнд коллом со SB при фолде до тебя. Серым — что лимпаешь, со счётчиком. Лимп слабых рук здесь — норма, не утечка."
-          : "Примерная картина по всей твоей дистанции — какие руки и откуда ты открываешь первым. Это зеркало, а не эталон: лаймом горят руки, которые ты открываешь широко."}
+        {isSbLimp ? t("sbLimpIntro") : t("openIntro")}
       </p>
 
       {/* Переключатель позиций */}
@@ -68,8 +68,8 @@ export function OpenChartPanel({
       {pos === "SB" && (
         <div className="mt-3 flex gap-2">
           {([
-            { key: "raise", label: "Рейз" },
-            { key: "limp", label: "Лимп" },
+            { key: "raise", label: t("raise") },
+            { key: "limp", label: t("limp") },
           ] as const).map((v) => (
             <button
               key={v.key}
@@ -99,26 +99,26 @@ export function OpenChartPanel({
           <>
             <span className="flex items-center gap-2">
               <span className="inline-block size-3 border border-border bg-card" />
-              Лимпуешь эту руку со SB (со счётчиком)
+              {t("legendLimpPlayed")}
             </span>
             <span className="flex items-center gap-2">
               <span className="inline-block size-3 border border-border bg-card opacity-30" />
-              Не лимпуешь
+              {t("legendLimpNot")}
             </span>
           </>
         ) : (
           <>
             <span className="flex items-center gap-2">
               <span className="inline-block size-3 border border-primary bg-primary" />
-              Широкий опен — стоит присмотреться
+              {t("legendWide")}
             </span>
             <span className="flex items-center gap-2">
               <span className="inline-block size-3 border border-primary bg-card" />
-              Широкий опен, но пока редко — возможно, мисклик
+              {t("legendWideThin")}
             </span>
             <span className="flex items-center gap-2">
               <span className="inline-block size-3 border border-border bg-card" />
-              Обычный опен
+              {t("legendNormal")}
             </span>
           </>
         )}
@@ -126,8 +126,8 @@ export function OpenChartPanel({
 
       <p className="mt-6 text-small text-muted-foreground">
         {reliable
-          ? `Собрано по всей твоей дистанции (учтено турниров: ${tournamentsCounted}).`
-          : `Пока учтено турниров: ${tournamentsCounted}. Картина предварительная — станет точнее примерно от ${CHARACTERISTIC_RELIABLE_FROM} турниров.`}
+          ? t("reliable", { count: tournamentsCounted })
+          : t("preliminary", { count: tournamentsCounted, threshold: CHARACTERISTIC_RELIABLE_FROM })}
       </p>
     </>
   );

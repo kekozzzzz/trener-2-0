@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { useFormStatus } from "react-dom";
+import { useTranslations } from "next-intl";
 import { requestPasswordResetAction, type AuthFormState } from "@/features/auth/actions";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,16 +14,17 @@ const initialState: AuthFormState = {};
 
 function SubmitButton() {
   const { pending } = useFormStatus();
+  const t = useTranslations("ForgotPassword");
 
   return (
     <Button type="submit" disabled={pending} className="w-full">
       {pending ? (
         <>
-          Отправляем
+          {t("sending")}
           <LoadingDots />
         </>
       ) : (
-        "Прислать ссылку"
+        t("submit")
       )}
     </Button>
   );
@@ -30,18 +32,19 @@ function SubmitButton() {
 
 export function ForgotPasswordForm() {
   const [state, formAction] = useActionState(requestPasswordResetAction, initialState);
+  const t = useTranslations("ForgotPassword");
+  const tc = useTranslations("Common");
 
   // Ответ одинаков, есть такой email или нет, — не раскрываем существование аккаунта.
   if (state.success) {
     return (
       <div className="space-y-6">
         <p className="rounded-md border border-border bg-muted/40 p-4 text-small text-foreground">
-          Если аккаунт с таким email существует, мы отправили на него ссылку для сброса пароля.
-          Проверь почту (и папку «Спам»). Ссылка действует час.
+          {t("sentNotice")}
         </p>
         <p className="text-small text-muted-foreground">
           <Link href="/login" className="text-foreground underline">
-            Вернуться ко входу
+            {t("backToLogin")}
           </Link>
         </p>
       </div>
@@ -52,7 +55,7 @@ export function ForgotPasswordForm() {
     <form action={formAction} className="space-y-6">
       <div className="space-y-2">
         <Label htmlFor="email" className="font-mono text-label uppercase tracking-label text-muted-foreground">
-          Email
+          {tc("email")}
         </Label>
         <Input id="email" name="email" type="email" required autoComplete="email" />
       </div>
@@ -62,9 +65,9 @@ export function ForgotPasswordForm() {
       <SubmitButton />
 
       <p className="text-small text-muted-foreground">
-        Вспомнил пароль?{" "}
+        {t("rememberedPassword")}{" "}
         <Link href="/login" className="text-foreground underline">
-          Войти
+          {t("signIn")}
         </Link>
       </p>
     </form>

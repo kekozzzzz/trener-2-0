@@ -7,17 +7,19 @@
 // исчезнет (карты больше нет).
 
 import { useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 import { cancelAutoRenew } from "@/features/subscription/actions";
 import { Button } from "@/components/ui/button";
 
 export function CancelAutoRenewButton() {
+  const t = useTranslations("Subscription");
   const [confirming, setConfirming] = useState(false);
   const [pending, startTransition] = useTransition();
 
   if (!confirming) {
     return (
       <Button type="button" variant="outline" onClick={() => setConfirming(true)}>
-        Отключить автопродление
+        {t("cancelAutoRenew")}
       </Button>
     );
   }
@@ -25,8 +27,7 @@ export function CancelAutoRenewButton() {
   return (
     <div className="space-y-3">
       <p className="text-small text-muted-foreground">
-        Точно отключить автопродление? Сохранённая карта будет удалена, дальше списаний
-        не будет. Доступ сохранится до конца уже оплаченного периода.
+        {t("cancelConfirmText")}
       </p>
       <div className="flex flex-wrap gap-3">
         <Button
@@ -35,7 +36,7 @@ export function CancelAutoRenewButton() {
           disabled={pending}
           onClick={() => startTransition(async () => { await cancelAutoRenew(); })}
         >
-          {pending ? "Отключаем…" : "Да, отключить"}
+          {pending ? t("cancelling") : t("cancelConfirmYes")}
         </Button>
         <Button
           type="button"
@@ -43,7 +44,7 @@ export function CancelAutoRenewButton() {
           disabled={pending}
           onClick={() => setConfirming(false)}
         >
-          Оставить
+          {t("cancelKeep")}
         </Button>
       </div>
     </div>
