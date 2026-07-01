@@ -1,4 +1,5 @@
 import type { HandImportance, PlayerStyle, TableSnapshot } from "@/parser/types";
+import type { OpponentFact } from "@/parser/opponent-profile";
 
 // Контекст турнира — только то, что уже посчитал парсер и хранится на Tournament.
 export type TournamentContext = {
@@ -15,6 +16,10 @@ export type HandAnalysisRequest = {
   chipResult: number;
   tableSnapshot: TableSnapshot;
   tournament: TournamentContext;
+  // Профили злодеев ЭТОЙ раздачи (в банке) по рукам ДО неё — внутренний приор для тренера
+  // (чем рыбнее, тем шире диапазон). Правило 1: типы посчитал парсер. Тип игроку НЕ
+  // показываем (не HUD). Может быть пусто (мало рук на оппонентов). Промпт — отдельно.
+  opponents?: OpponentFact[];
 };
 
 // Состав результата зависит от importanceLevel:
@@ -194,9 +199,17 @@ export type SqueezeLeakHand = {
   code: string; // код руки, напр. "T9s"
 };
 
+// Один 4-бет против 3-бета заметно шире нормы — посчитал парсер (parser/def-vs-3bet.ts)
+// и сверил с чартом (config/poker/def-vs-3bet-chart.ts). Правило 1/2: наша открывавшая
+// позиция и код руки готовы, LLM только формулирует.
+export type FourBetLeakHand = {
+  position: string; // наша открывавшая позиция: UTG | MP | HJ | CO | BTN | SB
+  code: string; // код руки, напр. "98s"
+};
+
 // Вход GENERATE_TOURNAMENT_SUMMARY — метрики турнира + разобранные раздачи карточки +
 // набор префлоп-утечек (открывашки, лимпы, 3-беты из BB, опен-шовы, 3-беты против
-// опена, изоляции, сквизы — все могут быть пустыми).
+// опена, изоляции, сквизы, 4-беты против 3-бета — все могут быть пустыми).
 export type TournamentSummaryRequest = {
   tournament: TournamentContext;
   hands: TournamentSummaryHand[];
@@ -207,6 +220,7 @@ export type TournamentSummaryRequest = {
   vsOpenThreeBetLeak: VsOpenThreeBetLeakHand[];
   isoLeak: IsoLeakHand[];
   squeezeLeak: SqueezeLeakHand[];
+  fourBetLeak: FourBetLeakHand[];
 };
 
 // overview может содержать токены ссылок на раздачу карточки в виде {{h:INDEX}} —

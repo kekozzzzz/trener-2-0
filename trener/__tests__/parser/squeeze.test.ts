@@ -3,16 +3,17 @@ import type { TableAction, TableSnapshot } from "@/parser/types";
 import { detectHeroSqueeze } from "@/parser/squeeze";
 import { isSqueezeSignificantlyWide } from "@/config/poker/squeeze-chart";
 
-describe("isSqueezeSignificantlyWide — сквиз шире нормы (велью-тяжёлый)", () => {
-  it("велью/блеф в норме, лёгкий сквиз — флаг", () => {
+describe("isSqueezeSignificantlyWide — лояльно: флаг только заведомый мусор", () => {
+  it("сквизуемое где-нибудь (вкл. широкие спот-сквизы) не флагаем", () => {
     expect(isSqueezeSignificantlyWide("CO", "AA")).toBe(false); // велью
     expect(isSqueezeSignificantlyWide("CO", "A5s")).toBe(false); // блеф-блокер
-    expect(isSqueezeSignificantlyWide("CO", "T9s")).toBe(true); // лёгкий сквиз
-    expect(isSqueezeSignificantlyWide("CO", "72o")).toBe(true);
+    expect(isSqueezeSignificantlyWide("CO", "A7o")).toBe(false); // из блайндов норм
+    expect(isSqueezeSignificantlyWide("CO", "T9s")).toBe(false); // сквизуемо
   });
 
-  it("несудимую позицию не флагаем", () => {
-    expect(isSqueezeSignificantlyWide("BB", "72o")).toBe(false);
+  it("низкий офсьют без туза — не сквиз ниоткуда → флаг", () => {
+    expect(isSqueezeSignificantlyWide("CO", "72o")).toBe(true);
+    expect(isSqueezeSignificantlyWide("CO", "J4o")).toBe(true);
   });
 });
 

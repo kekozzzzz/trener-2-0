@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import type { StepHandler } from "../types";
-import type { BBThreeBetLeakHand, IsoLeakHand, LimpExample, LimpLeak, OpenLeakHand, OpenShoveLeakHand, SqueezeLeakHand, TournamentSummaryHand, VsOpenThreeBetLeakHand } from "@/infrastructure/adapters/llm/types";
+import type { BBThreeBetLeakHand, FourBetLeakHand, IsoLeakHand, LimpExample, LimpLeak, OpenLeakHand, OpenShoveLeakHand, SqueezeLeakHand, TournamentSummaryHand, VsOpenThreeBetLeakHand } from "@/infrastructure/adapters/llm/types";
 import type { TableSnapshot } from "@/parser/types";
 import { getLlmAdapter } from "@/infrastructure/adapters/llm";
 import { detectHeroOpen } from "@/parser/open-raise";
@@ -10,12 +10,14 @@ import { detectHeroOpenShove } from "@/parser/open-shove";
 import { detectHeroVsOpen } from "@/parser/vs-open";
 import { detectHeroIso } from "@/parser/iso";
 import { detectHeroSqueeze } from "@/parser/squeeze";
+import { detectHeroDefVs3bet } from "@/parser/def-vs-3bet";
 import { isOpenSignificantlyWide } from "@/config/poker/rfi-chart";
 import { isBBThreeBetSignificantlyWide } from "@/config/poker/bb-defense-chart";
 import { isOpenShoveSignificantlyWide } from "@/config/poker/push-fold-chart";
 import { isVsOpenThreeBetSignificantlyWide } from "@/config/poker/vs-open-chart";
 import { isIsoSignificantlyWide } from "@/config/poker/iso-chart";
 import { isSqueezeSignificantlyWide } from "@/config/poker/squeeze-chart";
+import { isFourBetSignificantlyWide } from "@/config/poker/def-vs-3bet-chart";
 import { handLabel } from "@/config/poker/hand-codes";
 
 type GenerateTournamentSummaryPayload = {
@@ -42,6 +44,9 @@ const MAX_ISO_LEAK = 5;
 
 // Сколько разных сквизов-нарушителей максимум назвать в обзоре.
 const MAX_SQUEEZE_LEAK = 5;
+
+// Сколько разных 4-бетов-нарушителей максимум назвать в обзоре.
+const MAX_FOURBET_LEAK = 5;
 
 // Открывашки заметно шире нормы по ВСЕМ раздачам турнира: детектор находит
 // «открылся первым» + код руки (parser/open-raise), чарт отсеивает норму и
@@ -182,6 +187,26 @@ function collectSqueezeLeak(hands: { tableData: unknown }[]): SqueezeLeakHand[] 
     .map((e) => e.leak);
 }
 
+// 4-беты против 3-бета заметно шире нормы по ВСЕМ раздачам турнира: детектор находит
+// «Hero открыл → в него 3-бет → Hero 4-бетит» (parser/def-vs-3bet), чарт отсеивает
+// норму (config/poker/def-vs-3bet-chart). Правило 1 — позицию и код считает код. Топ-N.
+function collectFourBetLeak(hands: { tableData: unknown }[]): FourBetLeakHand[] {
+  const counts = new Map<string, { leak: FourBetLeakHand; count: number }>();
+  for (const hand of hands) {
+    const def = detectHeroDefVs3bet(hand.tableData as unknown as TableSnapshot);
+    if (!def || def.action !== "4BET") continue;
+    if (!isFourBetSignificantlyWide(def.heroPosition, def.code)) continue;
+    const key = `${def.heroPosition}:${def.code}`;
+    const entry = counts.get(key);
+    if (entry) entry.count += 1;
+    else counts.set(key, { leak: { position: def.heroPosition, code: def.code }, count: 1 });
+  }
+  return [...counts.values()]
+    .sort((a, b) => b.count - a.count)
+    .slice(0, MAX_FOURBET_LEAK)
+    .map((e) => e.leak);
+}
+
 // Заменяет токены ссылок {{h:N}} в overview на {{h:handId|карты}} по списку раздач
 // карточки (N — индекс в этом списке). Индекс вне диапазона → токен убираем
 // (ссылка на несуществующую раздачу невозможна). Карты руки берём из снимка
@@ -263,6 +288,7 @@ export const generateTournamentSummaryStep: StepHandler = async (task, db) => {
   const vsOpenThreeBetLeak = collectVsOpenThreeBetLeak(allHands);
   const isoLeak = collectIsoLeak(allHands);
   const squeezeLeak = collectSqueezeLeak(allHands);
+  const fourBetLeak = collectFourBetLeak(allHands);
 
   const result = await getLlmAdapter().generateTournamentSummary({
     tournament: {
@@ -279,6 +305,7 @@ export const generateTournamentSummaryStep: StepHandler = async (task, db) => {
     vsOpenThreeBetLeak,
     isoLeak,
     squeezeLeak,
+    fourBetLeak,
   }, { playerId: tournament.playerId });
 
   const overview = resolveHandTokens(result.overview, cardHands);

@@ -1,57 +1,32 @@
-// Чарт сквиза по НАШЕЙ позиции: 3-бет поверх опена + как минимум одного коллера.
-// Правило 3: диапазоны в конфиге. Правило 1: попадание руки в ренж считает код.
-// Сквиз ТАЙТОВЕЕ обычного 3-бета и велью-тяжёлый: в банке уже есть коллер (у него
-// свой диапазон), поэтому меньше блефов, упор на велью. Данные — beginner-баланс,
-// упор на велью + минимум блеф-блокеров (стандартная теория сквиза + чарты Артёма).
+// Чарт сквиза: 3-бет поверх опена + как минимум одного коллера. Правило 3: диапазоны
+// в конфиге. Правило 1: попадание руки в ренж считает код.
 //
-// Применение — подсказка «сквиз шире нормы» (лёгкий сквиз мусором на микро = спью).
-// Граница мягкая (велью + минимальный блеф весом), флагаем только явно лишнее.
+// ВАЖНО: ширина сквиза СИЛЬНО спот-зависима — из блайндов против позднего опена сквиз
+// очень широк (у Артёма BB vs CO+SB = ~33% сквиза, включая офсьют-тузы блокерами), а
+// из ранней/OOP — узкий велью-тяжёлый. Единым чартом это честно не покрыть. Поэтому
+// грейдер ЛОЯЛЬНЫЙ: флагаем ТОЛЬКО заведомый мусор, который не сквиз ни из какой
+// позиции (низкий офсьют без туза). Тонкие/широкие сквизы не трогаем — велью-акцент
+// объясняет LLM в промпте, но «шире нормы» жёстко не судим.
 
 import { buildRange, withTolerance, isWiderThan } from "./hand-range";
 import { openChartPosition, type OpenPosition } from "./rfi-chart";
 
-// Велью-сквиз (полный) — узкий, сильный.
-const SQUEEZE_VALUE: Record<OpenPosition, string[]> = {
-  UTG: ["QQ+", "AKs", "AKo", "AQs"],
-  MP: ["QQ+", "AKs", "AKo", "AQs"],
-  HJ: ["QQ+", "AKs", "AKo", "AQs"],
-  CO: ["JJ+", "AKs", "AKo", "AQs", "AQo"],
-  BTN: ["JJ+", "AKs", "AKo", "AQs", "AQo"],
-  SB: ["QQ+", "AKs", "AKo", "AQs"],
-};
-
-// Блеф-сквиз (весовой) — только блокеры, немного.
-const SQUEEZE_BLUFF: Record<OpenPosition, string[]> = {
-  UTG: ["A5s", "A4s"],
-  MP: ["A5s", "A4s"],
-  HJ: ["A5s", "A4s", "KJs"],
-  CO: ["A5s", "A4s", "KJs"],
-  BTN: ["A5s", "A4s", "A3s", "KJs"],
-  SB: ["A5s", "A4s"],
-};
-
-const POSITIONS: OpenPosition[] = ["UTG", "MP", "HJ", "CO", "BTN", "SB"];
-const POSITION_SET = new Set<string>(POSITIONS);
-
-const SQUEEZE_RANGE = Object.fromEntries(
-  POSITIONS.map((p) => [p, buildRange([...SQUEEZE_VALUE[p], ...SQUEEZE_BLUFF[p]])]),
-) as Record<OpenPosition, Set<string>>;
-
-const SQUEEZE_TOLERANCE = Object.fromEntries(
-  POSITIONS.map((p) => [p, withTolerance(SQUEEZE_RANGE[p], 1)]),
-) as Record<OpenPosition, Set<string>>;
-
-export function isSqueezePosition(pos: string): pos is OpenPosition {
-  return POSITION_SET.has(pos);
-}
+// Лояльная граница «вообще-то сквизуемо где-нибудь» — широкая (как самый широкий
+// спот, блайнды vs поздний опен): все пары, весь suited-верх, офсьют-тузы, бродвейный
+// офсьют. Вне неё — низкий офсьют без туза (72o, J4o, K5o и т.п.) = не сквиз ниоткуда.
+const SQUEEZABLE = buildRange([
+  "22+", "A2s+", "K2s+", "Q4s+", "J6s+", "T6s+", "96s+", "85s+", "75s+", "64s+", "54s",
+  "A2o+", "K9o+", "Q9o+", "J9o+", "T9o",
+]);
+const SQUEEZABLE_TOLERANCE = withTolerance(SQUEEZABLE, 1);
 
 export function squeezePosition(coarsePos: string, positionName?: string): OpenPosition | null {
   return openChartPosition(coarsePos, positionName);
 }
 
-// Сквиз «заметно шире нормы»: рука вне (велью ∪ блеф ∪ допуск) для нашей позиции —
-// слишком лёгкий сквиз. false = сквиз в пределах нормы либо позицию не судим.
-export function isSqueezeSignificantlyWide(heroPos: string, code: string): boolean {
-  if (!isSqueezePosition(heroPos)) return false;
-  return isWiderThan(SQUEEZE_RANGE[heroPos], SQUEEZE_TOLERANCE[heroPos], code);
+// Сквиз «заведомо мусорный»: рука вне широкой границы «сквизуемо где-нибудь» — не
+// сквиз ни из какой позиции. Позицию НЕ учитываем (граница лояльная общая). false =
+// сквиз хотя бы где-то оправдан, жёстко не судим.
+export function isSqueezeSignificantlyWide(_heroPos: string, code: string): boolean {
+  return isWiderThan(SQUEEZABLE, SQUEEZABLE_TOLERANCE, code);
 }
