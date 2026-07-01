@@ -1,4 +1,5 @@
 import { createHmac } from "crypto";
+import type { ParsedTournament } from "@/parser/types";
 
 // Обезличенный СТАБИЛЬНЫЙ токен оппонента в рамках ОДНОГО турнира: одинаковый для
 // одного человека во всех его раздачах этого турнира — для внутренней склейки раздач
@@ -16,4 +17,23 @@ export function opponentToken(rawName: string, tournamentId: string): string {
     .update(`opp:${tournamentId}:${rawName}`)
     .digest("base64url")
     .slice(0, 16);
+}
+
+// Проставляет opponentToken в места всех раздач турнира по транзитным именам мест
+// (seatNames) и УДАЛЯЕТ сырые имена. Вызывать в точке разбора (features/tournaments)
+// ДО постановки задачи в очередь — чтобы сырой ник не осел в payload/tasks (приватность:
+// в БД и наружу идёт только токен, ник живёт лишь в памяти на этот вызов). Мутирует data.
+export function applyOpponentTokens(data: ParsedTournament): void {
+  for (const h of data.hands) {
+    const names = h.seatNames;
+    if (names) {
+      for (const seat of h.tableSnapshot.seats) {
+        const name = seat.seatNumber != null ? names[seat.seatNumber] : undefined;
+        if (seat.label !== "Hero" && name) {
+          seat.opponentToken = opponentToken(name, data.externalTournamentId);
+        }
+      }
+    }
+    delete h.seatNames; // сырые ники дальше не едут
+  }
 }
