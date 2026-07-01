@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { LoadingDots } from "@/components/ui/loading-dots";
 import { formatRange, combosOf, percentOf } from "@/config/poker/hand-grid";
+import { markScrollToLatest } from "./scroll-to-latest";
 
 const initialState: AnswerFormState = {};
 
@@ -30,7 +31,7 @@ export function RangeAnswerForm({ tournamentId, handId }: { tournamentId: string
   const [note, setNote] = useState("");
 
   return (
-    <form action={formAction} className="mt-4 space-y-4">
+    <form action={formAction} onSubmit={() => markScrollToLatest(handId)} className="mt-4 space-y-4">
       <RangeGrid onChange={setCodes} />
       <Textarea
         rows={2}

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { LoadingDots } from "@/components/ui/loading-dots";
 import { MicButton } from "@/components/ui/mic-button";
 import { appendTranscript } from "@/lib/append-transcript";
+import { markScrollToLatest } from "./scroll-to-latest";
 
 const initialState: AnswerFormState = {};
 
@@ -16,7 +17,7 @@ export function AnswerForm({ tournamentId, handId }: { tournamentId: string; han
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   return (
-    <form action={formAction} className="mt-4 space-y-2">
+    <form action={formAction} onSubmit={() => markScrollToLatest(handId)} className="mt-4 space-y-2">
       <Textarea ref={textareaRef} name="answer" rows={4} placeholder="Твой ответ..." />
       {state.error && <p className="text-small text-destructive">{state.error}</p>}
       <div className="flex flex-wrap items-center gap-3">

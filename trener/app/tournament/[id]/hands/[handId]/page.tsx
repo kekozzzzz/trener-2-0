@@ -19,6 +19,7 @@ import { ChatThread } from "./chat-thread";
 import { ChatForm } from "./chat-form";
 import { ChatWaitClient } from "./chat-wait-client";
 import { MarkViewed } from "./mark-viewed";
+import { ScrollToLatest } from "./scroll-to-latest";
 import { cn } from "@/lib/utils";
 
 export default async function HandDialoguePage({
@@ -212,6 +213,8 @@ export default async function HandDialoguePage({
             {dialogue.state === "QUESTION_ASKED" && openRound && (() => {
               const { isRange, tableActionIndex, text } = splitMarkers(openRound.question);
               return (
+                <>
+                <ScrollToLatest handId={handId} />
                 <div className="space-y-2">
                   <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
                     Вопрос {openRound.roundNumber}
@@ -226,6 +229,7 @@ export default async function HandDialoguePage({
                     <AnswerForm tournamentId={id} handId={handId} />
                   )}
                 </div>
+                </>
               );
             })()}
 
@@ -233,6 +237,7 @@ export default async function HandDialoguePage({
 
             {dialogue.state === "VERDICT_SHOWN" && (
               <div className="space-y-4">
+                <ScrollToLatest handId={handId} />
                 <h2 className="text-h2">Вердикт</h2>
                 <div className="border border-primary bg-card p-6">
                   <p className="text-body text-foreground">{personalizeHero(dialogue.verdict, nick)}</p>

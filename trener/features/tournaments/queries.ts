@@ -19,10 +19,12 @@ export type TournamentListItem = {
 // Турниры игрока: только свои (по playerId из сессии — защита от IDOR),
 // без удалённых (deletedAt IS NULL, запрет 5), по дате игры свежие сверху
 // (architecture/03-база-данных.md, индекс idx_tournaments_player_timeline).
+// Вторичный ключ — дата загрузки (createdAt desc): при одинаковой дате игры
+// порядок стабилен, а позже добавленный турнир оказывается выше.
 async function queryTournaments(playerId: string, limit?: number): Promise<TournamentListItem[]> {
   const rows = await prisma.tournament.findMany({
     where: { playerId, deletedAt: null },
-    orderBy: { playedAt: "desc" },
+    orderBy: [{ playedAt: "desc" }, { createdAt: "desc" }],
     ...(limit != null ? { take: limit } : {}),
     select: {
       id: true,
