@@ -39,6 +39,24 @@ function parseHands(text: string): string[] {
   return text.split(HAND_SPLIT).filter((h) => h.trim().length > 0);
 }
 
+// Момент ОДНОЙ раздачи (первый таймстемп в её заголовке) — для порядка «до текущей»
+// при профиле оппонента. UTC, как и earliestPlayedAt.
+function handPlayedAt(handText: string): string | null {
+  const m = /(\d{4})\/(\d{2})\/(\d{2}) (\d{2}):(\d{2}):(\d{2})/.exec(handText);
+  if (!m) return null;
+  const [, y, mo, d, h, mi, s] = m;
+  return new Date(Date.UTC(+y, +mo - 1, +d, +h, +mi, +s)).toISOString();
+}
+
+// Карта место → сырой ник из строк «Seat N: <ник> (... in chips)». Транзитно для шага
+// разбора (он посчитает opponentToken и сырой ник НЕ сохранит). Hero остаётся "Hero".
+const SEAT_NAME_LINE = /^Seat (\d+): (\S+) \([\d,]+ in chips\)/gm;
+function seatNamesOf(handText: string): Record<number, string> {
+  const out: Record<number, string> = {};
+  for (const m of handText.matchAll(SEAT_NAME_LINE)) out[+m[1]] = m[2];
+  return out;
+}
+
 function heroStack(hand: string): number | null {
   const m = HERO_SEAT.exec(hand);
   return m ? parseInt(m[1], 10) : null;
@@ -108,6 +126,8 @@ export function parseGGPokerMtt(buffer: Buffer): ParseResult {
   const hands = snapshots.map((snapshot, index) => ({
     ...snapshot,
     importanceLevel: importanceLevels[index],
+    playedAt: handPlayedAt(dealtHands[index]),
+    seatNames: seatNamesOf(dealtHands[index]),
   }));
 
   const postflopAggressionFactor = Math.round(computePostflopAggressionFactor(snapshots) * 100) / 100;
