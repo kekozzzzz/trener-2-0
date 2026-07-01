@@ -153,13 +153,60 @@ export type LimpLeak = {
   examples: LimpExample[]; // до нескольких показательных рук
 };
 
-// Вход GENERATE_TOURNAMENT_SUMMARY — метрики турнира + разобранные раздачи карточки
-// + список открывашек заметно шире нормы + сводка лимпов (оба могут быть пустыми).
+// Один 3-бет из BB заметно шире нормы — посчитал парсер (parser/bb-defense.ts) и
+// сверил с чартом защиты BB (config/poker/bb-defense-chart.ts). Правило 1/2: позиция
+// открывашки и код руки готовы, LLM только формулирует.
+export type BBThreeBetLeakHand = {
+  openerPosition: string; // против кого 3-бетил из BB: UTG | MP | HJ | CO | BTN
+  code: string; // код руки, напр. "72o"
+};
+
+// Один опен-шов заметно шире нормы — посчитал парсер (parser/open-shove.ts) и сверил
+// с пуш-фолд-чартом (config/poker/push-fold-chart.ts). Правило 1: позиция, стек-бэнд
+// и код руки готовы, LLM только формулирует.
+export type OpenShoveLeakHand = {
+  position: string; // UTG | MP2 | CO | BTN | SB
+  band: "SHORT" | "MID"; // SHORT = 0–9bb, MID = 10–14bb
+  code: string; // код руки, напр. "72o"
+};
+
+// Один 3-бет против опена (не из BB) заметно шире нормы — посчитал парсер
+// (parser/vs-open.ts) и сверил с чартом (config/poker/vs-open-chart.ts). Правило 1/2:
+// наша позиция и код руки готовы, LLM только формулирует.
+export type VsOpenThreeBetLeakHand = {
+  position: string; // наша позиция: UTG | MP | HJ | CO | BTN | SB
+  code: string; // код руки, напр. "72o"
+};
+
+// Одна изоляция лимпера заметно шире нормы — посчитал парсер (parser/iso.ts) и сверил
+// с iso-чартом (config/poker/iso-chart.ts = RFI минус низ). Правило 1/2: наша позиция
+// и код руки готовы, LLM только формулирует.
+export type IsoLeakHand = {
+  position: string; // наша позиция: UTG | MP | HJ | CO | BTN | SB
+  code: string; // код руки, напр. "55" (мелкая пара — лучше оверлимп) или мусор
+};
+
+// Один сквиз заметно шире нормы — посчитал парсер (parser/squeeze.ts) и сверил со
+// сквиз-чартом (config/poker/squeeze-chart.ts). Правило 1/2: наша позиция и код руки
+// готовы, LLM только формулирует.
+export type SqueezeLeakHand = {
+  position: string; // наша позиция: UTG | MP | HJ | CO | BTN | SB
+  code: string; // код руки, напр. "T9s"
+};
+
+// Вход GENERATE_TOURNAMENT_SUMMARY — метрики турнира + разобранные раздачи карточки +
+// набор префлоп-утечек (открывашки, лимпы, 3-беты из BB, опен-шовы, 3-беты против
+// опена, изоляции, сквизы — все могут быть пустыми).
 export type TournamentSummaryRequest = {
   tournament: TournamentContext;
   hands: TournamentSummaryHand[];
   openLeak: OpenLeakHand[];
   limpLeak: LimpLeak;
+  bbThreeBetLeak: BBThreeBetLeakHand[];
+  openShoveLeak: OpenShoveLeakHand[];
+  vsOpenThreeBetLeak: VsOpenThreeBetLeakHand[];
+  isoLeak: IsoLeakHand[];
+  squeezeLeak: SqueezeLeakHand[];
 };
 
 // overview может содержать токены ссылок на раздачу карточки в виде {{h:INDEX}} —

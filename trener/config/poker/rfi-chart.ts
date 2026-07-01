@@ -149,3 +149,8 @@ export function isOpenSignificantlyWide(position: string, code: string): boolean
   if (TOLERANCE_RANGE[position].has(code)) return false;
   return true;
 }
+
+// Открытый RFI-ренж позиции — для переиспользования (напр. изоляция = RFI минус низ).
+export function rfiOpenRange(pos: OpenPosition): ReadonlySet<string> {
+  return OPEN_RANGE[pos];
+}
