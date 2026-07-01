@@ -19,6 +19,8 @@ const POSITIONS: { key: OpenPosition; label: string }[] = [
 // Презентационная панель чарта открываний (без загрузки) — переключатель позиций,
 // сетка, легенда, оговорка надёжности. Используется и боевой кнопкой «Твои чарты»
 // (после ленивой загрузки), и страницей /design-preview (на демо-данных).
+// У SB — доп. переключатель Рейз/Лимп (SB-лимп = комплит блайнда при фолде до тебя,
+// законная часть стратегии; открытый лимп с других позиций пока не трогаем).
 export function OpenChartPanel({
   chart,
   tournamentsCounted,
@@ -27,14 +29,19 @@ export function OpenChartPanel({
   tournamentsCounted: number;
 }) {
   const [pos, setPos] = useState<OpenPosition>("BTN");
+  const [sbView, setSbView] = useState<"raise" | "limp">("raise");
   const reliable = tournamentsCounted >= CHARACTERISTIC_RELIABLE_FROM;
+
+  const isSbLimp = pos === "SB" && sbView === "limp";
+  const cells = isSbLimp ? chart.sbLimp : chart.raise[pos];
 
   return (
     <>
-      <h3 className="text-h3">Как ты открываешься</h3>
+      <h3 className="text-h3">{isSbLimp ? "Как ты лимпуешь со SB" : "Как ты открываешься"}</h3>
       <p className="mt-2 max-w-2xl text-small text-muted-foreground">
-        Примерная картина по всей твоей дистанции — какие руки и откуда ты открываешь
-        первым. Это зеркало, а не эталон: лаймом горят руки, которые ты открываешь широко.
+        {isSbLimp
+          ? "Руки, которыми ты завершаешь блайнд коллом со SB при фолде до тебя. Серым — что лимпаешь, со счётчиком. Лимп слабых рук здесь — норма, не утечка."
+          : "Примерная картина по всей твоей дистанции — какие руки и откуда ты открываешь первым. Это зеркало, а не эталон: лаймом горят руки, которые ты открываешь широко."}
       </p>
 
       {/* Переключатель позиций */}
@@ -57,24 +64,64 @@ export function OpenChartPanel({
         ))}
       </div>
 
+      {/* У SB — доп. переключатель рейз/лимп */}
+      {pos === "SB" && (
+        <div className="mt-3 flex gap-2">
+          {([
+            { key: "raise", label: "Рейз" },
+            { key: "limp", label: "Лимп" },
+          ] as const).map((v) => (
+            <button
+              key={v.key}
+              type="button"
+              onClick={() => setSbView(v.key)}
+              aria-pressed={sbView === v.key}
+              className={cn(
+                "border px-3 py-1.5 font-mono text-label uppercase tracking-label transition-colors duration-150 ease-out",
+                sbView === v.key
+                  ? "border-primary text-primary"
+                  : "border-border text-muted-foreground hover:border-primary"
+              )}
+            >
+              {v.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="mt-6">
-        <OpenChartGrid cells={chart[pos]} />
+        <OpenChartGrid cells={cells} variant={isSbLimp ? "limp" : "raise"} />
       </div>
 
       {/* Легенда */}
       <div className="mt-6 flex flex-col gap-2 text-small text-muted-foreground">
-        <span className="flex items-center gap-2">
-          <span className="inline-block size-3 border border-primary bg-primary" />
-          Широкий опен — стоит присмотреться
-        </span>
-        <span className="flex items-center gap-2">
-          <span className="inline-block size-3 border border-primary bg-card" />
-          Широкий опен, но пока редко — возможно, мисклик
-        </span>
-        <span className="flex items-center gap-2">
-          <span className="inline-block size-3 border border-border bg-card" />
-          Обычный опен
-        </span>
+        {isSbLimp ? (
+          <>
+            <span className="flex items-center gap-2">
+              <span className="inline-block size-3 border border-border bg-card" />
+              Лимпуешь эту руку со SB (со счётчиком)
+            </span>
+            <span className="flex items-center gap-2">
+              <span className="inline-block size-3 border border-border bg-card opacity-30" />
+              Не лимпуешь
+            </span>
+          </>
+        ) : (
+          <>
+            <span className="flex items-center gap-2">
+              <span className="inline-block size-3 border border-primary bg-primary" />
+              Широкий опен — стоит присмотреться
+            </span>
+            <span className="flex items-center gap-2">
+              <span className="inline-block size-3 border border-primary bg-card" />
+              Широкий опен, но пока редко — возможно, мисклик
+            </span>
+            <span className="flex items-center gap-2">
+              <span className="inline-block size-3 border border-border bg-card" />
+              Обычный опен
+            </span>
+          </>
+        )}
       </div>
 
       <p className="mt-6 text-small text-muted-foreground">

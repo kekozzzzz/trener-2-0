@@ -131,13 +131,30 @@ function buildDemoPosition(pos: OpenPosition): OpenChartCell[] {
   return cells;
 }
 
+// Демо SB-лимпов: типичные руки, которыми лимпают со SB (слабые тузы, мелкие пары,
+// коннекторы). Лайма нет — лимп не судим, показываем серым со счётчиком.
+const demoSbLimp: OpenChartCell[] = [
+  { code: "A5s", count: 6, wide: false },
+  { code: "A2s", count: 4, wide: false },
+  { code: "K7s", count: 3, wide: false },
+  { code: "T8s", count: 3, wide: false },
+  { code: "65s", count: 4, wide: false },
+  { code: "54s", count: 2, wide: false },
+  { code: "44", count: 3, wide: false },
+  { code: "J9o", count: 2, wide: false },
+  { code: "Q8o", count: 2, wide: false },
+];
+
 const demoOpenChart: OpenChartFacts = {
-  UTG: buildDemoPosition("UTG"),
-  MP: buildDemoPosition("MP"),
-  HJ: buildDemoPosition("HJ"),
-  CO: buildDemoPosition("CO"),
-  BTN: buildDemoPosition("BTN"),
-  SB: buildDemoPosition("SB"),
+  raise: {
+    UTG: buildDemoPosition("UTG"),
+    MP: buildDemoPosition("MP"),
+    HJ: buildDemoPosition("HJ"),
+    CO: buildDemoPosition("CO"),
+    BTN: buildDemoPosition("BTN"),
+    SB: buildDemoPosition("SB"),
+  },
+  sbLimp: demoSbLimp,
 };
 
 const palette = [
