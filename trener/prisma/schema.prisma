@@ -252,6 +252,7 @@ model Hand {
   spot            Json?                                // отпечаток спота (parser/spot-fingerprint): позиция/роль/глубина/борд/попадание — основа памяти тренера, считает ПАРСЕР (Правило 1)
   spotKey         String?       @map("spot_key")       // канонический ключ отпечатка — для быстрого поиска похожих спотов игрока
   viewedAt        DateTime?     @map("viewed_at")      // момент, когда игрок открыл разбор этой раздачи: простые STRONG/MEDIUM помечаем «Просмотрено» (критические «готовы» по вердикту диалога)
+  playedAt        DateTime?     @map("played_at")      // момент ЭТОЙ раздачи из HH — для порядка «до текущей» при профиле оппонента (parser/opponent-profile)
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
@@ -260,6 +261,7 @@ model Hand {
   chatMessages ChatMessage[]
 
   @@index([tournamentId, selectedForCard], map: "idx_hands_tournament_card")
+  @@index([tournamentId, playedAt], map: "idx_hands_tournament_played")
   @@index([spotKey], map: "idx_hands_spot_key")
   @@map("hands")
 }

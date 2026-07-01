@@ -2,7 +2,6 @@ import { createHash, randomUUID } from "crypto";
 import { prisma } from "@/infrastructure/db/client";
 import { enqueue, kickWorker } from "@/infrastructure/queue";
 import { parseHandHistory, diagnoseParse, type ParseAnomaly } from "@/parser";
-import { applyOpponentTokens } from "@/infrastructure/parse/opponent-token";
 import { safeNotifyAdmin } from "@/infrastructure/adapters/notify";
 import { safeStore } from "@/infrastructure/adapters/storage";
 import { isStorageConfigured } from "@/config/storage";
@@ -97,10 +96,6 @@ export async function uploadTournament(input: UploadInput): Promise<UploadResult
     if (anomaly) await archiveUnrecognized(fileBuffer, originalFilename, playerId, anomaly);
     return { ok: false, error: parsed.error.type };
   }
-
-  // Обезличиваем оппонентов: сырые имена мест → per-турнир токены, сырые ники удаляем
-  // ДО постановки задачи в очередь (сырой ник не должен осесть в payload/tasks).
-  applyOpponentTokens(parsed.data);
 
   const { room, externalTournamentId, name, playedAt } = parsed.data;
 

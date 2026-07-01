@@ -70,6 +70,7 @@ export const parseTournamentStep: StepHandler = async (task, db) => {
         selectedForCard: selected.has(hand),
         spot: fingerprint as unknown as Prisma.InputJsonValue,
         spotKey: spotKey(fingerprint),
+        playedAt: hand.playedAt ? new Date(hand.playedAt) : null, // момент раздачи — порядок для профиля оппонента
       };
     });
 

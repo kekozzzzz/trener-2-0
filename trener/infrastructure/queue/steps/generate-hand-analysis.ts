@@ -3,6 +3,7 @@ import type { PrismaClient } from "@prisma/client";
 import type { StepHandler } from "../types";
 import type { TableSnapshot } from "@/parser/types";
 import type { HandAnalysisRequest } from "@/infrastructure/adapters/llm/types";
+import { profileHandOpponents } from "@/parser/opponent-profile";
 import { getLlmAdapter } from "@/infrastructure/adapters/llm";
 import { applyRangeMarker, applyTableMarker } from "@/config/dialogue";
 import { enqueue } from "../enqueue";
@@ -37,6 +38,17 @@ export const generateHandAnalysisStep: StepHandler = async (task, db) => {
       );
     }
 
+    // Профиль злодеев ЭТОЙ раздачи — по рукам турнира ДО неё (что игрок мог знать к
+    // решению). Только если у раздачи есть момент времени (playedAt) для порядка.
+    let opponents: HandAnalysisRequest["opponents"];
+    if (hand.playedAt) {
+      const priorHands = await db.hand.findMany({
+        where: { tournamentId: hand.tournamentId, playedAt: { lt: hand.playedAt } },
+        select: { tableData: true },
+      });
+      opponents = profileHandOpponents(priorHands, hand.tableData as unknown as TableSnapshot);
+    }
+
     const request: HandAnalysisRequest = {
       importanceLevel: hand.importanceLevel,
       chipResult: hand.chipResult,
@@ -47,6 +59,7 @@ export const generateHandAnalysisStep: StepHandler = async (task, db) => {
         resultBuyins: tournament.resultBuyins.toNumber(),
         styleDiagnosis: tournament.styleDiagnosis,
       },
+      opponents,
     };
 
     const result = await getLlmAdapter().generateHandAnalysis(request, { playerId: tournament.playerId });

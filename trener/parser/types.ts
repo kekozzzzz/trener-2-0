@@ -18,9 +18,9 @@ export type Seat = {
   positionName?: string; // точное имя места для показа: UTG/UTG+1/LJ/HJ/CO/BTN/SB/BB
   startingStack: number;
   seatNumber?: number; // физический номер места за столом (Seat N из HH)
-  opponentToken?: string; // ОБЕЗЛИЧЕННЫЙ стабильный токен оппонента в рамках турнира —
-  // для склейки его раздач при подсчёте профиля (не ник! хеш, в Claude не уходит).
-  // Проставляет ШАГ разбора (infrastructure/parse/opponent-token), не парсер.
+  opponentToken?: string; // ОБЕЗЛИЧЕННЫЙ стабильный псевдоним оппонента в рамках турнира
+  // ("oppN") — для склейки его раздач при подсчёте профиля. НЕ ник (сырой ник в вывод
+  // парсера не попадает), в Claude не уходит. Присваивает ПАРСЕР по сырым именам мест.
 };
 
 export type TableSnapshot = {
@@ -45,9 +45,6 @@ export type ParsedHandSnapshot = {
 export type ParsedHand = ParsedHandSnapshot & {
   importanceLevel: HandImportance;
   playedAt?: string | null; // момент ЭТОЙ раздачи (ISO) — для порядка «до текущей» при профиле оппонента
-  // Транзитная карта seatNumber → сырой ник места (Hero остаётся "Hero"). Нужна ШАГУ
-  // разбора, чтобы посчитать opponentToken; в БД НЕ пишется (сырой ник не оседает).
-  seatNames?: Record<number, string>;
 };
 
 export type ParsedTournament = {
