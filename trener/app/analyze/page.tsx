@@ -14,7 +14,10 @@ import { ShineBorder } from "@/components/ui/shine-border";
 import { Label } from "@/components/ui/label";
 import { FileInput } from "@/components/upload/file-input";
 import { SubmitButton } from "@/components/upload/submit-button";
-import { UploadGuide } from "@/components/upload/upload-guide";
+import { HandHistoryGuide } from "@/components/upload/hand-history-guide";
+// Старая подсказка со скриншотами GGPoker (components/upload/upload-guide.tsx +
+// картинки в /public/help) СОХРАНЕНА для будущего — сейчас показываем текстовую
+// «Как выгрузить руки» по всем румам (раскрывашки). Вернуть скрины = снова её задействовать.
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
@@ -73,7 +76,8 @@ async function handleUpload(formData: FormData) {
 }
 
 const UPLOAD_ERROR_TEXT: Record<string, string> = {
-  UNSUPPORTED_FORMAT: "Загрузи MTT-турнир GGPoker",
+  UNSUPPORTED_FORMAT:
+    "Формат не распознан. Поддерживаем GGPoker, PokerStars, Winamax, 888poker, ACR / PokerKing, Red Star Poker и BetOnline.",
   TOO_LARGE: "Файл больше 5 МБ — загрузи файл поменьше.",
   RATE_LIMITED: "Слишком много загрузок за час. Подожди немного и попробуй снова.",
   PAYWALL: "Первый турнир ты уже разобрал бесплатно. Оформи подписку, чтобы разбирать дальше.",
@@ -117,7 +121,8 @@ export default async function AnalyzePage({
           <div className="space-y-2">
             <h1 className="text-h1">Загрузить турниры</h1>
             <p className="text-small text-muted-foreground">
-              HH-файлы GGPoker MTT в формате .txt, до 5 МБ каждый. Можно выбрать сразу несколько.
+              Файлы раздач в .txt или .xml, до 5 МБ каждый. Можно выбрать сразу
+              несколько — рум определится сам.
             </p>
           </div>
 
@@ -126,14 +131,14 @@ export default async function AnalyzePage({
           <form action={handleUpload} encType="multipart/form-data" className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="file" className="font-mono text-label uppercase tracking-label text-muted-foreground">
-                HH-файлы (.txt)
+                Файлы раздач (.txt, .xml)
               </Label>
-              <FileInput id="file" name="file" accept=".txt" required multiple />
+              <FileInput id="file" name="file" accept=".txt,.xml" required multiple />
             </div>
             <SubmitButton />
           </form>
 
-          <UploadGuide />
+          <HandHistoryGuide />
         </div>
       </section>
 
