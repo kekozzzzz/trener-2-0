@@ -90,7 +90,13 @@ export default async function TournamentPage({
   const t = await getTranslations("Tournament");
   // Уровень важности раздачи → подпись. Неизвестный уровень выводим кодом как есть.
   const importanceLabel = (level: string) =>
-    level === "STRONG" ? t("importanceStrong") : level === "MEDIUM" ? t("importanceMedium") : level;
+    level === "CRITICAL"
+      ? t("importanceCritical")
+      : level === "STRONG"
+        ? t("importanceStrong")
+        : level === "MEDIUM"
+          ? t("importanceMedium")
+          : level;
   // Состояние диалога → подпись бейджа. QUESTION_ASKED/ANSWER_RECEIVED — «в работе».
   const dialogueLabel = (state: string) =>
     state === "VERDICT_SHOWN" ? t("dialogueDone") : t("dialogueInProgress");

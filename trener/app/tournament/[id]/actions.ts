@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/infrastructure/db/client";
-import { enqueue } from "@/infrastructure/queue";
+import { enqueue, CRITICAL_ANALYSIS_PRIORITY } from "@/infrastructure/queue";
 import { requireSession } from "@/features/auth/session";
 import { assessAiAccess } from "@/features/usage/budget";
 import { checkUploadQuota } from "@/features/usage/limit";
@@ -50,10 +50,15 @@ export async function unlockTournamentAnalysisAction(formData: FormData): Promis
 
     const hands = await tx.hand.findMany({
       where: { tournamentId, selectedForCard: true, analysis: { equals: Prisma.DbNull } },
-      select: { id: true },
+      select: { id: true, importanceLevel: true },
     });
     for (const h of hands) {
-      await enqueue(tx, { type: "GENERATE_HAND_ANALYSIS", payload: { handId: h.id } });
+      // Критические раздачи — вперёд рядового разбора, чтобы всплывали первыми.
+      await enqueue(tx, {
+        type: "GENERATE_HAND_ANALYSIS",
+        payload: { handId: h.id },
+        priority: h.importanceLevel === "CRITICAL" ? CRITICAL_ANALYSIS_PRIORITY : 0,
+      });
     }
   });
 

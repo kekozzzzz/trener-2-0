@@ -9,6 +9,12 @@ type DbWithTask = Pick<PrismaClient, "task">;
 // замораживает чужие живые диалоги. Число больше = раньше; по умолчанию 0.
 const HIGH_PRIORITY_TYPES = new Set(["DIALOGUE_QUESTION", "VERDICT", "CHAT_REPLY"]);
 
+// Приоритет разбора КРИТИЧЕСКОЙ раздачи: выше рядового разбора (0), но ниже живого
+// интерактива (100). Так самые дорогие ошибки турнира встают вперёд очереди разбора
+// и всплывают первыми — заметно при заторе (пачка турниров), когда раздач больше,
+// чем воркеров. Ставится вызывающим кодом через input.priority.
+export const CRITICAL_ANALYSIS_PRIORITY = 50;
+
 function priorityFor(type: string): number {
   return HIGH_PRIORITY_TYPES.has(type) ? 100 : 0;
 }

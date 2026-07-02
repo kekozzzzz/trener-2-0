@@ -513,6 +513,7 @@
     "handsTitle": "Раздачи",
     "handsUnlockedNote": "Результаты по ключевым раздачам. Нажми «Разобрать» — и тренер разберёт их.",
     "handsLockedNote": "Результаты по ключевым раздачам. Разбор откроется после подписки.",
+    "importanceCritical": "Критическая",
     "importanceStrong": "Сильная",
     "importanceMedium": "Средняя",
     "chips": "фишек",

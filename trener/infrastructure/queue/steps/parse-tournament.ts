@@ -4,7 +4,7 @@ import type { StepHandler } from "../types";
 import type { ParsedTournament } from "@/parser/types";
 import { selectHandsForCard } from "@/features/card/select-hands";
 import { computeSpotFingerprint, spotKey } from "@/parser/spot-fingerprint";
-import { enqueue } from "../enqueue";
+import { enqueue, CRITICAL_ANALYSIS_PRIORITY } from "../enqueue";
 
 type ParsePayload = {
   tournamentId: string;
@@ -82,7 +82,12 @@ export const parseTournamentStep: StepHandler = async (task, db) => {
 
     for (const row of rows) {
       if (!row.selectedForCard) continue;
-      await enqueue(tx, { type: "GENERATE_HAND_ANALYSIS", payload: { handId: row.id } });
+      // Критические раздачи — вперёд рядового разбора, чтобы всплывали первыми.
+      await enqueue(tx, {
+        type: "GENERATE_HAND_ANALYSIS",
+        payload: { handId: row.id },
+        priority: row.importanceLevel === "CRITICAL" ? CRITICAL_ANALYSIS_PRIORITY : 0,
+      });
     }
   });
 };
