@@ -17,6 +17,8 @@ model Player {
   id              String    @id @default(uuid()) @db.Uuid
   email           String?   @unique                  // NULL после анонимизации при закрытии аккаунта
   nickname        String?                             // покерный ник игрока для ПОКАЗА в разборах (вместо «Hero»); в LLM не передаётся (приватность, правило 5)
+  locale          String    @default("ru")            // язык интерфейса и писем: "ru" | "en"; ставится при регистрации из куки, меняется тумблером. Нужен для писем из крона/вебхука, где куки нет
+
   passwordHash    String?   @map("password_hash")    // NULL после анонимизации; хэш, никогда не открытый пароль
   termsAcceptedAt DateTime? @map("terms_accepted_at") // момент согласия на обработку данных при регистрации (07-безопасность.md)
   passwordChangedAt DateTime? @map("password_changed_at") // момент последней смены пароля — для показа в кабинете

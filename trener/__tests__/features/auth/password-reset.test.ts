@@ -26,6 +26,10 @@ vi.mock("next/headers", () => ({
     set: (name: string, value: string) => void cookieStore.set(name, value),
     delete: (name: string) => void cookieStore.delete(name),
   }),
+  // getUserLocale (проводка языка в письма/Player) читает accept-language → отдаём ru.
+  headers: async () => ({
+    get: (name: string) => (name === "accept-language" ? "ru" : null),
+  }),
 }));
 
 vi.mock("next/navigation", () => ({

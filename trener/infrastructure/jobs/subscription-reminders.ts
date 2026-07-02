@@ -2,6 +2,7 @@ import type { PrismaClient } from "@prisma/client";
 import { getPlan, getRenewalReminderLeadDays } from "@/config/plans";
 import { buildRenewalReminderEmail } from "@/features/subscription/subscription-emails";
 import { safeSendEmail } from "@/infrastructure/adapters/email";
+import { defaultLocale, type Locale } from "@/i18n/config";
 
 // Крон напоминаний: раз в день находит активные подписки, у которых оплаченный период
 // заканчивается в ближайшие N дней (config), и шлёт письмо-напоминание. Вариант письма
@@ -34,7 +35,7 @@ export async function runSubscriptionReminders(db: PrismaClient): Promise<Remind
       planCode: true,
       paymentMethodId: true,
       nextPaymentAt: true,
-      player: { select: { email: true } },
+      player: { select: { email: true, locale: true } },
     },
   });
 
@@ -42,8 +43,10 @@ export async function runSubscriptionReminders(db: PrismaClient): Promise<Remind
   for (const s of due) {
     if (s.player.email && s.nextPaymentAt) {
       const planTitle = getPlan(s.planCode)?.title ?? s.planCode;
+      // Язык письма — из профиля игрока (крон без HTTP-контекста, куки нет).
+      const locale = (s.player.locale as Locale) ?? defaultLocale;
       await safeSendEmail(
-        buildRenewalReminderEmail(s.player.email, planTitle, s.nextPaymentAt, s.paymentMethodId != null),
+        buildRenewalReminderEmail(s.player.email, planTitle, s.nextPaymentAt, s.paymentMethodId != null, locale),
       );
       sent++;
     }

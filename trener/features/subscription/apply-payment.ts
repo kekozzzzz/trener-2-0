@@ -13,6 +13,7 @@ import { prisma } from "@/infrastructure/db/client";
 import { getSubscriptionPeriodDays, isPlanCode, getPlan } from "@/config/plans";
 import { safeSendEmail } from "@/infrastructure/adapters/email";
 import { buildPaymentSuccessEmail } from "./subscription-emails";
+import { defaultLocale, type Locale } from "@/i18n/config";
 import type { ProviderPayment } from "@/infrastructure/adapters/payments";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -49,7 +50,7 @@ export async function applySucceededPayment(payment: ProviderPayment): Promise<A
   // успешной проводки) и ВОЗВРАЩАЕМ из неё, а отправляем ПОСЛЕ коммита: иначе при
   // откате (P2002 — дубль вебхука) ушло бы письмо о неприменённом платеже. null →
   // не шлём (нет email у анонимизированного аккаунта).
-  type Receipt = { to: string; planTitle: string; activeUntil: Date; amountKopecks: number };
+  type Receipt = { to: string; planTitle: string; activeUntil: Date; amountKopecks: number; locale: Locale };
 
   try {
     const receipt = await prisma.$transaction(async (tx): Promise<Receipt | null> => {
@@ -139,20 +140,31 @@ export async function applySucceededPayment(payment: ProviderPayment): Promise<A
 
       // Письмо-квитанцию готовим ТОЛЬКО после успешной проводки (последним шагом),
       // чтобы дубль (P2002 выше) откатил транзакцию вместе с этим возвратом.
-      const player = await tx.player.findUnique({ where: { id: playerId }, select: { email: true } });
+      const player = await tx.player.findUnique({
+        where: { id: playerId },
+        select: { email: true, locale: true },
+      });
       if (!player?.email) return null;
       return {
         to: player.email,
         planTitle: getPlan(planCode)?.title ?? planCode,
         activeUntil: nextPaymentAt,
         amountKopecks: payment.money.amountKopecks,
+        // Язык письма — из профиля игрока (крон/вебхук без HTTP-контекста, куки нет).
+        locale: (player.locale as Locale) ?? defaultLocale,
       };
     });
 
     // Отправка вне транзакции: коммит уже прошёл, сбой письма не откатит оплату.
     if (receipt) {
       await safeSendEmail(
-        buildPaymentSuccessEmail(receipt.to, receipt.planTitle, receipt.activeUntil, receipt.amountKopecks),
+        buildPaymentSuccessEmail(
+          receipt.to,
+          receipt.planTitle,
+          receipt.activeUntil,
+          receipt.amountKopecks,
+          receipt.locale,
+        ),
       );
     }
     return "applied";

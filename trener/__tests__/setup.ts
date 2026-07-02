@@ -12,7 +12,9 @@ vi.mock("next-intl/server", async (importActual) => {
   return {
     ...actual,
     getTranslations: async (namespace?: string) => {
-      const ru = (await import("../messages/ru.json")).default as Record<
+      // messages/ru.json содержит и вложенные группы (напр. UploadGuide.networkLabels),
+      // поэтому приводим через unknown — мок использует только плоские namespace→ключ→строка.
+      const ru = (await import("../messages/ru.json")).default as unknown as Record<
         string,
         Record<string, string>
       >;

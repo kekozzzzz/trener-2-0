@@ -29,6 +29,7 @@ import {
 } from "./account-closure";
 import { buildWelcomeEmail, buildPasswordChangedEmail } from "./auth-emails";
 import { safeSendEmail } from "@/infrastructure/adapters/email";
+import { getUserLocale } from "@/i18n/locale";
 import {
   isAuthRateLimitEnabled,
   getLoginMaxFailuresPerEmail,
@@ -92,19 +93,21 @@ export async function registerAction(
   }
 
   const passwordHash = await hashPassword(password);
+  // Язык интерфейса гостя (кука → браузер) — фиксируем в Player и используем для письма.
+  const locale = await getUserLocale();
   // sessionsValidFrom ставим явно из JS-времени (а не DB-default now()): TIMESTAMP(3)
   // в БД округляет до мс ВВЕРХ, а iat куки — JS-мс ВНИЗ, и в пределах одной мс метка
   // могла бы оказаться больше iat → свежая сессия сразу отвергалась бы. createSession
   // ниже возьмёт iat уже после create — он не меньше этой метки.
   const player = await prisma.player.create({
-    data: { email, passwordHash, nickname, termsAcceptedAt: new Date(), sessionsValidFrom: new Date() },
+    data: { email, passwordHash, nickname, locale, termsAcceptedAt: new Date(), sessionsValidFrom: new Date() },
   });
 
   if (limited) recordHit(registerIpKey, getRegisterWindowMs());
   await recordAuthEvent("REGISTER", player.id);
   // Мягкое приветствие: письмо вторично, доступ не блокирует. Шлём до createSession
   // (он редиректит и прервёт выполнение), ошибку доставки safeSendEmail глушит.
-  await safeSendEmail(buildWelcomeEmail(email));
+  await safeSendEmail(buildWelcomeEmail(email, locale));
   await createSession(player.id);
   redirect("/");
 }
@@ -202,7 +205,7 @@ export async function changePasswordAction(
   });
 
   // Уведомление безопасности — при уведённом доступе человек заметит чужую смену.
-  if (player?.email) await safeSendEmail(buildPasswordChangedEmail(player.email, now));
+  if (player?.email) await safeSendEmail(buildPasswordChangedEmail(player.email, now, await getUserLocale()));
 
   // Текущему устройству выдаём свежую сессию — сменивший пароль остаётся в системе,
   // слетают только остальные. iat новой куки > sessionsValidFrom, поэтому она валидна.
@@ -240,7 +243,7 @@ export async function setPasswordAction(
     data: { passwordHash: newHash, passwordChangedAt: now },
   });
 
-  if (player?.email) await safeSendEmail(buildPasswordChangedEmail(player.email, now));
+  if (player?.email) await safeSendEmail(buildPasswordChangedEmail(player.email, now, await getUserLocale()));
   return { success: true };
 }
 
@@ -285,7 +288,7 @@ export async function requestPasswordResetAction(
         data: { playerId: player.id, tokenHash: hash, expiresAt: new Date(Date.now() + getPasswordResetTtlMs()) },
       });
       // Мягкая отправка: ошибку доставки наружу не выносим (не раскрываем, был ли email).
-      await safeSendEmail(buildResetEmail(email, buildResetLink(raw)));
+      await safeSendEmail(buildResetEmail(email, buildResetLink(raw), await getUserLocale()));
     }
   }
 
@@ -341,7 +344,7 @@ export async function resetPasswordAction(
   ]);
 
   // Уведомление безопасности (после коммита, до редиректа — redirect бросает исключение).
-  if (player.email) await safeSendEmail(buildPasswordChangedEmail(player.email, now));
+  if (player.email) await safeSendEmail(buildPasswordChangedEmail(player.email, now, await getUserLocale()));
 
   redirect("/login?reset=1");
 }
@@ -383,7 +386,7 @@ export async function requestMagicLinkAction(
       data: { email, tokenHash: hash, expiresAt: new Date(Date.now() + getMagicLinkTtlMs()) },
     });
     // Мягкая отправка: ошибку доставки наружу не выносим (не раскрываем исход).
-    await safeSendEmail(buildMagicLinkEmail(email, buildMagicLink(raw)));
+    await safeSendEmail(buildMagicLinkEmail(email, buildMagicLink(raw), await getUserLocale()));
   }
 
   // Одинаковый ответ при любом исходе (нет аккаунта / есть / лимит / отправлено).
@@ -409,6 +412,8 @@ export async function completeRegistrationAction(
   if (!termsAccepted) return { error: t("termsRequired") };
 
   const now = new Date();
+  // Язык интерфейса гостя (кука → браузер) — фиксируем в Player и используем для письма.
+  const locale = await getUserLocale();
   // На случай гонки/двойной отправки: если аккаунт с этим email уже появился — не
   // создаём второй (email @unique бросил бы), а просто входим в существующий.
   const existing = await prisma.player.findUnique({ where: { email }, select: { id: true } });
@@ -421,11 +426,11 @@ export async function completeRegistrationAction(
     // sessionsValidFrom ставим явно из JS-времени — та же причина, что в registerAction
     // (округление TIMESTAMP(3) в БД могло бы сделать метку больше iat свежей сессии).
     const player = await prisma.player.create({
-      data: { email, nickname, termsAcceptedAt: now, sessionsValidFrom: now },
+      data: { email, nickname, locale, termsAcceptedAt: now, sessionsValidFrom: now },
     });
     playerId = player.id;
     await recordAuthEvent("REGISTER", playerId);
-    await safeSendEmail(buildWelcomeEmail(email));
+    await safeSendEmail(buildWelcomeEmail(email, locale));
   }
 
   await clearPendingRegistration();
@@ -473,7 +478,7 @@ export async function requestAccountClosureAction(
   await prisma.accountClosureToken.create({
     data: { playerId: player.id, tokenHash: hash, expiresAt: new Date(Date.now() + getAccountClosureTtlMs()) },
   });
-  await safeSendEmail(buildClosureEmail(player.email, buildClosureLink(raw)));
+  await safeSendEmail(buildClosureEmail(player.email, buildClosureLink(raw), await getUserLocale()));
 
   return { success: true };
 }
