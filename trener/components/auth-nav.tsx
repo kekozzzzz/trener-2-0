@@ -17,10 +17,12 @@ export async function AuthNav() {
         <Link href="/pricing" className="text-muted-foreground transition-colors hover:text-foreground">
           {t("pricing")}
         </Link>
-        <Link href="/login" className="text-muted-foreground transition-colors hover:text-foreground">
+        {/* Обе двери ведут на /enter — вход по ссылке первым; пароль и классическая
+            регистрация остаются доступны по ссылкам с самой формы. */}
+        <Link href="/enter" className="text-muted-foreground transition-colors hover:text-foreground">
           {t("login")}
         </Link>
-        <Link href="/register" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+        <Link href="/enter" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
           {t("register")}
         </Link>
         <LangSwitcher />

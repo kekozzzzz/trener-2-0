@@ -272,7 +272,7 @@
   },
   "MagicLink": {
     "title": "Sign in with a link",
-    "subtitle": "Enter your email — we'll send you a sign-in link. No password needed.",
+    "subtitle": "Enter your email — we'll send you a sign-in link. No password needed. If you don't have an account yet, the same link will create one.",
     "invalidLink": "This link is invalid or expired. Request a new one below.",
     "sending": "Sending",
     "submit": "Send me a sign-in link",

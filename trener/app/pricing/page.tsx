@@ -77,9 +77,9 @@ export default async function PricingPage() {
 
             let cta;
             if (!session) {
-              // Гость: сначала регистрация, оплата — уже из кабинета/со страницы цен.
+              // Гость: сначала вход/регистрация по ссылке, оплата — уже из кабинета.
               cta = (
-                <Link href="/register" className={cn(buttonVariants(), "w-full justify-center")}>
+                <Link href="/enter" className={cn(buttonVariants(), "w-full justify-center")}>
                   {t("ctaStart")}
                 </Link>
               );

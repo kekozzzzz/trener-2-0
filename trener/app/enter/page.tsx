@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { Wordmark } from "@/components/ui/wordmark";
+import { LangSwitcher } from "@/components/lang-switcher";
 import { EnterForm } from "./enter-form";
 
 export default async function EnterPage({
@@ -21,6 +22,7 @@ export default async function EnterPage({
           <Link href="/">
             <Wordmark />
           </Link>
+          <LangSwitcher />
         </div>
       </header>
 

@@ -22,7 +22,8 @@ export default async function HomePage() {
   const player = await getCurrentPlayer();
   // Цену на лендинге берём из конфига тарифов (правило 3: не хардкодим цены в разметке).
   const priceFrom = formatUsd(Math.min(...getPlans().map((p) => p.priceUsd)));
-  const ctaHref = player ? "/analyze" : "/register";
+  // Гостя обе кнопки ведут на /enter — вход по ссылке первым (пароль — запасной путь).
+  const ctaHref = player ? "/analyze" : "/enter";
 
   const STEPS = [
     { number: "/01", title: t("step1Title"), description: t("step1Description") },
@@ -116,7 +117,7 @@ export default async function HomePage() {
                     <ArrowRight className="size-4" />
                   </Link>
                   <Link
-                    href={player ? "/tournaments" : "/login"}
+                    href={player ? "/tournaments" : "/enter"}
                     className={cn(buttonVariants({ variant: "outline" }))}
                   >
                     {player ? t("myTournaments") : t("signIn")}

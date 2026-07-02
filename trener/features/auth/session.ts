@@ -162,8 +162,9 @@ export async function destroySession(): Promise<void> {
 }
 
 export async function requireSession(): Promise<{ playerId: string }> {
+  // Гостя ведём на вход по ссылке (первичный способ); пароль — по ссылке с формы.
   const session = await getSession();
-  if (!session) redirect("/login");
+  if (!session) redirect("/enter");
 
   // Cookie-сессия валидна криптографически, но: аккаунт мог быть закрыт
   // (анонимизирован), либо сессия выдана до смены пароля / выхода на всех
@@ -178,7 +179,7 @@ export async function requireSession(): Promise<{ playerId: string }> {
     },
     select: { id: true },
   });
-  if (!player) redirect("/login");
+  if (!player) redirect("/enter");
 
   return { playerId: session.playerId };
 }
