@@ -450,7 +450,8 @@ export async function logoutEverywhereAction(): Promise<void> {
   });
 
   await destroySession();
-  redirect("/login");
+  // На /enter — вход по ссылке первичен (add1146); пароль доступен ссылкой с формы.
+  redirect("/enter");
 }
 
 // Запрос закрытия аккаунта: шлём на почту ссылку подтверждения. Само закрытие — по

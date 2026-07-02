@@ -2,7 +2,7 @@
  * Тесты logoutEverywhereAction (features/auth/actions.ts).
  *
  * Покрывают:
- *  1. Сдвигает sessionsValidFrom, чистит текущую куку и редиректит на /login.
+ *  1. Сдвигает sessionsValidFrom, чистит текущую куку и редиректит на /enter (вход по ссылке первичен).
  *  2. Ранее выданная сессия после этого не пускает (getCurrentPlayer → null).
  *
  * Бьёт в реальную тестовую базу (trener_test).
@@ -62,11 +62,11 @@ afterAll(async () => {
 });
 
 describe("logoutEverywhereAction", () => {
-  it("гасит все сессии, чистит куку и ведёт на /login", async () => {
+  it("гасит все сессии, чистит куку и ведёт на /enter", async () => {
     const before = await prisma.player.findUnique({ where: { email: TEST_EMAIL } });
     const oldCookie = cookieStore.get("session")!;
 
-    await expect(logoutEverywhereAction()).rejects.toThrow("REDIRECT:/login");
+    await expect(logoutEverywhereAction()).rejects.toThrow("REDIRECT:/enter");
 
     // Метка сессий сдвинулась, текущая кука удалена.
     const after = await prisma.player.findUnique({ where: { email: TEST_EMAIL } });
