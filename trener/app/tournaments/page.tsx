@@ -1,5 +1,6 @@
 import { noindex } from "@/lib/seo";
 export const metadata = noindex;
+import { Suspense } from "react";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { requireSession } from "@/features/auth/session";
@@ -9,6 +10,7 @@ import { CHARACTERISTIC_RELIABLE_FROM } from "@/config/profile";
 import { PageHeader } from "@/components/page-header";
 import { TournamentRow } from "@/components/tournaments/tournament-row";
 import { PlayerCharts } from "@/components/profile/player-charts";
+import { ProfileLeakTrend } from "./leak-trend";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -73,6 +75,11 @@ export default async function TournamentsPage({
                   })}
             </p>
             <PlayerCharts />
+            {/* «Куда ты движешься»: тренд ликов по игровым дням — стримится отдельно
+                (Suspense), скан окна не задерживает список турниров. */}
+            <Suspense fallback={null}>
+              <ProfileLeakTrend playerId={playerId} />
+            </Suspense>
           </div>
         )}
 

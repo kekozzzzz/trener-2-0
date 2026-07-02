@@ -669,6 +669,23 @@
     "potOddsFull": "pot odds",
     "potOddsDesc": "How much you have to put in relative to what's already in the pot. You compare it with your chances to improve to decide whether the call is profitable."
   },
+  "LeakDynamics": {
+    "title": "Trend",
+    "intro": "Your recurring mistakes across the last {count} playing days - and how this day compares. Computed by the parser against the charts, no AI.",
+    "profileHeading": "Mistake trend",
+    "profileIntro": "Your most systematic mistakes across the last {count} playing days - and your latest session against them.",
+    "priorSummary": "on {days} of the last {total} playing days - {count, plural, one {# time} other {# times}} total",
+    "cleanNow": "none this day",
+    "currentTimes": "this day - {count, plural, one {# time} other {# times}}",
+    "kind_OPEN_WIDE": "Opens wider than the chart",
+    "kind_LIMP": "Limps",
+    "kind_BB_3BET_WIDE": "Wide 3-bets from the BB",
+    "kind_OPEN_SHOVE_WIDE": "Short-stack shoves outside the range",
+    "kind_VS_OPEN_3BET_WIDE": "Wide 3-bets vs opens",
+    "kind_ISO_WIDE": "Wide isolation raises",
+    "kind_SQUEEZE_WIDE": "Wide squeezes",
+    "kind_FOURBET_WIDE": "Wide 4-bets"
+  },
   "PlayerCharts": {
     "hide": "Hide charts",
     "show": "Your charts",

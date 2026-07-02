@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { prisma } from "@/infrastructure/db/client";
 import { Prisma } from "@prisma/client";
 import { notFound } from "next/navigation";
@@ -20,6 +21,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ParsingWaitClient } from "./parsing-wait-client";
 import { AnalysisProgress } from "./analysis-progress";
+import { LeakDynamicsSection } from "./leak-dynamics";
 import { MetricsGlossary } from "@/components/metrics/glossary";
 import { LoadingDots } from "@/components/ui/loading-dots";
 
@@ -376,6 +378,12 @@ export default async function TournamentPage({
             <p className="mt-2 font-mono text-h2 text-foreground">{hands}</p>
           </StatCard>
         </div>
+
+        {/* Динамика ликов против прошлых турниров — стримится отдельно (Suspense),
+            чтобы скан раздач окна не задерживал показ карточки. */}
+        <Suspense fallback={null}>
+          <LeakDynamicsSection playerId={session.playerId} tournamentId={id} />
+        </Suspense>
 
         {handsForDialogue.length > 0 && (
           <div className="mt-16">

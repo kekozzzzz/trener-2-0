@@ -42,6 +42,8 @@ import { ChevronDown, Trash2 } from "lucide-react";
 import { HandTable } from "@/components/poker/hand-table";
 import { RangeGrid } from "@/components/poker/range-grid";
 import { OpenChartPanel } from "@/components/profile/open-chart-panel";
+import { LeakTrendRows } from "@/components/profile/leak-trend-rows";
+import type { LeakDynamics } from "@/features/profile/leak-trend";
 import { GRID_RANKS, cellCode } from "@/config/poker/hand-grid";
 import { isOpenSignificantlyWide, type OpenPosition } from "@/config/poker/rfi-chart";
 import type { OpenChartCell, OpenChartFacts } from "@/features/profile/open-chart";
@@ -156,6 +158,14 @@ const demoOpenChart: OpenChartFacts = {
   },
   sbLimp: demoSbLimp,
 };
+
+// Демо-динамика ликов: окно из 5 прошлых игровых дней, первый лик «вылечен» в текущем
+// дне (лаймовая подсветка), остальные два ещё повторяются.
+const demoLeakTrends: LeakDynamics[] = [
+  { kind: "LIMP", window: [4, 2, 3, 0, 2], current: 0, priorTotal: 11, improved: true },
+  { kind: "OPEN_WIDE", window: [2, 1, 0, 3, 2], current: 3, priorTotal: 8, improved: false },
+  { kind: "BB_3BET_WIDE", window: [0, 2, 1, 0, 1], current: 1, priorTotal: 4, improved: false },
+];
 
 const palette = [
   { name: "background", hex: "#0E0E0E", role: "Фон страницы" },
@@ -407,6 +417,17 @@ export default function DesignPreviewPage() {
         <div className="border border-border bg-card p-6">
           <OpenChartPanel chart={demoOpenChart} tournamentsCounted={42} />
         </div>
+      </section>
+
+      {/* Динамика ликов (лик-трекер) — демо-данные */}
+      <section className="space-y-4">
+        <h2 className="text-h2">Динамика ликов</h2>
+        <p className="max-w-2xl text-body text-muted-foreground">
+          Блок «Динамика» на странице турнира и «Динамика ошибок» на «Моих турнирах»
+          (топ-3). Числа — счётчики лика по прошлым игровым дням в хронологии, справа —
+          текущий день. «В этот день ни разу» — лаймовая рамка (прогресс).
+        </p>
+        <LeakTrendRows trends={demoLeakTrends} />
       </section>
 
       {/* Выпадающее меню */}

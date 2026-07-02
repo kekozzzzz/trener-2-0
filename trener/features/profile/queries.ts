@@ -1,5 +1,7 @@
 import { prisma } from "@/infrastructure/db/client";
 import { aggregateOpenChart, type OpenChartFacts } from "./open-chart";
+import { countLeaks, gameDayKey, leakDynamics, type LeakDynamics } from "./leak-trend";
+import { LEAK_WINDOW_DAYS } from "@/config/leaks";
 
 // Сводная характеристика игрока для показа в личном кабинете. Только свой профиль
 // (по playerId из сессии — защита от IDOR). null, пока текст ещё не собран.
@@ -24,6 +26,88 @@ export type OpenChartView = {
   chart: OpenChartFacts;
   tournamentsCounted: number;
 };
+
+// Динамика ликов: активные системные ошибки по окну прошлых ИГРОВЫХ ДНЕЙ против
+// текущего дня. День = все турниры одной даты по playedAt (за вечер играется несколько
+// турниров, сравнивать их друг с другом — шум; решение Артёма 2026-07-02). Всё
+// детерминированно (Правило 1, лик-трекер — plans/2026-07-02-лик-трекер.md).
+// null — сравнивать не с чем или турнир не этого игрока (IDOR).
+export type LeakDynamicsView = {
+  trends: LeakDynamics[];
+  priorCount: number; // сколько прошлых игровых дней в окне
+};
+
+// Хватает на окно дней даже при плотной игре (~15 турниров за вечер); не константа
+// бизнеса, а защита запроса от простыни — потому живёт в коде, не в config/leaks.
+const LEAK_SCAN_TOURNAMENTS = (LEAK_WINDOW_DAYS + 1) * 15;
+
+// Общий хвост обоих запросов динамики: учтённые турниры игрока не позже отчётного дня
+// → группировка по игровым дням → счётчики дней → активные лики против текущего дня.
+// currentDay — день, «на фоне» которого смотрим (null = самый свежий день игрока).
+async function buildLeakDynamicsByDay(
+  playerId: string,
+  currentDay: string | null,
+): Promise<LeakDynamicsView | null> {
+  const tournaments = await prisma.tournament.findMany({
+    where: { playerId, deletedAt: null, status: { in: ["PARSED", "CARD_READY"] } },
+    orderBy: { playedAt: "desc" },
+    take: LEAK_SCAN_TOURNAMENTS,
+    select: { id: true, playedAt: true },
+  });
+
+  // Турнир → день; дни в хронологии (старые → новые), текущий и прошлые окна.
+  const dayByTournament = new Map<string, string>();
+  const daysDesc: string[] = [];
+  for (const t of tournaments) {
+    const day = gameDayKey(t.playedAt);
+    dayByTournament.set(t.id, day);
+    if (daysDesc[daysDesc.length - 1] !== day) daysDesc.push(day);
+  }
+
+  const day = currentDay ?? daysDesc[0];
+  if (!day) return null;
+  const priorDays = daysDesc.filter((d) => d < day).slice(0, LEAK_WINDOW_DAYS).reverse();
+  if (priorDays.length === 0) return null;
+
+  const windowDays = new Set([day, ...priorDays]);
+  const windowIds = tournaments.filter((t) => windowDays.has(dayByTournament.get(t.id)!)).map((t) => t.id);
+
+  const hands = await prisma.hand.findMany({
+    where: { tournamentId: { in: windowIds } },
+    select: { tournamentId: true, tableData: true },
+  });
+  const byDay = new Map<string, { tableData: unknown }[]>();
+  for (const hand of hands) {
+    const handDay = dayByTournament.get(hand.tournamentId)!;
+    const list = byDay.get(handDay);
+    if (list) list.push(hand);
+    else byDay.set(handDay, [hand]);
+  }
+
+  const priorCounts = priorDays.map((d) => countLeaks(byDay.get(d) ?? []));
+  const currentCounts = countLeaks(byDay.get(day) ?? []);
+
+  return { trends: leakDynamics(priorCounts, currentCounts), priorCount: priorDays.length };
+}
+
+// Для страницы турнира: динамика игрового дня ЭТОГО турнира против прошлых дней.
+// У всех турниров одного вечера блок одинаковый — это и есть смысл (день целиком).
+export async function getTournamentLeakDynamics(
+  playerId: string,
+  tournamentId: string,
+): Promise<LeakDynamicsView | null> {
+  const current = await prisma.tournament.findFirst({
+    where: { id: tournamentId, playerId, deletedAt: null },
+    select: { playedAt: true },
+  });
+  if (!current) return null;
+  return buildLeakDynamicsByDay(playerId, gameDayKey(current.playedAt));
+}
+
+// Для «Моих турниров»: самый свежий игровой день на фоне прошлых.
+export async function getProfileLeakTrend(playerId: string): Promise<LeakDynamicsView | null> {
+  return buildLeakDynamicsByDay(playerId, null);
+}
 
 export async function getOpenChart(playerId: string): Promise<OpenChartView | null> {
   // Тот же фильтр учтённых турниров, что у характеристики — счётчик и порог
