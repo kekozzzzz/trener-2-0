@@ -13,6 +13,7 @@ import {
   clearPendingRegistration,
 } from "./session";
 import { clientIp, hitCount, recordHit, clearHits } from "./rate-limit";
+import { recordAuthEvent } from "./auth-events";
 import {
   generateResetToken,
   hashResetToken,
@@ -100,6 +101,7 @@ export async function registerAction(
   });
 
   if (limited) recordHit(registerIpKey, getRegisterWindowMs());
+  await recordAuthEvent("REGISTER", player.id);
   // Мягкое приветствие: письмо вторично, доступ не блокирует. Шлём до createSession
   // (он редиректит и прервёт выполнение), ошибку доставки safeSendEmail глушит.
   await safeSendEmail(buildWelcomeEmail(email));
@@ -153,12 +155,16 @@ export async function loginAction(
       recordHit(loginEmailKey, getLoginWindowMs());
       recordHit(loginIpKey, getLoginWindowMs());
     }
+    // Журнал попыток (07-безопасность.md): пишется только до порога лимитера —
+    // заблокированные попытки отсекаются выше и базу не раздувают.
+    await recordAuthEvent("LOGIN_FAILED", player?.id ?? null);
     return { error: t("wrongEmailOrPassword") };
   }
 
   // Успех — снимаем счётчик email (по IP не трогаем: с того же IP мог идти
   // перебор других аккаунтов, и один верный вход его не обеляет).
   if (limited) clearHits(loginEmailKey);
+  await recordAuthEvent("LOGIN_PASSWORD", player.id);
   await createSession(player.id);
   redirect("/");
 }
@@ -409,6 +415,8 @@ export async function completeRegistrationAction(
   let playerId: string;
   if (existing) {
     playerId = existing.id;
+    // Аккаунт уже есть (гонка/двойная отправка) — по сути это вход по ссылке.
+    await recordAuthEvent("LOGIN_MAGIC", playerId);
   } else {
     // sessionsValidFrom ставим явно из JS-времени — та же причина, что в registerAction
     // (округление TIMESTAMP(3) в БД могло бы сделать метку больше iat свежей сессии).
@@ -416,6 +424,7 @@ export async function completeRegistrationAction(
       data: { email, nickname, termsAcceptedAt: now, sessionsValidFrom: now },
     });
     playerId = player.id;
+    await recordAuthEvent("REGISTER", playerId);
     await safeSendEmail(buildWelcomeEmail(email));
   }
 

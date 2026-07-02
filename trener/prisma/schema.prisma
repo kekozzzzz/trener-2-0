@@ -31,6 +31,7 @@ model Player {
   passwordResetTokens PasswordResetToken[]
   accountClosureTokens AccountClosureToken[]
   llmUsage     LlmUsage[]
+  authEvents   AuthEvent[]
 
   @@map("players")
 }
@@ -117,6 +118,34 @@ model AccountClosureToken {
 
   @@index([playerId])
   @@map("account_closure_tokens")
+}
+
+// ─────────────── Журнал событий входа (append-only) ───────────────
+// Одна строка = регистрация, успешный вход или неудачная попытка входа
+// (07-безопасность.md раздел 2 предписывает журналировать неудачные попытки).
+// Для админ-статистики: «сколько регистраций/входов сегодня, из каких стран».
+// Хранится только ISO-код страны, определённый по IP в момент события; сам
+// IP-адрес НЕ сохраняется (минимизация ПДн). Только append, записи не правятся.
+
+enum AuthEventKind {
+  REGISTER       // создан аккаунт (по паролю или по волшебной ссылке)
+  LOGIN_PASSWORD // успешный вход по паролю
+  LOGIN_MAGIC    // успешный вход по волшебной ссылке
+  LOGIN_FAILED   // неудачная попытка входа (неверный пароль или email)
+}
+
+model AuthEvent {
+  id        String        @id @default(uuid()) @db.Uuid
+  playerId  String?       @map("player_id") @db.Uuid // NULL — неудачная попытка по несуществующему email
+  kind      AuthEventKind
+  country   String?                                   // ISO-код страны («RU»); NULL — определить не удалось
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  player Player? @relation(fields: [playerId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt], map: "idx_auth_events_recent")
+  @@index([kind, createdAt], map: "idx_auth_events_kind")
+  @@map("auth_events")
 }
 
 // ─────────────────── Профиль игрока (1:1, создаётся с первым турниром) ────────

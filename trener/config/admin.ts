@@ -20,3 +20,10 @@ export function isAdminEmail(email: string | null | undefined): boolean {
   if (!email) return false;
   return getAdminEmails().includes(email.toLowerCase());
 }
+
+// Смещение часового пояса владельца от UTC в часах — по нему админ-статистика
+// режет сутки («сегодня/вчера»). По умолчанию Москва (+3, летнего времени в РФ нет).
+export function getAdminTzOffsetHours(): number {
+  const raw = Number(process.env.ADMIN_TZ_OFFSET_HOURS);
+  return Number.isFinite(raw) ? raw : 3;
+}

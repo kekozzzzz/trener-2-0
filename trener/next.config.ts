@@ -31,6 +31,9 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: { bodySizeLimit: "50mb" },
   },
+  // geoip-country читает свою базу «IP → страна» файлами с диска (__dirname) —
+  // бандлинг сломал бы пути. Оставляем пакет внешним: грузится из node_modules.
+  serverExternalPackages: ["geoip-country"],
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

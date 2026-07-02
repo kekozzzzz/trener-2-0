@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/infrastructure/db/client";
 import { hashMagicToken } from "@/features/auth/magic-link";
 import { buildSessionCookie, buildPendingRegistrationCookie } from "@/features/auth/session";
+import { recordAuthEvent } from "@/features/auth/auth-events";
 
 // Клик по «волшебной ссылке» из письма (GET). Здесь — развилка вход/регистрация.
 // Это route handler, а не страница: при рендере страницы cookie ставить нельзя, а нам
@@ -28,6 +29,7 @@ export async function GET(req: NextRequest) {
   });
 
   if (player) {
+    await recordAuthEvent("LOGIN_MAGIC", player.id);
     const res = NextResponse.redirect(new URL("/", req.url));
     const c = buildSessionCookie(player.id);
     res.cookies.set(c.name, c.value, c.options);
