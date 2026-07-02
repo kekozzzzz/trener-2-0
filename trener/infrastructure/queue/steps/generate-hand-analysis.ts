@@ -3,6 +3,7 @@ import type { PrismaClient } from "@prisma/client";
 import type { StepHandler } from "../types";
 import type { TableSnapshot } from "@/parser/types";
 import type { HandAnalysisRequest } from "@/infrastructure/adapters/llm/types";
+import type { Locale } from "@/i18n/config";
 import { profileHandOpponents } from "@/parser/opponent-profile";
 import { getLlmAdapter } from "@/infrastructure/adapters/llm";
 import { applyRangeMarker, applyTableMarker } from "@/config/dialogue";
@@ -20,7 +21,7 @@ export const generateHandAnalysisStep: StepHandler = async (task, db) => {
 
   const hand = await db.hand.findUnique({
     where: { id: handId },
-    include: { tournament: true },
+    include: { tournament: { include: { player: { select: { locale: true } } } } },
   });
 
   if (!hand || hand.tournament.deletedAt) return; // удалено до того, как воркер взял задачу
@@ -50,6 +51,8 @@ export const generateHandAnalysisStep: StepHandler = async (task, db) => {
     }
 
     const request: HandAnalysisRequest = {
+      // Язык ответа тренера — язык интерфейса игрока (Player.locale); дефолт ru.
+      locale: (tournament.player.locale as Locale) ?? "ru",
       importanceLevel: hand.importanceLevel,
       chipResult: hand.chipResult,
       tableSnapshot: hand.tableData as unknown as TableSnapshot,

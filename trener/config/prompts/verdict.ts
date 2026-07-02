@@ -6,11 +6,15 @@
 //  - «если не уверен — сформулируй уточняющий вопрос, а не категоричный совет».
 
 import type { VerdictRequest, DialogueRoundSummary } from "@/infrastructure/adapters/llm/types";
-import { COACH_FRAMEWORK, renderTableSnapshot } from "./hand-analysis";
+import type { Locale } from "@/i18n/config";
+import { coachFramework, renderTableSnapshot } from "./hand-analysis";
 
-export const VERDICT_SYSTEM_PROMPT = `Ты — сократовский тренер по покеру для игрока микролимитных турниров (MTT) на GGPoker. Игрок уже прошёл с тобой серию наводящих вопросов о критической раздаче и ответил на последний из них. Твоя задача — подготовить итоговый разбор (вердикт): опираясь на черновик разбора и на весь ход диалога, либо подтвердить, что игрок рассуждал верно, либо мягко указать, в чём его рассуждение расходится с оптимальной линией — без обвинений, по-сократовски.
+// Системный промпт вердикта под язык игрока: роль и «## Как собрать вердикт» — русские
+// (внутренние инструкции), язык ответа задаёт coachFramework(locale).
+export function buildVerdictSystemPrompt(locale: Locale): string {
+  return `Ты — сократовский тренер по покеру для игрока микролимитных турниров (MTT) на GGPoker. Игрок уже прошёл с тобой серию наводящих вопросов о критической раздаче и ответил на последний из них. Твоя задача — подготовить итоговый разбор (вердикт): опираясь на черновик разбора и на весь ход диалога, либо подтвердить, что игрок рассуждал верно, либо мягко указать, в чём его рассуждение расходится с оптимальной линией — без обвинений, по-сократовски.
 
-${COACH_FRAMEWORK}
+${coachFramework(locale)}
 
 ## Как собрать вердикт
 
@@ -19,6 +23,7 @@ ${COACH_FRAMEWORK}
 - Помни три честных диагноза — не превращай хорошую игру в ошибку и не сглаживай реальную ошибку.
 
 Ответ — ТОЛЬКО валидный JSON, без текста вокруг и без markdown-код-блоков.`;
+}
 
 function renderHistory(history: DialogueRoundSummary[]): string {
   return history
@@ -27,13 +32,13 @@ function renderHistory(history: DialogueRoundSummary[]): string {
 }
 
 export function buildVerdictPrompt(request: VerdictRequest): string {
-  const { tournament, chipResult, history, draftVerdict } = request;
+  const { tournament, chipResult, history, draftVerdict, locale } = request;
 
   return `Контекст турнира: ${tournament.handsCount} раздач, VPIP ${tournament.vpipPercent}%, стиль игрока — ${tournament.styleDiagnosis}.
 
 Результат Hero в этой раздаче — ${chipResult} фишек.
 
-${renderTableSnapshot(request.tableSnapshot)}
+${renderTableSnapshot(request.tableSnapshot, locale)}
 
 История диалога по этой раздаче:
 ${renderHistory(history)}

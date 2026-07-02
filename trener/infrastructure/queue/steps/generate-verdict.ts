@@ -1,6 +1,7 @@
 import type { StepHandler } from "../types";
 import type { TableSnapshot } from "@/parser/types";
 import type { VerdictRequest } from "@/infrastructure/adapters/llm/types";
+import type { Locale } from "@/i18n/config";
 import { getLlmAdapter } from "@/infrastructure/adapters/llm";
 
 type GenerateVerdictPayload = {
@@ -16,7 +17,7 @@ export const generateVerdictStep: StepHandler = async (task, db) => {
   const dialogue = await db.dialogue.findUnique({
     where: { handId },
     include: {
-      hand: { include: { tournament: true } },
+      hand: { include: { tournament: { include: { player: { select: { locale: true } } } } } },
       rounds: { orderBy: { roundNumber: "asc" } },
     },
   });
@@ -63,6 +64,8 @@ export const generateVerdictStep: StepHandler = async (task, db) => {
   }
 
   const request: VerdictRequest = {
+    // Язык ответа тренера — язык интерфейса игрока (Player.locale); дефолт ru.
+    locale: (tournament.player.locale as Locale) ?? "ru",
     // ANSWER_RECEIVED гарантирует, что answer записан на каждом раунде (submitAnswer).
     history: dialogue.rounds.map((round) => ({
       roundNumber: round.roundNumber,

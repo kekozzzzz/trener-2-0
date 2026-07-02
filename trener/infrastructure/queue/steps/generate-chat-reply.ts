@@ -1,6 +1,7 @@
 import type { StepHandler } from "../types";
 import type { TableSnapshot } from "@/parser/types";
 import type { ChatReplyRequest } from "@/infrastructure/adapters/llm/types";
+import type { Locale } from "@/i18n/config";
 import { getLlmAdapter } from "@/infrastructure/adapters/llm";
 import { buildAnalysisSummary } from "@/features/chat/analysis-summary";
 import { isChatAvailable } from "@/features/chat/availability";
@@ -19,7 +20,7 @@ export const generateChatReplyStep: StepHandler = async (task, db) => {
   const hand = await db.hand.findUnique({
     where: { id: handId },
     include: {
-      tournament: true,
+      tournament: { include: { player: { select: { locale: true } } } },
       dialogue: true,
       chatMessages: { orderBy: { createdAt: "asc" } },
     },
@@ -61,6 +62,8 @@ export const generateChatReplyStep: StepHandler = async (task, db) => {
   }
 
   const request: ChatReplyRequest = {
+    // Язык ответа тренера — язык интерфейса игрока (Player.locale); дефолт ru.
+    locale: (tournament.player.locale as Locale) ?? "ru",
     history: messages.map((message) => ({ author: message.author, text: message.text })),
     analysisSummary: buildAnalysisSummary(
       { played: analysis.played, optimal: analysis.optimal },

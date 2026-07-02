@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import type { StepHandler } from "../types";
 import type { BBThreeBetLeakHand, FourBetLeakHand, IsoLeakHand, LimpExample, LimpLeak, OpenLeakHand, OpenShoveLeakHand, SqueezeLeakHand, TournamentSummaryHand, VsOpenThreeBetLeakHand } from "@/infrastructure/adapters/llm/types";
 import type { TableSnapshot } from "@/parser/types";
+import type { Locale } from "@/i18n/config";
 import { getLlmAdapter } from "@/infrastructure/adapters/llm";
 import { detectHeroOpen } from "@/parser/open-raise";
 import { detectHeroLimp } from "@/parser/limp";
@@ -233,7 +234,10 @@ function resolveHandTokens(
 export const generateTournamentSummaryStep: StepHandler = async (task, db) => {
   const { tournamentId } = task.payload as GenerateTournamentSummaryPayload;
 
-  const tournament = await db.tournament.findUnique({ where: { id: tournamentId } });
+  const tournament = await db.tournament.findUnique({
+    where: { id: tournamentId },
+    include: { player: { select: { locale: true } } },
+  });
   if (!tournament || tournament.deletedAt) return; // удалено до того, как воркер взял задачу
   if (tournament.summary !== null) return; // обзор уже собран
 
@@ -291,6 +295,8 @@ export const generateTournamentSummaryStep: StepHandler = async (task, db) => {
   const fourBetLeak = collectFourBetLeak(allHands);
 
   const result = await getLlmAdapter().generateTournamentSummary({
+    // Язык обзора — язык интерфейса игрока (Player.locale); дефолт ru.
+    locale: (tournament.player.locale as Locale) ?? "ru",
     tournament: {
       handsCount: tournament.handsCount,
       vpipPercent: tournament.vpipPercent.toNumber(),

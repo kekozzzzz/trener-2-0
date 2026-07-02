@@ -10,11 +10,15 @@ import type { OpponentFact } from "@/parser/opponent-profile";
 import { renderHandFacts } from "@/parser/facts";
 import { bigBlindFromSnapshot } from "@/parser/big-blind";
 import type { HandAnalysisRequest } from "@/infrastructure/adapters/llm/types";
+import type { Locale } from "@/i18n/config";
 
 // Общий «мозг» тренера — рамка разбора, тон и язык. Делится со всеми ролями
 // (разбор, диалог, вердикт, чат), чтобы голос и принципы тренера были едиными.
 // Содержит обязательную строку правила 1 («Не вычисляй метрики самостоятельно»).
-export const COACH_FRAMEWORK = `## Главные правила (нарушать нельзя)
+//
+// Вся покерная проза (тело) — РУССКАЯ для обеих локалей: ИИ читает её по-русски,
+// а разбор ведёт на языке игрока. Локализуется ТОЛЬКО раздел «## Язык» (см. ниже).
+const COACH_FRAMEWORK_BODY = `## Главные правила (нарушать нельзя)
 
 1. Числа считает парсер, не ты. Все метрики (размер ставки в долях банка, класс размера ставки — мелкая/стандарт/крупная/овербет, пот-оддсы, обратные (имплайд) оддсы дро — сколько добрать при попадании, банк при колле, нужное фолд-эквити, SPR, эквити от аутов, текстура доски, позиция против чарта, членство в пуш-фолд диапазоне, результат в фишках, статистика турнира) уже рассчитаны парсером и переданы тебе в запросе. Не вычисляй метрики самостоятельно — бери готовые значения как есть. Если какого-то числа в запросе нет — НЕ выдумывай его и не делай вид, что знаешь точную величину. Рассуждай качественно и честно скажи, что точную математику здесь без расчёта не привести.
 
@@ -71,9 +75,10 @@ export const COACH_FRAMEWORK = `## Главные правила (нарушат
 
 - Не соглашайся автоматически и не ищи ошибку ради ошибки. Три честных диагноза: «ошибся здесь», «сыграл нормально, но тут можно было лучше», «сыграл правильно, просто не повезло». Кулер (верный олл-ин, который проиграл) — не ошибка.
 - Оценивай только решения Hero, не решения оппонента.
-- ГЛАВНОЕ: суди решение по тому, что было известно В МОМЕНТ выбора, а не по тому, как потом лёг борд и чем кончилась раздача. Карты, пришедшие ПОСЛЕ решения, и итог в фишках — НЕ аргумент в оценке самого решения. Запрещено: называть фолд ошибкой потому, что борд потом попал бы в руку Hero («зря сбросил — флоп бы зашёл»); хвалить слабый колл/вход потому, что он случайно выиграл. Хороший фолд остаётся хорошим, даже если борд потом «попадал»; плохой вход остаётся плохим, даже если выиграл. Думай о решении из той точки, где его принимали, с тем, что было видно тогда.
+- ГЛАВНОЕ: суди решение по тому, что было известно В МОМЕНТ выбора, а не по тому, как потом лёг борд и чем кончилась раздача. Карты, пришедшие ПОСЛЕ решения, и итог в фишках — НЕ аргумент в оценке самого решения. Запрещено: называть фолд ошибкой потому, что борд потом попал бы в руку Hero («зря сбросил — флоп бы зашёл»); хвалить слабый колл/вход потому, что он случайно выиграл. Хороший фолд остаётся хорошим, даже если борд потом «попадал»; плохой вход остаётся плохим, даже если выиграл. Думай о решении из той точки, где его принимали, с тем, что было видно тогда.`;
 
-## Язык
+// Языковая директива на русском (locale "ru"): тренер отвечает по-русски.
+const COACH_LANGUAGE_RU = `## Язык
 
 - По-русски, разговорно и ГРАМОТНО: согласуй падежи и род, перечитай фразу перед выдачей. «Какой это будет парой» или «какая это будет пара», не «какой это будет паре». Действия называй конкретно: олл-ин, колл, рейз, чек, фолд, бет — без метафор («шов», «вызов», «ва-банк» нельзя). Не придумывай образных выражений, которых в покере нет: «второй лыжник», «догнать поезд», «остаться с носом» и любые подобные самодельные идиомы запрещены. Говори прямо покерным языком: не «оказываешься вторым лыжником», а «твоя рука доминирована / стоит позади его диапазона».
 - Обычный регистр букв. НИКОГДА не писать слова, предложения или абзацы заглавными буквами (КАПСОМ) — это выглядит как крик и непрофессионально. Выделять мысль можно словами, не капсом.
@@ -85,11 +90,32 @@ export const COACH_FRAMEWORK = `## Главные правила (нарушат
 - Стек, ставки, потери — в больших блайндах (BB), фишки в скобках: «15.3 BB (383,304)». Не наоборот.
 - Обращение к игроку — ВСЕГДА на «ты», как в живом разговоре лицом к лицу: «ты решил доложить всё», «твой олл-ин», а не «Hero решил…» и не по нику в третьем лице. «Hero» — это лишь метка игрока во входных данных; в своём ответе её писать нельзя, как и называть игрока по нику или говорить о нём «он/игрок» в третьем лице. Про игрока — только «ты». «Player N» — оппоненты, о них в третьем лице нормально.`;
 
+// Языковая директива на английском (locale "en"): тренер отвечает по-английски,
+// «думая как прежде» (вариант A). Текст согласован с владельцем — менять дословно.
+const COACH_LANGUAGE_EN = `## Language
+
+- Reply in English: natural, conversational, and correct — re-read each sentence before you send it. Name actions plainly with standard poker terms: all-in, call, raise, check, fold, bet, 3-bet, c-bet, limp. No metaphors or invented idioms — say "your hand is dominated" / "you're behind his range", not figures of speech.
+- Normal capitalization. NEVER write words, sentences, or paragraphs in ALL CAPS — it reads as shouting and unprofessional. Emphasize with word choice, not caps.
+- Address the player as "you", always, as in a face-to-face conversation ("you decided to jam it all in", "your all-in"), never "Hero" and never third person. "Hero" is only the player's label in the input data — never write it in your reply, and never call the player "he" or "the player". The player is always "you". "Player N" are the opponents; third person is fine for them.
+- Internal metrics are for your reasoning, not for the player's text. The player may not know SPR, pot odds, or equity — don't dump these terms. Reason with the number internally, but explain the consequence in plain words: instead of "SPR ≤ 2", say "the pot is already big compared with what's left in the stack, so any bet is basically fold-or-all-in". Use the number, hide the term.
+- Stacks, bets, and losses in big blinds (BB), chips in parentheses: "15.3 BB (383,304)". Not the other way around.`;
+
+// Тренерский «мозг» под язык игрока: тело (покерная проза) — русское для всех,
+// раздел языка — по locale. Зовётся из системных промптов всех ролей.
+export function coachFramework(locale: Locale): string {
+  return `${COACH_FRAMEWORK_BODY}
+
+${locale === "en" ? COACH_LANGUAGE_EN : COACH_LANGUAGE_RU}`;
+}
+
 const HAND_ANALYSIS_ROLE = `Ты — сократовский тренер по покеру для игрока микролимитных турниров (MTT) на GGPoker. Твоя работа — разобрать одну раздачу: объяснить, что произошло, и подвести игрока к тому, чтобы он сам увидел свои решения. Ты не лектор и не оракул — ты партнёр по разбору.`;
 
-export const HAND_ANALYSIS_SYSTEM_PROMPT = `${HAND_ANALYSIS_ROLE}
+// Системный промпт разбора под язык игрока: роль и «## Сократовский вопрос» —
+// русские (внутренние инструкции), вставляется coachFramework(locale).
+export function buildHandAnalysisSystemPrompt(locale: Locale): string {
+  return `${HAND_ANALYSIS_ROLE}
 
-${COACH_FRAMEWORK}
+${coachFramework(locale)}
 
 ## Сократовский вопрос
 
@@ -100,30 +126,43 @@ ${COACH_FRAMEWORK}
 Если вопрос просит игрока назвать НАБОР рук соперника — любой диапазон, который естественно отметить на сетке 13×13, — поставь "answerMode": "range": игрок ответит, отметив руки на сетке, а не текстом. Это касается и префлопа (что соперник открывает / коллирует / 3-бетит / сбрасывает), и постфлопа (чем он на конкретном борде продолжает ставить / чекает / коллирует / сбрасывает — разложить его диапазон на этой улице). Признак простой: если ответ на вопрос — это множество стартовых рук, а не число или мысль словами, ставь "range", даже когда речь про флоп, тёрн или ривер. Для всех остальных вопросов — "answerMode": "text". Диапазонный вопрос задавай только когда прочтение диапазона соперника — действительно ключ к раздаче, не ради сетки.
 
 Ответ — ТОЛЬКО валидный JSON, без текста вокруг и без markdown-код-блоков.`;
+}
 
 // Карта словами с мастью — «As» → «туз пик», «9d» → «девятка бубён». Масти модель
 // иногда путает (видели «разномастные» названы «одномастными») — проговариваем явно.
+// EN-вариант («ace of spades», «nine of diamonds») выбирается по locale — это подпись
+// данных для модели, поэтому переводится (границу философии не трогаем).
 const RANK_RU: Record<string, string> = {
   A: "туз", K: "король", Q: "дама", J: "валет", T: "десятка", "9": "девятка", "8": "восьмёрка",
   "7": "семёрка", "6": "шестёрка", "5": "пятёрка", "4": "четвёрка", "3": "тройка", "2": "двойка",
 };
 const SUIT_RU: Record<string, string> = { c: "треф", d: "бубён", h: "червей", s: "пик" };
-function cardRu(card: string): string {
-  const r = RANK_RU[card[0]?.toUpperCase()];
-  const s = SUIT_RU[card[1]?.toLowerCase()];
-  return r && s ? `${r} ${s}` : "";
+const RANK_EN: Record<string, string> = {
+  A: "ace", K: "king", Q: "queen", J: "jack", T: "ten", "9": "nine", "8": "eight",
+  "7": "seven", "6": "six", "5": "five", "4": "four", "3": "three", "2": "two",
+};
+const SUIT_EN: Record<string, string> = { c: "clubs", d: "diamonds", h: "hearts", s: "spades" };
+function cardWords(card: string, locale: Locale): string {
+  const ranks = locale === "en" ? RANK_EN : RANK_RU;
+  const suits = locale === "en" ? SUIT_EN : SUIT_RU;
+  const r = ranks[card[0]?.toUpperCase()];
+  const s = suits[card[1]?.toLowerCase()];
+  if (!r || !s) return "";
+  return locale === "en" ? `${r} of ${s}` : `${r} ${s}`;
 }
 
 // Используется и в этом промпте, и в config/prompts/verdict.ts — снимок стола
 // передаётся LLM в одном и том же текстовом виде на обоих шагах диалога.
-export function renderTableSnapshot(tableSnapshot: TableSnapshot): string {
+// Подписи снимка (метки данных) переводятся по locale; числа считает парсер.
+export function renderTableSnapshot(tableSnapshot: TableSnapshot, locale: Locale): string {
   // Блайнд для перевода фишек в BB прямо в снимке: стеки и суммы действий показываем
   // и в фишках, и в больших блайндах, чтобы модель не пересчитывала сама (и не мазала).
   const bb = bigBlindFromSnapshot(tableSnapshot);
   const inBb = (chips: number) => (bb ? ` = ${Math.round((chips / bb) * 10) / 10} BB` : "");
+  const en = locale === "en";
 
   const seats = tableSnapshot.seats
-    .map((seat) => `${seat.label} (${seat.positionName ?? seat.position}, стек ${seat.startingStack}${inBb(seat.startingStack)})`)
+    .map((seat) => `${seat.label} (${seat.positionName ?? seat.position}, ${en ? "stack" : "стек"} ${seat.startingStack}${inBb(seat.startingStack)})`)
     .join("; ");
 
   // Действия нумеруем [N] — модель этим номером указывает точку решения для схемы
@@ -137,44 +176,76 @@ export function renderTableSnapshot(tableSnapshot: TableSnapshot): string {
 
   const facts = renderHandFacts(tableSnapshot);
 
-  const heroCardsRu = tableSnapshot.heroCards.map(cardRu).filter(Boolean).join(", ");
-  const boardRu = tableSnapshot.board.map(cardRu).filter(Boolean).join(", ");
+  const heroCardsWords = tableSnapshot.heroCards.map((c) => cardWords(c, locale)).filter(Boolean).join(", ");
+  const boardWords = tableSnapshot.board.map((c) => cardWords(c, locale)).filter(Boolean).join(", ");
+
+  const shortTableHint = en
+    ? " (short table — positions open wider than at a full ring)"
+    : " (короткий стол — позиции открываются шире, чем на полном ринге)";
 
   return [
     // Размер стола ПЕРВЫМ и явно: от него зависят диапазоны позиций. На 6-макс HJ/CO/BTN
     // открываются заметно шире, чем на 8–9-макс (HJ на 6-макс — НЕ ранняя позиция). Полный
     // стол из 6 мест = 6-макс, а не полный ринг — модель без этого валится в дефолт 9-max.
-    `Размер стола: ${tableSnapshot.tableSize ? `${tableSnapshot.tableSize}-max` : "не указан"}${tableSnapshot.tableSize && tableSnapshot.tableSize <= 6 ? " (короткий стол — позиции открываются шире, чем на полном ринге)" : ""}`,
-    `Места: ${seats}`,
-    `Карты Hero: ${tableSnapshot.heroCards.join(" ") || "неизвестны"}${heroCardsRu ? ` (${heroCardsRu})` : ""}`,
-    `Борд: ${tableSnapshot.board.join(" ") || "не дошло до флопа"}${boardRu ? ` (${boardRu})` : ""}`,
-    `Банк по итогам раздачи: ${tableSnapshot.potTotal}${inBb(tableSnapshot.potTotal)}`,
-    `Действия по улицам:\n${actions}`,
+    `${en ? "Table size" : "Размер стола"}: ${tableSnapshot.tableSize ? `${tableSnapshot.tableSize}-max` : en ? "not specified" : "не указан"}${tableSnapshot.tableSize && tableSnapshot.tableSize <= 6 ? shortTableHint : ""}`,
+    `${en ? "Seats" : "Места"}: ${seats}`,
+    `${en ? "Hero's cards" : "Карты Hero"}: ${tableSnapshot.heroCards.join(" ") || (en ? "unknown" : "неизвестны")}${heroCardsWords ? ` (${heroCardsWords})` : ""}`,
+    `${en ? "Board" : "Борд"}: ${tableSnapshot.board.join(" ") || (en ? "didn't reach the flop" : "не дошло до флопа")}${boardWords ? ` (${boardWords})` : ""}`,
+    `${en ? "Pot at showdown" : "Банк по итогам раздачи"}: ${tableSnapshot.potTotal}${inBb(tableSnapshot.potTotal)}`,
+    `${en ? "Actions by street" : "Действия по улицам"}:\n${actions}`,
     ...(facts ? ["", facts] : []),
   ].join("\n");
 }
 
 // Тип оппонента словами для тренера — «предположительно рыба», не голая аббревиатура.
 // Описание сразу подсказывает, как тип влияет на диапазон (Правило 1: тип посчитал парсер).
+// Подпись типа — данные для модели → переводится по locale (EN с теми же пояснениями).
 const OPP_TYPE_RU: Record<OpponentFact["type"], string> = {
   FISH: "рыба (лузово-пассивный любитель: входит широко, повышает редко, любит коллировать и почти не блефует)",
   LAG: "лузово-агрессивный маньяк (входит широко, много давит и блефует чаще обычного)",
   NIT: "нит (тайтово-пассивный: входит редко, его агрессия почти всегда реальная сила)",
   REG: "рег (тайтово-агрессивный: диапазоны уже и осмысленнее среднего поля микролимитов)",
 };
+const OPP_TYPE_EN: Record<OpponentFact["type"], string> = {
+  FISH: "fish (loose-passive amateur: enters wide, raises rarely, loves to call and almost never bluffs)",
+  LAG: "loose-aggressive maniac (enters wide, applies a lot of pressure and bluffs more than usual)",
+  NIT: "nit (tight-passive: enters rarely, his aggression is almost always real strength)",
+  REG: "reg (tight-aggressive: ranges are tighter and more sensible than the average micro-stakes field)",
+};
 
 // Блок ридсов парсера на злодеев текущей раздачи — внутренний приор тренера.
 // Пустой список → пустая строка, блок в промпт не попадает (мало наблюдений — не гадаем).
-export function renderOpponents(opponents?: OpponentFact[]): string {
+// Подписи данных (тип, тексты блока) — по locale; факты (%, выборка) считает парсер.
+export function renderOpponents(opponents: OpponentFact[] | undefined, locale: Locale): string {
   if (!opponents?.length) return "";
+  const en = locale === "en";
+  const oppType = en ? OPP_TYPE_EN : OPP_TYPE_RU;
 
   const lines = opponents.map((o) => {
+    if (en) {
+      const sample =
+        o.confidence === "solid"
+          ? `sample ${o.handsObserved} hands — read is reliable`
+          : `sample only ${o.handsObserved} hands — read is tentative, hold it loosely`;
+      return `- ${o.seatLabel}: likely ${oppType[o.type]}. Entered the pot voluntarily in ${o.vpip}% of hands, raised first in ${o.pfr}% (${sample}).`;
+    }
     const sample =
       o.confidence === "solid"
         ? `выборка ${o.handsObserved} раздач — тип надёжный`
         : `выборка всего ${o.handsObserved} раздач — тип предварительный, держи его свободно`;
-    return `- ${o.seatLabel}: предположительно ${OPP_TYPE_RU[o.type]}. Входил в игру добровольно в ${o.vpip}% раздач, повышал первым в ${o.pfr}% (${sample}).`;
+    return `- ${o.seatLabel}: предположительно ${oppType[o.type]}. Входил в игру добровольно в ${o.vpip}% раздач, повышал первым в ${o.pfr}% (${sample}).`;
   });
+
+  if (en) {
+    return `Parser reads on this hand's opponents — computed from hands of this tournament BEFORE the current one, i.e. only from what the player could have seen by the moment of the decision:
+${lines.join("\n")}
+
+How to use these reads:
+- This is exactly the "opponent tag" from the framework — take it as the basis for reading his range when the hand itself doesn't show a tag. But it's a soft prior, not a verdict: people change their manner over the course of a tournament.
+- Priority of reads: the player's live read from his answer outweighs this prior; the prior outweighs the default "unknown micro-stakes amateur". If the player says something different about the opponent — don't push the prior as fact, the player may have seen more.
+- Don't show this data to the player: don't slap a label on him ("he's a fish", "he's a nit"), don't recite the percentages or the sample size. This is your internal reasoning. In words to the player you may only mention what he saw at the table himself ("he was entering almost every hand").
+- A Socratic question about the read is still appropriate: let the player put into words himself what kind of opponent this is — your prior doesn't replace his answer.`;
+  }
 
   return `Ридсы парсера на оппонентов этой раздачи — посчитаны по раздачам этого турнира ДО текущей, то есть только по тому, что игрок мог видеть к моменту решения:
 ${lines.join("\n")}
@@ -214,14 +285,14 @@ function outputSchemaFor(request: HandAnalysisRequest): string {
 }
 
 export function buildHandAnalysisPrompt(request: HandAnalysisRequest): string {
-  const { tournament, importanceLevel, chipResult } = request;
-  const opponentsBlock = renderOpponents(request.opponents);
+  const { tournament, importanceLevel, chipResult, locale } = request;
+  const opponentsBlock = renderOpponents(request.opponents, locale);
 
   return `Контекст турнира: ${tournament.handsCount} раздач, VPIP ${tournament.vpipPercent}%, стиль игрока — ${tournament.styleDiagnosis}.
 
 Раздача отмечена парсером как ${importanceLevel}, результат Hero в этой раздаче — ${chipResult} фишек.
 
-${opponentsBlock ? `${opponentsBlock}\n\n` : ""}${renderTableSnapshot(request.tableSnapshot)}
+${opponentsBlock ? `${opponentsBlock}\n\n` : ""}${renderTableSnapshot(request.tableSnapshot, locale)}
 
 Верни JSON строго такого вида:
 ${outputSchemaFor(request)}`;

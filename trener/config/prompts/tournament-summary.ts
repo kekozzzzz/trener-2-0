@@ -7,7 +7,10 @@
 // (parser/open-raise.ts + config/poker/rfi-chart.ts) — LLM лишь формулирует.
 
 import type { TournamentSummaryRequest } from "@/infrastructure/adapters/llm/types";
+import type { Locale } from "@/i18n/config";
 
+// Подписи данных (позиция, стек-бэнд, вид лимпа) — переводятся по locale; выбор
+// словаря в билдере по request.locale. Инструкции про утечки остаются русскими.
 const POSITION_RU: Record<string, string> = {
   UTG: "UTG (ранней позиции)",
   MP: "средней позиции (MP)",
@@ -17,13 +20,43 @@ const POSITION_RU: Record<string, string> = {
   BTN: "баттона",
   SB: "малого блайнда",
 };
+const POSITION_EN: Record<string, string> = {
+  UTG: "UTG (early position)",
+  MP: "middle position (MP)",
+  MP2: "middle position (MP)",
+  HJ: "the hijack",
+  CO: "the cutoff",
+  BTN: "the button",
+  SB: "the small blind",
+};
 
 const BAND_RU: Record<string, string> = {
   SHORT: "коротком стеке (до ~9 блайндов)",
   MID: "стеке ~10-14 блайндов",
 };
+const BAND_EN: Record<string, string> = {
+  SHORT: "a short stack (up to ~9 blinds)",
+  MID: "a ~10-14 blind stack",
+};
 
-export const TOURNAMENT_SUMMARY_SYSTEM_PROMPT = `Ты — сократовский тренер по покеру для игрока микролимитных турниров (MTT) на GGPoker. Твоя задача — дать игроку общую картину сыгранного турнира: как он играл в целом и какие моменты стоит пересмотреть.
+// Языковая секция обзора турнира: RU — по-русски; EN (locale "en") — естественный
+// английский, «you», без КАПСА, метрики-термины прячем, формат BB. Остальные
+// инструкции (утечки, тон, ссылки, формат) — русские для обеих локалей.
+const TOURNAMENT_LANGUAGE_RU = `Язык:
+- По-русски, разговорно, обращайся к игроку на "ты" — как в живом разговоре лицом к лицу: «ты в основном терял на…», а не «Hero терял» и не по нику в третьем лице. «Hero» во входных данных — лишь метка игрока, в текст обзора её писать нельзя. Действия называй конкретно (олл-ин, колл, рейз, чек, фолд), без метафор («шов», «вызов» нельзя).
+- Не вываливай термины-метрики (SPR, пот-оддсы, эквити) — игрок может их не знать; объясняй простыми словами через последствие.
+- Стек и потери — в больших блайндах (BB), фишки в скобках.
+- Тире в тексте — только короткое «-» с пробелами вокруг, никогда не длинное «—».`;
+const TOURNAMENT_LANGUAGE_EN = `Language:
+- Reply in English, conversational, address the player as "you" — as in a face-to-face conversation: "you were mainly losing on…", not "Hero was losing" and never third person. "Hero" in the input is only the player's label — never write it in the overview text. Name actions plainly (all-in, call, raise, check, fold), no metaphors.
+- Normal capitalization. Never write words or sentences in ALL CAPS — emphasize with word choice, not caps.
+- Don't dump metric terms (SPR, pot odds, equity) — the player may not know them; explain in plain words through the consequence.
+- Stacks and losses in big blinds (BB), chips in parentheses.`;
+
+// Системный промпт обзора под язык игрока: инструкции по утечкам/тону/формату —
+// русские (внутренние), локализуется только секция «Язык:».
+export function buildTournamentSummarySystemPrompt(locale: Locale): string {
+  return `Ты — сократовский тренер по покеру для игрока микролимитных турниров (MTT) на GGPoker. Твоя задача — дать игроку общую картину сыгранного турнира: как он играл в целом и какие моменты стоит пересмотреть.
 
 Правила:
 - Все числа (VPIP, результаты раздач в фишках, уровень важности) уже рассчитаны парсером и переданы тебе. Не вычисляй метрики самостоятельно.
@@ -64,11 +97,7 @@ export const TOURNAMENT_SUMMARY_SYSTEM_PROMPT = `Ты — сократовски
 - Если передан список «4-беты против 3-бета шире нормы» — отдельной фразой скажи, что с этой позиции 4-бетить такие руки против 3-бета слишком широко: 4-бет должен быть велью или блокер-блефом (тузы), а не случайной рукой. Называй ТОЛЬКО переданные руки и позицию. Парсер уже отфильтровал норму и граничные.
 - Если список пуст — про 4-бет не пиши вовсе.
 
-Язык:
-- По-русски, разговорно, обращайся к игроку на "ты" — как в живом разговоре лицом к лицу: «ты в основном терял на…», а не «Hero терял» и не по нику в третьем лице. «Hero» во входных данных — лишь метка игрока, в текст обзора её писать нельзя. Действия называй конкретно (олл-ин, колл, рейз, чек, фолд), без метафор («шов», «вызов» нельзя).
-- Не вываливай термины-метрики (SPR, пот-оддсы, эквити) — игрок может их не знать; объясняй простыми словами через последствие.
-- Стек и потери — в больших блайндах (BB), фишки в скобках.
-- Тире в тексте — только короткое «-» с пробелами вокруг, никогда не длинное «—».
+${locale === "en" ? TOURNAMENT_LANGUAGE_EN : TOURNAMENT_LANGUAGE_RU}
 
 Ссылки на раздачи:
 - Когда ссылаешься на конкретную разобранную раздачу из списка, вставь прямо в текст токен {{h:N}}, где N — её числовой "index" из запроса. Карты руки система подставит сама — НЕ пиши карты этой раздачи словами или рангами, просто поставь токен в нужном месте фразы.
@@ -77,14 +106,25 @@ export const TOURNAMENT_SUMMARY_SYSTEM_PROMPT = `Ты — сократовски
 Формат:
 - "overview" — связный текст 3–6 предложений: общий стиль игры и итог; если есть — фраза про открывашки шире нормы; на чём в основном терял или выигрывал, со ссылками-токенами {{h:N}} на самые показательные раздачи. Без отдельного списка, всё единым текстом.
 - Ответ — ТОЛЬКО валидный JSON вида {"overview": "..."}, без пояснений вокруг и без markdown-код-блоков.`;
+}
 
 const LIMP_KIND_RU: Record<string, string> = {
   OPEN: "открыл лимпом",
   OVER: "долимпил поверх лимперов",
 };
+const LIMP_KIND_EN: Record<string, string> = {
+  OPEN: "open-limped",
+  OVER: "over-limped behind limpers",
+};
 
 export function buildTournamentSummaryPrompt(request: TournamentSummaryRequest): string {
-  const { tournament, hands, openLeak, limpLeak, bbThreeBetLeak, openShoveLeak, vsOpenThreeBetLeak, isoLeak, squeezeLeak, fourBetLeak } = request;
+  const { tournament, hands, openLeak, limpLeak, bbThreeBetLeak, openShoveLeak, vsOpenThreeBetLeak, isoLeak, squeezeLeak, fourBetLeak, locale } = request;
+
+  // Подписи данных (позиция/бэнд/вид лимпа) — по языку игрока; инструкции блоков русские.
+  const en = locale === "en";
+  const POSITION = en ? POSITION_EN : POSITION_RU;
+  const BAND = en ? BAND_EN : BAND_RU;
+  const LIMP_KIND = en ? LIMP_KIND_EN : LIMP_KIND_RU;
 
   const handLines = hands
     .map((h) => {
@@ -102,7 +142,7 @@ export function buildTournamentSummaryPrompt(request: TournamentSummaryRequest):
   const openLeakBlock =
     openLeak.length > 0
       ? `Открывашки заметно шире нормы (называй только эти руки и позиции):\n${openLeak
-          .map((o) => `  - ${o.code} с ${POSITION_RU[o.position] ?? o.position}`)
+          .map((o) => `  - ${o.code} с ${POSITION[o.position] ?? o.position}`)
           .join("\n")}`
       : "Открывашек шире нормы нет — про открытия не пиши.";
 
@@ -112,7 +152,7 @@ export function buildTournamentSummaryPrompt(request: TournamentSummaryRequest):
       ? `Лимпы Hero за турнир: открыл лимпом ${limpLeak.openLimps} раз, долимпил поверх лимперов ${limpLeak.overLimps} раз.${
           limpLeak.examples.length > 0
             ? ` Показательные руки: ${limpLeak.examples
-                .map((e) => `${e.code} с ${POSITION_RU[e.position] ?? e.position} (${LIMP_KIND_RU[e.kind] ?? e.kind})`)
+                .map((e) => `${e.code} с ${POSITION[e.position] ?? e.position} (${LIMP_KIND[e.kind] ?? e.kind})`)
                 .join(", ")}.`
             : ""
         }`
@@ -121,42 +161,42 @@ export function buildTournamentSummaryPrompt(request: TournamentSummaryRequest):
   const bbThreeBetBlock =
     bbThreeBetLeak.length > 0
       ? `3-беты из BB заметно шире нормы (называй только эти руки и позиции открывашки):\n${bbThreeBetLeak
-          .map((b) => `  - ${b.code} против опена с ${POSITION_RU[b.openerPosition] ?? b.openerPosition}`)
+          .map((b) => `  - ${b.code} против опена с ${POSITION[b.openerPosition] ?? b.openerPosition}`)
           .join("\n")}`
       : "3-бетов из BB шире нормы нет — про 3-бет из BB не пиши.";
 
   const openShoveBlock =
     openShoveLeak.length > 0
       ? `Опен-шовы заметно шире нормы (называй только эти руки, позиции и стек):\n${openShoveLeak
-          .map((s) => `  - ${s.code} с ${POSITION_RU[s.position] ?? s.position} на ${BAND_RU[s.band] ?? s.band}`)
+          .map((s) => `  - ${s.code} с ${POSITION[s.position] ?? s.position} на ${BAND[s.band] ?? s.band}`)
           .join("\n")}`
       : "Опен-шовов шире нормы нет — про опен-шов не пиши.";
 
   const vsOpenThreeBetBlock =
     vsOpenThreeBetLeak.length > 0
       ? `3-беты против опена заметно шире нормы (называй только эти руки и нашу позицию):\n${vsOpenThreeBetLeak
-          .map((v) => `  - ${v.code} с ${POSITION_RU[v.position] ?? v.position}`)
+          .map((v) => `  - ${v.code} с ${POSITION[v.position] ?? v.position}`)
           .join("\n")}`
       : "3-бетов против опена шире нормы нет — про 3-бет против опена не пиши.";
 
   const isoBlock =
     isoLeak.length > 0
       ? `Изоляции лимпера заметно шире нормы (называй только эти руки и позицию):\n${isoLeak
-          .map((i) => `  - ${i.code} с ${POSITION_RU[i.position] ?? i.position}`)
+          .map((i) => `  - ${i.code} с ${POSITION[i.position] ?? i.position}`)
           .join("\n")}`
       : "Изоляций шире нормы нет — про изоляцию не пиши.";
 
   const squeezeBlock =
     squeezeLeak.length > 0
       ? `Сквизы заметно шире нормы (называй только эти руки и позицию):\n${squeezeLeak
-          .map((s) => `  - ${s.code} с ${POSITION_RU[s.position] ?? s.position}`)
+          .map((s) => `  - ${s.code} с ${POSITION[s.position] ?? s.position}`)
           .join("\n")}`
       : "Сквизов шире нормы нет — про сквиз не пиши.";
 
   const fourBetBlock =
     fourBetLeak.length > 0
       ? `4-беты против 3-бета заметно шире нормы (называй только эти руки и позицию):\n${fourBetLeak
-          .map((f) => `  - ${f.code} с ${POSITION_RU[f.position] ?? f.position}`)
+          .map((f) => `  - ${f.code} с ${POSITION[f.position] ?? f.position}`)
           .join("\n")}`
       : "4-бетов шире нормы нет — про 4-бет не пиши.";
 

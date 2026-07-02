@@ -1,5 +1,6 @@
 import type { HandImportance, PlayerStyle, TableSnapshot } from "@/parser/types";
 import type { OpponentFact } from "@/parser/opponent-profile";
+import type { Locale } from "@/i18n/config";
 
 // Контекст турнира — только то, что уже посчитал парсер и хранится на Tournament.
 export type TournamentContext = {
@@ -12,6 +13,9 @@ export type TournamentContext = {
 // Вход адаптера — обезличенный снимок стола (Hero/Player N, без никнеймов) +
 // уже посчитанные метрики раздачи и турнира (правило 1 — LLM не вычисляет числа).
 export type HandAnalysisRequest = {
+  // Язык ответа тренера (вариант A: тренер говорит на locale игрока, думает как прежде).
+  // Переводятся только языковые директивы и подписи данных; покерная проза — русская.
+  locale: Locale;
   importanceLevel: HandImportance;
   chipResult: number;
   tableSnapshot: TableSnapshot;
@@ -64,6 +68,7 @@ export type PriorSpot = {
 };
 
 export type NextQuestionRequest = {
+  locale: Locale; // язык ответа тренера (см. HandAnalysisRequest.locale)
   history: DialogueRoundSummary[];
   draftVerdict: string;
   chipResult: number;
@@ -88,6 +93,7 @@ export type NextQuestionResult = {
 // GENERATE_HAND_ANALYSIS + те же посчитанные метрики раздачи/турнира, что и в
 // HandAnalysisRequest.
 export type VerdictRequest = {
+  locale: Locale; // язык ответа тренера (см. HandAnalysisRequest.locale)
   history: DialogueRoundSummary[];
   draftVerdict: string;
   chipResult: number;
@@ -110,6 +116,7 @@ export type ChatMessageSummary = {
 // раздачи (played/optimal/verdict) + те же посчитанные метрики, что и в
 // HandAnalysisRequest/VerdictRequest (правило 1).
 export type ChatReplyRequest = {
+  locale: Locale; // язык ответа тренера (см. HandAnalysisRequest.locale)
   history: ChatMessageSummary[];
   analysisSummary: string;
   chipResult: number;
@@ -211,6 +218,7 @@ export type FourBetLeakHand = {
 // набор префлоп-утечек (открывашки, лимпы, 3-беты из BB, опен-шовы, 3-беты против
 // опена, изоляции, сквизы, 4-беты против 3-бета — все могут быть пустыми).
 export type TournamentSummaryRequest = {
+  locale: Locale; // язык ответа тренера (см. HandAnalysisRequest.locale)
   tournament: TournamentContext;
   hands: TournamentSummaryHand[];
   openLeak: OpenLeakHand[];
@@ -236,6 +244,7 @@ export type TournamentSummaryResult = {
 // только формулирует характеристику словами. styleCounts — сколько турниров на
 // каждый из 4 стилей; openLeak.count — как часто игрок так открывал.
 export type PlayerCharacteristicRequest = {
+  locale: Locale; // язык ответа тренера (см. HandAnalysisRequest.locale)
   tournamentsCounted: number;
   avgVpip: number;
   avgResultBuyins: number;

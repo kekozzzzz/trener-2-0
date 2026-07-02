@@ -9,12 +9,12 @@ import {
   getAnthropicProxyUrl,
 } from "@/config/llm";
 import { getHealthCheckTimeoutMs } from "@/config/health";
-import { buildHandAnalysisPrompt, HAND_ANALYSIS_SYSTEM_PROMPT } from "@/config/prompts/hand-analysis";
-import { buildDialogueQuestionPrompt, DIALOGUE_QUESTION_SYSTEM_PROMPT } from "@/config/prompts/dialogue-question";
-import { buildVerdictPrompt, VERDICT_SYSTEM_PROMPT } from "@/config/prompts/verdict";
-import { buildChatReplyPrompt, CHAT_REPLY_SYSTEM_PROMPT } from "@/config/prompts/chat-reply";
-import { buildTournamentSummaryPrompt, TOURNAMENT_SUMMARY_SYSTEM_PROMPT } from "@/config/prompts/tournament-summary";
-import { buildPlayerCharacteristicPrompt, PLAYER_CHARACTERISTIC_SYSTEM_PROMPT } from "@/config/prompts/player-characteristic";
+import { buildHandAnalysisPrompt, buildHandAnalysisSystemPrompt } from "@/config/prompts/hand-analysis";
+import { buildDialogueQuestionPrompt, buildDialogueQuestionSystemPrompt } from "@/config/prompts/dialogue-question";
+import { buildVerdictPrompt, buildVerdictSystemPrompt } from "@/config/prompts/verdict";
+import { buildChatReplyPrompt, buildChatReplySystemPrompt } from "@/config/prompts/chat-reply";
+import { buildTournamentSummaryPrompt, buildTournamentSummarySystemPrompt } from "@/config/prompts/tournament-summary";
+import { buildPlayerCharacteristicPrompt, buildPlayerCharacteristicSystemPrompt } from "@/config/prompts/player-characteristic";
 import { recordLlmUsage } from "@/features/usage/llm-usage";
 import {
   extractJson,
@@ -145,7 +145,7 @@ async function callClaude(
 
 export const anthropicLlmAdapter: LlmPort = {
   async generateHandAnalysis(request: HandAnalysisRequest, meta?: LlmCallMeta): Promise<HandAnalysisResult> {
-    const parsed = await callClaude(HAND_ANALYSIS_SYSTEM_PROMPT, buildHandAnalysisPrompt(request), {
+    const parsed = await callClaude(buildHandAnalysisSystemPrompt(request.locale), buildHandAnalysisPrompt(request), {
       step: "HAND_ANALYSIS",
       playerId: meta?.playerId,
     });
@@ -153,7 +153,7 @@ export const anthropicLlmAdapter: LlmPort = {
   },
 
   async generateNextQuestion(request: NextQuestionRequest, meta?: LlmCallMeta): Promise<NextQuestionResult> {
-    const parsed = await callClaude(DIALOGUE_QUESTION_SYSTEM_PROMPT, buildDialogueQuestionPrompt(request), {
+    const parsed = await callClaude(buildDialogueQuestionSystemPrompt(request.locale), buildDialogueQuestionPrompt(request), {
       step: "DIALOGUE_QUESTION",
       playerId: meta?.playerId,
     });
@@ -161,7 +161,7 @@ export const anthropicLlmAdapter: LlmPort = {
   },
 
   async generateVerdict(request: VerdictRequest, meta?: LlmCallMeta): Promise<VerdictResult> {
-    const parsed = await callClaude(VERDICT_SYSTEM_PROMPT, buildVerdictPrompt(request), {
+    const parsed = await callClaude(buildVerdictSystemPrompt(request.locale), buildVerdictPrompt(request), {
       step: "VERDICT",
       playerId: meta?.playerId,
     });
@@ -169,7 +169,7 @@ export const anthropicLlmAdapter: LlmPort = {
   },
 
   async generateChatReply(request: ChatReplyRequest, meta?: LlmCallMeta): Promise<ChatReplyResult> {
-    const parsed = await callClaude(CHAT_REPLY_SYSTEM_PROMPT, buildChatReplyPrompt(request), {
+    const parsed = await callClaude(buildChatReplySystemPrompt(request.locale), buildChatReplyPrompt(request), {
       step: "CHAT_REPLY",
       playerId: meta?.playerId,
     });
@@ -180,7 +180,7 @@ export const anthropicLlmAdapter: LlmPort = {
     request: TournamentSummaryRequest,
     meta?: LlmCallMeta,
   ): Promise<TournamentSummaryResult> {
-    const parsed = await callClaude(TOURNAMENT_SUMMARY_SYSTEM_PROMPT, buildTournamentSummaryPrompt(request), {
+    const parsed = await callClaude(buildTournamentSummarySystemPrompt(request.locale), buildTournamentSummaryPrompt(request), {
       step: "TOURNAMENT_SUMMARY",
       playerId: meta?.playerId,
     });
@@ -191,7 +191,7 @@ export const anthropicLlmAdapter: LlmPort = {
     request: PlayerCharacteristicRequest,
     meta?: LlmCallMeta,
   ): Promise<PlayerCharacteristicResult> {
-    const parsed = await callClaude(PLAYER_CHARACTERISTIC_SYSTEM_PROMPT, buildPlayerCharacteristicPrompt(request), {
+    const parsed = await callClaude(buildPlayerCharacteristicSystemPrompt(request.locale), buildPlayerCharacteristicPrompt(request), {
       step: "PLAYER_CHARACTERISTIC",
       playerId: meta?.playerId,
     });

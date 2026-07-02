@@ -2,6 +2,7 @@ import type { StepHandler } from "../types";
 import type { CountedTournament } from "@/features/profile/aggregate";
 import { aggregatePlayerCharacteristic } from "@/features/profile/aggregate";
 import { getLlmAdapter } from "@/infrastructure/adapters/llm";
+import type { Locale } from "@/i18n/config";
 
 type GeneratePlayerCharacteristicPayload = {
   playerId: string;
@@ -55,8 +56,12 @@ export const generatePlayerCharacteristicStep: StepHandler = async (task, db) =>
   const facts = aggregatePlayerCharacteristic(counted, allHands);
   if (!facts) return; // защитно: count > 0 уже гарантирует не-null
 
+  // Язык характеристики — язык интерфейса игрока (Player.locale); дефолт ru.
+  const player = await db.player.findUnique({ where: { id: playerId }, select: { locale: true } });
+
   const result = await getLlmAdapter().generatePlayerCharacteristic(
     {
+      locale: (player?.locale as Locale) ?? "ru",
       tournamentsCounted: facts.tournamentsCounted,
       avgVpip: facts.avgVpip,
       avgResultBuyins: facts.avgResultBuyins,
