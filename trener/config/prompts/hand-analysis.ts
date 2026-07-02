@@ -6,6 +6,7 @@
 //  - «если не уверен — сформулируй уточняющий вопрос, а не категоричный совет».
 
 import type { TableSnapshot } from "@/parser/types";
+import type { OpponentFact } from "@/parser/opponent-profile";
 import { renderHandFacts } from "@/parser/facts";
 import { bigBlindFromSnapshot } from "@/parser/big-blind";
 import type { HandAnalysisRequest } from "@/infrastructure/adapters/llm/types";
@@ -153,6 +154,38 @@ export function renderTableSnapshot(tableSnapshot: TableSnapshot): string {
   ].join("\n");
 }
 
+// Тип оппонента словами для тренера — «предположительно рыба», не голая аббревиатура.
+// Описание сразу подсказывает, как тип влияет на диапазон (Правило 1: тип посчитал парсер).
+const OPP_TYPE_RU: Record<OpponentFact["type"], string> = {
+  FISH: "рыба (лузово-пассивный любитель: входит широко, повышает редко, любит коллировать и почти не блефует)",
+  LAG: "лузово-агрессивный маньяк (входит широко, много давит и блефует чаще обычного)",
+  NIT: "нит (тайтово-пассивный: входит редко, его агрессия почти всегда реальная сила)",
+  REG: "рег (тайтово-агрессивный: диапазоны уже и осмысленнее среднего поля микролимитов)",
+};
+
+// Блок ридсов парсера на злодеев текущей раздачи — внутренний приор тренера.
+// Пустой список → пустая строка, блок в промпт не попадает (мало наблюдений — не гадаем).
+export function renderOpponents(opponents?: OpponentFact[]): string {
+  if (!opponents?.length) return "";
+
+  const lines = opponents.map((o) => {
+    const sample =
+      o.confidence === "solid"
+        ? `выборка ${o.handsObserved} раздач — тип надёжный`
+        : `выборка всего ${o.handsObserved} раздач — тип предварительный, держи его свободно`;
+    return `- ${o.seatLabel}: предположительно ${OPP_TYPE_RU[o.type]}. Входил в игру добровольно в ${o.vpip}% раздач, повышал первым в ${o.pfr}% (${sample}).`;
+  });
+
+  return `Ридсы парсера на оппонентов этой раздачи — посчитаны по раздачам этого турнира ДО текущей, то есть только по тому, что игрок мог видеть к моменту решения:
+${lines.join("\n")}
+
+Как пользоваться этими ридсами:
+- Это тот самый «тег оппонента» из фреймворка — бери его как основу чтения диапазона, когда по самой раздаче тега не видно. Но это мягкий приор, не приговор: человек меняет манеру по ходу турнира.
+- Приоритет чтений: живой ридс игрока из его ответа важнее этого приора; приор важнее дефолтного «неизвестный любитель микролимитов». Если игрок говорит про соперника другое — не дави приором как фактом, игрок мог видеть больше.
+- Игроку этих данных не показывай: не вешай ярлык («он рыба», «он нит»), не пересказывай проценты и размер выборки. Это твоё внутреннее рассуждение. Словами игроку можно только то, что он и сам видел за столом («он входил почти в каждую раздачу»).
+- Сократовский вопрос про ридс по-прежнему уместен: пусть игрок сам сформулирует, что за соперник, — твой приор не заменяет его ответ.`;
+}
+
 function outputSchemaFor(request: HandAnalysisRequest): string {
   if (request.importanceLevel === "CRITICAL") {
     return `{
@@ -182,12 +215,13 @@ function outputSchemaFor(request: HandAnalysisRequest): string {
 
 export function buildHandAnalysisPrompt(request: HandAnalysisRequest): string {
   const { tournament, importanceLevel, chipResult } = request;
+  const opponentsBlock = renderOpponents(request.opponents);
 
   return `Контекст турнира: ${tournament.handsCount} раздач, VPIP ${tournament.vpipPercent}%, стиль игрока — ${tournament.styleDiagnosis}.
 
 Раздача отмечена парсером как ${importanceLevel}, результат Hero в этой раздаче — ${chipResult} фишек.
 
-${renderTableSnapshot(request.tableSnapshot)}
+${opponentsBlock ? `${opponentsBlock}\n\n` : ""}${renderTableSnapshot(request.tableSnapshot)}
 
 Верни JSON строго такого вида:
 ${outputSchemaFor(request)}`;
