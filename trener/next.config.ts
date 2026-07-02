@@ -19,7 +19,14 @@ const securityHeaders = [
   // microphone=(self) — голосовой ввод ответа работает только на нашем же origin
   // (сторонним сайтам/iframe доступа нет). camera/geolocation не используем — закрыты.
   { key: "Permissions-Policy", value: "camera=(), microphone=(self), geolocation=()" },
-  { key: "Strict-Transport-Security", value: "max-age=31536000" },
+  // HSTS — ТОЛЬКО в проде (там https за nginx). В dev на голом http этот заголовок
+  // отравляет браузеру весь localhost: тот запоминает «только https» на год и любые
+  // локальные страницы падают с ERR_SSL_PROTOCOL_ERROR (поймано 2026-07-02 на клике
+  // по волшебной ссылке из письма). Лечится у поймавших: chrome://net-internals/#hsts
+  // → Delete domain security policies → localhost.
+  ...(process.env.NODE_ENV === "production"
+    ? [{ key: "Strict-Transport-Security", value: "max-age=31536000" }]
+    : []),
 ];
 
 const nextConfig: NextConfig = {

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/infrastructure/db/client";
+import { getAppBaseUrl } from "@/config/app";
 import { hashMagicToken } from "@/features/auth/magic-link";
 import { buildSessionCookie, buildPendingRegistrationCookie } from "@/features/auth/session";
 import { recordAuthEvent } from "@/features/auth/auth-events";
@@ -10,7 +11,11 @@ import { recordAuthEvent } from "@/features/auth/auth-events";
 // не всегда переживает NextResponse.redirect).
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get("token") ?? "";
-  const invalid = () => NextResponse.redirect(new URL("/enter?error=invalid", req.url));
+  // Редиректы строим от getAppBaseUrl(), НЕ от req.url: за nginx-прокси приложение
+  // видит запрос как http://localhost:3000/... и абсолютный Location уводил браузер
+  // пользователя на его собственный localhost (поймано на проде 2026-07-02).
+  const base = getAppBaseUrl();
+  const invalid = () => NextResponse.redirect(new URL("/enter?error=invalid", base));
   if (!token) return invalid();
 
   const row = await prisma.magicLinkToken.findUnique({
@@ -30,14 +35,14 @@ export async function GET(req: NextRequest) {
 
   if (player) {
     await recordAuthEvent("LOGIN_MAGIC", player.id);
-    const res = NextResponse.redirect(new URL("/", req.url));
+    const res = NextResponse.redirect(new URL("/", base));
     const c = buildSessionCookie(player.id);
     res.cookies.set(c.name, c.value, c.options);
     return res;
   }
 
   // Новый email → регистрация: несём подтверждённый email на экран согласия cookie-меткой.
-  const res = NextResponse.redirect(new URL("/enter/complete", req.url));
+  const res = NextResponse.redirect(new URL("/enter/complete", base));
   const c = buildPendingRegistrationCookie(row.email);
   res.cookies.set(c.name, c.value, c.options);
   return res;
