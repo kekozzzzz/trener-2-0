@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/table";
 import { ChevronDown, Trash2 } from "lucide-react";
 import { HandTable } from "@/components/poker/hand-table";
+import { StartHereCard, SessionDoneCard } from "@/components/tournament/focus-slot";
 import { RangeGrid } from "@/components/poker/range-grid";
 import { OpenChartPanel } from "@/components/profile/open-chart-panel";
 import { LeakTrendRows } from "@/components/profile/leak-trend-rows";
@@ -205,6 +206,22 @@ export default function DesignPreviewPage() {
       </header>
 
       {/* Палитра */}
+      {/* Верхний слот страницы турнира: «Начни отсюда» и «Сессия разобрана» */}
+      <section className="space-y-4">
+        <h2 className="text-h2">Верхний слот турнира</h2>
+        <p className="max-w-2xl text-body text-muted-foreground">
+          Слот под шапкой страницы турнира (план 2026-07-03). Пока есть непройденные
+          раздачи — «Начни отсюда» с самой дорогой из них; когда все сократовские
+          диалоги дошли до вердикта — финишная черта «Сессия разобрана». Реальные
+          компоненты на демо-данных (mt-12 у блоков — из вёрстки страницы турнира).
+        </p>
+        <StartHereCard
+          tournamentId="00000000-0000-0000-0000-000000000000"
+          hand={{ id: "00000000-0000-0000-0000-000000000000", chipResult: -2200, tableData: pushSnapshot }}
+        />
+        <SessionDoneCard count={3} />
+      </section>
+
       <section className="space-y-4">
         <h2 className="text-h2">Палитра</h2>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">

@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ChevronDown } from "lucide-react";
 import { requireSession } from "@/features/auth/session";
 import { assessAiAccess } from "@/features/usage/budget";
 import { isSubscriptionGateEnabled } from "@/config/plans";
@@ -20,9 +20,11 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ParsingWaitClient } from "./parsing-wait-client";
+import { AutoUnlockClient } from "./auto-unlock-client";
 import { AnalysisProgress } from "./analysis-progress";
 import { LeakDynamicsSection } from "./leak-dynamics";
 import { TournamentSessionGoal } from "./session-goal";
+import { StartHereCard, SessionDoneCard, type FocusHand } from "@/components/tournament/focus-slot";
 import { MetricsGlossary } from "@/components/metrics/glossary";
 import { LoadingDots } from "@/components/ui/loading-dots";
 
@@ -203,15 +205,22 @@ export default async function TournamentPage({
               {canUnlock ? t("reviewThisTournament") : t("reviewLocked")}
             </p>
             <p className="mt-2 text-body text-foreground">
-              {canUnlock ? t("reviewUnlockedBody") : t("reviewLockedBody")}
+              {canUnlock ? (error ? t("reviewUnlockedBody") : t("reviewAutoBody")) : t("reviewLockedBody")}
             </p>
+            {/* Разбор стартует сам при открытии страницы. Кнопка остаётся только как
+                ручной повтор после ошибки (например, часовой лимит): автозапуск после
+                редиректа с ?error= зациклил бы запуск-ошибку-запуск. */}
             {canUnlock ? (
-              <form action={unlockTournamentAnalysisAction} className="mt-4">
-                <input type="hidden" name="tournamentId" value={tournament.id} />
-                <button type="submit" className={cn(buttonVariants())}>
-                  {t("unlockButton")}
-                </button>
-              </form>
+              error ? (
+                <form action={unlockTournamentAnalysisAction} className="mt-4">
+                  <input type="hidden" name="tournamentId" value={tournament.id} />
+                  <button type="submit" className={cn(buttonVariants())}>
+                    {t("unlockButton")}
+                  </button>
+                </form>
+              ) : (
+                <AutoUnlockClient tournamentId={tournament.id} />
+              )
             ) : (
               <Link href="/pricing" className={cn(buttonVariants(), "mt-4 inline-flex")}>
                 {t("subscribeButton")}
@@ -311,6 +320,23 @@ export default async function TournamentPage({
   // overview содержит инлайн-токены ссылок {{h:handId|карты}} (см. renderOverview).
   const summary = tournament.summary as { overview?: string } | null;
 
+  // Верхний слот (план 2026-07-03-верхний-слот-турнира). Финиш сессии — все
+  // сократовские диалоги дошли до вердикта; хвост карточки (сильные/средние) финишу
+  // не мешает. Пока финиша нет — «начни отсюда»: самая дорогая непройденная раздача
+  // (наибольшая потеря; без потерь — наибольший размах). Кандидаты только с готовым
+  // контентом: раздачи «в работе» (pendingHands) сюда не попадают.
+  const dialoguesDone = handsForDialogue.filter((h) => h.dialogue!.state === "VERDICT_SHOWN").length;
+  const sessionDone = handsForDialogue.length > 0 && dialoguesDone === handsForDialogue.length;
+  const unfinished: FocusHand[] = [
+    ...handsForDialogue.filter((h) => h.dialogue!.state !== "VERDICT_SHOWN"),
+    ...simpleHands.filter((h) => h.viewedAt === null),
+  ];
+  const worstLoss = [...unfinished].sort((a, b) => a.chipResult - b.chipResult)[0];
+  const startHere =
+    worstLoss && worstLoss.chipResult < 0
+      ? worstLoss
+      : ([...unfinished].sort((a, b) => Math.abs(b.chipResult) - Math.abs(a.chipResult))[0] ?? null);
+
   // Ник игрока для показа вместо «Hero» (только отображение; в LLM не идёт).
   const me = await prisma.player.findUnique({
     where: { id: session.playerId },
@@ -348,6 +374,13 @@ export default async function TournamentPage({
           <div className="mt-12 border border-border bg-card p-6">
             <AnalysisProgress tournamentId={id} />
           </div>
+        )}
+
+        {/* Верхний слот: финиш сессии или точка входа «начни отсюда». */}
+        {sessionDone ? (
+          <SessionDoneCard count={handsForDialogue.length} />
+        ) : (
+          startHere && <StartHereCard tournamentId={id} hand={startHere} />
         )}
 
         {/* Общая картина — наверху. Готова → показываем; ещё собирается → плейсхолдер. */}
@@ -391,7 +424,17 @@ export default async function TournamentPage({
 
         {handsForDialogue.length > 0 && (
           <div className="mt-16">
-            <h2 className="text-h2">{t("criticalHandsTitle")}</h2>
+            <div className="flex flex-wrap items-baseline justify-between gap-4">
+              <h2 className="text-h2">{t("criticalHandsTitle")}</h2>
+              <span
+                className={cn(
+                  "font-mono text-label uppercase tracking-label",
+                  sessionDone ? "text-primary" : "text-muted-foreground"
+                )}
+              >
+                {t("dialogueProgress", { done: dialoguesDone, total: handsForDialogue.length })}
+              </span>
+            </div>
             <p className="mt-2 text-small text-muted-foreground">
               {t("criticalHandsNote")}
             </p>
@@ -433,10 +476,17 @@ export default async function TournamentPage({
           </div>
         )}
 
+        {/* Хвост карточки — дополнительный материал, свёрнут по умолчанию: финиш сессии
+            наступает по критическим, а сюда игрок заходит, когда хочет копнуть глубже. */}
         {simpleHands.length > 0 && (
-          <div className="mt-16">
-            <h2 className="text-h2">{t("strongMediumTitle")}</h2>
-            <p className="mt-2 text-small text-muted-foreground">
+          <details className="group mt-16">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 border border-border bg-card p-6 transition-colors duration-150 ease-out hover:border-primary [&::-webkit-details-marker]:hidden">
+              <span className="font-mono text-label uppercase tracking-label text-muted-foreground">
+                {t("strongMediumTitle", { count: simpleHands.length })}
+              </span>
+              <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform duration-150 ease-out group-open:rotate-180" />
+            </summary>
+            <p className="mt-4 text-small text-muted-foreground">
               {t("strongMediumNote")}
             </p>
             <div className="mt-8 space-y-4">
@@ -494,7 +544,7 @@ export default async function TournamentPage({
                 );
               })}
             </div>
-          </div>
+          </details>
         )}
 
         {processing && pendingHands.length > 0 && (
