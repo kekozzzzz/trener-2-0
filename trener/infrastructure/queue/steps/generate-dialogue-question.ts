@@ -6,6 +6,7 @@ import { getLlmAdapter } from "@/infrastructure/adapters/llm";
 import { applyRangeMarker, applyTableMarker } from "@/config/dialogue";
 import { findPriorSimilarSpots } from "@/features/memory/similar-spots";
 import type { SpotFingerprint } from "@/parser/spot-fingerprint";
+import { opponentsForHand } from "./opponents-for-hand";
 import { enqueue } from "../enqueue";
 
 type GenerateDialogueQuestionPayload = {
@@ -95,6 +96,8 @@ export const generateDialogueQuestionStep: StepHandler = async (task, db) => {
       styleDiagnosis: tournament.styleDiagnosis,
     },
     priorSpots,
+    // Тип оппонента перед тренером и на этапе диалога, не только в первичном разборе.
+    opponents: await opponentsForHand(db, hand),
   };
 
   const result = await getLlmAdapter().generateNextQuestion(request, { playerId: tournament.playerId });

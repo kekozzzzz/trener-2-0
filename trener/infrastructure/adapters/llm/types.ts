@@ -75,6 +75,7 @@ export type NextQuestionRequest = {
   tableSnapshot: TableSnapshot;
   tournament: TournamentContext;
   priorSpots?: PriorSpot[]; // похожие прошлые раздачи игрока (память) — опционально
+  opponents?: OpponentFact[]; // профили злодеев по рукам ДО этой (см. HandAnalysisRequest.opponents)
 };
 
 export type NextQuestionResult = {
@@ -99,6 +100,7 @@ export type VerdictRequest = {
   chipResult: number;
   tableSnapshot: TableSnapshot;
   tournament: TournamentContext;
+  opponents?: OpponentFact[]; // профили злодеев по рукам ДО этой (см. HandAnalysisRequest.opponents)
 };
 
 export type VerdictResult = {
@@ -122,6 +124,7 @@ export type ChatReplyRequest = {
   chipResult: number;
   tableSnapshot: TableSnapshot;
   tournament: TournamentContext;
+  opponents?: OpponentFact[]; // профили злодеев по рукам ДО этой (см. HandAnalysisRequest.opponents)
 };
 
 export type ChatReplyResult = {

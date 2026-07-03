@@ -3,6 +3,7 @@ import type { TableSnapshot } from "@/parser/types";
 import type { VerdictRequest } from "@/infrastructure/adapters/llm/types";
 import type { Locale } from "@/i18n/config";
 import { getLlmAdapter } from "@/infrastructure/adapters/llm";
+import { opponentsForHand } from "./opponents-for-hand";
 
 type GenerateVerdictPayload = {
   handId: string;
@@ -81,6 +82,8 @@ export const generateVerdictStep: StepHandler = async (task, db) => {
       resultBuyins: tournament.resultBuyins.toNumber(),
       styleDiagnosis: tournament.styleDiagnosis,
     },
+    // Тип оппонента перед тренером и на этапе вердикта, не только в первичном разборе.
+    opponents: await opponentsForHand(db, hand),
   };
 
   const result = await getLlmAdapter().generateVerdict(request, { playerId: tournament.playerId });

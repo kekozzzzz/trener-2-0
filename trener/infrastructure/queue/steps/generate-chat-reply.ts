@@ -5,6 +5,7 @@ import type { Locale } from "@/i18n/config";
 import { getLlmAdapter } from "@/infrastructure/adapters/llm";
 import { buildAnalysisSummary } from "@/features/chat/analysis-summary";
 import { isChatAvailable } from "@/features/chat/availability";
+import { opponentsForHand } from "./opponents-for-hand";
 
 type GenerateChatReplyPayload = {
   handId: string;
@@ -77,6 +78,8 @@ export const generateChatReplyStep: StepHandler = async (task, db) => {
       resultBuyins: tournament.resultBuyins.toNumber(),
       styleDiagnosis: tournament.styleDiagnosis,
     },
+    // Тип оппонента перед тренером и в свободном чате, не только в первичном разборе.
+    opponents: await opponentsForHand(db, hand),
   };
 
   const result = await getLlmAdapter().generateChatReply(request, { playerId: tournament.playerId });
