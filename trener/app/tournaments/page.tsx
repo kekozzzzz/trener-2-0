@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/page-header";
 import { TournamentRow } from "@/components/tournaments/tournament-row";
 import { PlayerCharts } from "@/components/profile/player-charts";
 import { ProfileLeakTrend } from "./leak-trend";
+import { SessionGoalSection } from "./session-goal";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -75,6 +76,10 @@ export default async function TournamentsPage({
                   })}
             </p>
             <PlayerCharts />
+            {/* Задание на сессию — над динамикой (цель), стримится отдельно. */}
+            <Suspense fallback={null}>
+              <SessionGoalSection playerId={playerId} />
+            </Suspense>
             {/* «Куда ты движешься»: тренд ликов по игровым дням — стримится отдельно
                 (Suspense), скан окна не задерживает список турниров. */}
             <Suspense fallback={null}>

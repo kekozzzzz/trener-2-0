@@ -43,6 +43,7 @@ import { HandTable } from "@/components/poker/hand-table";
 import { RangeGrid } from "@/components/poker/range-grid";
 import { OpenChartPanel } from "@/components/profile/open-chart-panel";
 import { LeakTrendRows } from "@/components/profile/leak-trend-rows";
+import { ReferenceChartsPanel } from "@/components/charts/reference-charts-panel";
 import type { LeakDynamics } from "@/features/profile/leak-trend";
 import { GRID_RANKS, cellCode } from "@/config/poker/hand-grid";
 import { isOpenSignificantlyWide, type OpenPosition } from "@/config/poker/rfi-chart";
@@ -428,6 +429,56 @@ export default function DesignPreviewPage() {
           текущий день. «В этот день ни разу» — лаймовая рамка (прогресс).
         </p>
         <LeakTrendRows trends={demoLeakTrends} />
+      </section>
+
+      {/* Эталонный чарт открытий (страница /charts) — на живом конфиге */}
+      <section className="space-y-4">
+        <h2 className="text-h2">Эталонный чарт открытий</h2>
+        <p className="max-w-2xl text-body text-muted-foreground">
+          Панель страницы /charts (норма, не зеркало): сплошной лайм — «всегда»,
+          контур — «иногда», серый — граница допуска. Считается из того же конфига,
+          которым судит детектор.
+        </p>
+        <div className="border border-border bg-card p-6">
+          <ReferenceChartsPanel />
+        </div>
+      </section>
+
+      {/* Цель на сессию (мокап, план 2026-07-03) — два состояния */}
+      <section className="space-y-4">
+        <h2 className="text-h2">Цель на сессию</h2>
+        <p className="max-w-2xl text-body text-muted-foreground">
+          Блок на «Моих турнирах» над «Динамикой ошибок». Одна цель из главного
+          системного лика; после загрузки турниров вечера — детерминированная проверка.
+          Ссылка «норма» ведёт на эталонный чарт спота. Два состояния: прошлая сессия
+          выполнена / нарушено.
+        </p>
+        <div className="border border-primary bg-card p-6">
+          <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
+            Цель на сессию
+          </p>
+          <p className="mt-2 text-h3 text-foreground">Ни одного открытия лимпом</p>
+          <p className="mt-2 text-small text-muted-foreground">
+            Твой самый частый лик: в 4 из 5 прошлых сессий, всего 11 раз.{" "}
+            <span className="cursor-pointer text-foreground underline">Посмотреть норму открытий</span>
+          </p>
+          <p className="mt-4 flex items-center gap-2 font-mono text-label uppercase tracking-label text-primary">
+            Прошлая сессия: цель достигнута ✓
+          </p>
+        </div>
+        <div className="border border-border bg-card p-6">
+          <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
+            Цель на сессию
+          </p>
+          <p className="mt-2 text-h3 text-foreground">Не открывайся шире нормы с ранних позиций</p>
+          <p className="mt-2 text-small text-muted-foreground">
+            Твой самый частый лик: в 4 из 5 прошлых сессий, всего 8 раз.{" "}
+            <span className="cursor-pointer text-foreground underline">Посмотреть норму открытий</span>
+          </p>
+          <p className="mt-4 font-mono text-label uppercase tracking-label text-muted-foreground">
+            Прошлая сессия: нарушено 3 раза — цель остаётся
+          </p>
+        </div>
       </section>
 
       {/* Выпадающее меню */}

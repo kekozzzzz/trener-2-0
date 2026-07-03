@@ -1,6 +1,7 @@
 import { prisma } from "@/infrastructure/db/client";
 import { aggregateOpenChart, type OpenChartFacts } from "./open-chart";
-import { countLeaks, gameDayKey, leakDynamics, type LeakDynamics } from "./leak-trend";
+import { countLeaks, gameDayKey, leakDynamics, type LeakDynamics, type LeakKind } from "./leak-trend";
+import { sessionGoal, goalResult, type SessionGoalResult } from "./session-goal";
 import { LEAK_WINDOW_DAYS } from "@/config/leaks";
 
 // Сводная характеристика игрока для показа в личном кабинете. Только свой профиль
@@ -107,6 +108,70 @@ export async function getTournamentLeakDynamics(
 // Для «Моих турниров»: самый свежий игровой день на фоне прошлых.
 export async function getProfileLeakTrend(playerId: string): Promise<LeakDynamicsView | null> {
   return buildLeakDynamicsByDay(playerId, null);
+}
+
+// Задание на сессию (plans/2026-07-03-задание-на-сессию.md): goal — цель на СЛЕДУЮЩУЮ
+// сессию (топ-лик окна последних игровых дней, включая самый свежий); goalStats —
+// насколько лик системный (строка-контекст под заданием); last — итог ПОСЛЕДНЕЙ
+// сыгранной сессии по её СОБСТВЕННОМУ заданию (окно дней до неё — то самое, что
+// показывалось игроку перед той сессией: задание детерминировано, храним ничего).
+export type SessionGoalView = {
+  goal: LeakKind;
+  goalStats: { days: number; window: number; total: number };
+  last: SessionGoalResult | null;
+};
+
+export async function getSessionGoalView(playerId: string): Promise<SessionGoalView | null> {
+  const tournaments = await prisma.tournament.findMany({
+    where: { playerId, deletedAt: null, status: { in: ["PARSED", "CARD_READY"] } },
+    orderBy: { playedAt: "desc" },
+    take: LEAK_SCAN_TOURNAMENTS,
+    select: { id: true, playedAt: true },
+  });
+
+  const dayByTournament = new Map<string, string>();
+  const daysDesc: string[] = [];
+  for (const t of tournaments) {
+    const day = gameDayKey(t.playedAt);
+    dayByTournament.set(t.id, day);
+    if (daysDesc[daysDesc.length - 1] !== day) daysDesc.push(day);
+  }
+
+  // Последние WINDOW+1 дней в хронологии: окно следующего задания + день для итога.
+  const windowDaysChrono = daysDesc.slice(0, LEAK_WINDOW_DAYS + 1).reverse();
+  if (windowDaysChrono.length === 0) return null;
+
+  const wanted = new Set(windowDaysChrono);
+  const ids = tournaments.filter((t) => wanted.has(dayByTournament.get(t.id)!)).map((t) => t.id);
+  const hands = await prisma.hand.findMany({
+    where: { tournamentId: { in: ids } },
+    select: { tournamentId: true, tableData: true },
+  });
+  const byDay = new Map<string, { tableData: unknown }[]>();
+  for (const hand of hands) {
+    const handDay = dayByTournament.get(hand.tournamentId)!;
+    const list = byDay.get(handDay);
+    if (list) list.push(hand);
+    else byDay.set(handDay, [hand]);
+  }
+  const counts = windowDaysChrono.map((d) => countLeaks(byDay.get(d) ?? []));
+
+  // Цель на следующую сессию: окно = последние LEAK_WINDOW_DAYS дней (со свежим).
+  const nextWindow = counts.slice(-LEAK_WINDOW_DAYS);
+  const goal = sessionGoal(nextWindow);
+  if (!goal) return null;
+
+  const goalStats = {
+    days: nextWindow.filter((c) => c[goal] > 0).length,
+    window: nextWindow.length,
+    total: nextWindow.reduce((sum, c) => sum + c[goal], 0),
+  };
+
+  // Итог последней сессии — по заданию, действовавшему ДЛЯ неё (окно дней до неё).
+  const lastGoal = sessionGoal(counts.slice(0, -1).slice(-LEAK_WINDOW_DAYS));
+  const last = lastGoal ? goalResult(lastGoal, counts[counts.length - 1]) : null;
+
+  return { goal, goalStats, last };
 }
 
 export async function getOpenChart(playerId: string): Promise<OpenChartView | null> {

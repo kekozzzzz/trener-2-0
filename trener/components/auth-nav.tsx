@@ -43,6 +43,9 @@ export async function AuthNav() {
       <Link href="/tournaments" className="text-muted-foreground transition-colors hover:text-foreground">
         {t("myTournaments")}
       </Link>
+      <Link href="/charts" className="text-muted-foreground transition-colors hover:text-foreground">
+        {t("charts")}
+      </Link>
       <Link href="/account" className="text-muted-foreground transition-colors hover:text-foreground">
         {t("account")}
       </Link>

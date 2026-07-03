@@ -154,3 +154,28 @@ export function isOpenSignificantlyWide(position: string, code: string): boolean
 export function rfiOpenRange(pos: OpenPosition): ReadonlySet<string> {
   return OPEN_RANGE[pos];
 }
+
+// Весовые руки позиций — прямые коды (без «+»-нотации), собираем в Set один раз.
+const WEIGHTED_SET: Record<OpenPosition, Set<string>> = {
+  UTG: new Set(RFI_WEIGHTED.UTG),
+  MP: new Set(RFI_WEIGHTED.MP),
+  HJ: new Set(RFI_WEIGHTED.HJ),
+  CO: new Set(RFI_WEIGHTED.CO),
+  BTN: new Set(RFI_WEIGHTED.BTN),
+  SB: new Set(RFI_WEIGHTED.SB),
+};
+
+// Слой клетки для страницы эталонного чарта (вариант «слоями», решение Артёма
+// 2026-07-03): ALWAYS — открывай всегда (ядро без весовых); SOMETIMES — «иногда,
+// по ситуации» (весовые ~50%); BORDER — граничная полоса допуска (не ошибка, но
+// и не рекомендация — детектор такие не флагает); OUT — не открывается.
+// Та же математика, что у детектора isOpenSignificantlyWide — страница и грейдер
+// не могут разойтись по определению.
+export type RfiCellState = "ALWAYS" | "SOMETIMES" | "BORDER" | "OUT";
+
+export function rfiCellState(pos: OpenPosition, code: string): RfiCellState {
+  if (WEIGHTED_SET[pos].has(code)) return "SOMETIMES";
+  if (OPEN_RANGE[pos].has(code)) return "ALWAYS";
+  if (TOLERANCE_RANGE[pos].has(code)) return "BORDER";
+  return "OUT";
+}

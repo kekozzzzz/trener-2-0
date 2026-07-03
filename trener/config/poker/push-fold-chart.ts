@@ -82,3 +82,15 @@ export function isOpenShoveSignificantlyWide(band: StackBand, pos: string, code:
   if (!isPushPosition(pos)) return false;
   return isWiderThan(PUSH_RANGE[band][pos], PUSH_TOLERANCE[band][pos], code);
 }
+
+// Слой клетки для страницы эталонного чарта (страница /charts): ALWAYS — пуш,
+// BORDER — граница допуска (не ошибка, но не рекомендация), OUT — фолд. Весового
+// слоя у пуш-фолда нет — Nash-спот бинарный. Та же математика, что у детектора
+// isOpenShoveSignificantlyWide — страница и грейдер не могут разойтись.
+export type PushCellState = "ALWAYS" | "BORDER" | "OUT";
+
+export function pushCellState(band: StackBand, pos: PushPosition, code: string): PushCellState {
+  if (PUSH_RANGE[band][pos].has(code)) return "ALWAYS";
+  if (PUSH_TOLERANCE[band][pos].has(code)) return "BORDER";
+  return "OUT";
+}
