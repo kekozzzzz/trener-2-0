@@ -82,3 +82,33 @@ export function isBBThreeBetSignificantlyWide(openerPos: string, code: string): 
   if (!isOpenerPosition(openerPos)) return false;
   return isWiderThan(THREEBET_RANGE[openerPos], THREEBET_TOLERANCE[openerPos], code);
 }
+
+// Слой клетки для страницы эталонного чарта защиты BB (страница /charts). Приоритет:
+// 3-бет-велью → 3-бет-блеф (весом) → колл-иногда (весовые) → колл → фолд (порядок
+// важен: премиумы входят и в колл-сырьё — показываем как 3-бет). Из тех же множеств,
+// что детектор isBBThreeBetSignificantlyWide — страница и грейдер согласованы.
+export type BBCellState = "THREEBET" | "THREEBET_BLUFF" | "CALL" | "CALL_SOMETIMES" | "FOLD";
+
+const THREEBET_VALUE_SET: Record<OpenerPosition, Set<string>> = Object.fromEntries(
+  OPENERS.map((p) => [p, buildRange(THREEBET_VALUE[p])]),
+) as Record<OpenerPosition, Set<string>>;
+
+const THREEBET_BLUFF_SET: Record<OpenerPosition, Set<string>> = Object.fromEntries(
+  OPENERS.map((p) => [p, new Set(THREEBET_BLUFF[p])]),
+) as Record<OpenerPosition, Set<string>>;
+
+const BB_CALL_RANGE: Record<OpenerPosition, Set<string>> = Object.fromEntries(
+  OPENERS.map((p) => [p, buildRange(BB_CALL[p])]),
+) as Record<OpenerPosition, Set<string>>;
+
+const BB_CALL_WEIGHTED_SET: Record<OpenerPosition, Set<string>> = Object.fromEntries(
+  OPENERS.map((p) => [p, new Set(BB_CALL_WEIGHTED[p])]),
+) as Record<OpenerPosition, Set<string>>;
+
+export function bbCellState(opener: OpenerPosition, code: string): BBCellState {
+  if (THREEBET_VALUE_SET[opener].has(code)) return "THREEBET";
+  if (THREEBET_BLUFF_SET[opener].has(code)) return "THREEBET_BLUFF";
+  if (BB_CALL_WEIGHTED_SET[opener].has(code)) return "CALL_SOMETIMES";
+  if (BB_CALL_RANGE[opener].has(code)) return "CALL";
+  return "FOLD";
+}

@@ -56,3 +56,24 @@ export function isVsOpenThreeBetSignificantlyWide(heroPos: string, code: string)
   if (!isVsOpenPosition(heroPos)) return false;
   return isWiderThan(THREEBET_RANGE[heroPos], THREEBET_TOLERANCE[heroPos], code);
 }
+
+// Слой клетки для страницы эталонного чарта (страница /charts): THREEBET — велью,
+// THREEBET_BLUFF — блеф весом, BORDER — граница допуска, OUT — 3-бет не рекомендован
+// (колл или фолд — холодный колл чартом сознательно не судится, спот нюансный).
+// Из тех же множеств, что детектор — страница и грейдер не могут разойтись.
+export type VsOpenCellState = "THREEBET" | "THREEBET_BLUFF" | "BORDER" | "OUT";
+
+const THREEBET_VALUE_SET = Object.fromEntries(
+  POSITIONS.map((p) => [p, buildRange(THREEBET_VALUE[p])]),
+) as Record<OpenPosition, Set<string>>;
+
+const THREEBET_BLUFF_SET = Object.fromEntries(
+  POSITIONS.map((p) => [p, buildRange(THREEBET_BLUFF[p])]),
+) as Record<OpenPosition, Set<string>>;
+
+export function vsOpenCellState(pos: OpenPosition, code: string): VsOpenCellState {
+  if (THREEBET_VALUE_SET[pos].has(code)) return "THREEBET";
+  if (THREEBET_BLUFF_SET[pos].has(code)) return "THREEBET_BLUFF";
+  if (THREEBET_TOLERANCE[pos].has(code)) return "BORDER";
+  return "OUT";
+}

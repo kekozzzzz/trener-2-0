@@ -9,6 +9,9 @@ import { cn } from "@/lib/utils";
 const CHART_HREF: Partial<Record<LeakKind, string>> = {
   OPEN_WIDE: "/charts#open",
   OPEN_SHOVE_WIDE: "/charts#push",
+  BB_3BET_WIDE: "/charts#bb",
+  VS_OPEN_3BET_WIDE: "/charts#vsopen",
+  ISO_WIDE: "/charts#iso",
 };
 
 // Блок «Задание на сессию» на «Моих турнирах» (план 2026-07-03, форма и формулировки

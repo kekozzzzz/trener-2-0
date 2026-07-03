@@ -37,3 +37,18 @@ export function isIsoSignificantlyWide(heroPos: string, code: string): boolean {
   if (!isIsoPosition(heroPos)) return false;
   return isWiderThan(ISO_RANGE[heroPos], ISO_TOLERANCE[heroPos], code);
 }
+
+// Слой клетки для страницы эталонного чарта (страница /charts): ISO — изолируй рейзом,
+// OVERLIMP — мелкая пара: оверлимпни, не изолируй (изоляция ею флагается детектором —
+// так и задумано), BORDER — граница допуска, OUT — фолд. Из тех же множеств, что
+// детектор — страница и грейдер не могут разойтись.
+export type IsoCellState = "ISO" | "OVERLIMP" | "BORDER" | "OUT";
+
+const OVERLIMP_SET = new Set(OVERLIMP_PAIRS);
+
+export function isoCellState(pos: OpenPosition, code: string): IsoCellState {
+  if (OVERLIMP_SET.has(code)) return "OVERLIMP";
+  if (ISO_RANGE[pos].has(code)) return "ISO";
+  if (ISO_TOLERANCE[pos].has(code)) return "BORDER";
+  return "OUT";
+}

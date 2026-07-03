@@ -5,6 +5,9 @@ import { requireSession } from "@/features/auth/session";
 import { PageHeader } from "@/components/page-header";
 import { ReferenceChartsPanel } from "@/components/charts/reference-charts-panel";
 import { PushChartPanel } from "@/components/charts/push-chart-panel";
+import { BBDefensePanel } from "@/components/charts/bb-defense-panel";
+import { VsOpenPanel } from "@/components/charts/vs-open-panel";
+import { IsoPanel } from "@/components/charts/iso-panel";
 
 // Страница «Чарты» — эталонные диапазоны (норма), в отличие от «Твоих чартов»
 // (зеркала игрока). Нужна заданиям на сессию: «не открывайся шире нормы» честно
@@ -37,6 +40,30 @@ export default async function ChartsPage() {
           <p className="mt-2 max-w-2xl text-small text-muted-foreground">{t("pushIntro")}</p>
           <div className="mt-6">
             <PushChartPanel />
+          </div>
+        </div>
+
+        <div className="mt-16 border-t border-border pt-16" id="bb">
+          <h2 className="text-h2">{t("bbTitle")}</h2>
+          <p className="mt-2 max-w-2xl text-small text-muted-foreground">{t("bbIntro")}</p>
+          <div className="mt-6">
+            <BBDefensePanel />
+          </div>
+        </div>
+
+        <div className="mt-16 border-t border-border pt-16" id="vsopen">
+          <h2 className="text-h2">{t("vsOpenTitle")}</h2>
+          <p className="mt-2 max-w-2xl text-small text-muted-foreground">{t("vsOpenIntro")}</p>
+          <div className="mt-6">
+            <VsOpenPanel />
+          </div>
+        </div>
+
+        <div className="mt-16 border-t border-border pt-16" id="iso">
+          <h2 className="text-h2">{t("isoTitle")}</h2>
+          <p className="mt-2 max-w-2xl text-small text-muted-foreground">{t("isoIntro")}</p>
+          <div className="mt-6">
+            <IsoPanel />
           </div>
         </div>
       </section>
