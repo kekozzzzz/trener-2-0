@@ -6,7 +6,28 @@ import { RANK_CHARS, rankValue } from "./hand-codes";
 
 // Разворачивает один токен «+»-нотации в список кодов руки:
 //  "22+" → 22,33,…,AA;  "A2s+" → A2s,A3s,…,AKs;  "KQo" → KQo;  "JTs" → JTs.
+// «−»-интервалы (их выдаёт formatRange сетки): "QQ-99" → QQ,JJ,TT,99;
+//  "A9s-A6s" → A9s,A8s,A7s,A6s (старшая карта и масть совпадают).
 export function expandToken(token: string): string[] {
+  const dash = token.indexOf("-");
+  if (dash > 0) {
+    const hi = token.slice(0, dash);
+    const lo = token.slice(dash + 1);
+    // Пары: "QQ-99" — идём по достоинству пары вниз.
+    if (hi.length === 2 && hi[0] === hi[1] && lo.length === 2 && lo[0] === lo[1]) {
+      const out: string[] = [];
+      for (let v = rankValue(hi[0]); v >= rankValue(lo[0]); v--) out.push(RANK_CHARS[v] + RANK_CHARS[v]);
+      return out;
+    }
+    // Кикеры: "A9s-A6s" — старшая и масть общие, младшая идёт вниз.
+    if (hi.length === 3 && lo.length === 3 && hi[0] === lo[0] && hi[2] === lo[2]) {
+      const out: string[] = [];
+      for (let v = rankValue(hi[1]); v >= rankValue(lo[1]); v--) out.push(hi[0] + RANK_CHARS[v] + hi[2]);
+      return out;
+    }
+    return []; // кривой интервал — не угадываем
+  }
+
   const plus = token.endsWith("+");
   const body = plus ? token.slice(0, -1) : token;
 
@@ -35,6 +56,47 @@ export function buildRange(tokens: string[]): Set<string> {
   const set = new Set<string>();
   for (const t of tokens) for (const c of expandToken(t)) set.add(c);
   return set;
+}
+
+// Строгий разбор нотации диапазона из ОТВЕТА ИГРОКА (сетка пишет её в текст ответа:
+// «99+, AJs+, A9s-A6s, KQo»). Это пользовательский ввод — каждый токен валидируется
+// жёстко, кривая строка целиком отбрасывается (не угадываем). Возвращает канонические
+// коды 169-сетки без повторов; пусто — нотация не распознана.
+const PAIR_RE = /^([2-9TJQKA])\1$/;
+const KICKER_RE = /^([2-9TJQKA])([2-9TJQKA])[so]$/;
+
+function validRangeToken(token: string): boolean {
+  const dash = token.indexOf("-");
+  if (dash > 0) {
+    const hi = token.slice(0, dash);
+    const lo = token.slice(dash + 1);
+    if (PAIR_RE.test(hi) && PAIR_RE.test(lo)) return rankValue(hi[0]) > rankValue(lo[0]);
+    if (KICKER_RE.test(hi) && KICKER_RE.test(lo))
+      return (
+        hi[0] === lo[0] &&
+        hi[2] === lo[2] &&
+        rankValue(hi[0]) > rankValue(hi[1]) &&
+        rankValue(hi[1]) > rankValue(lo[1])
+      );
+    return false;
+  }
+  const plus = token.endsWith("+");
+  const body = plus ? token.slice(0, -1) : token;
+  if (PAIR_RE.test(body)) return true;
+  if (KICKER_RE.test(body)) return rankValue(body[0]) > rankValue(body[1]);
+  return false;
+}
+
+export function parseRangeNotation(text: string): string[] {
+  const tokens = text.split(",").map((t) => t.trim()).filter(Boolean);
+  // 169 кодов — максимум осмысленного; больше токенов, чем кодов, — мусор.
+  if (tokens.length === 0 || tokens.length > 169) return [];
+  const set = new Set<string>();
+  for (const t of tokens) {
+    if (!validRangeToken(t)) return [];
+    for (const c of expandToken(t)) set.add(c);
+  }
+  return [...set];
 }
 
 // Расширяет диапазон на `step` шагов вниз по младшей карте (пары не трогаем — они

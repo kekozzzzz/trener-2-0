@@ -5,11 +5,11 @@
 //  - «не вычисляй метрики самостоятельно» — числа уже посчитаны парсером;
 //  - «если не уверен — сформулируй уточняющий вопрос, а не категоричный совет».
 
-import type { TableSnapshot } from "@/parser/types";
+import type { Street, TableSnapshot } from "@/parser/types";
 import type { OpponentFact } from "@/parser/opponent-profile";
 import { renderHandFacts } from "@/parser/facts";
 import { bigBlindFromSnapshot } from "@/parser/big-blind";
-import type { HandAnalysisRequest } from "@/infrastructure/adapters/llm/types";
+import type { HandAnalysisRequest, RangeRead } from "@/infrastructure/adapters/llm/types";
 import type { Locale } from "@/i18n/config";
 
 // Общий «мозг» тренера — рамка разбора, тон и язык. Делится со всеми ролями
@@ -255,6 +255,83 @@ ${lines.join("\n")}
 - Приоритет чтений: живой ридс игрока из его ответа важнее этого приора; приор важнее дефолтного «неизвестный любитель микролимитов». Если игрок говорит про соперника другое — не дави приором как фактом, игрок мог видеть больше.
 - Игроку этих данных не показывай: не вешай ярлык («он рыба», «он нит»), не пересказывай проценты и размер выборки. Это твоё внутреннее рассуждение. Словами игроку можно только то, что он и сам видел за столом («он входил почти в каждую раздачу»).
 - Сократовский вопрос про ридс по-прежнему уместен: пусть игрок сам сформулирует, что за соперник, — твой приор не заменяет его ответ.`;
+}
+
+// Блок «диапазоны игрока + точные числа парсера против них» — общий для промптов
+// диалога и вердикта (RangeRead собирает queue/steps/range-facts.ts). Правило 1:
+// все проценты уже посчитаны кодом; здесь они только форматируются словами.
+const STREET_RU: Record<Street, string> = { PREFLOP: "префлоп", FLOP: "флоп", TURN: "тёрн", RIVER: "ривер" };
+const STREET_EN: Record<Street, string> = { PREFLOP: "preflop", FLOP: "flop", TURN: "turn", RIVER: "river" };
+
+export function renderRangeReads(reads: RangeRead[] | undefined, locale: Locale): string {
+  if (!reads?.length) return "";
+  const en = locale === "en";
+  const streetName = en ? STREET_EN : STREET_RU;
+
+  const lines = reads.map((r) => {
+    const parts: string[] = [];
+    const where = r.street ? ` (${streetName[r.street]})` : "";
+    if (en) {
+      parts.push(
+        `- Round ${r.roundNumber}${where}: marked "${r.notation}" — ${r.gridPct}% of all starting hands${r.fullGrid ? " (the ENTIRE grid — “he plays everything”)" : ""}.`
+      );
+      if (r.equityPct !== null)
+        parts.push(`Hero's hand equity against this range on this street: ${r.equityPct}% (${r.combosLive} live combos after removing Hero's cards and the board).`);
+      if (r.vpipContrast) {
+        const c = r.vpipContrast;
+        parts.push(
+          c.gapPp > 0
+            ? `Cross-check vs profile: ${c.seatLabel} has VPIP ${c.vpip}% over ${c.handsObserved} hands — the marked range is ${c.gapPp} pp wider than what he actually plays.`
+            : `Cross-check vs profile: ${c.seatLabel} has VPIP ${c.vpip}% over ${c.handsObserved} hands — the marked width is plausible.`
+        );
+      }
+      if (r.cut) {
+        parts.push(`Cut vs round ${r.cut.vsRound}: ${r.cut.foldPct}% of the previous range's live combos were folded out.`);
+        if (r.cut.addedCombos > 0)
+          parts.push(`The player also ADDED ${r.cut.addedCombos} combos that were not in the previous range — a range only narrows street to street, new hands don't appear.`);
+      }
+    } else {
+      parts.push(
+        `- Раунд ${r.roundNumber}${where}: отмечено «${r.notation}» — ${r.gridPct}% всех стартовых рук${r.fullGrid ? " (ВСЯ сетка — «он играет всё»)" : ""}.`
+      );
+      if (r.equityPct !== null)
+        parts.push(`Эквити руки Hero против этого диапазона на этой улице: ${r.equityPct}% (${r.combosLive} живых комбо после вычета карт Hero и борда).`);
+      if (r.vpipContrast) {
+        const c = r.vpipContrast;
+        parts.push(
+          c.gapPp > 0
+            ? `Сверка с профилем: у ${c.seatLabel} VPIP ${c.vpip}% за ${c.handsObserved} раздач — отмечено на ${c.gapPp} п.п. шире, чем он реально играет.`
+            : `Сверка с профилем: у ${c.seatLabel} VPIP ${c.vpip}% за ${c.handsObserved} раздач — отмеченная ширина правдоподобна.`
+        );
+      }
+      if (r.cut) {
+        parts.push(`Нарезка против раунда ${r.cut.vsRound}: выбито ${r.cut.foldPct}% живых комбо предыдущего диапазона.`);
+        if (r.cut.addedCombos > 0)
+          parts.push(`Игрок при этом ДОЛОЖИЛ ${r.cut.addedCombos} комбо, которых в предыдущем диапазоне не было, — диапазон по улицам только сужается, новые руки не появляются.`);
+      }
+    }
+    return parts.join(" ");
+  });
+
+  if (en) {
+    return `Ranges the player marked on the 13×13 grid — with the parser's EXACT numbers against them (computed by code via full deck enumeration; do NOT recompute or estimate them yourself):
+${lines.join("\n")}
+
+How to use these numbers:
+- They are your anchor for the next step: confront the player's answer with them, don't silently accept the marking. The equity number may be quoted to the player directly — the parser computed it.
+- If the marking is implausibly wide (the entire grid, a large gap vs VPIP) — don't adapt to it: ask how many of those hands the opponent would realistically have played this way to this street.
+- If combos were ADDED during a cut — point at it with a question: which new hands could have appeared here, and where were they earlier?
+- The numbers serve the dialogue, not replace it: one question at a time, no lectures.`;
+  }
+
+  return `Диапазоны, которые игрок отметил на сетке 13×13, — и ТОЧНЫЕ числа парсера против них (посчитаны кодом честным перебором колоды; НЕ пересчитывай и не прикидывай их сам):
+${lines.join("\n")}
+
+Как пользоваться этими числами:
+- Это твоя опора для следующего шага: сталкивай ответ игрока с ними, а не принимай отметку молча. Эквити можно проговаривать игроку прямо — его посчитал парсер.
+- Если отмечено неправдоподобно широко (вся сетка, большой разрыв с VPIP) — не подстраивайся под это: спроси, сколько из этих рук оппонент реально доиграл бы так до этой улицы.
+- Если при нарезке ДОЛОЖЕНЫ комбо — укажи на это вопросом: откуда на этой улице взялись руки, которых раньше в диапазоне не было?
+- Числа служат диалогу, а не заменяют его: одна мысль на вопрос, без лекций.`;
 }
 
 function outputSchemaFor(request: HandAnalysisRequest): string {

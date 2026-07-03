@@ -7,6 +7,7 @@ import { applyRangeMarker, applyTableMarker } from "@/config/dialogue";
 import { findPriorSimilarSpots } from "@/features/memory/similar-spots";
 import type { SpotFingerprint } from "@/parser/spot-fingerprint";
 import { opponentsForHand } from "./opponents-for-hand";
+import { buildRangeReads } from "./range-facts";
 import { enqueue } from "../enqueue";
 
 type GenerateDialogueQuestionPayload = {
@@ -77,18 +78,22 @@ export const generateDialogueQuestionStep: StepHandler = async (task, db) => {
       })
     : [];
 
+  const history = dialogue.rounds.map((round) => ({
+    roundNumber: round.roundNumber,
+    question: round.question,
+    answer: round.answer as string,
+  }));
+  const tableSnapshot = hand.tableData as unknown as TableSnapshot;
+  const opponents = await opponentsForHand(db, hand);
+
   const request: NextQuestionRequest = {
     // Язык ответа тренера — язык интерфейса игрока (Player.locale); дефолт ru.
     locale: (tournament.player.locale as Locale) ?? "ru",
     // ANSWER_RECEIVED гарантирует, что answer записан на каждом раунде (submitAnswer).
-    history: dialogue.rounds.map((round) => ({
-      roundNumber: round.roundNumber,
-      question: round.question,
-      answer: round.answer as string,
-    })),
+    history,
     draftVerdict: analysis.draftVerdict,
     chipResult: hand.chipResult,
-    tableSnapshot: hand.tableData as unknown as TableSnapshot,
+    tableSnapshot,
     tournament: {
       handsCount: tournament.handsCount,
       vpipPercent: tournament.vpipPercent.toNumber(),
@@ -97,7 +102,10 @@ export const generateDialogueQuestionStep: StepHandler = async (task, db) => {
     },
     priorSpots,
     // Тип оппонента перед тренером и на этапе диалога, не только в первичном разборе.
-    opponents: await opponentsForHand(db, hand),
+    opponents,
+    // Диапазоны, отмеченные игроком на сетке, + точные числа парсера против них
+    // (правило 1: эквити/комбо/сверки посчитаны кодом до вызова ИИ).
+    rangeReads: buildRangeReads({ history, tableSnapshot, opponents }),
   };
 
   const result = await getLlmAdapter().generateNextQuestion(request, { playerId: tournament.playerId });

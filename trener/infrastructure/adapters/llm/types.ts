@@ -1,4 +1,4 @@
-import type { HandImportance, PlayerStyle, TableSnapshot } from "@/parser/types";
+import type { HandImportance, PlayerStyle, Street, TableSnapshot } from "@/parser/types";
 import type { OpponentFact } from "@/parser/opponent-profile";
 import type { Locale } from "@/i18n/config";
 
@@ -67,6 +67,26 @@ export type PriorSpot = {
   when: string | null; // ссылка на тот турнир (имя/дата), для узнавания
 };
 
+// Диапазон, отмеченный ИГРОКОМ на сетке 13×13 в ответе диалога, + точные числа
+// парсера против него (parser/range-equity.ts, собирает queue/steps/range-facts.ts).
+// Правило 1: все числа посчитаны кодом, ИИ их только проговаривает; оба входа
+// (диапазон и его нарезку по улицам) назвал сам игрок — математика на честных входах.
+export type RangeRead = {
+  roundNumber: number; // раунд диалога, в котором игрок отметил этот диапазон
+  notation: string; // нотация, как её видел игрок («99+, AJs+, KQo»)
+  gridPct: number; // сколько процентов всех стартовых рук отмечено
+  fullGrid: boolean; // отмечена ВСЯ сетка — «оппонент играет всё» (повод для сверки)
+  street: Street | null; // улица точки решения вопроса (по метке {{table:N}})
+  equityPct: number | null; // эквити руки Hero против диапазона; null — префлоп/нет живых комбо
+  combosLive: number | null; // живых комбо после вычета карт Hero и борда
+  // Сверка с профилем оппонента (когда в раздаче ровно один известный злодей):
+  // gapPp = отмеченный процент минус его VPIP, в процентных пунктах.
+  vpipContrast: { seatLabel: string; vpip: number; handsObserved: number; gapPp: number } | null;
+  // Нарезка против ПРЕДЫДУЩЕГО отмеченного диапазона в этом же диалоге: сколько
+  // процентов живых комбо игрок «выбил» и сколько комбо доложил, которых не было.
+  cut: { vsRound: number; foldPct: number; addedCombos: number } | null;
+};
+
 export type NextQuestionRequest = {
   locale: Locale; // язык ответа тренера (см. HandAnalysisRequest.locale)
   history: DialogueRoundSummary[];
@@ -76,6 +96,7 @@ export type NextQuestionRequest = {
   tournament: TournamentContext;
   priorSpots?: PriorSpot[]; // похожие прошлые раздачи игрока (память) — опционально
   opponents?: OpponentFact[]; // профили злодеев по рукам ДО этой (см. HandAnalysisRequest.opponents)
+  rangeReads?: RangeRead[]; // отмеченные игроком диапазоны + числа парсера против них
 };
 
 export type NextQuestionResult = {
@@ -101,6 +122,7 @@ export type VerdictRequest = {
   tableSnapshot: TableSnapshot;
   tournament: TournamentContext;
   opponents?: OpponentFact[]; // профили злодеев по рукам ДО этой (см. HandAnalysisRequest.opponents)
+  rangeReads?: RangeRead[]; // отмеченные игроком диапазоны + числа парсера против них
 };
 
 export type VerdictResult = {

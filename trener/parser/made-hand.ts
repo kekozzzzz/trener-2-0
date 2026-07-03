@@ -94,6 +94,20 @@ export function handCategory(cards: string[]): number {
   return handValue(cs)[0];
 }
 
+// Сравнимое значение лучшей 5-карточной руки набора — для точного эквити против
+// диапазона (parser/range-equity.ts): значение считается один раз и сравнивается
+// многократно compareValues. Кривые карты отбрасываются (как в handCategory).
+export function cardSetValue(cards: string[]): number[] {
+  const cs = cards.map(parseCard).filter((c): c is Card => c !== null);
+  if (cs.length === 0) return [1];
+  return handValue(cs);
+}
+
+// Сравнение двух значений cardSetValue: 1 — первое сильнее, -1 — слабее, 0 — дележ.
+export function compareValues(a: number[], b: number[]): number {
+  return cmp(a, b);
+}
+
 export type MadeHand = {
   category: string; // ключ категории (HIGH/PAIR/TWO_PAIR/…)
   ru: string; // человеческое описание для промпта

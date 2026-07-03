@@ -4,6 +4,7 @@ import type { VerdictRequest } from "@/infrastructure/adapters/llm/types";
 import type { Locale } from "@/i18n/config";
 import { getLlmAdapter } from "@/infrastructure/adapters/llm";
 import { opponentsForHand } from "./opponents-for-hand";
+import { buildRangeReads } from "./range-facts";
 
 type GenerateVerdictPayload = {
   handId: string;
@@ -64,18 +65,22 @@ export const generateVerdictStep: StepHandler = async (task, db) => {
     );
   }
 
+  const history = dialogue.rounds.map((round) => ({
+    roundNumber: round.roundNumber,
+    question: round.question,
+    answer: round.answer as string,
+  }));
+  const tableSnapshot = hand.tableData as unknown as TableSnapshot;
+  const opponents = await opponentsForHand(db, hand);
+
   const request: VerdictRequest = {
     // Язык ответа тренера — язык интерфейса игрока (Player.locale); дефолт ru.
     locale: (tournament.player.locale as Locale) ?? "ru",
     // ANSWER_RECEIVED гарантирует, что answer записан на каждом раунде (submitAnswer).
-    history: dialogue.rounds.map((round) => ({
-      roundNumber: round.roundNumber,
-      question: round.question,
-      answer: round.answer as string,
-    })),
+    history,
     draftVerdict: analysis.draftVerdict,
     chipResult: hand.chipResult,
-    tableSnapshot: hand.tableData as unknown as TableSnapshot,
+    tableSnapshot,
     tournament: {
       handsCount: tournament.handsCount,
       vpipPercent: tournament.vpipPercent.toNumber(),
@@ -83,7 +88,10 @@ export const generateVerdictStep: StepHandler = async (task, db) => {
       styleDiagnosis: tournament.styleDiagnosis,
     },
     // Тип оппонента перед тренером и на этапе вердикта, не только в первичном разборе.
-    opponents: await opponentsForHand(db, hand),
+    opponents,
+    // Диапазоны, отмеченные игроком на сетке, + точные числа парсера против них
+    // (правило 1: эквити/комбо/сверки посчитаны кодом до вызова ИИ).
+    rangeReads: buildRangeReads({ history, tableSnapshot, opponents }),
   };
 
   const result = await getLlmAdapter().generateVerdict(request, { playerId: tournament.playerId });
