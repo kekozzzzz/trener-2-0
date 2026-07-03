@@ -1,12 +1,12 @@
 "use server";
 
 import { requireSession } from "@/features/auth/session";
-import { getOpenChart, type OpenChartView } from "./queries";
+import { getPlayerCharts, type PlayerChartsView } from "./queries";
 
-// Ленивая загрузка карты открываний по клику на «Твои чарты»: на странице турниров
-// не грузим все руки заранее, считаем только когда игрок открыл чарт. playerId берём
-// из сессии (не из клиента) — защита от IDOR: чужой чарт получить нельзя.
-export async function loadOpenChartAction(): Promise<OpenChartView | null> {
+// Ленивая загрузка зеркал по клику на «Твои чарты»: на странице турниров не грузим
+// все руки заранее, считаем только когда игрок открыл чарты. playerId берём из
+// сессии (не из клиента) — защита от IDOR: чужие чарты получить нельзя.
+export async function loadPlayerChartsAction(): Promise<PlayerChartsView | null> {
   const { playerId } = await requireSession();
-  return getOpenChart(playerId);
+  return getPlayerCharts(playerId);
 }

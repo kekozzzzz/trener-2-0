@@ -1,5 +1,6 @@
 import { prisma } from "@/infrastructure/db/client";
 import { aggregateOpenChart, type OpenChartFacts } from "./open-chart";
+import { aggregateSpotCharts, type SpotChartFacts } from "./spot-charts";
 import { countLeaks, gameDayKey, leakDynamics, type LeakDynamics, type LeakKind } from "./leak-trend";
 import { sessionGoal, goalResult, type SessionGoalResult } from "./session-goal";
 import { LEAK_WINDOW_DAYS } from "@/config/leaks";
@@ -20,11 +21,13 @@ export async function getPlayerCharacteristic(playerId: string): Promise<PlayerC
   return { characteristic: profile.characteristic, tournamentsCounted: profile.tournamentsCounted };
 }
 
-// Карта открываний игрока для кнопки «Твои чарты». Считается на лету по всем
-// раздачам всех учтённых турниров (детерминированно, без LLM, Правило 1). null —
-// если учитывать нечего. Только свой playerId — защита от IDOR.
-export type OpenChartView = {
-  chart: OpenChartFacts;
+// Все зеркала игрока для кнопки «Твои чарты»: открывания + остальные споты (защита BB,
+// против опена, изоляция, пуш-фолд). Считается на лету по всем раздачам всех учтённых
+// турниров (детерминированно, без LLM, Правило 1). null — если учитывать нечего.
+// Только свой playerId — защита от IDOR.
+export type PlayerChartsView = {
+  open: OpenChartFacts;
+  spots: SpotChartFacts;
   tournamentsCounted: number;
 };
 
@@ -231,7 +234,7 @@ export async function getSessionGoalView(playerId: string): Promise<SessionGoalV
   return { goal, goalStats, last };
 }
 
-export async function getOpenChart(playerId: string): Promise<OpenChartView | null> {
+export async function getPlayerCharts(playerId: string): Promise<PlayerChartsView | null> {
   // Тот же фильтр учтённых турниров, что у характеристики — счётчик и порог
   // надёжности (CHARACTERISTIC_RELIABLE_FROM) совпадают с показанным в профиле.
   const tournaments = await prisma.tournament.findMany({
@@ -253,5 +256,9 @@ export async function getOpenChart(playerId: string): Promise<OpenChartView | nu
     select: { tableData: true },
   });
 
-  return { chart: aggregateOpenChart(hands), tournamentsCounted: tournaments.length };
+  return {
+    open: aggregateOpenChart(hands),
+    spots: aggregateSpotCharts(hands),
+    tournamentsCounted: tournaments.length,
+  };
 }

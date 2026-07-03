@@ -20,13 +20,18 @@ const SIZE = GRID_RANKS.length; // 13
 export function OpenChartGrid({
   cells,
   variant = "raise",
+  noun,
 }: {
   cells: OpenChartCell[];
   variant?: "raise" | "limp";
+  // Слово действия в подсказке клетки («колл», «3-бет», «пуш»…) для зеркал других
+  // спотов; без него — прежние «открыто»/«лимп».
+  noun?: string;
 }) {
   const t = useTranslations("PlayerCharts");
   const byCode = new Map(cells.map((c) => [c.code, c]));
   const isLimp = variant === "limp";
+  const cellNoun = noun ?? (isLimp ? t("cellLimp") : t("cellOpened"));
 
   return (
     <div
@@ -46,7 +51,7 @@ export function OpenChartGrid({
           return (
             <div
               key={code}
-              title={cell ? `${code}: ${isLimp ? t("cellLimp") : t("cellOpened")} ${cell.count}` : code}
+              title={cell ? `${code}: ${cellNoun} ${cell.count}` : code}
               className={cn(
                 "flex aspect-square flex-col items-center justify-center border font-mono leading-none",
                 flagged && "border-primary bg-primary text-primary-foreground",
