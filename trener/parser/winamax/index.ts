@@ -1,5 +1,6 @@
 import type { ParseResult } from "../types";
 import { assignImportanceLevels, computePostflopAggressionFactor, diagnoseStyle } from "../ggpoker/classify";
+import { opponentTokenizer, assignOpponentTokens } from "../shared/opponent-tokens";
 import { parseHand } from "./hand";
 
 // Winamax: заголовок "Winamax Poker - Tournament \"Имя\" buyIn: 18€ + 2€ level: N -
@@ -41,6 +42,24 @@ function preflopSegment(hand: string): string {
   const flopIdx = hand.search(FLOP_START);
   const start = preIdx === -1 ? 0 : preIdx;
   return flopIdx === -1 ? hand.slice(start) : hand.slice(start, flopIdx);
+}
+
+// Момент ОДНОЙ раздачи (первый таймстемп в её заголовке) — для порядка «до текущей»
+// при профиле оппонента. UTC, как и earliestPlayedAt.
+function handPlayedAt(handText: string): string | null {
+  const m = /(\d{4})\/(\d{2})\/(\d{2}) (\d{2}):(\d{2}):(\d{2})/.exec(handText);
+  if (!m) return null;
+  const [, y, mo, d, h, mi, s] = m;
+  return new Date(Date.UTC(+y, +mo - 1, +d, +h, +mi, +s)).toISOString();
+}
+
+// Карта место → сырой ник из Seat-строк раздачи. Ник используется ТОЛЬКО локально
+// для присвоения обезличенного псевдонима и в вывод парсера НЕ попадает.
+const SEAT_NAME_LINE = /^Seat (\d+): (.+?) \(([\d,]+)(?:,[^)]*)?\)$/gm;
+function seatNamesOf(handText: string): Record<number, string> {
+  const out: Record<number, string> = {};
+  for (const m of handText.matchAll(SEAT_NAME_LINE)) out[+m[1]] = m[2];
+  return out;
 }
 
 export function parseWinamaxMtt(buffer: Buffer): ParseResult {
@@ -103,10 +122,15 @@ export function parseWinamaxMtt(buffer: Buffer): ParseResult {
 
   const snapshots = dealtHands.map((h) => parseHand(h, heroName));
   const importanceLevels = assignImportanceLevels(snapshots);
-  const hands = snapshots.map((snapshot, index) => ({
-    ...snapshot,
-    importanceLevel: importanceLevels[index],
-  }));
+  const tokenFor = opponentTokenizer();
+  const hands = snapshots.map((snapshot, index) => {
+    assignOpponentTokens(snapshot.tableSnapshot.seats, seatNamesOf(dealtHands[index]), tokenFor);
+    return {
+      ...snapshot,
+      importanceLevel: importanceLevels[index],
+      playedAt: handPlayedAt(dealtHands[index]),
+    };
+  });
 
   const postflopAggressionFactor = Math.round(computePostflopAggressionFactor(snapshots) * 100) / 100;
   const styleDiagnosis = diagnoseStyle(vpipPercent, pfrPercent, postflopAggressionFactor);

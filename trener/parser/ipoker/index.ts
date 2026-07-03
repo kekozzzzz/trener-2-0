@@ -1,5 +1,6 @@
 import type { ParseResult } from "../types";
 import { assignImportanceLevels, computePostflopAggressionFactor, diagnoseStyle } from "../ggpoker/classify";
+import { opponentTokenizer, assignOpponentTokens } from "../shared/opponent-tokens";
 import { collectRawActions, parseGame, parsePlayers } from "./hand";
 
 // iPoker — XML. Файл = склейка <root> (один на стол), в каждом <general> мета +
@@ -101,10 +102,25 @@ export function parseIpokerMtt(buffer: Buffer): ParseResult {
 
   const snapshots = games.map((g) => parseGame(g.xml, heroName, tableSize));
   const importanceLevels = assignImportanceLevels(snapshots);
-  const hands = snapshots.map((snapshot, index) => ({
-    ...snapshot,
-    importanceLevel: importanceLevels[index],
-  }));
+  // Момент раздачи — её <startdate>; псевдонимы оппонентов — по <player seat/name>
+  // (сырой ник только локально, в вывод идёт «oppN» — см. shared/opponent-tokens).
+  const handPlayedAt = (xml: string): string | null => {
+    const m = /<startdate>(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})<\/startdate>/.exec(xml);
+    if (!m) return null;
+    const [, y, mo, d, h, mi, s] = m;
+    return new Date(Date.UTC(+y, +mo - 1, +d, +h, +mi, +s)).toISOString();
+  };
+  const tokenFor = opponentTokenizer();
+  const hands = snapshots.map((snapshot, index) => {
+    const namesBySeat: Record<number, string> = {};
+    for (const p of parsePlayers(games[index].xml)) namesBySeat[p.seat] = p.name;
+    assignOpponentTokens(snapshot.tableSnapshot.seats, namesBySeat, tokenFor);
+    return {
+      ...snapshot,
+      importanceLevel: importanceLevels[index],
+      playedAt: handPlayedAt(games[index].xml),
+    };
+  });
 
   const postflopAggressionFactor = Math.round(computePostflopAggressionFactor(snapshots) * 100) / 100;
   const styleDiagnosis = diagnoseStyle(vpipPercent, pfrPercent, postflopAggressionFactor);
