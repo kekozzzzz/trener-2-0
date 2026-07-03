@@ -689,6 +689,9 @@
   },
   "SessionGoal": {
     "title": "Session goal",
+    "titleThis": "This session's goal",
+    "thisDone": "Goal met ✓",
+    "thisFailed": "Broken {count, plural, one {# time} other {# times}}",
     "context": "Your most frequent leak: on {days} of your last {window} sessions - {count, plural, one {# time} other {# times}} total.",
     "chartLink_OPEN_WIDE": "See the opening baseline",
     "chartLink_OPEN_SHOVE_WIDE": "See the shove ranges",

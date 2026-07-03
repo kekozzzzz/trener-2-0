@@ -121,6 +121,63 @@ export type SessionGoalView = {
   last: SessionGoalResult | null;
 };
 
+// Цель сессии КОНКРЕТНОГО турнира (страница турнира): цель, действовавшая для его
+// игрового дня (окно дней ДО него), и итог по этому дню. У турниров одного вечера
+// блок одинаковый — как и динамика. null — цели не было (нет системных ликов до дня).
+export type TournamentSessionGoal = {
+  goal: LeakKind;
+  result: SessionGoalResult;
+};
+
+export async function getTournamentSessionGoal(
+  playerId: string,
+  tournamentId: string,
+): Promise<TournamentSessionGoal | null> {
+  const current = await prisma.tournament.findFirst({
+    where: { id: tournamentId, playerId, deletedAt: null },
+    select: { playedAt: true },
+  });
+  if (!current) return null;
+  const day = gameDayKey(current.playedAt);
+
+  const tournaments = await prisma.tournament.findMany({
+    where: { playerId, deletedAt: null, status: { in: ["PARSED", "CARD_READY"] } },
+    orderBy: { playedAt: "desc" },
+    take: LEAK_SCAN_TOURNAMENTS,
+    select: { id: true, playedAt: true },
+  });
+
+  const dayByTournament = new Map<string, string>();
+  const daysDesc: string[] = [];
+  for (const t of tournaments) {
+    const d = gameDayKey(t.playedAt);
+    dayByTournament.set(t.id, d);
+    if (daysDesc[daysDesc.length - 1] !== d) daysDesc.push(d);
+  }
+
+  const priorDays = daysDesc.filter((d) => d < day).slice(0, LEAK_WINDOW_DAYS).reverse();
+  if (priorDays.length === 0) return null;
+
+  const wanted = new Set([day, ...priorDays]);
+  const ids = tournaments.filter((t) => wanted.has(dayByTournament.get(t.id)!)).map((t) => t.id);
+  const hands = await prisma.hand.findMany({
+    where: { tournamentId: { in: ids } },
+    select: { tournamentId: true, tableData: true },
+  });
+  const byDay = new Map<string, { tableData: unknown }[]>();
+  for (const hand of hands) {
+    const handDay = dayByTournament.get(hand.tournamentId)!;
+    const list = byDay.get(handDay);
+    if (list) list.push(hand);
+    else byDay.set(handDay, [hand]);
+  }
+
+  const goal = sessionGoal(priorDays.map((d) => countLeaks(byDay.get(d) ?? [])));
+  if (!goal) return null;
+
+  return { goal, result: goalResult(goal, countLeaks(byDay.get(day) ?? [])) };
+}
+
 export async function getSessionGoalView(playerId: string): Promise<SessionGoalView | null> {
   const tournaments = await prisma.tournament.findMany({
     where: { playerId, deletedAt: null, status: { in: ["PARSED", "CARD_READY"] } },

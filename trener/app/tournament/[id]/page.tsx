@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { ParsingWaitClient } from "./parsing-wait-client";
 import { AnalysisProgress } from "./analysis-progress";
 import { LeakDynamicsSection } from "./leak-dynamics";
+import { TournamentSessionGoal } from "./session-goal";
 import { MetricsGlossary } from "@/components/metrics/glossary";
 import { LoadingDots } from "@/components/ui/loading-dots";
 
@@ -379,8 +380,11 @@ export default async function TournamentPage({
           </StatCard>
         </div>
 
-        {/* Динамика ликов против прошлых турниров — стримится отдельно (Suspense),
+        {/* Цель этой сессии и динамика ликов — стримятся отдельно (Suspense),
             чтобы скан раздач окна не задерживал показ карточки. */}
+        <Suspense fallback={null}>
+          <TournamentSessionGoal playerId={session.playerId} tournamentId={id} />
+        </Suspense>
         <Suspense fallback={null}>
           <LeakDynamicsSection playerId={session.playerId} tournamentId={id} />
         </Suspense>

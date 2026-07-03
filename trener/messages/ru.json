@@ -689,6 +689,9 @@
   },
   "SessionGoal": {
     "title": "Цель на сессию",
+    "titleThis": "Цель этой сессии",
+    "thisDone": "Выполнено ✓",
+    "thisFailed": "Нарушено {count, plural, one {# раз} few {# раза} many {# раз} other {# раза}}",
     "context": "Твой самый частый лик: в {days} из {window} прошлых сессий - всего {count, plural, one {# раз} few {# раза} many {# раз} other {# раза}}.",
     "chartLink_OPEN_WIDE": "Посмотреть норму открытий",
     "chartLink_OPEN_SHOVE_WIDE": "Посмотреть диапазоны пуша",
