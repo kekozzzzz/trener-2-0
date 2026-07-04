@@ -23,7 +23,6 @@ import { ParsingWaitClient } from "./parsing-wait-client";
 import { AutoUnlockClient } from "./auto-unlock-client";
 import { AnalysisProgress } from "./analysis-progress";
 import { LeakDynamicsSection } from "./leak-dynamics";
-import { TournamentSessionGoal } from "./session-goal";
 import { StartHereCard, SessionDoneCard, type FocusHand } from "@/components/tournament/focus-slot";
 import { MetricsGlossary } from "@/components/metrics/glossary";
 import { LoadingDots } from "@/components/ui/loading-dots";
@@ -413,11 +412,9 @@ export default async function TournamentPage({
           </StatCard>
         </div>
 
-        {/* Цель этой сессии и динамика ликов — стримятся отдельно (Suspense),
-            чтобы скан раздач окна не задерживал показ карточки. */}
-        <Suspense fallback={null}>
-          <TournamentSessionGoal playerId={session.playerId} tournamentId={id} />
-        </Suspense>
+        {/* Динамика ликов — стримится отдельно (Suspense), чтобы скан раздач окна не
+            задерживал показ карточки. Цель сессии на странице турнира не показываем
+            (мешала разбору — решение Артёма 2026-07-03), она живёт на «Моих турнирах». */}
         <Suspense fallback={null}>
           <LeakDynamicsSection playerId={session.playerId} tournamentId={id} />
         </Suspense>
