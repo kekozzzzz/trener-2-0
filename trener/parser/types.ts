@@ -33,6 +33,7 @@ export type TableSnapshot = {
   potTotal: number;
   tableSize?: number; // мест за столом (из «N-max» в заголовке HH) — для схемы стола
   buttonSeat?: number; // номер места баттона (Seat #N is the button)
+  level?: number; // номер уровня блайндов из заголовка HH (стадия турнира) — для схемы стола
 };
 
 export type HandImportance = "CRITICAL" | "STRONG" | "MEDIUM";

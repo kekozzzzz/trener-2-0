@@ -35,6 +35,10 @@ export type SeatState = {
   position: Position;
   positionName: string; // точное имя места для показа (UTG/UTG+1/LJ/HJ/CO/BTN/SB/BB)
   startingStack: number;
+  // Остаток стека к моменту точки: старт минус ВСЁ вложенное за раздачу (анте,
+  // блайнды, ставки). Именно его показывает схема — как в клиенте рума (правка
+  // Артёма 2026-07-04: «13 bb при ставке 2 BB» читалось как текущий стек).
+  remainingStack: number;
   seatNumber: number; // физическое место за столом (для раскладки по N-max кольцу)
   isHero: boolean;
   folded: boolean;
@@ -57,6 +61,9 @@ export type TableState = {
   board: string[]; // карты борда до этой улицы включительно
   potSoFar: number; // банк, накопленный к моменту точки решения (в фишках)
   bigBlind: number | null;
+  smallBlind: number | null; // из POST_SB — для подписи уровня на схеме
+  ante: number | null; // из POST_ANTE — там же
+  level: number | null; // номер уровня из заголовка HH (есть не у всех румов/старых раздач)
   street: Street; // улица точки решения — для подписи
   decisionActor: string | null; // место, чьё действие — разбираемая точка
   playersAfterHero: number; // живых соперников, действующих ПОСЛЕ Hero на этой улице
@@ -81,8 +88,11 @@ export function tableStateUpTo(snapshot: TableSnapshot, actionIndex: number): Ta
   let currentBet = 0;
   let street: Street = "PREFLOP";
   const streetCommitted = new Map<string, number>();
+  const totalCommitted = new Map<string, number>(); // всё вложенное за раздачу (для остатка стека)
   const folded = new Set<string>();
   const lastAction = new Map<string, SeatAction>();
+  const commit = (actor: string, chips: number) =>
+    totalCommitted.set(actor, (totalCommitted.get(actor) ?? 0) + chips);
 
   for (const a of actions) {
     if (a.street !== street) {
@@ -103,11 +113,13 @@ export function tableStateUpTo(snapshot: TableSnapshot, actionIndex: number): Ta
     switch (a.action) {
       case "POST_ANTE":
         pot += amt;
+        commit(a.actor, amt);
         break;
       case "POST_SB":
       case "POST_BB":
         streetCommitted.set(a.actor, committed + amt);
         pot += amt;
+        commit(a.actor, amt);
         currentBet = Math.max(currentBet, committed + amt);
         break;
       case "FOLD":
@@ -118,10 +130,12 @@ export function tableStateUpTo(snapshot: TableSnapshot, actionIndex: number): Ta
       case "CALL":
         streetCommitted.set(a.actor, committed + amt);
         pot += amt;
+        commit(a.actor, amt);
         break;
       case "BET":
         streetCommitted.set(a.actor, committed + amt);
         pot += amt;
+        commit(a.actor, amt);
         currentBet = committed + amt;
         break;
       case "RAISE":
@@ -131,11 +145,13 @@ export function tableStateUpTo(snapshot: TableSnapshot, actionIndex: number): Ta
         const isRaise = a.action === "RAISE" || amt > currentBet;
         if (isRaise) {
           pot += Math.max(amt - committed, 0);
+          commit(a.actor, Math.max(amt - committed, 0));
           streetCommitted.set(a.actor, amt);
           currentBet = amt;
         } else {
           streetCommitted.set(a.actor, committed + amt);
           pot += amt;
+          commit(a.actor, amt);
         }
         break;
       }
@@ -153,6 +169,7 @@ export function tableStateUpTo(snapshot: TableSnapshot, actionIndex: number): Ta
     position: s.position,
     positionName: s.positionName ?? s.position,
     startingStack: s.startingStack,
+    remainingStack: Math.max(s.startingStack - (totalCommitted.get(s.label) ?? 0), 0),
     seatNumber: s.seatNumber ?? i + 1,
     isHero: s.label === "Hero",
     folded: folded.has(s.label),
@@ -169,6 +186,9 @@ export function tableStateUpTo(snapshot: TableSnapshot, actionIndex: number): Ta
     board: boardUpToStreet(snapshot.board, street),
     potSoFar: pot,
     bigBlind: bigBlindFromSnapshot(snapshot),
+    smallBlind: all.find((a) => a.action === "POST_SB")?.amount ?? null,
+    ante: all.find((a) => a.action === "POST_ANTE")?.amount ?? null,
+    level: snapshot.level ?? null,
     street,
     decisionActor,
     playersAfterHero: playersAfterHeroCount(snapshot, folded, street),

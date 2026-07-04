@@ -149,6 +149,17 @@ export async function HandTable({ state, nick }: { state: TableState; nick: stri
           <polygon points={innerPoly} className="fill-none stroke-border opacity-45" strokeWidth="1" />
         </svg>
 
+        {/* правый верхний угол: уровень блайндов — стадия турнира (правка Артёма
+            2026-07-04). Номер уровня есть не везде (старые раздачи) — тогда только блайнды. */}
+        {state.bigBlind != null && (
+          <div className="absolute right-0 top-0 z-10 text-right font-mono text-[10px] uppercase tracking-label text-muted-foreground">
+            {state.level != null && <span>L{state.level} · </span>}
+            {state.smallBlind != null ? `${state.smallBlind.toLocaleString("ru-RU")}/` : ""}
+            {state.bigBlind.toLocaleString("ru-RU")}
+            {state.ante != null && state.ante > 0 && ` (анте ${state.ante.toLocaleString("ru-RU")})`}
+          </div>
+        )}
+
         {/* центр: борд + банк */}
         <div className="absolute left-1/2 top-1/2 w-3/5 -translate-x-1/2 -translate-y-1/2 text-center">
           <div className="mb-2 flex justify-center gap-1">
@@ -256,7 +267,7 @@ export async function HandTable({ state, nick }: { state: TableState; nick: stri
                     {name}
                   </div>
                   <div className="font-mono text-[10px] text-foreground">
-                    {Math.round(state.bigBlind ? seat.startingStack / state.bigBlind : seat.startingStack)}
+                    {Math.round(state.bigBlind ? seat.remainingStack / state.bigBlind : seat.remainingStack)}
                     <span className="text-muted-foreground"> bb</span>
                   </div>
                   {seat.lastAction && (

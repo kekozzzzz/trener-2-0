@@ -195,8 +195,12 @@ function resolvePositions(
   return byName;
 }
 
+// Номер уровня блайндов из заголовка: "... - Level15(1,000/2,000(300)) - ...".
+const LEVEL_RE = /- Level(\d+)\(/;
+
 export function parseHand(handText: string): ParsedHandSnapshot {
   const seatRows = parseSeats(handText);
+  const levelMatch = LEVEL_RE.exec(handText);
   const buttonSeat = BUTTON_SEAT.exec(handText)?.[1];
   const buttonSeatNum = buttonSeat ? parseInt(buttonSeat, 10) : null;
   const sbName = SB_LINE.exec(handText)?.[1] ?? null;
@@ -240,6 +244,7 @@ export function parseHand(handText: string): ParsedHandSnapshot {
     potTotal,
     tableSize,
     buttonSeat: buttonSeatNum ?? undefined,
+    level: levelMatch ? parseInt(levelMatch[1], 10) : undefined,
   };
 
   return { chipResult: computeHeroChipResult(handText), tableSnapshot };
