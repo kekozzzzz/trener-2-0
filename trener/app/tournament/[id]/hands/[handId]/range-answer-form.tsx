@@ -7,6 +7,7 @@ import { RangeGrid } from "@/components/poker/range-grid";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { LoadingDots } from "@/components/ui/loading-dots";
+import { MicButton } from "@/components/ui/mic-button";
 import { formatRange, combosOf, percentOf } from "@/config/poker/hand-grid";
 import { markScrollToLatest } from "./scroll-to-latest";
 
@@ -53,16 +54,26 @@ export function RangeAnswerForm({ tournamentId, handId }: { tournamentId: string
         value={composeAnswer(codes, note, (values) => t("rangeComposed", values))}
       />
       {state.error && <p className="text-small text-destructive">{state.error}</p>}
-      <Button type="submit" disabled={pending || codes.length === 0}>
-        {pending ? (
-          <>
-            {tc("sending")}
-            <LoadingDots />
-          </>
-        ) : (
-          t("answerSubmit")
-        )}
-      </Button>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="submit" disabled={pending || codes.length === 0}>
+          {pending ? (
+            <>
+              {tc("sending")}
+              <LoadingDots />
+            </>
+          ) : (
+            t("answerSubmit")
+          )}
+        </Button>
+        {/* Голос дописывает заметку «почему такой диапазон» — поле контролируемое,
+            поэтому дописываем в состояние (не через appendTranscript по ref). */}
+        <MicButton
+          onTranscript={(text) =>
+            setNote((n) => (n && !n.endsWith(" ") ? `${n} ${text}` : n + text))
+          }
+          disabled={pending}
+        />
+      </div>
     </form>
   );
 }
