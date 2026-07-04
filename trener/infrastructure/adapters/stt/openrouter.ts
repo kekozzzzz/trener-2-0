@@ -29,6 +29,7 @@ function audioFormat(mimeType: string): string {
 
 type ChatResponse = {
   choices?: Array<{ message?: { content?: string } }>;
+  usage?: { prompt_tokens?: number; completion_tokens?: number; cost?: number };
 };
 
 function buildBody(request: TranscribeRequest): string {
@@ -45,7 +46,9 @@ function buildBody(request: TranscribeRequest): string {
   }
   messages.push({ role: "user", content });
 
-  return JSON.stringify({ model: getOpenrouterModel(), messages });
+  // usage.include — OpenRouter вернёт фактическую цену вызова (usage.cost, USD):
+  // у аудио своя тарификация, точнее самим не посчитать. Учёт в LlmUsage.
+  return JSON.stringify({ model: getOpenrouterModel(), messages, usage: { include: true } });
 }
 
 function extractText(data: ChatResponse): string {
@@ -81,7 +84,17 @@ export const openrouterSttAdapter: SttPort = {
     }
 
     const data = (await res.json()) as ChatResponse;
-    return { text: extractText(data) };
+    return {
+      text: extractText(data),
+      model: getOpenrouterModel(),
+      usage: data.usage
+        ? {
+            inputTokens: data.usage.prompt_tokens ?? 0,
+            outputTokens: data.usage.completion_tokens ?? 0,
+            costUsd: typeof data.usage.cost === "number" ? data.usage.cost : undefined,
+          }
+        : undefined,
+    };
   },
 
   // Достижимость для /api/health: лёгкий GET списка моделей через тот же путь/секрет.

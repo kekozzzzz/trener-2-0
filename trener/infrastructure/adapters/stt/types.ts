@@ -14,6 +14,11 @@ export type TranscribeRequest = {
 
 export type TranscribeResult = {
   text: string;
+  // Учёт затрат (вся отчётность — решение Артёма 2026-07-04): модель и фактический
+  // расход вызова, если провайдер их отдал. costUsd — точная цена от провайдера
+  // (у аудио своя тарификация, по ставкам токенов её не пересчитать).
+  model?: string;
+  usage?: { inputTokens: number; outputTokens: number; costUsd?: number };
 };
 
 export interface SttPort {

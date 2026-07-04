@@ -4,11 +4,52 @@ import { checkTranscribeQuota } from "@/features/usage/limit";
 import { getSttMaxAudioBytes } from "@/config/stt";
 import { POKER_ASR_CONTEXT } from "@/config/poker-asr-fixups";
 import { getSttAdapter } from "@/infrastructure/adapters/stt";
+import { recordLlmUsage } from "@/features/usage/llm-usage";
 import { applyPokerFixups } from "@/lib/apply-poker-fixups";
 import { transcodeToWav } from "@/lib/transcode-audio";
 
 // Buffer/адаптер требуют Node-рантайма (не edge).
 export const runtime = "nodejs";
+
+// Модель иногда вместо дословного текста возвращает ОТКАЗ («Извините, не могу
+// распознать аудиозапись…») — раньше он вставлялся в поле как будто это речь игрока
+// (правка Артёма 2026-07-04). Ловим типовые формулы отказа и отвечаем ошибкой:
+// кнопка покажет «не удалось распознать», а поле останется чистым.
+const REFUSAL_RE =
+  /не могу (распознать|обработать|прослушать|помочь)|предоставь(?:те)? текст|аудиозапись (пуста|не содержит)|задайте другой вопрос|cannot (transcribe|process)|unable to (transcribe|process)|i'?m sorry/i;
+
+function looksLikeRefusal(text: string): boolean {
+  return REFUSAL_RE.test(text);
+}
+
+// Модель иногда оборачивает распознанное в кавычки («…», "…") — игроку в поле
+// нужны его слова, а не цитата. Срезаем обрамляющие пары, пока они есть.
+const QUOTE_PAIRS: Array<[string, string]> = [
+  ["«", "»"],
+  ["„", "“"],
+  ["“", "”"],
+  ['"', '"'],
+  ["'", "'"],
+];
+
+// Иногда модель добавляет вводную («Конечно, вот дословный текст речи:») перед
+// цитатой — срезаем известные преамбулы, дальше кавычки снимет stripWrappingQuotes.
+const PREAMBLE_RE =
+  /^(?:конечно[,.!]?\s*)?(?:вот\s+)?(?:дословн\w+\s+)?(?:текст|расшифровк\w|транскрипци\w)(?:\s+(?:речи|записи|аудио))?\s*:\s*/i;
+
+function stripPreamble(text: string): string {
+  return text.replace(PREAMBLE_RE, "").trim();
+}
+
+function stripWrappingQuotes(text: string): string {
+  let out = text.trim();
+  for (let guard = 0; guard < 3; guard++) {
+    const pair = QUOTE_PAIRS.find(([o, c]) => out.startsWith(o) && out.endsWith(c) && out.length > 1);
+    if (!pair) break;
+    out = out.slice(pair[0].length, -pair[1].length).trim();
+  }
+  return out;
+}
 
 // Принимает аудио-blob надиктовки (тело запроса = сырой звук, Content-Type = mime
 // записи браузера), возвращает распознанный текст. Вход только для залогиненных,
@@ -51,16 +92,36 @@ export async function POST(request: Request): Promise<Response> {
   const tConvert = Date.now();
 
   try {
-    const { text } = await getSttAdapter().transcribe({
+    const { text, model, usage } = await getSttAdapter().transcribe({
       audio: wav,
       mimeType: "audio/wav",
       context: POKER_ASR_CONTEXT,
     });
+    // Учёт затрат микрофона в общую отчётность (решение Артёма 2026-07-04): шаг STT
+    // в LlmUsage, цена точная от провайдера (usage.cost). Мягко: без usage не пишем.
+    if (usage) {
+      void recordLlmUsage({
+        playerId: session.playerId,
+        step: "STT",
+        model: model ?? "stt",
+        usage: {
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens,
+          cacheWriteTokens: 0,
+          cacheReadTokens: 0,
+        },
+        costUsd: usage.costUsd,
+      });
+    }
     // Замер: приём тела vs перекодировка vs модель (для контроля скорости).
     console.log(
       `[stt-timing] in=${audio.length}b wav=${wav.length}b body=${tBodyRead - tStart}ms convert=${tConvert - tBodyRead}ms model=${Date.now() - tConvert}ms`,
     );
-    return NextResponse.json({ text: applyPokerFixups(text) });
+    if (looksLikeRefusal(text)) {
+      console.warn("[stt] модель вернула отказ вместо распознавания:", text.slice(0, 120));
+      return NextResponse.json({ error: "TRANSCRIBE_FAILED" }, { status: 502 });
+    }
+    return NextResponse.json({ text: applyPokerFixups(stripWrappingQuotes(stripPreamble(text))) });
   } catch (err) {
     // Детали — в лог сервера; клиенту общий ответ, без утечки внутренностей вендора.
     console.error("[stt] распознавание не удалось:", err);

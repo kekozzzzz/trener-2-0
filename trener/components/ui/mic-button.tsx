@@ -277,7 +277,7 @@ export function MicButton({
         </span>
       )}
       {status === "error" && (
-        <span className="text-small text-muted-foreground" aria-live="polite">
+        <span className="text-small text-destructive" aria-live="polite">
           {errorMsg}
         </span>
       )}

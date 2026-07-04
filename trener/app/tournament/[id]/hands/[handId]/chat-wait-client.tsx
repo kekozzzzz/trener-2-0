@@ -1,21 +1,21 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { triggerWorkerAction } from "@/app/status/actions";
-import { Button } from "@/components/ui/button";
 import { LoadingDots } from "@/components/ui/loading-dots";
 
 type ChatResponse = {
   awaitingReply: boolean;
 };
 
+// Ожидание ответа тренера в чате: опрашиваем статус и обновляем страницу, когда
+// ответ готов. Кнопка «Запустить воркер» убрана 2026-07-04 (правка Артёма): на
+// проде воркер пинается сам при постановке задачи (kickWorker), а техническая
+// кнопка в лицо игроку только пугает. Аварийный запуск остался у админа на /status.
 export function ChatWaitClient({ handId }: { handId: string }) {
   const router = useRouter();
   const t = useTranslations("Chat");
-  const [workerError, setWorkerError] = useState<string | null>(null);
-  const [running, setRunning] = useState(false);
   const inFlight = useRef(false);
 
   const poll = useCallback(async () => {
@@ -37,30 +37,10 @@ export function ChatWaitClient({ handId }: { handId: string }) {
     return () => clearInterval(id);
   }, [poll]);
 
-  async function triggerWorker() {
-    setWorkerError(null);
-    setRunning(true);
-    try {
-      const result = await triggerWorkerAction();
-      if (!result.ok) setWorkerError(t("workerBusy"));
-    } catch {
-      setWorkerError(t("workerFailed"));
-    } finally {
-      setRunning(false);
-    }
-    await poll();
-  }
-
   return (
-    <div className="flex flex-wrap items-center gap-4">
-      <p className="flex items-center gap-2 font-mono text-label uppercase tracking-label text-muted-foreground">
-        {t("preparingReply")}
-        <LoadingDots />
-      </p>
-      <Button variant="outline" onClick={triggerWorker} disabled={running}>
-        {t("runWorker")}
-      </Button>
-      {workerError && <span className="text-small text-destructive">{workerError}</span>}
-    </div>
+    <p className="flex items-center gap-2 font-mono text-label uppercase tracking-label text-muted-foreground">
+      {t("preparingReply")}
+      <LoadingDots />
+    </p>
   );
 }

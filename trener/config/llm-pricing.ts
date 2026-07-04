@@ -16,6 +16,10 @@ const RATES: Record<string, ModelRate> = {
   // DeepSeek через OpenRouter (основной провайдер, ~16× дешевле Sonnet). У DeepSeek
   // кэш контекста свой: попадание в кэш ≈0.1× входа, отдельной платы за запись нет.
   "deepseek/deepseek-v3.2": { input: 0.27, output: 1.1, cacheWrite: 0.27, cacheRead: 0.027 },
+  // STT Voxtral (микрофон). Текстовые ставки с прайса OpenRouter 2026-07-04; ⚠️аудио
+  // тарифицируется отдельно и в токенные ставки не влезает — это ЗАНИЖЕННЫЙ fallback
+  // на случай, когда OpenRouter не вернул точную цену (usage.cost пишется как есть).
+  "mistralai/voxtral-small-24b-2507": { input: 0.1, output: 0.3, cacheWrite: 0.1, cacheRead: 0.01 },
 };
 
 // Неизвестная модель → ставки sonnet-4.6 (рабочая по умолчанию), чтобы расчёт не падал.

@@ -39,6 +39,9 @@ export async function recordLlmUsage(params: {
   step: string;
   model: string;
   usage: LlmCallUsage;
+  // Точная цена от провайдера (OpenRouter usage.cost) — для вызовов с нетокенной
+  // тарификацией (аудио у STT). Без неё считаем по ставкам модели, как раньше.
+  costUsd?: number;
 }): Promise<void> {
   try {
     await prisma.llmUsage.create({
@@ -50,7 +53,7 @@ export async function recordLlmUsage(params: {
         outputTokens: params.usage.outputTokens,
         cacheWriteTokens: params.usage.cacheWriteTokens,
         cacheReadTokens: params.usage.cacheReadTokens,
-        costUsd: costFromUsage(params.usage, params.model),
+        costUsd: params.costUsd ?? costFromUsage(params.usage, params.model),
       },
     });
   } catch (err) {
