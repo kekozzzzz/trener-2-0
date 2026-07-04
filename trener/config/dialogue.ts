@@ -74,10 +74,22 @@ export function splitMarkers(question: string): {
   return { isRange, tableActionIndex, text };
 }
 
+// Страховка от промахов модели с answerMode (2026-07-04: модель ставила сетку на
+// «почему ты…» и НЕ ставила на «какие руки составляют его диапазон?»). Если сам текст
+// вопроса буквально просит перечислить руки — сетка нужна независимо от флага.
+// Детерминированная эвристика по формулам вопроса; ставит код, не модель.
+const RANGE_QUESTION_RE =
+  /какие руки|какими руками|каких рук|что (?:он|она|игрок|соперник|оппонент)[^?]*(?:открыва|пуш|колл|3-бет|став|продолжа)|what hands|which hands|his range here/i;
+
+export function questionAsksForRange(question: string): boolean {
+  return RANGE_QUESTION_RE.test(question);
+}
+
 // Дописывает метку в начало вопроса по флагу answerMode от LLM. Метку ставит код,
 // а не модель — текст модели меткой стать не может (безопасность, как у {{h:...}}).
 export function applyRangeMarker(question: string, answerMode: "text" | "range" | undefined): string {
-  return answerMode === "range" ? `${RANGE_ANSWER_MARKER} ${question}` : question;
+  const isRange = answerMode === "range" || questionAsksForRange(question);
+  return isRange ? `${RANGE_ANSWER_MARKER} ${question}` : question;
 }
 
 // Дописывает метку действия по флагу tableActionIndex от LLM. Метку ставит код, не модель.
