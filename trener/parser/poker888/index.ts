@@ -1,6 +1,7 @@
 import type { ParseResult } from "../types";
 import { assignImportanceLevels, computePostflopAggressionFactor, diagnoseStyle } from "../ggpoker/classify";
 import { opponentTokenizer, assignOpponentTokens } from "../shared/opponent-tokens";
+import { assignShownCards, shownCardsByNick } from "../shared/shown-cards";
 import { parseHand } from "./hand";
 
 // 888poker: заголовок "***** 888poker Hand History for Game <id> *****", дальше
@@ -121,7 +122,9 @@ export function parse888Mtt(buffer: Buffer): ParseResult {
   const importanceLevels = assignImportanceLevels(snapshots);
   const tokenFor = opponentTokenizer();
   const hands = snapshots.map((snapshot, index) => {
-    assignOpponentTokens(snapshot.tableSnapshot.seats, seatNamesOf(dealtHands[index]), tokenFor);
+    const namesBySeat = seatNamesOf(dealtHands[index]);
+    assignOpponentTokens(snapshot.tableSnapshot.seats, namesBySeat, tokenFor);
+    assignShownCards(snapshot.tableSnapshot.seats, namesBySeat, shownCardsByNick(dealtHands[index]));
     return {
       ...snapshot,
       importanceLevel: importanceLevels[index],

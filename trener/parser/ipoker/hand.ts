@@ -45,6 +45,19 @@ function convertCards(raw: string): string[] {
     .map(convertCard);
 }
 
+// Вскрытые карманные карты всех игроков раздачи (тег Pocket; «X X» — игрок не
+// вскрылся). Для детектора доезда: index.ts цепляет их к обезличенным местам
+// через shared/shown-cards, сырой ник наружу не выходит.
+const POCKET_CARDS = /<cards\s+player="([^"]+)"\s+type="Pocket">([^<]*)<\/cards>/g;
+export function pocketCardsByNick(gameXml: string): Map<string, [string, string]> {
+  const out = new Map<string, [string, string]>();
+  for (const m of gameXml.matchAll(POCKET_CARDS)) {
+    const cards = convertCards(m[2]);
+    if (cards.length === 2) out.set(m[1], [cards[0], cards[1]]);
+  }
+  return out;
+}
+
 export function parsePlayers(gameXml: string): IpokerPlayer[] {
   const players: IpokerPlayer[] = [];
   for (const m of gameXml.matchAll(PLAYER_TAG)) {

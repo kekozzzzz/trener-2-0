@@ -1,4 +1,5 @@
 import type { HandImportance, ParsedHandSnapshot, PlayerStyle, TableAction } from "../types";
+import { detectHeroLuckyWin } from "../lucky-win";
 
 // Потолок критических раздач (каждая ведёт сократовский диалог «почему»). Число адаптивное:
 // берём все спорные потери, отсортированные по размеру, но не больше потолка. 7 — запас под
@@ -40,7 +41,10 @@ export function isContestedDecision(actions: TableAction[]): boolean {
 /**
  * Критические — спорные раздачи с потерей фишек, отсортированные по размеру потери, до
  * MAX_CRITICAL_HANDS штук (число адаптивное: сколько было дорогих ошибок, столько и берём).
- * Сильные — все спорные раздачи с выигрышем. Остальное — средние.
+ * Остаток потолка добирают ДОЕЗДЫ (план 2026-07-04-критические-по-доезду): спорные
+ * ВЫИГРАННЫЕ раздачи, где Hero крупно вложился далеко позади вскрытой руки соперника
+ * и доехал — «повезло» тоже заслуживает диалога, результат ≠ качество решения.
+ * Сильные — остальные спорные раздачи с выигрышем. Остальное — средние.
  */
 export function assignImportanceLevels(hands: ParsedHandSnapshot[]): HandImportance[] {
   const contested = hands.map((hand) => isContestedDecision(hand.tableSnapshot.actions));
@@ -53,6 +57,19 @@ export function assignImportanceLevels(hands: ParsedHandSnapshot[]): HandImporta
     .map(({ index }) => index);
 
   const criticalSet = new Set(criticalCandidates);
+
+  // Доезды — в остаток потолка, потери приоритетнее. Детектор дёшев для проигранных
+  // и невскрытых раздач (сразу null), перебор эквити идёт только по реальным кандидатам.
+  const luckySlots = MAX_CRITICAL_HANDS - criticalSet.size;
+  if (luckySlots > 0) {
+    const lucky = hands
+      .map((hand, index) => ({ index, hand }))
+      .filter(({ index, hand }) => contested[index] && hand.chipResult > 0)
+      .filter(({ hand }) => detectHeroLuckyWin(hand.tableSnapshot) !== null)
+      .sort((a, b) => b.hand.chipResult - a.hand.chipResult)
+      .slice(0, luckySlots);
+    for (const { index } of lucky) criticalSet.add(index);
+  }
 
   return hands.map((hand, index) => {
     if (criticalSet.has(index)) return "CRITICAL";

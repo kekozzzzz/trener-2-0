@@ -1,7 +1,8 @@
 import type { ParseResult } from "../types";
 import { assignImportanceLevels, computePostflopAggressionFactor, diagnoseStyle } from "../ggpoker/classify";
 import { opponentTokenizer, assignOpponentTokens } from "../shared/opponent-tokens";
-import { collectRawActions, parseGame, parsePlayers } from "./hand";
+import { assignShownCards } from "../shared/shown-cards";
+import { collectRawActions, parseGame, parsePlayers, pocketCardsByNick } from "./hand";
 
 // iPoker — XML. Файл = склейка <root> (один на стол), в каждом <general> мета +
 // много <game gamecode>. Турнир один на файл (один tournamentcode); многостольные
@@ -115,6 +116,7 @@ export function parseIpokerMtt(buffer: Buffer): ParseResult {
     const namesBySeat: Record<number, string> = {};
     for (const p of parsePlayers(games[index].xml)) namesBySeat[p.seat] = p.name;
     assignOpponentTokens(snapshot.tableSnapshot.seats, namesBySeat, tokenFor);
+    assignShownCards(snapshot.tableSnapshot.seats, namesBySeat, pocketCardsByNick(games[index].xml));
     return {
       ...snapshot,
       importanceLevel: importanceLevels[index],

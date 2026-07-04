@@ -1,5 +1,6 @@
 import type { ParseResult } from "../types";
 import { assignImportanceLevels, computePostflopAggressionFactor, diagnoseStyle } from "./classify";
+import { assignShownCards, shownCardsByNick } from "../shared/shown-cards";
 import { parseHand } from "./hand";
 
 const HAND_HEADER = /^Poker Hand #(?:RC-GGPoker-\d{8}-\d+|TM\d+): Tournament #/m;
@@ -141,6 +142,7 @@ export function parseGGPokerMtt(buffer: Buffer): ParseResult {
       const nick = seat.seatNumber != null ? names[seat.seatNumber] : undefined;
       if (seat.label !== "Hero" && nick) seat.opponentToken = tokenFor(nick);
     }
+    assignShownCards(snapshot.tableSnapshot.seats, names, shownCardsByNick(dealtHands[index]));
     return {
       ...snapshot,
       importanceLevel: importanceLevels[index],
