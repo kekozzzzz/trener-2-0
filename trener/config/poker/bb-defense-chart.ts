@@ -27,11 +27,13 @@ const THREEBET_VALUE: Record<OpenerPosition, string[]> = {
   BTN: ["JJ+", "AKs", "AKo", "AQs"],
 };
 
+// Против CO в «весовом» слое ещё JJ/TT (правка Артёма 2026-07-04: 3-бет TT против
+// CO-опена — нормальная линия, не спью; слой «весом» = можно, тренер не ругает).
 const THREEBET_BLUFF: Record<OpenerPosition, string[]> = {
   UTG: ["A5s", "A4s", "KJs", "JTs"],
   MP: ["A5s", "A4s", "KJs", "JTs", "T9s"],
   HJ: ["A5s", "A4s", "A3s", "KJs", "JTs", "T9s", "76s"],
-  CO: ["A5s", "A4s", "A3s", "KJs", "K9s", "JTs", "T9s", "76s", "65s"],
+  CO: ["JJ", "TT", "A5s", "A4s", "A3s", "KJs", "K9s", "JTs", "T9s", "76s", "65s"],
   BTN: ["A5s", "A4s", "A3s", "A2s", "KTs", "K9s", "QTs", "JTs", "T9s", "98s", "87s", "76s"],
 };
 

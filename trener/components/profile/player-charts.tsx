@@ -65,9 +65,11 @@ export function PlayerCharts() {
       case "open":
         return <OpenChartPanel chart={v.open} tournamentsCounted={v.tournamentsCounted} />;
       case "bb": {
+        // Кнопки — позиция ОТКРЫВАШКИ, подписываем «vs BTN», чтобы не путалось
+        // с «твоей позицией» на соседних вкладках (правка Артёма 2026-07-04).
         const positions: MirrorPosition[] = OPENERS.map((p) => ({
           key: p,
-          label: p,
+          label: `vs ${p}`,
           layers: callThreeBetLayers(v.spots.bbDefense[p]),
         }));
         return (
