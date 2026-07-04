@@ -76,15 +76,15 @@ export default async function TournamentsPage({
                   })}
             </p>
             <PlayerCharts />
-            {/* Задание на сессию — над динамикой (цель), стримится отдельно. */}
+            {/* Цель на сессию и динамика ошибок СПРЯТАНЫ 2026-07-04 (решение Артёма:
+                «спрячь пока, потом вернём») — код цел, вернуть = раскомментировать.
             <Suspense fallback={null}>
               <SessionGoalSection playerId={playerId} />
             </Suspense>
-            {/* «Куда ты движешься»: тренд ликов по игровым дням — стримится отдельно
-                (Suspense), скан окна не задерживает список турниров. */}
             <Suspense fallback={null}>
               <ProfileLeakTrend playerId={playerId} />
             </Suspense>
+            */}
           </div>
         )}
 

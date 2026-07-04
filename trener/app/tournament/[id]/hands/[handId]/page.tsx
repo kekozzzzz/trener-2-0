@@ -21,6 +21,7 @@ import { ChatForm } from "./chat-form";
 import { ChatWaitClient } from "./chat-wait-client";
 import { MarkViewed } from "./mark-viewed";
 import { ScrollToLatest } from "./scroll-to-latest";
+import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export default async function HandDialoguePage({
@@ -54,6 +55,21 @@ export default async function HandDialoguePage({
   const nick = me?.nickname ?? null;
 
   const dialogue = await getDialogue(handId);
+
+  // Кнопка после вердикта (правка Артёма 2026-07-04): ведём к следующей непройденной
+  // критической раздаче турнира; когда пройдена последняя — к турниру.
+  const nextCritical =
+    dialogue?.state === "VERDICT_SHOWN"
+      ? await prisma.hand.findFirst({
+          where: {
+            tournamentId: id,
+            id: { not: handId },
+            dialogue: { is: { state: { not: "VERDICT_SHOWN" } } },
+          },
+          orderBy: { createdAt: "asc" },
+          select: { id: true },
+        })
+      : null;
 
   // Разбор раздачи (played / optimal / note). У критических часть полей дублирует
   // диалог; у простых (STRONG/MEDIUM) — единственный источник для страницы.
@@ -243,6 +259,12 @@ export default async function HandDialoguePage({
                 <div className="border border-primary bg-card p-6">
                   <p className="text-body text-foreground">{personalizeHero(dialogue.verdict, nick)}</p>
                 </div>
+                <Link
+                  href={nextCritical ? `/tournament/${id}/hands/${nextCritical.id}` : `/tournament/${id}`}
+                  className={cn(buttonVariants(), "inline-flex")}
+                >
+                  {nextCritical ? t("nextCritical") : t("toTournament")}
+                </Link>
               </div>
             )}
           </div>

@@ -94,19 +94,8 @@ async function buildLeakDynamicsByDay(
   return { trends: leakDynamics(priorCounts, currentCounts), priorCount: priorDays.length };
 }
 
-// Для страницы турнира: динамика игрового дня ЭТОГО турнира против прошлых дней.
-// У всех турниров одного вечера блок одинаковый — это и есть смысл (день целиком).
-export async function getTournamentLeakDynamics(
-  playerId: string,
-  tournamentId: string,
-): Promise<LeakDynamicsView | null> {
-  const current = await prisma.tournament.findFirst({
-    where: { id: tournamentId, playerId, deletedAt: null },
-    select: { playedAt: true },
-  });
-  if (!current) return null;
-  return buildLeakDynamicsByDay(playerId, gameDayKey(current.playedAt));
-}
+// Динамика на странице турнира (getTournamentLeakDynamics) удалена 2026-07-04:
+// блок мешал разбору (решение Артёма). Динамика живёт только на «Моих турнирах».
 
 // Для «Моих турниров»: самый свежий игровой день на фоне прошлых.
 export async function getProfileLeakTrend(playerId: string): Promise<LeakDynamicsView | null> {

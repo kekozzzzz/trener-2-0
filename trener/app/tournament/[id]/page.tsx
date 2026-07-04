@@ -22,7 +22,6 @@ import { cn } from "@/lib/utils";
 import { ParsingWaitClient } from "./parsing-wait-client";
 import { AutoUnlockClient } from "./auto-unlock-client";
 import { AnalysisProgress } from "./analysis-progress";
-import { LeakDynamicsSection } from "./leak-dynamics";
 import { StartHereCard, SessionDoneCard, type FocusHand } from "@/components/tournament/focus-slot";
 import { MetricsGlossary } from "@/components/metrics/glossary";
 import { LoadingDots } from "@/components/ui/loading-dots";
@@ -321,15 +320,14 @@ export default async function TournamentPage({
 
   // Верхний слот (план 2026-07-03-верхний-слот-турнира). Финиш сессии — все
   // сократовские диалоги дошли до вердикта; хвост карточки (сильные/средние) финишу
-  // не мешает. Пока финиша нет — «начни отсюда»: самая дорогая непройденная раздача
-  // (наибольшая потеря; без потерь — наибольший размах). Кандидаты только с готовым
-  // контентом: раздачи «в работе» (pendingHands) сюда не попадают.
+  // не мешает. Пока финиша нет — «начни отсюда»: самая сомнительная из непройденных
+  // КРИТИЧЕСКИХ раздач (правка Артёма 2026-07-04: сильные/средние в слот не суём —
+  // просто дорогая выигранная рука разбору не приоритет).
   const dialoguesDone = handsForDialogue.filter((h) => h.dialogue!.state === "VERDICT_SHOWN").length;
   const sessionDone = handsForDialogue.length > 0 && dialoguesDone === handsForDialogue.length;
-  const unfinished: FocusHand[] = [
-    ...handsForDialogue.filter((h) => h.dialogue!.state !== "VERDICT_SHOWN"),
-    ...simpleHands.filter((h) => h.viewedAt === null),
-  ];
+  const unfinished: FocusHand[] = handsForDialogue.filter(
+    (h) => h.dialogue!.state !== "VERDICT_SHOWN",
+  );
   const worstLoss = [...unfinished].sort((a, b) => a.chipResult - b.chipResult)[0];
   const startHere =
     worstLoss && worstLoss.chipResult < 0
@@ -412,12 +410,8 @@ export default async function TournamentPage({
           </StatCard>
         </div>
 
-        {/* Динамика ликов — стримится отдельно (Suspense), чтобы скан раздач окна не
-            задерживал показ карточки. Цель сессии на странице турнира не показываем
-            (мешала разбору — решение Артёма 2026-07-03), она живёт на «Моих турнирах». */}
-        <Suspense fallback={null}>
-          <LeakDynamicsSection playerId={session.playerId} tournamentId={id} />
-        </Suspense>
+        {/* Цель сессии и динамику ошибок на странице турнира не показываем (мешали
+            разбору — решения Артёма 2026-07-03/04), оба блока живут на «Моих турнирах». */}
 
         {handsForDialogue.length > 0 && (
           <div className="mt-16">

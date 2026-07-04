@@ -22,7 +22,9 @@ function composeAnswer(
   note: string,
   composed: (values: { range: string; combos: number; pct: string }) => string
 ): string {
-  if (codes.length === 0) return "";
+  // Сетка не отмечена, но игрок написал словами — это полноценный ответ (не заставляем
+  // прорисовывать диапазон, если он хочет сказать мысль текстом; правка Артёма 2026-07-04).
+  if (codes.length === 0) return note.trim();
   const range = formatRange(codes);
   const combos = combosOf(codes);
   const pct = percentOf(codes).toFixed(1);
@@ -55,7 +57,7 @@ export function RangeAnswerForm({ tournamentId, handId }: { tournamentId: string
       />
       {state.error && <p className="text-small text-destructive">{state.error}</p>}
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" disabled={pending || codes.length === 0}>
+        <Button type="submit" disabled={pending || (codes.length === 0 && note.trim().length === 0)}>
           {pending ? (
             <>
               {tc("sending")}
