@@ -40,31 +40,41 @@ async function queryTournaments(playerId: string, limit?: number): Promise<Tourn
     },
   });
 
-  // «Пройден целиком» по карточным раздачам всех турниров списка — одним запросом
-  // (без N+1). Раздача готова: есть диалог → вердикт показан; нет диалога (простая) →
-  // открыта игроком (viewedAt). Турнир пройден, если разбор открыт, он досчитан
-  // (CARD_READY), карточные раздачи есть и все они готовы.
+  // «Пройден» — тот же критерий, что «Сессия разобрана» на странице турнира: все
+  // СОКРАТОВСКИЕ диалоги дошли до вердикта; хвост сильных/средних раздач финишу не
+  // мешает (правка Артёма 2026-07-04 — раньше требовали открыть каждую карточную).
+  // У турнира без диалоговых раздач — по просмотру простых карточных (viewedAt).
+  // Одним запросом на весь список (без N+1).
   const cardHands = await prisma.hand.findMany({
     where: { tournamentId: { in: rows.map((t) => t.id) }, selectedForCard: true },
     select: { tournamentId: true, viewedAt: true, dialogue: { select: { state: true } } },
   });
-  const handsByTournament = new Map<string, { done: number; total: number }>();
+  const handsByTournament = new Map<
+    string,
+    { dlgDone: number; dlgTotal: number; simpleDone: number; simpleTotal: number }
+  >();
   for (const h of cardHands) {
-    const agg = handsByTournament.get(h.tournamentId) ?? { done: 0, total: 0 };
-    agg.total += 1;
-    const handDone = h.dialogue ? h.dialogue.state === "VERDICT_SHOWN" : h.viewedAt !== null;
-    if (handDone) agg.done += 1;
+    const agg =
+      handsByTournament.get(h.tournamentId) ??
+      { dlgDone: 0, dlgTotal: 0, simpleDone: 0, simpleTotal: 0 };
+    if (h.dialogue) {
+      agg.dlgTotal += 1;
+      if (h.dialogue.state === "VERDICT_SHOWN") agg.dlgDone += 1;
+    } else {
+      agg.simpleTotal += 1;
+      if (h.viewedAt !== null) agg.simpleDone += 1;
+    }
     handsByTournament.set(h.tournamentId, agg);
   }
 
   return rows.map((t) => {
     const agg = handsByTournament.get(t.id);
-    const fullyReviewed =
-      t.status === "CARD_READY" &&
-      t.analysisUnlocked &&
+    const sessionDone =
       agg != null &&
-      agg.total > 0 &&
-      agg.done === agg.total;
+      (agg.dlgTotal > 0
+        ? agg.dlgDone === agg.dlgTotal
+        : agg.simpleTotal > 0 && agg.simpleDone === agg.simpleTotal);
+    const fullyReviewed = t.status === "CARD_READY" && t.analysisUnlocked && sessionDone;
     return {
       id: t.id,
       name: t.name,
