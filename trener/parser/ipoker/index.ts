@@ -102,7 +102,6 @@ export function parseIpokerMtt(buffer: Buffer): ParseResult {
   const pfrPercent = Math.round((pfrHands / handsCount) * 10000) / 100;
 
   const snapshots = games.map((g) => parseGame(g.xml, heroName, tableSize));
-  const importanceLevels = assignImportanceLevels(snapshots);
   // Момент раздачи — её <startdate>; псевдонимы оппонентов — по <player seat/name>
   // (сырой ник только локально, в вывод идёт «oppN» — см. shared/opponent-tokens).
   const handPlayedAt = (xml: string): string | null => {
@@ -112,17 +111,20 @@ export function parseIpokerMtt(buffer: Buffer): ParseResult {
     return new Date(Date.UTC(+y, +mo - 1, +d, +h, +mi, +s)).toISOString();
   };
   const tokenFor = opponentTokenizer();
-  const hands = snapshots.map((snapshot, index) => {
+  // Псевдонимы и ВСКРЫТЫЕ КАРТЫ — ДО классификации: детекторы кулера и доезда читают
+  // seat.shownCards (при старом порядке оба молчали — баг найден аудитом 2026-07-05).
+  snapshots.forEach((snapshot, index) => {
     const namesBySeat: Record<number, string> = {};
     for (const p of parsePlayers(games[index].xml)) namesBySeat[p.seat] = p.name;
     assignOpponentTokens(snapshot.tableSnapshot.seats, namesBySeat, tokenFor);
     assignShownCards(snapshot.tableSnapshot.seats, namesBySeat, pocketCardsByNick(games[index].xml));
-    return {
-      ...snapshot,
-      importanceLevel: importanceLevels[index],
-      playedAt: handPlayedAt(games[index].xml),
-    };
   });
+  const importanceLevels = assignImportanceLevels(snapshots);
+  const hands = snapshots.map((snapshot, index) => ({
+    ...snapshot,
+    importanceLevel: importanceLevels[index],
+    playedAt: handPlayedAt(games[index].xml),
+  }));
 
   const postflopAggressionFactor = Math.round(computePostflopAggressionFactor(snapshots) * 100) / 100;
   const styleDiagnosis = diagnoseStyle(vpipPercent, pfrPercent, postflopAggressionFactor);

@@ -1,6 +1,7 @@
 import type { Street, TableSnapshot } from "./types";
 import { bigBlindFromSnapshot } from "./big-blind";
 import { equityVsHand } from "./lucky-win";
+import { cardSetValue, compareValues } from "./made-hand";
 import { detectHeroOpen } from "./open-raise";
 import { detectHeroBBDefense } from "./bb-defense";
 import { detectHeroIso } from "./iso";
@@ -40,6 +41,59 @@ export type CoolerLoss = {
   equityPct: number; // его эквити в тот момент против худшей из вскрытых рук
 };
 
+// Префлоп-эквити рука-против-руки: честный перебор всех 5 карт борда слишком дорог
+// (~1.7 млн досок), поэтому — детерминированный Монте-Карло с ФИКСИРОВАННЫМ зерном
+// от самих карт: одинаковый вход всегда даёт одно и то же число (воспроизводимо,
+// Правило 1 соблюдено; точность ±0.5 п.п. при 40k прогонов — для порога 67 хватает).
+const MC_ITERATIONS = 40_000;
+
+function mulberry32(seed: number): () => number {
+  let a = seed | 0;
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+export function equityVsHandPreflop(hero: string[], villain: string[]): number | null {
+  if (hero.length !== 2 || villain.length !== 2) return null;
+  const dead = new Set([...hero, ...villain]);
+  if (dead.size !== 4) return null;
+
+  const deck: string[] = [];
+  for (const r of ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"]) {
+    for (const s of ["c", "d", "h", "s"]) {
+      const card = r + s;
+      if (!dead.has(card)) deck.push(card);
+    }
+  }
+
+  // Зерно из карт: детерминированно для данного матчапа.
+  let seed = 0;
+  for (const ch of [...hero, ...villain].join("")) seed = (seed * 31 + ch.charCodeAt(0)) | 0;
+  const rng = mulberry32(seed);
+
+  let wins = 0;
+  let ties = 0;
+  const board = new Array<string>(5);
+  for (let iter = 0; iter < MC_ITERATIONS; iter++) {
+    // Частичный Фишер-Йетс: пять случайных карт без повторов.
+    for (let i = 0; i < 5; i++) {
+      const j = i + Math.floor(rng() * (deck.length - i));
+      const tmp = deck[i];
+      deck[i] = deck[j];
+      deck[j] = tmp;
+      board[i] = deck[i];
+    }
+    const c = compareValues(cardSetValue([...hero, ...board]), cardSetValue([...villain, ...board]));
+    if (c > 0) wins += 1;
+    else if (c === 0) ties += 1;
+  }
+  return Math.round(((wins + ties / 2) / MC_ITERATIONS) * 1000) / 10;
+}
+
 // «Чистый префлоп»: ни один эталонный грейдер не флагнул вход Hero и он не лимпил
 // открытием. Грязный префлоп (мусорный вход, изоляция/пуш шире нормы) — раздача НЕ
 // кулер: доезд доездом, а вход разобрать стоит, пусть остаётся кандидатом в CRITICAL.
@@ -64,10 +118,10 @@ export function hasCleanPreflop(snapshot: TableSnapshot): boolean {
   return true;
 }
 
-// Кулер: Hero крупно вложился постфлоп, будучи ≥67% против КАЖДОЙ вскрытой руки, — и
-// проиграл (потерю фишек проверяет вызывающий). Префлоп-точность (олл-ин до флопа,
-// AA против KK) сознательно не считаем — как и у детектора доезда, перебор двух+ карт
-// борда с префлопа дорог; постфлоп покрывает подавляющую часть реальных кулеров.
+// Кулер: Hero крупно вложился, будучи ≥67% против КАЖДОЙ вскрытой руки, — и проиграл
+// (потерю фишек проверяет вызывающий). Постфлоп-точки — честный перебор (equityVsHand);
+// если крупного постфлоп-вложения не было, но было крупное ПРЕФЛОП-вложение (олл-ин
+// до флопа: AA против KK — архетипный кулер) — детерминированный Монте-Карло выше.
 export function detectHeroCooler(snapshot: TableSnapshot): CoolerLoss | null {
   const hero = snapshot.heroCards;
   if (!hero || hero.length !== 2) return null;
@@ -81,15 +135,17 @@ export function detectHeroCooler(snapshot: TableSnapshot): CoolerLoss | null {
 
   const minAmount = Math.max(SIGNIFICANT_BB * bb, heroSeat.startingStack * SIGNIFICANT_STACK_SHARE);
 
-  // Последнее существенное добровольное вложение Hero на постфлопе — самая поздняя
-  // точка, где он ещё решал; борд на тот момент известен по улице действия.
+  // Последнее существенное добровольное вложение Hero — самая поздняя точка, где он
+  // ещё решал; постфлоп приоритетнее (точнее), иначе берём крупный префлоп (олл-ин).
   let decision: { street: Street; boardLen: number } | null = null;
+  let preflopBig = false;
   for (const a of snapshot.actions) {
-    if (a.actor !== "Hero" || a.street === "PREFLOP") continue;
-    if (!CONTINUE_ACTIONS.has(a.action)) continue;
+    if (a.actor !== "Hero" || !CONTINUE_ACTIONS.has(a.action)) continue;
     if ((a.amount ?? 0) < minAmount) continue;
-    decision = { street: a.street, boardLen: STREET_BOARD_LEN[a.street] };
+    if (a.street === "PREFLOP") preflopBig = true;
+    else decision = { street: a.street, boardLen: STREET_BOARD_LEN[a.street] };
   }
+  if (!decision && preflopBig) decision = { street: "PREFLOP", boardLen: 0 };
   if (!decision) return null;
 
   const boardThen = snapshot.board.slice(0, decision.boardLen);
@@ -99,7 +155,10 @@ export function detectHeroCooler(snapshot: TableSnapshot): CoolerLoss | null {
   // кулер — только когда впереди ВСЕХ, кто вскрылся.
   let minEquity: number | null = null;
   for (const seat of shown) {
-    const eq = equityVsHand(hero, seat.shownCards!, boardThen);
+    const eq =
+      decision.street === "PREFLOP"
+        ? equityVsHandPreflop(hero, seat.shownCards!)
+        : equityVsHand(hero, seat.shownCards!, boardThen);
     if (eq === null) continue;
     if (minEquity === null || eq < minEquity) minEquity = eq;
   }

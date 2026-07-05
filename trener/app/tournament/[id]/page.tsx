@@ -569,11 +569,13 @@ export default async function TournamentPage({
                 const cooler = detectHeroCooler(snap);
                 const caption = cooler
                   ? t(
-                      cooler.street === "FLOP"
-                        ? "coolerCaptionFlop"
-                        : cooler.street === "TURN"
-                          ? "coolerCaptionTurn"
-                          : "coolerCaptionRiver",
+                      cooler.street === "PREFLOP"
+                        ? "coolerCaptionPreflop"
+                        : cooler.street === "FLOP"
+                          ? "coolerCaptionFlop"
+                          : cooler.street === "TURN"
+                            ? "coolerCaptionTurn"
+                            : "coolerCaptionRiver",
                       { equity: cooler.equityPct },
                     )
                   : null;

@@ -67,6 +67,50 @@ describe("detectHeroCooler", () => {
   });
 });
 
+describe("detectHeroCooler — префлоп-олл-ин (Монте-Карло с фиксированным зерном)", () => {
+  it("AA против KK на префлопе — архетипный кулер (~81%)", () => {
+    const s = coolerSnap({ heroCards: ["As", "Ad"], villainShown: ["Kc", "Kd"] });
+    // весь стек заходит уже на префлопе
+    s.actions = [
+      { street: "PREFLOP", actor: "Player 2", action: "POST_SB", amount: 50 },
+      { street: "PREFLOP", actor: "Player 1", action: "POST_BB", amount: 100 },
+      { street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 220 },
+      { street: "PREFLOP", actor: "Player 2", action: "FOLD" },
+      { street: "PREFLOP", actor: "Player 1", action: "ALL_IN", amount: 5000 },
+      { street: "PREFLOP", actor: "Hero", action: "CALL", amount: 4780 },
+    ];
+    const cooler = detectHeroCooler(s);
+    expect(cooler).not.toBeNull();
+    expect(cooler!.street).toBe("PREFLOP");
+    expect(cooler!.equityPct).toBeGreaterThan(78);
+    expect(cooler!.equityPct).toBeLessThan(85);
+  });
+
+  it("детерминированность: два вызова дают одно и то же число", () => {
+    const s = coolerSnap({ heroCards: ["As", "Ad"], villainShown: ["Kc", "Kd"] });
+    s.actions = [
+      { street: "PREFLOP", actor: "Player 2", action: "POST_SB", amount: 50 },
+      { street: "PREFLOP", actor: "Player 1", action: "POST_BB", amount: 100 },
+      { street: "PREFLOP", actor: "Hero", action: "ALL_IN", amount: 5000 },
+      { street: "PREFLOP", actor: "Player 2", action: "FOLD" },
+      { street: "PREFLOP", actor: "Player 1", action: "CALL", amount: 4900 },
+    ];
+    expect(detectHeroCooler(s)!.equityPct).toBe(detectHeroCooler(s)!.equityPct);
+  });
+
+  it("флип (AKo против QQ) — не кулер", () => {
+    const s = coolerSnap({ heroCards: ["As", "Kd"], villainShown: ["Qc", "Qd"] });
+    s.actions = [
+      { street: "PREFLOP", actor: "Player 2", action: "POST_SB", amount: 50 },
+      { street: "PREFLOP", actor: "Player 1", action: "POST_BB", amount: 100 },
+      { street: "PREFLOP", actor: "Hero", action: "ALL_IN", amount: 5000 },
+      { street: "PREFLOP", actor: "Player 2", action: "FOLD" },
+      { street: "PREFLOP", actor: "Player 1", action: "CALL", amount: 4900 },
+    ];
+    expect(detectHeroCooler(s)).toBeNull();
+  });
+});
+
 describe("hasCleanPreflop", () => {
   it("стандартное открытие — чистый префлоп", () => {
     expect(hasCleanPreflop(coolerSnap())).toBe(true);

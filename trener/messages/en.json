@@ -585,6 +585,7 @@
     "entryBadge": "Re-entry #{n}",
     "coolersTitle": "{count, plural, one {# cooler} other {# coolers}} - bad luck",
     "coolersNote": "Money went in while you were far ahead and the opponent got there. These are not mistakes - there is nothing to review, the coach leaves them alone.",
+    "coolerCaptionPreflop": "Money went in preflop with {equity}% - the opponent got there. A cooler, not a mistake.",
     "coolerCaptionFlop": "Money went in on the flop with {equity}% - the opponent got there. A cooler, not a mistake.",
     "coolerCaptionTurn": "Money went in on the turn with {equity}% - the opponent got there. A cooler, not a mistake.",
     "coolerCaptionRiver": "Money went in on the river with {equity}% - the opponent got there. A cooler, not a mistake."

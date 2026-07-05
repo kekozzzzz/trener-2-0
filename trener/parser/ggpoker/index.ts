@@ -123,7 +123,6 @@ export function parseGGPokerMtt(buffer: Buffer): ParseResult {
   const pfrPercent = Math.round((pfrHands / handsCount) * 10000) / 100;
 
   const snapshots = dealtHands.map(parseHand);
-  const importanceLevels = assignImportanceLevels(snapshots);
   // Обезличенные СТАБИЛЬНЫЕ псевдонимы оппонентов в рамках турнира: сырой ник → "oppN"
   // (один и тот же человек — один псевдоним во всех его раздачах). Ник живёт только здесь,
   // в вывод парсера попадает лишь псевдоним (parser/opponent-profile склеивает по нему).
@@ -136,19 +135,24 @@ export function parseGGPokerMtt(buffer: Buffer): ParseResult {
     return token;
   };
 
-  const hands = snapshots.map((snapshot, index) => {
+  // Псевдонимы и ВСКРЫТЫЕ КАРТЫ подшиваются ДО классификации: детекторы кулера и
+  // доезда читают seat.shownCards — при старом порядке (классификация раньше вскрытия)
+  // оба детектора молчали на этапе разметки (баг найден аудитом 2026-07-05).
+  snapshots.forEach((snapshot, index) => {
     const names = seatNamesOf(dealtHands[index]); // сырые ники — только локально
     for (const seat of snapshot.tableSnapshot.seats) {
       const nick = seat.seatNumber != null ? names[seat.seatNumber] : undefined;
       if (seat.label !== "Hero" && nick) seat.opponentToken = tokenFor(nick);
     }
     assignShownCards(snapshot.tableSnapshot.seats, names, shownCardsByNick(dealtHands[index]));
-    return {
-      ...snapshot,
-      importanceLevel: importanceLevels[index],
-      playedAt: handPlayedAt(dealtHands[index]),
-    };
   });
+
+  const importanceLevels = assignImportanceLevels(snapshots);
+  const hands = snapshots.map((snapshot, index) => ({
+    ...snapshot,
+    importanceLevel: importanceLevels[index],
+    playedAt: handPlayedAt(dealtHands[index]),
+  }));
 
   const postflopAggressionFactor = Math.round(computePostflopAggressionFactor(snapshots) * 100) / 100;
   const styleDiagnosis = diagnoseStyle(vpipPercent, pfrPercent, postflopAggressionFactor);

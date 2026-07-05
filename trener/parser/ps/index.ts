@@ -132,18 +132,20 @@ export function parsePokerStarsMtt(buffer: Buffer): ParseResult {
   const pfrPercent = Math.round((pfrHands / handsCount) * 10000) / 100;
 
   const snapshots = dealtHands.map((h) => parseHand(h, heroName));
-  const importanceLevels = assignImportanceLevels(snapshots);
   const tokenFor = opponentTokenizer();
-  const hands = snapshots.map((snapshot, index) => {
+  // Псевдонимы и ВСКРЫТЫЕ КАРТЫ — ДО классификации: детекторы кулера и доезда читают
+  // seat.shownCards (при старом порядке оба молчали — баг найден аудитом 2026-07-05).
+  snapshots.forEach((snapshot, index) => {
     const namesBySeat = seatNamesOf(dealtHands[index]);
     assignOpponentTokens(snapshot.tableSnapshot.seats, namesBySeat, tokenFor);
     assignShownCards(snapshot.tableSnapshot.seats, namesBySeat, shownCardsByNick(dealtHands[index]));
-    return {
-      ...snapshot,
-      importanceLevel: importanceLevels[index],
-      playedAt: handPlayedAt(dealtHands[index]),
-    };
   });
+  const importanceLevels = assignImportanceLevels(snapshots);
+  const hands = snapshots.map((snapshot, index) => ({
+    ...snapshot,
+    importanceLevel: importanceLevels[index],
+    playedAt: handPlayedAt(dealtHands[index]),
+  }));
 
   const postflopAggressionFactor = Math.round(computePostflopAggressionFactor(snapshots) * 100) / 100;
   const styleDiagnosis = diagnoseStyle(vpipPercent, pfrPercent, postflopAggressionFactor);
