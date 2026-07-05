@@ -1,6 +1,6 @@
 import { prisma } from "@/infrastructure/db/client";
 import { notFound } from "next/navigation";
-import { getTranslations } from "next-intl/server";
+import { getTranslations, getLocale } from "next-intl/server";
 import Link from "next/link";
 import { getDialogue } from "@/features/dialogue/queries";
 import { getChat } from "@/features/chat/queries";
@@ -23,6 +23,12 @@ import { MarkViewed } from "./mark-viewed";
 import { ScrollToLatest } from "./scroll-to-latest";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+// Заголовок вкладки (QA 2026-07-05, п.10). Локаль — из next-intl.
+export async function generateMetadata() {
+  const locale = await getLocale();
+  return { title: locale === "en" ? "Hand review" : "Разбор раздачи" };
+}
 
 export default async function HandDialoguePage({
   params,

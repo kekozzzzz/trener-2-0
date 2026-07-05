@@ -33,10 +33,12 @@ export async function unlockTournamentAnalysisAction(formData: FormData): Promis
     redirect(`/tournament/${tournamentId}?error=RATE_LIMITED`);
   }
 
-  // Бюджетный гейт: открываем разбор только если доступ разрешён.
+  // Бюджетный гейт: открываем разбор только если доступ разрешён. При отказе
+  // ОСТАЁМСЯ на странице турнира (метрики парсера видны всегда — обещание продукта);
+  // раньше PAYWALL молча уносил в /pricing, и игрок не видел свой турнир (QA 2026-07-05).
   const access = await assessAiAccess(prisma, playerId, { tournamentId });
   if (!access.allowed) {
-    redirect(access.reason === "PAYWALL" ? "/pricing" : `/tournament/${tournamentId}?error=LIMIT_REACHED`);
+    redirect(`/tournament/${tournamentId}?error=${access.reason === "PAYWALL" ? "PAYWALL" : "LIMIT_REACHED"}`);
   }
 
   // Идемпотентно: флаг переводим в true только из false; кто перевёл (count>0), тот

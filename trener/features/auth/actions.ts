@@ -109,7 +109,8 @@ export async function registerAction(
   // (он редиректит и прервёт выполнение), ошибку доставки safeSendEmail глушит.
   await safeSendEmail(buildWelcomeEmail(email, locale));
   await createSession(player.id);
-  redirect("/");
+  // Новичка ведём сразу к делу — на загрузку первого турнира (QA 2026-07-05, пункт 9).
+  redirect("/analyze");
 }
 
 // Изменить покерный ник в личном кабинете (показ в разборах). Пустое значение
@@ -169,7 +170,8 @@ export async function loginAction(
   if (limited) clearHits(loginEmailKey);
   await recordAuthEvent("LOGIN_PASSWORD", player.id);
   await createSession(player.id);
-  redirect("/");
+  // Вернувшегося — к его турнирам, а не на маркетинговый лендинг (QA 2026-07-05).
+  redirect("/tournaments");
 }
 
 export async function logoutAction(): Promise<void> {
@@ -435,7 +437,7 @@ export async function completeRegistrationAction(
 
   await clearPendingRegistration();
   await createSession(playerId);
-  redirect("/");
+  redirect("/analyze");
 }
 
 // Выход на всех устройствах: сдвигаем sessionsValidFrom — гаснут ВСЕ сессии, включая

@@ -111,7 +111,7 @@ export async function uploadTournament(input: UploadInput): Promise<UploadResult
   // создаём отдельный турнир с номером входа (план 2026-07-05-кулеры-и-перезаходы).
   const sameKey = await prisma.tournament.findMany({
     where: { playerId, room, externalTournamentId, deletedAt: null },
-    select: { id: true, entryNumber: true },
+    select: { id: true, entryNumber: true, playedAt: true },
   });
 
   let entryNumber = 1;
@@ -129,10 +129,19 @@ export async function uploadTournament(input: UploadInput): Promise<UploadResult
     let overlap = 0;
     for (const t of newTimes) if (existingTimes.has(t)) overlap += 1;
 
-    // Без таймстемпов раздач надёжно не различить — консервативно считаем дублем
-    // (прежнее поведение). Совпала хотя бы половина раздач — тоже дубль.
+    // Раздачи существующего турнира ещё не записаны (пакетная загрузка: перезаход
+    // приходит следом за первым файлом, который только встал в очередь парсинга) —
+    // сравниваем по моменту ПЕРВОЙ раздачи турнира: у дубля того же файла он совпадает,
+    // у перезахода отличается на десятки минут (QA 2026-07-05, пункт 1).
+    const sameFirstHand = sameKey.some(
+      (tt) => Math.abs(tt.playedAt.getTime() - new Date(playedAt).getTime()) < 60_000,
+    );
     const isDuplicate =
-      newTimes.size === 0 || existingTimes.size === 0 || overlap / newTimes.size >= 0.5;
+      newTimes.size === 0
+        ? true // без таймстемпов надёжно не различить — консервативно дубль
+        : existingTimes.size === 0
+          ? sameFirstHand
+          : overlap / newTimes.size >= 0.5;
     if (isDuplicate) {
       return { ok: false, error: "DUPLICATE", existingTournamentId: sameKey[0].id };
     }

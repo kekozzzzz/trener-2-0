@@ -13,7 +13,7 @@ export async function AuthNav() {
 
   if (!player) {
     return (
-      <nav className="flex items-center gap-4 font-mono text-label uppercase tracking-label">
+      <nav className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2 font-mono text-label uppercase tracking-label [&_a]:whitespace-nowrap">
         <Link href="/pricing" className="text-muted-foreground transition-colors hover:text-foreground">
           {t("pricing")}
         </Link>
@@ -31,7 +31,7 @@ export async function AuthNav() {
   }
 
   return (
-    <nav className="flex items-center gap-4 font-mono text-label uppercase tracking-label">
+    <nav className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2 font-mono text-label uppercase tracking-label [&_a]:whitespace-nowrap">
       {/* «Разбор» (загрузка) убран из меню — загрузить турнир можно со страницы «Мои
           турниры». «Тарифы» убраны — смена/выбор тарифа живёт в «Аккаунте». */}
       {/* Вкладка владельца: видна только админ-аккаунту (config/admin.ts). */}

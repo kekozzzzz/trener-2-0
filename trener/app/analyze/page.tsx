@@ -1,5 +1,11 @@
 import { noindex } from "@/lib/seo";
-export const metadata = noindex;
+import { getLocale } from "next-intl/server";
+
+// Заголовок вкладки — иначе все страницы назывались как лендинг (QA 2026-07-05, п.10).
+export async function generateMetadata() {
+  const locale = await getLocale();
+  return { ...noindex, title: locale === "en" ? "Upload tournaments" : "Загрузка турниров" };
+}
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";

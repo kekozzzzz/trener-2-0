@@ -137,7 +137,11 @@ export async function HandTable({ state, nick }: { state: TableState; nick: stri
         </span>
       </div>
 
-      <div className="relative mx-auto w-full" style={{ aspectRatio: `${W} / ${H}` }}>
+      {/* Боксы мест и карты — в фиксированных px, поэтому на телефоне стол не сжимаем,
+          а прокручиваем по горизонтали (min-w) — иначе плашки наезжали друг на друга
+          (QA 2026-07-05, пункт 6). */}
+      <div className="overflow-x-auto">
+      <div className="relative mx-auto w-full min-w-[560px]" style={{ aspectRatio: `${W} / ${H}` }}>
         {/* сукно-многоугольник по формату стола */}
         <svg
           className="absolute inset-0 h-full w-full"
@@ -286,6 +290,7 @@ export async function HandTable({ state, nick }: { state: TableState; nick: stri
             </div>
           );
         })}
+      </div>
       </div>
     </div>
   );

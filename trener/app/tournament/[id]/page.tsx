@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { prisma } from "@/infrastructure/db/client";
 import { Prisma } from "@prisma/client";
 import { notFound } from "next/navigation";
-import { getTranslations } from "next-intl/server";
+import { getTranslations, getLocale } from "next-intl/server";
 import Link from "next/link";
 import { ArrowRight, ChevronDown } from "lucide-react";
 import { requireSession } from "@/features/auth/session";
@@ -26,6 +26,12 @@ import { AnalysisProgress } from "./analysis-progress";
 import { StartHereCard, SessionDoneCard, type FocusHand } from "@/components/tournament/focus-slot";
 import { MetricsGlossary } from "@/components/metrics/glossary";
 import { LoadingDots } from "@/components/ui/loading-dots";
+
+// Заголовок вкладки (QA 2026-07-05, п.10). Локаль — из next-intl.
+export async function generateMetadata() {
+  const locale = await getLocale();
+  return { title: locale === "en" ? "Tournament" : "Турнир" };
+}
 
 // timeZone UTC — playedAt хранится в UTC из HH-файла, показываем дату ровно как в файле.
 const dateFormat = new Intl.DateTimeFormat("ru-RU", {
@@ -79,6 +85,73 @@ function StatCard({ label, children }: { label: string; children: React.ReactNod
       <p className="font-mono text-label uppercase tracking-label text-muted-foreground">{label}</p>
       {children}
     </div>
+  );
+}
+
+
+// Тихая стопка кулеров — общая для запертого и открытого турнира: считает парсер,
+// ИИ не нужен, поэтому показываем всегда (QA 2026-07-05, пункт 8).
+function CoolersSection({
+  coolers,
+  t,
+}: {
+  coolers: { id: string; chipResult: number; tableData: unknown }[];
+  t: Awaited<ReturnType<typeof getTranslations>>;
+}) {
+  if (coolers.length === 0) return null;
+  return (
+    <details className="group mt-16">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 border border-border bg-card p-6 transition-colors duration-150 ease-out hover:border-primary [&::-webkit-details-marker]:hidden">
+        <span className="font-mono text-label uppercase tracking-label text-muted-foreground">
+          {t("coolersTitle", { count: coolers.length })}
+        </span>
+        <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform duration-150 ease-out group-open:rotate-180" />
+      </summary>
+      <p className="mt-4 text-small text-muted-foreground">{t("coolersNote")}</p>
+      <div className="mt-8 space-y-4">
+        {coolers.map((hand) => {
+          const snap = hand.tableData as unknown as TableSnapshot;
+          const cooler = detectHeroCooler(snap);
+          const caption = cooler
+            ? t(
+                cooler.street === "PREFLOP"
+                  ? "coolerCaptionPreflop"
+                  : cooler.street === "FLOP"
+                    ? "coolerCaptionFlop"
+                    : cooler.street === "TURN"
+                      ? "coolerCaptionTurn"
+                      : "coolerCaptionRiver",
+                { equity: cooler.equityPct },
+              )
+            : null;
+          const bb = bigBlindFromSnapshot(snap);
+          const bbResult = bb ? hand.chipResult / bb : null;
+          const sign = hand.chipResult >= 0 ? "+" : "";
+          return (
+            <div key={hand.id} className="flex items-center justify-between gap-4 border border-border bg-card p-6">
+              <div className="flex min-w-0 items-center gap-4">
+                <Badge variant="outline" className="shrink-0">
+                  {t("importanceCooler")}
+                </Badge>
+                <HoleCards cards={snap.heroCards ?? []} />
+                {caption && <span className="min-w-0 text-small text-muted-foreground">{caption}</span>}
+              </div>
+              <div className="flex shrink-0 flex-col items-end">
+                <span className="font-mono text-body text-foreground">
+                  {bbResult !== null ? `${sign}${bbResult.toFixed(1)} BB` : `${sign}${hand.chipResult}`}
+                </span>
+                {bbResult !== null && (
+                  <span className="font-mono text-small text-muted-foreground">
+                    {sign}
+                    {hand.chipResult} {t("chips")}
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </details>
   );
 }
 
@@ -160,6 +233,13 @@ export default async function TournamentPage({
       orderBy: { createdAt: "asc" },
       select: { id: true, importanceLevel: true, chipResult: true, tableData: true },
     });
+    // Кулеры видны и в запертом турнире: это работа парсера без ИИ — бесплатная
+    // ценность, прятать её за замком нет причин (QA 2026-07-05, пункт 8).
+    const lockedCoolers = await prisma.hand.findMany({
+      where: { tournamentId: id, importanceLevel: "COOLER" },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, chipResult: true, tableData: true },
+    });
     // Можно ли запустить разбор по клику. Стена выключена → можно всем (ленивый разбор
     // бесплатен). Стена включена → по гейту: первый бесплатный / подписка в пределах лимита.
     const access = isSubscriptionGateEnabled()
@@ -178,6 +258,11 @@ export default async function TournamentPage({
             {tournament.entryNumber > 1 && ` · ${t("entryBadge", { n: tournament.entryNumber })}`}
           </p>
 
+          {error === "PAYWALL" && (
+            <div className="mt-8 border border-border bg-card p-4">
+              <p className="text-small text-muted-foreground">{t("errorPaywall")}</p>
+            </div>
+          )}
           {error === "LIMIT_REACHED" && (
             <div className="mt-8 border border-destructive p-4">
               <p className="text-small text-destructive">
@@ -271,6 +356,8 @@ export default async function TournamentPage({
               </div>
             </div>
           )}
+
+          <CoolersSection coolers={lockedCoolers} t={t} />
 
           <div className="mt-16 border-t border-border pt-8 font-mono text-label uppercase tracking-label">
             <Link href="/analyze" className="text-muted-foreground transition-colors hover:text-foreground">
@@ -552,67 +639,7 @@ export default async function TournamentPage({
           </details>
         )}
 
-        {/* Кулеры — не повезло, не ошибки: свёрнутая тихая стопка без ссылок и чата.
-            Подпись считает детектор парсера по снимку (Правило 1), LLM не участвует. */}
-        {coolerHands.length > 0 && (
-          <details className="group mt-16">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 border border-border bg-card p-6 transition-colors duration-150 ease-out hover:border-primary [&::-webkit-details-marker]:hidden">
-              <span className="font-mono text-label uppercase tracking-label text-muted-foreground">
-                {t("coolersTitle", { count: coolerHands.length })}
-              </span>
-              <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform duration-150 ease-out group-open:rotate-180" />
-            </summary>
-            <p className="mt-4 text-small text-muted-foreground">{t("coolersNote")}</p>
-            <div className="mt-8 space-y-4">
-              {coolerHands.map((hand) => {
-                const snap = hand.tableData as unknown as TableSnapshot;
-                const cooler = detectHeroCooler(snap);
-                const caption = cooler
-                  ? t(
-                      cooler.street === "PREFLOP"
-                        ? "coolerCaptionPreflop"
-                        : cooler.street === "FLOP"
-                          ? "coolerCaptionFlop"
-                          : cooler.street === "TURN"
-                            ? "coolerCaptionTurn"
-                            : "coolerCaptionRiver",
-                      { equity: cooler.equityPct },
-                    )
-                  : null;
-                const bb = bigBlindFromSnapshot(snap);
-                const bbResult = bb ? hand.chipResult / bb : null;
-                const sign = hand.chipResult >= 0 ? "+" : "";
-                return (
-                  <div
-                    key={hand.id}
-                    className="flex items-center justify-between gap-4 border border-border bg-card p-6"
-                  >
-                    <div className="flex min-w-0 items-center gap-4">
-                      <Badge variant="outline" className="shrink-0">
-                        {t("importanceCooler")}
-                      </Badge>
-                      <HoleCards cards={snap.heroCards ?? []} />
-                      {caption && (
-                        <span className="min-w-0 text-small text-muted-foreground">{caption}</span>
-                      )}
-                    </div>
-                    <div className="flex shrink-0 flex-col items-end">
-                      <span className="font-mono text-body text-foreground">
-                        {bbResult !== null ? `${sign}${bbResult.toFixed(1)} BB` : `${sign}${hand.chipResult}`}
-                      </span>
-                      {bbResult !== null && (
-                        <span className="font-mono text-small text-muted-foreground">
-                          {sign}
-                          {hand.chipResult} {t("chips")}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </details>
-        )}
+        <CoolersSection coolers={coolerHands} t={t} />
 
         {processing && pendingHands.length > 0 && (
           <div className="mt-16">

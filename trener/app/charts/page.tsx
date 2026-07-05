@@ -1,5 +1,11 @@
 import { noindex } from "@/lib/seo";
-export const metadata = noindex;
+import { getLocale } from "next-intl/server";
+
+// Заголовок вкладки — иначе все страницы назывались как лендинг (QA 2026-07-05, п.10).
+export async function generateMetadata() {
+  const locale = await getLocale();
+  return { ...noindex, title: locale === "en" ? "Charts" : "Чарты" };
+}
 import { getTranslations } from "next-intl/server";
 import { requireSession } from "@/features/auth/session";
 import { PageHeader } from "@/components/page-header";
@@ -8,6 +14,14 @@ import { PushChartPanel } from "@/components/charts/push-chart-panel";
 import { BBDefensePanel } from "@/components/charts/bb-defense-panel";
 import { VsOpenPanel } from "@/components/charts/vs-open-panel";
 import { IsoPanel } from "@/components/charts/iso-panel";
+import {
+  RestealPanel,
+  CallVsPushPanel,
+  CallVsRestealPanel,
+  BvbPanel,
+  FourBetPanel,
+  SqueezePanel,
+} from "@/components/charts/extra-panels";
 
 // Страница «Чарты» — эталонные диапазоны (норма), в отличие от «Твоих чартов»
 // (зеркала игрока). Нужна заданиям на сессию: «не открывайся шире нормы» честно
@@ -64,6 +78,55 @@ export default async function ChartsPage() {
           <p className="mt-2 max-w-2xl text-small text-muted-foreground">{t("isoIntro")}</p>
           <div className="mt-6">
             <IsoPanel />
+          </div>
+        </div>
+
+        {/* Доборные эталоны (QA 2026-07-05, пункт 7): всё, чем судит тренер, — видно игроку. */}
+        <div className="mt-16 border-t border-border pt-16" id="bvb">
+          <h2 className="text-h2">{t("bvbTitle")}</h2>
+          <p className="mt-2 max-w-2xl text-small text-muted-foreground">{t("bvbIntro")}</p>
+          <div className="mt-6">
+            <BvbPanel />
+          </div>
+        </div>
+
+        <div className="mt-16 border-t border-border pt-16" id="resteal">
+          <h2 className="text-h2">{t("restealTitle")}</h2>
+          <p className="mt-2 max-w-2xl text-small text-muted-foreground">{t("restealIntro")}</p>
+          <div className="mt-6">
+            <RestealPanel />
+          </div>
+        </div>
+
+        <div className="mt-16 border-t border-border pt-16" id="callvspush">
+          <h2 className="text-h2">{t("cvpTitle")}</h2>
+          <p className="mt-2 max-w-2xl text-small text-muted-foreground">{t("cvpIntro")}</p>
+          <div className="mt-6">
+            <CallVsPushPanel />
+          </div>
+        </div>
+
+        <div className="mt-16 border-t border-border pt-16" id="callvsresteal">
+          <h2 className="text-h2">{t("cvrTitle")}</h2>
+          <p className="mt-2 max-w-2xl text-small text-muted-foreground">{t("cvrIntro")}</p>
+          <div className="mt-6">
+            <CallVsRestealPanel />
+          </div>
+        </div>
+
+        <div className="mt-16 border-t border-border pt-16" id="fourbet">
+          <h2 className="text-h2">{t("fourbetTitle")}</h2>
+          <p className="mt-2 max-w-2xl text-small text-muted-foreground">{t("fourbetIntro")}</p>
+          <div className="mt-6">
+            <FourBetPanel />
+          </div>
+        </div>
+
+        <div className="mt-16 border-t border-border pt-16" id="squeeze">
+          <h2 className="text-h2">{t("squeezeTitle")}</h2>
+          <p className="mt-2 max-w-2xl text-small text-muted-foreground">{t("squeezeIntro")}</p>
+          <div className="mt-6">
+            <SqueezePanel />
           </div>
         </div>
       </section>

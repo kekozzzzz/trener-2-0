@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { GRID_RANKS, cellCode, combosOf, percentOf } from "@/config/poker/hand-grid";
 import { cn } from "@/lib/utils";
@@ -17,16 +17,17 @@ export function RangeGrid({ onChange }: { onChange?: (codes: string[]) => void }
   // null — не тащим. Ref, чтобы не пере-рендерить во время движения.
   const paintMode = useRef<boolean | null>(null);
 
-  const update = useCallback(
-    (fn: (prev: Set<string>) => Set<string>) => {
-      setSelected((prev) => {
-        const next = fn(prev);
-        onChange?.([...next]);
-        return next;
-      });
-    },
-    [onChange]
-  );
+  // onChange зовём ПОСЛЕ коммита (эффектом), а не внутри апдейтера setSelected:
+  // setState родителя во время рендера сетки — ошибка React (QA 2026-07-05, пункт 4).
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  useEffect(() => {
+    onChangeRef.current?.([...selected]);
+  }, [selected]);
+
+  const update = useCallback((fn: (prev: Set<string>) => Set<string>) => {
+    setSelected((prev) => fn(prev));
+  }, []);
 
   const setCell = useCallback(
     (code: string, on: boolean) =>

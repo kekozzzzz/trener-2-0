@@ -142,7 +142,38 @@ export default async function PricingPage() {
             ))}
           </ul>
         </div>
+
+        {/* Юр-ссылки рядом с деньгами (QA 2026-07-05, пункт 11). */}
+        <p className="mt-6 text-small text-muted-foreground">
+          {t.rich("legalNote", {
+            oferta: (chunks) => (
+              <Link href="/legal#oferta" className="underline underline-offset-2 hover:text-foreground">
+                {chunks}
+              </Link>
+            ),
+            refund: (chunks) => (
+              <Link href="/legal#refund" className="underline underline-offset-2 hover:text-foreground">
+                {chunks}
+              </Link>
+            ),
+          })}
+        </p>
       </section>
+
+      <footer className="border-t border-border">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-8 py-8">
+          <Wordmark />
+          <div className="flex items-center gap-6 font-mono text-label uppercase tracking-label text-muted-foreground">
+            <Link href="/support" className="transition-colors hover:text-foreground">
+              {tc("footerSupport")}
+            </Link>
+            <Link href="/legal" className="transition-colors hover:text-foreground">
+              {tc("footerLegal")}
+            </Link>
+            <span>© 2026</span>
+          </div>
+        </div>
+      </footer>
     </main>
   );
 }
