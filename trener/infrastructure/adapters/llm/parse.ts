@@ -18,6 +18,38 @@ export function extractJson(text: string): string {
   return (fenced ? fenced[1] : text).trim();
 }
 
+// Страховка словаря кодом (COACH_FRAMEWORK «## Язык»): типовые срывы, которые промпт
+// запрещает, но модель всё равно иногда пишет в живых текстах. Чиним детерминированно
+// на выходе адаптера — до того, как текст увидит игрок. Замены только однозначные,
+// где не ломается грамматика; спорные обороты остаются на совести промпта.
+const CASE_FIXES: Array<[string, string]> = [
+  // возвратные формы «сбрасываться» → «фолдить» в том же лице и времени
+  ["сбрасываешься", "фолдишь"],
+  ["сбрасывается", "фолдит"],
+  ["сбрасываемся", "фолдим"],
+  ["сбрасываются", "фолдят"],
+  ["сбрасывался", "фолдил"],
+  ["сбрасывалась", "фолдила"],
+  ["сбрасывались", "фолдили"],
+  ["сбросился", "сбросил"],
+  ["сбросилась", "сбросила"],
+  ["сбросились", "сбросили"],
+  // «хедз-ап» — только про стол из двоих в турнире; про раздачу — «один на один»
+  ["в хедз-апе", "один на один"],
+  ["в хедз-ап", "один на один"],
+];
+
+export function cleanCoachText(text: string): string {
+  // длинное тире запрещено словарём — всегда короткое с пробелами
+  let out = text.replace(/\s*—\s*/g, " - ");
+  for (const [from, to] of CASE_FIXES) {
+    const capFrom = from[0].toUpperCase() + from.slice(1);
+    const capTo = to[0].toUpperCase() + to.slice(1);
+    out = out.split(from).join(to).split(capFrom).join(capTo);
+  }
+  return out;
+}
+
 // Строго: режим ответа сеткой включается ТОЛЬКО литералом "range". Любое другое
 // значение (или его отсутствие) — обычный текстовый ответ.
 export function parseAnswerMode(value: unknown): "range" | undefined {
@@ -44,10 +76,10 @@ export function validateHandAnalysis(
       throw new Error("LLM вернул CRITICAL-разбор без question/draftVerdict");
     }
     return {
-      played: result.played,
-      optimal: result.optimal,
-      question: result.question,
-      draftVerdict: result.draftVerdict,
+      played: cleanCoachText(result.played),
+      optimal: cleanCoachText(result.optimal),
+      question: cleanCoachText(result.question),
+      draftVerdict: cleanCoachText(result.draftVerdict),
       answerMode: parseAnswerMode(result.answerMode),
       tableActionIndex: parseTableActionIndex(result.tableActionIndex),
     };
@@ -56,14 +88,18 @@ export function validateHandAnalysis(
   if (typeof result.note !== "string") {
     throw new Error(`LLM вернул ${request.importanceLevel}-разбор без note`);
   }
-  return { played: result.played, optimal: result.optimal, note: result.note };
+  return {
+    played: cleanCoachText(result.played),
+    optimal: cleanCoachText(result.optimal),
+    note: cleanCoachText(result.note),
+  };
 }
 
 export function validateVerdict(result: Partial<VerdictResult>): VerdictResult {
   if (typeof result.verdict !== "string") {
     throw new Error("LLM вернул вердикт без поля verdict");
   }
-  return { verdict: result.verdict };
+  return { verdict: cleanCoachText(result.verdict) };
 }
 
 export function validateNextQuestion(result: Partial<NextQuestionResult>): NextQuestionResult {
@@ -74,7 +110,7 @@ export function validateNextQuestion(result: Partial<NextQuestionResult>): NextQ
   }
   return {
     complete,
-    question: typeof result.question === "string" ? result.question : "",
+    question: typeof result.question === "string" ? cleanCoachText(result.question) : "",
     answerMode: parseAnswerMode(result.answerMode),
     tableActionIndex: parseTableActionIndex(result.tableActionIndex),
   };
@@ -84,14 +120,14 @@ export function validateChatReply(result: Partial<ChatReplyResult>): ChatReplyRe
   if (typeof result.reply !== "string") {
     throw new Error("LLM вернул ответ без поля reply");
   }
-  return { reply: result.reply };
+  return { reply: cleanCoachText(result.reply) };
 }
 
 export function validateTournamentSummary(result: Partial<TournamentSummaryResult>): TournamentSummaryResult {
   if (typeof result.overview !== "string") {
     throw new Error("LLM вернул обзор турнира без overview");
   }
-  return { overview: result.overview };
+  return { overview: cleanCoachText(result.overview) };
 }
 
 export function validatePlayerCharacteristic(
@@ -100,5 +136,5 @@ export function validatePlayerCharacteristic(
   if (typeof result.characteristic !== "string") {
     throw new Error("LLM вернул характеристику без поля characteristic");
   }
-  return { characteristic: result.characteristic };
+  return { characteristic: cleanCoachText(result.characteristic) };
 }

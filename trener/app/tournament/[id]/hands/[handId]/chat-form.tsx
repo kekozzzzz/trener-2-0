@@ -19,7 +19,9 @@ export function ChatForm({ tournamentId, handId }: { tournamentId: string; handI
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+    // Enter отправляет с обеих клавиш: основной (key="Enter") и цифрового блока —
+    // часть клавиатур отдаёт цифровой Enter только кодом NumpadEnter.
+    if ((e.key === "Enter" || e.code === "NumpadEnter") && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       if (!pending) e.currentTarget.form?.requestSubmit();
     }

@@ -120,8 +120,8 @@
     "semantic_hash": "6b13175cdc780bb46c68dce7eb515cc1"
   },
   "trener/__tests__/parser/facts.test.ts": {
-    "mtime": 1782651509.2311718,
-    "ast_hash": "063358853a6cc86c425cc7b7130b4b37",
+    "mtime": 1783246572.8774877,
+    "ast_hash": "459ca3bb4aa24b7043d61bc2bb300c56",
     "semantic_hash": ""
   },
   "trener/__tests__/parser/ggpoker.test.ts": {
@@ -315,8 +315,8 @@
     "semantic_hash": ""
   },
   "trener/app/tournament/[id]/hands/[handId]/answer-form.tsx": {
-    "mtime": 1782930275.481391,
-    "ast_hash": "b45aa91272aee8a118dd13b587be3b97",
+    "mtime": 1783245993.9899235,
+    "ast_hash": "67822ee985a91081ff33a3b58942ca39",
     "semantic_hash": ""
   },
   "trener/app/tournament/[id]/hands/[handId]/chat-actions.ts": {
@@ -325,8 +325,8 @@
     "semantic_hash": ""
   },
   "trener/app/tournament/[id]/hands/[handId]/chat-form.tsx": {
-    "mtime": 1782930275.4823909,
-    "ast_hash": "f36c0e395b3d2b24c0e8f711e1d8e6ee",
+    "mtime": 1783246071.2700243,
+    "ast_hash": "2450d69aeb2f2bf10bc11f26c12ee967",
     "semantic_hash": ""
   },
   "trener/app/tournament/[id]/hands/[handId]/chat-thread.tsx": {
@@ -520,13 +520,13 @@
     "semantic_hash": ""
   },
   "trener/config/prompts/dialogue-question.ts": {
-    "mtime": 1783233655.523412,
+    "mtime": 1783235446.5210154,
     "ast_hash": "c28f0f34b4c33bd6d947e227eacb5700",
     "semantic_hash": ""
   },
   "trener/config/prompts/hand-analysis.ts": {
-    "mtime": 1783189784.668996,
-    "ast_hash": "5af61592fff4a4a0937598793ecc4e25",
+    "mtime": 1783245130.6197278,
+    "ast_hash": "cd17423f7f0c49d14c6615d61b9e1276",
     "semantic_hash": ""
   },
   "trener/config/prompts/tournament-summary.ts": {
@@ -670,7 +670,7 @@
     "semantic_hash": ""
   },
   "trener/infrastructure/adapters/llm/types.ts": {
-    "mtime": 1783233569.4371502,
+    "mtime": 1783235446.5226634,
     "ast_hash": "999898c8f7ded26098ea0f6ad9227301",
     "semantic_hash": ""
   },
@@ -755,7 +755,7 @@
     "semantic_hash": ""
   },
   "trener/infrastructure/queue/steps/generate-dialogue-question.ts": {
-    "mtime": 1783233609.0717595,
+    "mtime": 1783235446.5236611,
     "ast_hash": "a7bef72743e7094752862b37aac065b7",
     "semantic_hash": ""
   },
@@ -780,7 +780,7 @@
     "semantic_hash": "d4b31ec7d9f0ed21e4bc819e0a9dc437"
   },
   "trener/infrastructure/queue/steps/parse-tournament.ts": {
-    "mtime": 1783233499.873343,
+    "mtime": 1783235446.5239882,
     "ast_hash": "bbed6e3c29602753b870b8feadee56ef",
     "semantic_hash": ""
   },
@@ -830,8 +830,8 @@
     "semantic_hash": "f8d3a21f33ee2545c72c1a95d087d9c7"
   },
   "trener/parser/facts.ts": {
-    "mtime": 1782651509.237,
-    "ast_hash": "cf4fce7351b211f767935bdabfd233a6",
+    "mtime": 1783245868.195241,
+    "ast_hash": "6a1f4a45b82ecb77ad14fd0d192d65c5",
     "semantic_hash": ""
   },
   "trener/parser/ggpoker/classify.ts": {
@@ -940,9 +940,9 @@
     "semantic_hash": "57eb1afaaadcbc4311ff3e326717a8dd"
   },
   "CLAUDE.md": {
-    "mtime": 1781973125.6891694,
-    "ast_hash": "a3f44adcb05277ce44a270cb567bebac",
-    "semantic_hash": "a3f44adcb05277ce44a270cb567bebac"
+    "mtime": 1783235290.725382,
+    "ast_hash": "d2e24930ed9d10110449fccf3ce2fa52",
+    "semantic_hash": ""
   },
   "architecture/00-\u043f\u0440\u0430\u0432\u0438\u043b\u0430-\u043f\u0440\u043e\u0435\u043a\u0442\u0430.md": {
     "mtime": 1783103311.8066223,
@@ -2440,8 +2440,8 @@
     "semantic_hash": ""
   },
   "trener/app/api/stt/route.ts": {
-    "mtime": 1783187852.7510812,
-    "ast_hash": "55512c936682c11cd5b2afb4a8e28bc5",
+    "mtime": 1783246316.9664621,
+    "ast_hash": "2c84a64d8a63b9413d592234f8285c90",
     "semantic_hash": ""
   },
   "trener/app/api/webhooks/telegram/route.ts": {
@@ -2530,8 +2530,8 @@
     "semantic_hash": ""
   },
   "trener/infrastructure/adapters/llm/parse.ts": {
-    "mtime": 1782584994.2014148,
-    "ast_hash": "78c135f521e73f5ce0c1042d5db1102b",
+    "mtime": 1783245457.4055393,
+    "ast_hash": "8d44f96677500522a544c18f8a0e52c1",
     "semantic_hash": ""
   },
   "trener/infrastructure/adapters/notify/telegram-api.ts": {
@@ -2735,8 +2735,8 @@
     "semantic_hash": ""
   },
   "trener/__tests__/features/memory/similar-spots.test.ts": {
-    "mtime": 1783233722.6053574,
-    "ast_hash": "bc0a220d04b9d7078c225aba37fb5a07",
+    "mtime": 1783235446.5198689,
+    "ast_hash": "432c7198b1055121494cb41b72913fe7",
     "semantic_hash": ""
   },
   "trener/__tests__/parser/draws.test.ts": {
@@ -2755,8 +2755,8 @@
     "semantic_hash": ""
   },
   "trener/features/memory/similar-spots.ts": {
-    "mtime": 1783233629.9536564,
-    "ast_hash": "2bd25bea6f97a159d284da794636ae37",
+    "mtime": 1783235446.5225422,
+    "ast_hash": "13009dafbc63602f4e8cb6fafed2cef2",
     "semantic_hash": ""
   },
   "trener/parser/draws.ts": {
@@ -3265,7 +3265,7 @@
     "semantic_hash": ""
   },
   "trener/opp-real-out.txt": {
-    "mtime": 1783233796.4832652,
+    "mtime": 1783246881.2782872,
     "ast_hash": "25f26e1536bcba2f5af1803a57a1e537",
     "semantic_hash": ""
   },
@@ -3547,6 +3547,451 @@
   "plans/2026-07-05-\u043f\u0430\u043c\u044f\u0442\u044c-\u0442\u0440\u0435\u043d\u0435\u0440\u0430-2.md": {
     "mtime": 1783233913.9776328,
     "ast_hash": "577aa82eb672d0930ae5b253de864e11",
+    "semantic_hash": ""
+  },
+  "trener/__tests__/adapters/llm/parse.test.ts": {
+    "mtime": 1783246528.8087306,
+    "ast_hash": "ec4e03edf21de03f8d2e482a0b39ced8",
+    "semantic_hash": ""
+  },
+  "trener/__tests__/parser/preflop-chart-fact.test.ts": {
+    "mtime": 1783246843.9046552,
+    "ast_hash": "d616d895315b940ba059594edf52da26",
+    "semantic_hash": ""
+  },
+  "trener/parser/preflop-chart-fact.ts": {
+    "mtime": 1783245673.0365036,
+    "ast_hash": "b191f3de9d5379294548144eea6ef3a8",
+    "semantic_hash": ""
+  },
+  "memory-bank/MEMORY.md": {
+    "mtime": 1783239257.658199,
+    "ast_hash": "347c36313fc444a1b2116f97d6323a3e",
+    "semantic_hash": ""
+  },
+  "memory-bank/feedback_card_format.md": {
+    "mtime": 1783239257.669195,
+    "ast_hash": "e48dcee4c7f83cb9f40c911e514977b6",
+    "semantic_hash": ""
+  },
+  "memory-bank/feedback_card_language.md": {
+    "mtime": 1783239257.6711955,
+    "ast_hash": "104d5117f683549b25ed9f0abd9a6f87",
+    "semantic_hash": ""
+  },
+  "memory-bank/feedback_copy_style.md": {
+    "mtime": 1783239257.6721957,
+    "ast_hash": "2369f5f5625034ecee85a02ddffee6f6",
+    "semantic_hash": ""
+  },
+  "memory-bank/feedback_design_iteration.md": {
+    "mtime": 1783239257.6741962,
+    "ast_hash": "b73a41046193cbedef994a85abebcddd",
+    "semantic_hash": ""
+  },
+  "memory-bank/feedback_explain_before_commands.md": {
+    "mtime": 1783239257.6751964,
+    "ast_hash": "c1bc6e51a0d09b48f314b5003bff0639",
+    "semantic_hash": ""
+  },
+  "memory-bank/feedback_genuine_dialogue.md": {
+    "mtime": 1783239257.6825848,
+    "ast_hash": "1c06976d1180441237230e3ab9b13872",
+    "semantic_hash": ""
+  },
+  "memory-bank/feedback_hardening_before_deploy.md": {
+    "mtime": 1783239257.6905878,
+    "ast_hash": "84d01e3f67e89ee4a651758059be9e9f",
+    "semantic_hash": ""
+  },
+  "memory-bank/feedback_live_corrections.md": {
+    "mtime": 1783239257.6982322,
+    "ast_hash": "70d20bca223e4b888926bb79a97a9d33",
+    "semantic_hash": ""
+  },
+  "memory-bank/feedback_memory_sync.md": {
+    "mtime": 1783239257.6995971,
+    "ast_hash": "5f72b8bb991935ba99534e41f276a620",
+    "semantic_hash": ""
+  },
+  "memory-bank/feedback_naming_style.md": {
+    "mtime": 1783239257.7005923,
+    "ast_hash": "315b357680488ec87c52ecaa0d73743a",
+    "semantic_hash": ""
+  },
+  "memory-bank/feedback_no_prompt_cost_cutting.md": {
+    "mtime": 1783239257.7025926,
+    "ast_hash": "2fdc30d91932680a621b389fe531f563",
+    "semantic_hash": ""
+  },
+  "memory-bank/feedback_response_style.md": {
+    "mtime": 1783239257.7045934,
+    "ast_hash": "5b25d5505d9e8227bd8c886f1116aa1b",
+    "semantic_hash": ""
+  },
+  "memory-bank/feedback_russian_only.md": {
+    "mtime": 1783239257.7055936,
+    "ast_hash": "689e5b0f6809ac4658d6b6de7318d8c7",
+    "semantic_hash": ""
+  },
+  "memory-bank/feedback_server_ops_self.md": {
+    "mtime": 1783239257.7065933,
+    "ast_hash": "7650393e3ecb61fd3521163ba6061662",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_admin_stats.md": {
+    "mtime": 1783239257.7088153,
+    "ast_hash": "426eadd00a98291ea0a230780836df84",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_analysis_progress_screen.md": {
+    "mtime": 1783239257.7102125,
+    "ast_hash": "e8c462157214e3b36f133d1e1e8cc3ea",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_bb_defense_chart.md": {
+    "mtime": 1783239257.7112083,
+    "ast_hash": "8d1f5374879759b875af3ac28a7a4bb2",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_betsizing_and_limps.md": {
+    "mtime": 1783239257.7122087,
+    "ast_hash": "b9af07bc3bada5d2acd970c6a0bf0d77",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_clean_outs_draws.md": {
+    "mtime": 1783239257.7142098,
+    "ast_hash": "af8fc7e78a5f4585e66f14d0a848387f",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_crypto_payments_later.md": {
+    "mtime": 1783239257.71521,
+    "ast_hash": "baab94d6cdac2821ad011faaac72c1ac",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_db_setup.md": {
+    "mtime": 1783239257.717211,
+    "ast_hash": "60dd6374b884186acd53c325ac9286b1",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_deepseek_migration.md": {
+    "mtime": 1783239257.7182102,
+    "ast_hash": "d071b5aa34eb8f7f14fb52aa09049278",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_deploy_pipeline_hang.md": {
+    "mtime": 1783239257.720274,
+    "ast_hash": "1401dd0c193b078f027de24776eb334c",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_deploy_procedure.md": {
+    "mtime": 1783239257.721275,
+    "ast_hash": "626a40c4e796dffcb2dbc7909e7c116a",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_deploy_status.md": {
+    "mtime": 1783239257.7293262,
+    "ast_hash": "1a828c3c4128846e0e98c460106570d8",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_distribution_constraint.md": {
+    "mtime": 1783239257.735713,
+    "ast_hash": "a17729f16ac3a83a1ccbee8ded592c64",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_dynamic_dialogue_length.md": {
+    "mtime": 1783239257.743793,
+    "ast_hash": "ad010818d51e867f151d45381d7fed90",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_email_and_reset.md": {
+    "mtime": 1783239257.745793,
+    "ast_hash": "01dfb184e23967d47d4347f8be30087d",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_health_monitoring.md": {
+    "mtime": 1783239257.7467933,
+    "ast_hash": "192201d6b106bb831dae87dd4a95813b",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_i18n_english.md": {
+    "mtime": 1783239257.7484057,
+    "ast_hash": "9e18fbbe52b2674c325b5b21e0ff0d22",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_infra_roadmap.md": {
+    "mtime": 1783239257.7564023,
+    "ast_hash": "4d7ac4dd7f5717f3e80c5d16641c998d",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_ipoker_chico_parsers.md": {
+    "mtime": 1783239257.7584143,
+    "ast_hash": "22971a4e50e859cb05bfe404e7224cc6",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_iso_vs_limp_chart.md": {
+    "mtime": 1783239257.7668414,
+    "ast_hash": "406a06bf3997cccd678c0dd072b4286f",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_launch_decision.md": {
+    "mtime": 1783239257.7678413,
+    "ast_hash": "f145d02e0b84d2c3bff35a9b6b1e771d",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_leak_tracker.md": {
+    "mtime": 1783239257.7700946,
+    "ast_hash": "45513eef992f90f8b21185de2171e841",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_legal_status.md": {
+    "mtime": 1783239257.7710948,
+    "ast_hash": "d041bec01f632f47f2dac81fd92764cd",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_llm_connectivity_block.md": {
+    "mtime": 1783239257.7730954,
+    "ast_hash": "95119f86d5aae32ee059e032fbc0f63d",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_llm_cost.md": {
+    "mtime": 1783239257.774095,
+    "ast_hash": "63c613601795220e34836758cf1157a6",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_lucky_win_criticals.md": {
+    "mtime": 1783239257.7750957,
+    "ast_hash": "2789bd6289171408aeadf45874618102",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_magic_link_auth.md": {
+    "mtime": 1783239257.7770967,
+    "ast_hash": "16c8376d9d37258b1476c6377cfe442b",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_marketing.md": {
+    "mtime": 1783239257.778096,
+    "ast_hash": "eebb8ab78462465a607d71696231da9d",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_naming_branding.md": {
+    "mtime": 1783239257.7854636,
+    "ast_hash": "9c0d8f71b3ae1fc7c9fd129cfa73a627",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_nginx_upload_limit.md": {
+    "mtime": 1783239257.7874637,
+    "ast_hash": "9ef06c154f47da8d7b62c7ef1fb74993",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_open_leak_and_inline_links.md": {
+    "mtime": 1783239257.7880723,
+    "ast_hash": "c7fe76cee6add087ae814ed2ccbbee92",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_opponent_profiling.md": {
+    "mtime": 1783239257.79007,
+    "ast_hash": "246f801dbf8b62735b383d4127d41b6d",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_opponent_range_grid.md": {
+    "mtime": 1783239257.798073,
+    "ast_hash": "e0871275dccf6707ffccf8d781d788d6",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_owner_comp_access.md": {
+    "mtime": 1783239257.799468,
+    "ast_hash": "acc468b4fd3fc04d52d9c7b688113cd5",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_payments_blocked.md": {
+    "mtime": 1783239257.8064654,
+    "ast_hash": "66db4ff9f9064093c844bbe24fd691aa",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_payments_yookassa.md": {
+    "mtime": 1783239257.8083394,
+    "ast_hash": "17e5b7eb74e5cc608cb9645b7ebf2a5a",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_personal_chart_memory.md": {
+    "mtime": 1783239257.8143346,
+    "ast_hash": "8ed54235fb33cb4f333cf8b36222750b",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_player_characteristic.md": {
+    "mtime": 1783239257.8213363,
+    "ast_hash": "3f1952370506d1b2b350e021a9b7acb4",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_poker_theory_insights.md": {
+    "mtime": 1783239257.8233368,
+    "ast_hash": "6b8894c251b3145be359fa71b271569a",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_posting_bot.md": {
+    "mtime": 1783239257.829715,
+    "ast_hash": "e682f1e1323730edafd73694fa716016",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_pricing_model.md": {
+    "mtime": 1783239257.8317106,
+    "ast_hash": "d72c26cfc7dea5408b9fdf106f6c5ffd",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_push_fold_chart.md": {
+    "mtime": 1783239257.8327117,
+    "ast_hash": "636950ba49dcda3ec26b27142581dd0e",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_queue_latency.md": {
+    "mtime": 1783239257.8337116,
+    "ast_hash": "3d60bed5f9be05cb0dc2b82bc5903fc4",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_range_engine.md": {
+    "mtime": 1783239257.840384,
+    "ast_hash": "2d550058384229d66e689a594bbb1a67",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_recurring_payments.md": {
+    "mtime": 1783239257.8423846,
+    "ast_hash": "ef446185a9b634dd0050c7bb4541947f",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_remote_workspace.md": {
+    "mtime": 1783239257.8443847,
+    "ast_hash": "7c5448ab50a19c1f891ae537d45b889d",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_scaling_triggers.md": {
+    "mtime": 1783239257.8453853,
+    "ast_hash": "82b13cc7be6963bc5b8ebf3c9fc690c0",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_security_debt_anonymous_upload.md": {
+    "mtime": 1783239257.8473856,
+    "ast_hash": "e6c4aed362b98169e1fb052338036822",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_seo_metadata.md": {
+    "mtime": 1783239257.848254,
+    "ast_hash": "d2eb1e26e53916e8317a4c3d6866b29a",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_session_goal.md": {
+    "mtime": 1783239257.849591,
+    "ast_hash": "0c2ab4fa2211d3d22ed0e20e5dab8112",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_support_form.md": {
+    "mtime": 1783239257.8515878,
+    "ast_hash": "0249d5aede2731959859e35bc62abb0d",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_support_mailbox.md": {
+    "mtime": 1783239257.8525887,
+    "ast_hash": "d7c0041eb87e966928628530ac4ac57c",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_telegram_bridge.md": {
+    "mtime": 1783239257.8545885,
+    "ast_hash": "32e4e867e171959fa18b283b9482ee6d",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_test_hh_file.md": {
+    "mtime": 1783239257.85559,
+    "ast_hash": "f11cfbfba1e4a32546a15347aa3b9c18",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_tournament_results_data.md": {
+    "mtime": 1783239257.8565896,
+    "ast_hash": "c63b3caeef6efa2b5dd89b484971b63f",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_trainer_brain_next.md": {
+    "mtime": 1783239257.8581178,
+    "ast_hash": "e1df45de5b5ae5dac89608046321b84b",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_trainer_spot_memory.md": {
+    "mtime": 1783239257.869116,
+    "ast_hash": "c6ecb972724a8f33b87eebf7082c8947",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_training_mode.md": {
+    "mtime": 1783239257.8701165,
+    "ast_hash": "5ae16005a27873f204d32c4100baf3b9",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_training_rfi_chart.md": {
+    "mtime": 1783239257.8721166,
+    "ast_hash": "018ea8f3c837f795b9cb40fdf4659cca",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_ui_batch_uncommitted.md": {
+    "mtime": 1783239257.8731174,
+    "ast_hash": "3a237f8d1eab3dff9c7deb5d2cb37361",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_upload_no_block_locked_analysis.md": {
+    "mtime": 1783239257.8751173,
+    "ast_hash": "d8f23f78c42c978a7162e6706ba3cd02",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_validation_test.md": {
+    "mtime": 1783239257.8761184,
+    "ast_hash": "0793345c9d0f94489ab974cafe3b3a90",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_viewed_marker.md": {
+    "mtime": 1783239257.8771179,
+    "ast_hash": "863bb066ca6c2bd36767655bbe32bd46",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_voice_input.md": {
+    "mtime": 1783239257.8783824,
+    "ast_hash": "6667b0ee8b7779fe12373753c606fd9c",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_voice_input_stt.md": {
+    "mtime": 1783239257.8803773,
+    "ast_hash": "b56561be633a3d234cb692dc3b487cbb",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_vpip_vs_raiser_chart.md": {
+    "mtime": 1783239257.8813767,
+    "ast_hash": "dd028f4ed5f212510a579fd341637b16",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_watchdog_bot.md": {
+    "mtime": 1783239257.8833785,
+    "ast_hash": "f0e98ab53c98a74d1005dd0f83f34518",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_winamax_888_ps_parsers.md": {
+    "mtime": 1783239257.8843784,
+    "ast_hash": "3cee45de227b1c24640c2566d06411be",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_wpn_parser.md": {
+    "mtime": 1783239257.886379,
+    "ast_hash": "9d2faa5e1e8baf39801c01845c6eeafc",
+    "semantic_hash": ""
+  },
+  "memory-bank/project_yookassa_golive.md": {
+    "mtime": 1783239257.8880548,
+    "ast_hash": "971d47559203fd8b9dcb34c6573a6038",
+    "semantic_hash": ""
+  },
+  "memory-bank/user_poker_profile.md": {
+    "mtime": 1783239257.8963406,
+    "ast_hash": "d10eeae4d0f61481905d20e8efe785f5",
+    "semantic_hash": ""
+  },
+  "memory-bank/user_programming_level.md": {
+    "mtime": 1783239257.9033425,
+    "ast_hash": "4762c1c545c804bd4267ed28507e58db",
     "semantic_hash": ""
   }
 }

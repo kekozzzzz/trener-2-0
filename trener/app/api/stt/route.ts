@@ -22,6 +22,22 @@ function looksLikeRefusal(text: string): boolean {
   return REFUSAL_RE.test(text);
 }
 
+// Модель иногда возвращает ЭХОМ сам словарь-подсказку (POKER_ASR_CONTEXT) вместо
+// расшифровки — обычно на короткой или неразборчивой фразе (правка Артёма 2026-07-05:
+// сказал «выкидывать надо», в поле вставился весь список терминов). Ловим двумя
+// проверками: текст — дословный кусок подсказки, либо в нём встретилась неправдоподобно
+// большая доля словарных терминов разом (живая фраза столько не содержит).
+const normalizeForEcho = (s: string) => s.toLowerCase().replace(/[^a-zа-яё0-9]+/gi, " ").trim();
+
+function looksLikeContextEcho(text: string): boolean {
+  const t = normalizeForEcho(text);
+  if (!t) return false;
+  if (t.length > 30 && normalizeForEcho(POKER_ASR_CONTEXT).includes(t)) return true;
+  const terms = POKER_ASR_CONTEXT.split(/[:,.]/).map(normalizeForEcho).filter((w) => w.length > 3);
+  const hits = terms.filter((w) => t.includes(w)).length;
+  return hits >= 10;
+}
+
 // Модель иногда оборачивает распознанное в кавычки («…», "…") — игроку в поле
 // нужны его слова, а не цитата. Срезаем обрамляющие пары, пока они есть.
 const QUOTE_PAIRS: Array<[string, string]> = [
@@ -119,6 +135,10 @@ export async function POST(request: Request): Promise<Response> {
     );
     if (looksLikeRefusal(text)) {
       console.warn("[stt] модель вернула отказ вместо распознавания:", text.slice(0, 120));
+      return NextResponse.json({ error: "TRANSCRIBE_FAILED" }, { status: 502 });
+    }
+    if (looksLikeContextEcho(text)) {
+      console.warn("[stt] модель вернула эхо словаря-подсказки вместо распознавания:", text.slice(0, 120));
       return NextResponse.json({ error: "TRANSCRIBE_FAILED" }, { status: 502 });
     }
     return NextResponse.json({ text: applyPokerFixups(stripWrappingQuotes(stripPreamble(text))) });

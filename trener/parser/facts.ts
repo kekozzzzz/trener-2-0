@@ -4,6 +4,7 @@ import { boardUpToStreet } from "./table-state";
 import { heroMadeHand } from "./made-hand";
 import { readHeroDraw, drawEquity, type DrawRead } from "./draws";
 import { handCode } from "@/config/poker/hand-codes";
+import { preflopChartFact } from "./preflop-chart-fact";
 
 // Дешёвые детерминированные факты раздачи — общая покерная арифметика, которую
 // парсер считает за LLM (правило 1: тренер числа не вычисляет). Всё выводится из
@@ -13,10 +14,8 @@ import { handCode } from "@/config/poker/hand-codes";
 // Это ВНУТРЕННИЙ вход для модели: здесь точные термины (SPR, пот-оддс) уместны —
 // игроку модель переводит их простыми словами (см. COACH_FRAMEWORK, раздел «Язык»).
 //
-// Сознательно НЕ считаем здесь: эквити от аутов (нужен анализ дро по картам Hero),
-// членство в префлоп-чарте и пуш-фолд Nash-диапазоне (нужен источник чартов +
-// полная позиция). Неверное число в этих местах = катастрофа правила 2, поэтому
-// они ждут отдельной выверки источников.
+// Эквити от аутов считает ./draws, вердикт префлоп-чартов (RFI, защита BB, против
+// опена, изоляция, пуш-фолд) — ./preflop-chart-fact теми же грейдерами, что /charts.
 
 const RANKS: Record<string, number> = {
   "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8, "9": 9,
@@ -385,15 +384,30 @@ export function renderHandFacts(snapshot: TableSnapshot): string {
     `За столом ${tableSize} мест, в раздаче ${dealt} игрок(ов)${sawFlop !== null ? `, на флоп пошло ${sawFlop}` : ""}.`,
   );
 
+  // Вердикт эталонного префлоп-чарта (если раздача попала в судимый спот) — чтобы
+  // модель не судила префлоп «на глаз» и не спорила с нашими же чартами.
+  const chart = preflopChartFact(snapshot);
+  if (chart) lines.push(chart);
+
   if (f.heroStackBb !== null) lines.push(`Стек Hero на старте раздачи: ${f.heroStackBb} BB.`);
   if (f.effectiveStackBb !== null && f.effectiveStackBb !== f.heroStackBb)
     lines.push(`Эффективный стек (против крупнейшего соперника): ${f.effectiveStackBb} BB.`);
 
-  if (f.texture) {
-    const t = f.texture;
+  // Текстура борда ПО УЛИЦАМ (как дро и готовая рука ниже). Одна текстура по
+  // итоговому борду утекала в более ранние точки решения: модель писала «на тёрне
+  // доска монотонная и спаренная», когда третью масть и пару приносил только ривер.
+  let prevTexture = "";
+  for (const street of ["FLOP", "TURN", "RIVER"] as const) {
+    const b = boardUpToStreet(snapshot.board, street);
+    if (b.length < 3) continue;
+    const t = boardTexture(b);
+    if (!t) continue;
     const parts = [SUITEDNESS_RU[t.suitedness], CONNECTED_RU[t.connected]];
     if (t.paired) parts.push("спаренный");
-    lines.push(`Текстура борда: ${parts.join(", ")}.`);
+    const text = parts.join(", ");
+    if (text === prevTexture) continue;
+    prevTexture = text;
+    lines.push(`Текстура борда на ${STREET_RU[street]}: ${text}.`);
   }
 
   if (f.sprFlop !== null) lines.push(`SPR на флопе: ${f.sprFlop} (эффективный остаток к банку флопа).`);

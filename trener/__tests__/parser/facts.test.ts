@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { boardTexture, computeHandFacts } from "@/parser/facts";
+import { boardTexture, computeHandFacts, renderHandFacts } from "@/parser/facts";
 import type { TableSnapshot } from "@/parser/types";
 
 function snap(partial: Partial<TableSnapshot>): TableSnapshot {
@@ -80,6 +80,24 @@ describe("computeHandFacts — арифметика банка", () => {
 
   it("текстура борда определена", () => {
     expect(f.texture?.suitedness).toBe("RAINBOW");
+  });
+
+  // Правка Артёма 2026-07-05: одна текстура по итоговому борду утекала в более ранние
+  // точки решения («на тёрне доска монотонная», когда третью масть принёс ривер).
+  it("текстура в фактах — по улицам, ривер не утекает в тёрн", () => {
+    const withRiver = snap({
+      seats: s.seats,
+      heroCards: ["Td", "8d"],
+      // флоп разномастный; тёрн вторая черва; ривер третья черва + пара девяток
+      board: ["6s", "Qh", "9d", "7h", "9h"],
+      actions: s.actions,
+    });
+    const text = renderHandFacts(withRiver);
+    expect(text).toContain("Текстура борда на флопе: разномастный");
+    expect(text).toContain("Текстура борда на тёрне: две одной масти");
+    expect(text).toMatch(/Текстура борда на ривере: три и более одной масти[^\n]*спаренный/);
+    // старой единой строки «Текстура борда:» без улицы больше нет
+    expect(text).not.toMatch(/Текстура борда: /);
   });
 
   it("сайзинг в долях банка не репортится на префлопе", () => {
