@@ -5,7 +5,7 @@ import type { Locale } from "@/i18n/config";
 import { getLlmAdapter } from "@/infrastructure/adapters/llm";
 import { applyRangeMarker, applyTableMarker } from "@/config/dialogue";
 import { findPriorSimilarSpots } from "@/features/memory/similar-spots";
-import type { SpotFingerprint } from "@/parser/spot-fingerprint";
+import type { StoredSpot } from "@/features/memory/spot-marks";
 import { opponentsForHand } from "./opponents-for-hand";
 import { buildRangeReads } from "./range-facts";
 import { enqueue } from "../enqueue";
@@ -66,10 +66,10 @@ export const generateDialogueQuestionStep: StepHandler = async (task, db) => {
     );
   }
 
-  // Память тренера: похожие прошлые раздачи игрока по отпечатку спота (Правило 1 — похожесть
-  // нашёл парсер). Пусто, если у текущей раздачи нет отпечатка (старые до миграции) или похожих
-  // не нашлось — тогда блок в промпт не идёт, поведение прежнее.
-  const currentFp = (hand.spot ?? null) as unknown as SpotFingerprint | null;
+  // Память тренера: похожие прошлые раздачи игрока — тот же спот (отпечаток) или та же
+  // ошибка (метки детекторов). Правило 1 — всё нашёл парсер. Пусто, если у текущей раздачи
+  // нет отпечатка (старые до миграции) или ничего не нашлось — блок в промпт не идёт.
+  const currentFp = (hand.spot ?? null) as unknown as StoredSpot | null;
   const priorSpots = currentFp
     ? await findPriorSimilarSpots(db, {
         playerId: tournament.playerId,

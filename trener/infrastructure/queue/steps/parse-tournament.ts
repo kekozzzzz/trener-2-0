@@ -4,6 +4,7 @@ import type { StepHandler } from "../types";
 import type { ParsedTournament } from "@/parser/types";
 import { selectHandsForCard } from "@/features/card/select-hands";
 import { computeSpotFingerprint, spotKey } from "@/parser/spot-fingerprint";
+import { computeSpotMarks, type StoredSpot } from "@/features/memory/spot-marks";
 import { enqueue, CRITICAL_ANALYSIS_PRIORITY } from "../enqueue";
 
 type ParsePayload = {
@@ -59,8 +60,10 @@ export const parseTournamentStep: StepHandler = async (task, db) => {
     const selected = new Set(selectHandsForCard(hands));
 
     const rows = hands.map((hand) => {
-      // Отпечаток спота — детерминированно из снимка (Правило 1: похожесть считает парсер).
+      // Отпечаток спота + метки ошибок — детерминированно из снимка (Правило 1:
+      // похожесть и ошибки считает парсер). Лежат в одном JSON: hand.spot.
       const fingerprint = computeSpotFingerprint(hand.tableSnapshot);
+      const stored: StoredSpot = { ...fingerprint, marks: computeSpotMarks(hand.tableSnapshot) };
       return {
         id: randomUUID(),
         tournamentId,
@@ -68,7 +71,7 @@ export const parseTournamentStep: StepHandler = async (task, db) => {
         chipResult: hand.chipResult,
         tableData: hand.tableSnapshot as unknown as Prisma.InputJsonValue,
         selectedForCard: selected.has(hand),
-        spot: fingerprint as unknown as Prisma.InputJsonValue,
+        spot: stored as unknown as Prisma.InputJsonValue,
         spotKey: spotKey(fingerprint),
         playedAt: hand.playedAt ? new Date(hand.playedAt) : null, // момент раздачи — порядок для профиля оппонента
       };

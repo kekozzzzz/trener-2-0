@@ -59,12 +59,15 @@ export type DialogueRoundSummary = {
 // нашёл ПАРСЕР по отпечатку, не LLM; matchLevel посчитан детерминированно по числу совпавших
 // признаков). Модель только проговаривает приведённые раздачи, выдумывать новые не может.
 export type PriorSpot = {
-  matchLevel: "EXACT" | "SIMILAR"; // один-в-один / что-то подобное
+  // один-в-один / та же ошибка (совпала метка детектора) / что-то подобное
+  matchLevel: "EXACT" | "SAME_MISTAKE" | "SIMILAR";
+  mistake: string | null; // человеческая метка общей ошибки (features/memory/spot-marks), если совпала
   cards: string[]; // карманные карты Hero в той раздаче
   decision: string | null; // что игрок сделал (heroDecisionLabel)
   reasoning: string | null; // что игрок тогда ответил в диалоге (если был), иначе null
+  verdict: string | null; // вердикт ТОГО прошлого разбора (если диалог дошёл до вердикта)
   chipResult: number;
-  when: string | null; // ссылка на тот турнир (имя/дата), для узнавания
+  when: string | null; // когда это было: дата + имя турнира, для узнавания
 };
 
 // Диапазон, отмеченный ИГРОКОМ на сетке 13×13 в ответе диалога, + точные числа

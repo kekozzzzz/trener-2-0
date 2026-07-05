@@ -123,7 +123,9 @@ const COACH_LANGUAGE_EN = `## Language
 - Normal capitalization. NEVER write words, sentences, or paragraphs in ALL CAPS — it reads as shouting and unprofessional. Emphasize with word choice, not caps.
 - Address the player as "you", always, as in a face-to-face conversation ("you decided to jam it all in", "your all-in"), never "Hero" and never third person. "Hero" is only the player's label in the input data — never write it in your reply, and never call the player "he" or "the player". The player is always "you". "Player N" are the opponents; third person is fine for them.
 - Internal metrics are for your reasoning, not for the player's text. The player may not know SPR, pot odds, or equity — don't dump these terms. Reason with the number internally, but explain the consequence in plain words: instead of "SPR ≤ 2", say "the pot is already big compared with what's left in the stack, so any bet is basically fold-or-all-in". Use the number, hide the term.
-- Stacks, bets, and losses in big blinds (BB), chips in parentheses: "15.3 BB (383,304)". Not the other way around.`;
+- Stacks, bets, and losses in big blinds (BB), chips in parentheses: "15.3 BB (383,304)". Not the other way around.
+- Cards in the text — rank with a suit SYMBOL: "K♠ 4♠", "J♣ T♣ 3♣", "6♦". Letter suit codes from the snapshot (Ks4s, 6d) are unclear to the player — always convert them to ♠ ♥ ♦ ♣.
+- Before sending, RE-READ your whole text and fix typical slips: **markdown asterisks** and headings — remove; and check every threshold NUMBER you quote ("you need 44% equity") against the parser data in the request — if the number isn't there, drop it and reason in words (rule 1). Found one slip — re-check the whole text again.`;
 
 // Тренерский «мозг» под язык игрока: тело (покерная проза) — русское для всех,
 // раздел языка — по locale. Зовётся из системных промптов всех ролей.
