@@ -1,0 +1,83 @@
+# Memory Index
+
+- [Admin stats](project_admin_stats.md) — /admin (только владельцу): регистрации/входы/страны, журнал auth_events (IP не храним); LIVE 2026-07-03; проброс адресов проверен end-to-end; ⚠️prisma migrate dev суёт в миграции «починку» ручных partial-индексов — SQL чистить руками [[project_deploy_procedure]]
+- [Deploy procedure](project_deploy_procedure.md) — ⚠️ДЕПЛОЙ ≠ git push (ВМ из РФ GitHub не достаёт, крон-автопул ОТКЛЮЧЁН): только бандл через КЗ-релей 92.60.75.87 (jump к ВМ 81.26.186.177) → merge → build (можно БЕЗ остановки pm2, своп 6ГБ; бэкап .next в /tmp) → pm2 restart [[project_deploy_status]]
+- [English i18n](project_i18n_english.md) — English: next-intl куки, детект по браузеру; UI+письма+тренер LIVE; легалка русская; приёмка англ. тренера ОТЛОЖЕНА до англоязычных тестеров (Артём сам не проверит) — НЕ напоминать [[project_trainer_brain_next]]
+- [Opponent profiling](project_opponent_profiling.md) — тип оппонента (рыба/рег/лузо-агро/нит): парсер типизирует, ИИ подстраивает, игроку не показываем; ридс игрока > приор парсера; обезличенные псевдонимы oppN во всех румах; opponents во всех 4 промптах тренера; ВСЁ LIVE 2026-07-03 (22b19aa); работает для новых загрузок [[project_opponent_range_grid]]
+- [Tournament results data](project_tournament_results_data.md) — БУДУЩАЯ «профит/призовые»: инлайн только у PS; GG/WMX/888 нужен файл-сводка; бонти частично [[project_personal_chart_memory]]
+- [Personal chart memory](project_personal_chart_memory.md) — «Твои чарты»: зеркала ВСЕХ 5 спотов (открывания+SB-лимп, защита BB, против опена, изоляция, пуш-фолд; те же грейдеры, что эталоны) LIVE 2026-07-03/04; коллы не судим; колл BB vs пуш — нет детектора; ⛔v2(дельта) отменён [[project_training_rfi_chart]]
+- [Training RFI chart](project_training_rfi_chart.md) — RFI-чарт = среднее (чарты Артёма + публичные MTT 40bb); UTG/MP разведены; в проде
+- [BB defense chart](project_bb_defense_chart.md) — данные защиты BB; зашиты в config (bb-defense-chart.ts); 2026-07-04 JJ/TT добавлены в весовой 3-бет vs CO [[project_training_rfi_chart]]
+- [VPIP vs raiser chart](project_vpip_vs_raiser_chart.md) — vs одиночный опен (3бет/колл); зашит в config (vs-open-chart.ts) [[project_bb_defense_chart]]
+- [Push-fold chart](project_push_fold_chart.md) — пуш-фолд Nash по позиции×стек-бэнду; зашит в config [[project_bb_defense_chart]]
+- [Iso vs limp chart](project_iso_vs_limp_chart.md) — изоляция ≈ RFI минус низ; зашит в config [[project_bb_defense_chart]]
+- [Lucky-win criticals](project_lucky_win_criticals.md) — критические по ДОЕЗДУ: парсеры всех румов вскрывают карты соперников (Seat.shownCards), детектор эквити<33% при крупном постфлоп-вложении → CRITICAL в остаток потолка; там же кнопка «следующая критическая», слот «начни отсюда» только критические, цель+динамика спрятаны («вернём»), сетка отвечается словами; LIVE 2026-07-04 (4ad25b8); только новые загрузки [[project_leak_tracker]]
+- [Leak tracker](project_leak_tracker.md) — динамика ошибок между ИГРОВЫМИ ДНЯМИ, 9 детекторов, без LLM/БД; пороги config/leaks.ts; LIVE 2026-07-03; блоки динамики в UI спрятаны 2026-07-04 [[project_personal_chart_memory]]
+- [Session goal](project_session_goal.md) — цель на сессию из топ-лика окна, проверка детерминированная; /charts со всеми 5 эталонами; LIVE 2026-07-03; блок цели УБРАН со стр. турнира и СПРЯТАН на /tournaments 2026-07-04 («вернём» — Артём); дальше: недельное письмо → стрик [[project_leak_tracker]]
+- [Training mode](project_training_mode.md) — префлоп-тренажёр на случайных спотах, сверка с чартом без LLM; план в plans/
+- [Range engine](project_range_engine.md) — точное эквити против диапазона С СЕТКИ (range-equity.ts, нарезка по улицам); LIVE 2026-07-03; живая проверка впереди [[project_opponent_range_grid]]
+- [Opponent range grid + glossary](project_opponent_range_grid.md) — глоссарий метрик + сетка 13×13 как форма ответа (answerMode:"range"); ЗАДЕПЛОЕНО
+- [Open-leak + inline links](project_open_leak_and_inline_links.md) — обзор: вывод по открывашкам + кликабельные руки; ЗАДЕПЛОЕНО
+- [Bet sizing + limps](project_betsizing_and_limps.md) — классы размера ставки + имплайд-оддсы + детектор лимпов; ЗАДЕПЛОЕНО
+- [Clean outs & draws](project_clean_outs_draws.md) — грязные ауты/бэкдоры/эквити перебором (draws.ts); ЗАДЕПЛОЕНО [[project_pricing_model]]
+- [Trainer spot memory](project_trainer_spot_memory.md) — отпечаток спота + похожие раздачи в диалоге (LIVE) + v2 2026-07-05 ГОТОВА В КОДЕ, НЕ задеплоена: окно 100 турниров, канал «та же ошибка» (лики+доезд в hand.spot.marks), вердикт прошлого разбора, тренер ОБЯЗАН сослаться с датой; бэкафилл ⛔отменён; осталось профиль игрока
+- [Trainer brain — next](project_trainer_brain_next.md) — мозг тренера (COACH_FRAMEWORK, общий всем ролям) в проде; 2026-07-04 СЕМЬ заходов правок по живому просмотру (до d33323b, все LIVE, тексты приняты): диалог переписан (позиция=complete, данные≠complete), вердикт «Ты прав/Не соглашусь» по выводам + ирония≠согласие, сетка страхуется кодом, числа-пороги только от парсера, баунти-фактор, ревизия против каши (язык сжат в словарь) — ПОЛНАЯ ХРОНИКА В ФАЙЛЕ; Артём проверяет дальше
+- [Poker theory insights](project_poker_theory_insights.md) — принципы из разборов, материал для промпта
+- [Winamax/888/PS parsers](project_winamax_888_ps_parsers.md) — парсеры + сторож diagnose + S3 нераспознанных; ЗАДЕПЛОЕНО; ⛔убрать app/chart-real [[project_ipoker_chico_parsers]]
+- [iPoker & Chico parsers](project_ipoker_chico_parsers.md) — Chico в ps/index.ts, iPoker XML; ЗАДЕПЛОЕНО [[project_wpn_parser]]
+- [WPN parser](project_wpn_parser.md) — ACR/PokerKing + роутер + мердж многостольных файлов одного турнира; ЗАДЕПЛОЕНО; образцы Test/samples/wpn/
+- [Player characteristic](project_player_characteristic.md) — сводка игрока (стиль+VPIP+открывашки, от 10 турн.); ЗАДЕПЛОЕНА
+- [Viewed marker](project_viewed_marker.md) — «Просмотрено» + бейдж «ПРОЙДЕН»; критерий 2026-07-04: критические диалоги до вердикта = пройден (хвост не обязателен)
+- [Analysis progress screen](project_analysis_progress_screen.md) — баннер этапов разбора; ЗАДЕПЛОЕНО
+- [Magic link auth](project_magic_link_auth.md) — passwordless вход + /enter первичный; LIVE; verify-редиректы чинились хотфиксом (c56ed08), дерево ВМ снова чистое
+- [Pricing model](project_pricing_model.md) — ленивый разбор по клику + лимиты ($9/50, $20/250, $45/500); гейт ВКЛ; LIVE
+- [Upload no-block + locked analysis](project_upload_no_block_locked_analysis.md) — грузи сколько угодно, разбор у первого бесплатного; ЗАДЕПЛОЕНО; с 2026-07-03 разбор автостартует при открытии турнира [[project_pricing_model]]
+- [LLM cost](project_llm_cost.md) — DeepSeek: турнир ~$0.03–0.09; кэш системного промпта; учёт LlmUsage + /status
+- [DeepSeek migration](project_deepseek_migration.md) — разбор на DeepSeek (OpenRouter→КЗ-релей) ~10-16× дешевле; LIVE; откат флагом LLM_PROVIDER
+- [Voice input STT](project_voice_input_stt.md) — голос через Voxtral (OpenRouter→релей); LIVE; 2026-07-04 (d33323b): микрофон и у заметки под сеткой; учёт затрат в LlmUsage (шаг STT, точная цена usage.cost); отказы модели/кавычки/преамбулы срезаются, ошибка у кнопки красная
+- [Dynamic dialogue length](project_dynamic_dialogue_length.md) — длину диалога (1..12) задаёт ИИ флагом complete; ЗАДЕПЛОЕНО
+- [Queue latency](project_queue_latency.md) — concurrency 10; узкое место DeepSeek ~10с/раздача
+- [Scaling triggers](project_scaling_triggers.md) — воркер последовательный; рычаг №1 параллельный воркер
+- [Health monitoring](project_health_monitoring.md) — /api/health (db+telegram+claude+worker) + UptimeRobot; серт следим сами
+- [Payments — ЮKassa](project_payments_yookassa.md) — ЮKassa LIVE, возвраты есть; осталось юр-флаги (РКН/трансгранич.)
+- [YooKassa go-live](project_yookassa_golive.md) — касса LIVE, вебхук, крон renew; чек-лист закрыт
+- [Payments status](project_payments_blocked.md) — биллинг Anthropic настроен; осталось боевой ключ на прод
+- [Recurring payments](project_recurring_payments.md) — 🔴релей VDSka списание 16.07, Yandex грант до 08.08→MIR; Porkbun до 2027-06-19
+- [Crypto payments later](project_crypto_payments_later.md) — отложено до переезда; через NOWPayments-адаптер
+- [Email & сброс пароля](project_email_and_reset.md) — Unisender Go; no-reply.whygrid.app активен; 4 письма + крон LIVE
+- [Support mailbox](project_support_mailbox.md) — support@whygrid.app через Cloudflare Email Routing; ❗при переезде пересобрать
+- [Support form](project_support_form.md) — /support → Telegram владельцу; LIVE; осталось hardening формы
+- [Owner comp access](project_owner_comp_access.md) — владелец admin-байпасом (isAdminEmail); тестер zebster@bk.ru max до 2099
+- [SEO/метаданные](project_seo_metadata.md) — описания+robots+sitemap LIVE; favicon ждёт логотипа
+- [Nginx upload limit](project_nginx_upload_limit.md) — 413 при пачке файлов; client_max_body_size 50m на обоих nginx; осталось global-error.tsx + чек размера на клиенте
+- [Deploy status](project_deploy_status.md) — whygrid.app через КЗ-релей (Cloudflare убран); ❗серт продлить до 2026-09-20; SSH к ВМ через релей-jump
+- [LLM connectivity block](project_llm_connectivity_block.md) — РЕШЕНО: LLM из РФ через релей-nginx (Казахстан)
+- [Deploy pipeline hang](project_deploy_pipeline_hang.md) — git fetch без таймаута вешал деплой; фикс timeout 120
+- [Watchdog bot](project_watchdog_bot.md) — тревога при карантине задачи в Telegram (@kekoz_bot); дайджест впереди
+- [Posting bot](project_posting_bot.md) — @whygrid_bot автопостинг; ждёт перевыпуск токена + админство в канале
+- [Telegram bridge](project_telegram_bridge.md) — управление с телефона @kekoz_bot, chat_id 440359604; с 2026-07-05 основной мост живёт на релее 24/7 [[project_remote_workspace]]
+- [Remote workspace](project_remote_workspace.md) — работа с планшета БЕЗ компа: главное окно — вкладка «Код» (память выгружена в memory-bank/ репо), пуш в master = АВТОДЕПЛОЙ сторожем на КЗ-релее (отчёт в Telegram); Termius/Telegram-мост на релее — запасные; настроено 2026-07-05
+- [Marketing](project_marketing.md) — бюджет $300 (50/50 TG/органика); Директ/VK нельзя (покер в стоп-листе)
+- [Naming & branding](project_naming_branding.md) — имя Whygrid, логотип концепт B; ребрендинг кода впереди
+- [Validation test plan](project_validation_test.md) — план ручного теста спроса ($12/мес)
+- [Launch decision](project_launch_decision.md) — самосервисный сайт сразу; Запрет 6 отменён
+- [Legal status](project_legal_status.md) — самозанятость оформлена, юр-страницы LIVE
+- [Infra roadmap](project_infra_roadmap.md) — RU-запуск Yandex Cloud; переезд ~лето 2027 → Hetzner+Stripe+R2
+- [DB setup](project_db_setup.md) — PostgreSQL 17 локально, trener_dev, миграции + seed
+- [Test HH file](project_test_hh_file.md) — Test/ = реальные HH-файлы вне git (GG/PS/WMX/888/Chico/iPoker/WPN)
+- [User poker profile](user_poker_profile.md) — Артём: микролимиты GGPoker, думающий игрок
+- [User programming level](user_programming_level.md) — ноль в программировании, объяснять просто
+- [Feedback: genuine dialogue](feedback_genuine_dialogue.md) — не соглашаться автоматически, возражать по основаниям
+- [Feedback: ответ после задачи](feedback_response_style.md) — итог в двух словах живым языком, без таблиц
+- [Feedback: только русский](feedback_russian_only.md) — не переключаться на английский
+- [Feedback: card language](feedback_card_language.md) — «олл-ин» не «шов», конкретное действие
+- [Feedback: card format](feedback_card_format.md) — карточка адаптируется к сессии
+- [Feedback: стиль копирайта](feedback_copy_style.md) — живой язык, короткие тире «-», эталон hands/sliv-01.md
+- [Feedback: стиль названий](feedback_naming_style.md) — без транслита, без GG в имени/домене
+- [Feedback: итеративный дизайн](feedback_design_iteration.md) — компоненты как есть, правки через /design-preview
+- [Feedback: объяснять перед командами](feedback_explain_before_commands.md) — перед командами объяснять простыми словами
+- [Feedback: hardening перед деплоем](feedback_hardening_before_deploy.md) — после приёмки отдельный hardening-проход
+- [Feedback: синхрон памяти](feedback_memory_sync.md) — статусы править сразу в индексе и файле
+- [Feedback: серверные операции — сам](feedback_server_ops_self.md) — прод-операции Клод делает сам (SSH через релей)
+- [Feedback: не экономить на промптах](feedback_no_prompt_cost_cutting.md) — не урезать боевые промпты ради себестоимости
+- [Feedback: правки на лету](feedback_live_corrections.md) — Артём накидывает правки по ходу работы скринами — это рабочий режим: каждая ставится в очередь и не теряется
