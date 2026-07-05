@@ -120,6 +120,83 @@ function bvbSnap(heroCards: string[], heroAction: "CALL" | "RAISE" | "FOLD"): Ta
   });
 }
 
+// Hero открылся с CO, в него 3-бет-олл-ин 15bb с BTN, Hero отвечает.
+function callVsRestealSnap(heroCards: string[], heroAction: "CALL" | "FOLD"): TableSnapshot {
+  return snap({
+    seats: [
+      { label: "Hero", position: "CO", startingStack: 8000 },
+      { label: "Player 1", position: "BTN", startingStack: 1500 },
+      { label: "Player 2", position: "SB", startingStack: 4000 },
+      { label: "Player 3", position: "BB", startingStack: 4000 },
+    ],
+    heroCards,
+    actions: [
+      { street: "PREFLOP", actor: "Player 2", action: "POST_SB", amount: 50 },
+      { street: "PREFLOP", actor: "Player 3", action: "POST_BB", amount: 100 },
+      { street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 200 },
+      { street: "PREFLOP", actor: "Player 1", action: "ALL_IN", amount: 1500 },
+      { street: "PREFLOP", actor: "Player 2", action: "FOLD" },
+      { street: "PREFLOP", actor: "Player 3", action: "FOLD" },
+      { street: "PREFLOP", actor: "Hero", action: heroAction, amount: heroAction === "CALL" ? 1300 : undefined },
+    ],
+  });
+}
+
+describe("колл против рестила и лимпы", () => {
+  it("AQo коллирует джем 15bb после опена с CO — в чарте", () => {
+    const fact = preflopChartFact(callVsRestealSnap(["Ah", "Qd"], "CALL"));
+    expect(fact).toContain("стандартный колл");
+  });
+
+  it("A5o коллирует джем — вне чарта, опен-и-фолд нормален", () => {
+    const fact = preflopChartFact(callVsRestealSnap(["Ah", "5d"], "CALL"));
+    expect(fact).toContain("ВНЕ чарта");
+  });
+
+  it("фолд AJo на джем — тайтовее эталона (подсказка, не клеймо)", () => {
+    const fact = preflopChartFact(callVsRestealSnap(["Ah", "Jd"], "FOLD"));
+    expect(fact).toContain("тайтовее эталона");
+  });
+
+  it("открытие лимпом — утечка по эталону", () => {
+    const s = snap({
+      seats: [
+        { label: "Hero", position: "HJ", startingStack: 8000 },
+        { label: "Player 1", position: "SB", startingStack: 4000 },
+        { label: "Player 2", position: "BB", startingStack: 4000 },
+      ],
+      heroCards: ["Kh", "9d"],
+      actions: [
+        { street: "PREFLOP", actor: "Player 1", action: "POST_SB", amount: 50 },
+        { street: "PREFLOP", actor: "Player 2", action: "POST_BB", amount: 100 },
+        { street: "PREFLOP", actor: "Hero", action: "CALL", amount: 100 },
+        { street: "PREFLOP", actor: "Player 1", action: "FOLD" },
+        { street: "PREFLOP", actor: "Player 2", action: "CHECK" },
+      ],
+    });
+    expect(preflopChartFact(s)).toContain("утечка");
+  });
+
+  it("оверлимп мелкой парой — не ошибка", () => {
+    const s = snap({
+      seats: [
+        { label: "Hero", position: "BTN", startingStack: 8000 },
+        { label: "Player 1", position: "HJ", startingStack: 4000 },
+        { label: "Player 2", position: "SB", startingStack: 4000 },
+        { label: "Player 3", position: "BB", startingStack: 4000 },
+      ],
+      heroCards: ["3h", "3d"],
+      actions: [
+        { street: "PREFLOP", actor: "Player 2", action: "POST_SB", amount: 50 },
+        { street: "PREFLOP", actor: "Player 3", action: "POST_BB", amount: 100 },
+        { street: "PREFLOP", actor: "Player 1", action: "CALL", amount: 100 },
+        { street: "PREFLOP", actor: "Hero", action: "CALL", amount: 100 },
+      ],
+    });
+    expect(preflopChartFact(s)).toContain("сет-майнинг");
+  });
+});
+
 describe("блайнд-против-блайнда", () => {
   it("колл T7o против SB-опена — стандартная защита", () => {
     const d = detectHeroBvbDefense(bvbSnap(["Th", "7d"], "CALL"));

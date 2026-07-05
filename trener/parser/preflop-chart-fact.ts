@@ -11,6 +11,9 @@ import { detectHeroBvbDefense } from "./bvb-defense";
 import { bvbCellState, isBvbThreeBetSignificantlyWide } from "@/config/poker/bvb-chart";
 import { detectHeroSqueeze } from "./squeeze";
 import { detectHeroSbLimp } from "./sb-limp";
+import { detectHeroLimp } from "./limp";
+import { detectHeroCallVsResteal } from "./call-vs-resteal";
+import { callVsRestealCellState } from "@/config/poker/call-vs-resteal-chart";
 import { fourBetCellState } from "@/config/poker/def-vs-3bet-chart";
 import { isSqueezeSignificantlyWide } from "@/config/poker/squeeze-chart";
 import { bbCellState, isBBThreeBetSignificantlyWide } from "@/config/poker/bb-defense-chart";
@@ -146,6 +149,23 @@ function spotVerdict(snapshot: TableSnapshot): string | null {
     return null; // фолд против опена вне BB — дефолт, не комментируем
   }
 
+  // Колл против рестила (мы открылись → в нас 3-бет-олл-ин 10-20bb): зеркало
+  // рестил-чарта, тот же источник данных (см. call-vs-resteal-chart.ts).
+  const cvr = detectHeroCallVsResteal(snapshot);
+  if (cvr) {
+    const state = callVsRestealCellState(cvr.openerGroup, cvr.jamBand, cvr.code);
+    const our = cvr.openerGroup === "EARLY" ? "ранней" : "поздней";
+    const stack = cvr.jamBand === "LOW" ? "10-14 BB" : "14-20 BB";
+    const spot = `колл ${cvr.code} против 3-бет-олл-ина ${stack} (ты открывался с ${our} позиции)`;
+    if (cvr.action === "CALL") {
+      if (state === "CALL") return `${spot}: в чарте — стандартный колл (против твоего опена с ${our} позиции джемят ${cvr.openerGroup === "LATE" ? "широко" : "узко и сильно"}).`;
+      if (state === "BORDER") return `${spot}: граница допуска чарта — не ошибка, но и не рекомендация.`;
+      return `${spot}: ВНЕ чарта — по эталону против этого джема такую руку сбрасывают (опен-и-фолд здесь нормален, вложенные 2 BB не жалей).`;
+    }
+    if (state === "CALL") return `${spot.replace("колл", "фолд")}: по чарту эта рука обычно КОЛЛИРУЕТ джем — фолд тайтовее эталона.`;
+    return `${spot.replace("колл", "фолд")}: фолд — по чарту, опен-и-фолд против джема нормален.`;
+  }
+
   // Защита против 3-бета (мы открылись → в нас 3-бетнули): 4-бет судится чартом,
   // колл сознательно не грейдится (вопрос глубины — мёртвые имплайды на коротком).
   const def = detectHeroDefVs3bet(snapshot);
@@ -178,6 +198,18 @@ function spotVerdict(snapshot: TableSnapshot): string | null {
   const sbLimp = detectHeroSbLimp(snapshot);
   if (sbLimp) {
     return `SB-лимп ${sbLimp} при фолде до тебя: по эталону это НЕ утечка — дешёвый комплит против одного BB нормален (сильной рукой тут рейзят 3-3.5bb). Не называй сам лимп ошибкой; смотри розыгрыш постфлопа.`;
+  }
+
+  // Лимп Hero (кроме SB-комплита — его детектор лимпа сам исключает): открытие лимпом —
+  // утечка по эталону; долимп за лимпером — слабее изоляции, кроме мелкой пары.
+  const limp = detectHeroLimp(snapshot);
+  if (limp) {
+    if (limp.kind === "OPEN")
+      return `открытие ЛИМПОМ ${limp.code} с ${limp.position}: по эталону это утечка — банк открывают рейзом или сбрасывают; лимп не забирает инициативу и зовёт весь стол.`;
+    const smallPair = limp.code.length === 2 && limp.code[0] === limp.code[1];
+    return smallPair
+      ? `долимп ${limp.code} за лимпером: мелкой карманной парой оверлимп нормален (дешёвый сет-майнинг) — не ошибка.`
+      : `долимп ${limp.code} за лимпером с ${limp.position}: по эталону слабее изоляции рейзом или фолда — чем больше лимперов, тем реже рука выигрывает банк.`;
   }
 
   const open = detectHeroOpen(snapshot);
