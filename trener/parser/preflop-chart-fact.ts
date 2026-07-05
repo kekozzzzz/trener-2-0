@@ -6,6 +6,13 @@ import { detectHeroIso } from "./iso";
 import { detectHeroOpenShove } from "./open-shove";
 import { detectHeroResteal } from "./resteal";
 import { detectHeroCallVsPush } from "./call-vs-push";
+import { detectHeroDefVs3bet } from "./def-vs-3bet";
+import { detectHeroBvbDefense } from "./bvb-defense";
+import { bvbCellState, isBvbThreeBetSignificantlyWide } from "@/config/poker/bvb-chart";
+import { detectHeroSqueeze } from "./squeeze";
+import { detectHeroSbLimp } from "./sb-limp";
+import { fourBetCellState } from "@/config/poker/def-vs-3bet-chart";
+import { isSqueezeSignificantlyWide } from "@/config/poker/squeeze-chart";
 import { bbCellState, isBBThreeBetSignificantlyWide } from "@/config/poker/bb-defense-chart";
 import { restealCellState } from "@/config/poker/resteal-chart";
 import { callVsPushCellState } from "@/config/poker/call-vs-push-chart";
@@ -63,6 +70,33 @@ function spotVerdict(snapshot: TableSnapshot): string | null {
     return `${spot}: фолд — по чарту, этой руки в защите нет.`;
   }
 
+  // Блайнд-против-блайнда: BB против одиночного опен-рейза SB (самая широкая защита
+  // в игре — SB открывает ~40%; чарт из публичных источников, см. bvb-chart.ts).
+  const bvb = detectHeroBvbDefense(snapshot);
+  if (bvb) {
+    const state = bvbCellState(bvb.code);
+    const spot = `блайнд-против-блайнда: ${bvb.code} на BB против опен-рейза SB`;
+    if (bvb.action === "CALL") {
+      if (state === "CALL") return `${spot}: колл — СТАНДАРТНАЯ защита (против SB защищаются шире, чем против любой позиции). Это не ошибка.`;
+      if (state === "CALL_SOMETIMES") return `${spot}: весовая (пограничная) клетка чарта — защищаться можно, ошибкой не считается.`;
+      if (state === "THREEBET" || state === "THREEBET_BLUFF")
+        return `${spot}: рука из 3-бет-части чарта — колл не ошибка, но эталон предпочитает 3-бет (SB часто открывает слабее и сдаётся).`;
+      return `${spot}: этой руки даже в широченной BvB-защите нет — по эталону дефолт фолд.`;
+    }
+    if (bvb.action === "3BET") {
+      if (state === "THREEBET") return `${spot}: 3-бет на велью — в чарте.`;
+      if (state === "THREEBET_BLUFF") return `${spot}: 3-бет весом (блеф-часть чарта) — нормальная линия против широкого SB-опена.`;
+      return isBvbThreeBetSignificantlyWide(bvb.code)
+        ? `${spot}: 3-бет заметно шире нормы чарта.`
+        : `${spot}: 3-бет на границе допуска чарта — не ошибка, но и не рекомендация.`;
+    }
+    if (state === "CALL" || state === "CALL_SOMETIMES")
+      return `${spot}: по чарту эта рука обычно ЗАЩИЩАЕТСЯ — фолд против широкого SB-опена тайтовее эталона.`;
+    if (state === "THREEBET" || state === "THREEBET_BLUFF")
+      return `${spot}: по чарту эта рука играется 3-бетом — фолд заметно тайтовее эталона.`;
+    return `${spot}: фолд — по чарту.`;
+  }
+
   // Рестил (3-бет-олл-ин 10–20bb против одиночного опена) — чарт собран из публичных
   // равновесий (ICMIZER/Upswing/Nash, среднее; см. config/poker/resteal-chart.ts).
   const rs = detectHeroResteal(snapshot);
@@ -110,6 +144,40 @@ function spotVerdict(snapshot: TableSnapshot): string | null {
     if (vo.action === "CALL")
       return `${spot}: холодный колл эталонным чартом сознательно НЕ судится (спот нюансный — глубина, тип оппонента, игроки за спиной). Не выдумывай вердикт чарта, оценивай по обстоятельствам раздачи.`;
     return null; // фолд против опена вне BB — дефолт, не комментируем
+  }
+
+  // Защита против 3-бета (мы открылись → в нас 3-бетнули): 4-бет судится чартом,
+  // колл сознательно не грейдится (вопрос глубины — мёртвые имплайды на коротком).
+  const def = detectHeroDefVs3bet(snapshot);
+  if (def) {
+    const spot = `защита против 3-бета: ${def.code}, ты открывался с ${def.heroPosition}`;
+    if (def.action === "4BET") {
+      const state = fourBetCellState(def.heroPosition, def.code);
+      if (state === "FOURBET") return `${spot}: 4-бет на велью — в чарте.`;
+      if (state === "BLUFF") return `${spot}: 4-бет блокером весом (блеф-часть чарта) — нормальная линия.`;
+      if (state === "BORDER") return `${spot}: 4-бет на границе допуска чарта — не ошибка, но и не рекомендация.`;
+      return `${spot}: 4-бет ВНЕ чарта — по эталону этой рукой не 4-бетят.`;
+    }
+    if (def.action === "CALL")
+      return `${spot}: колл 3-бета эталонным чартом сознательно НЕ судится — реши через ГЛУБИНУ (остаток 3-беттора, имплайд-оддсы; см. фреймворк), не через доминацию.`;
+    return null; // фолд на 3-бет — дефолт, не комментируем
+  }
+
+  // Сквиз (3-бет поверх опена + коллера): ширина сильно спот-зависима, жёстко судится
+  // только заведомый мусор (низкий офсьют без туза — не сквиз ниоткуда).
+  const sq = detectHeroSqueeze(snapshot);
+  if (sq) {
+    const spot = `сквиз ${sq.code} с ${sq.heroPosition} (3-бет поверх опена и коллера)`;
+    return isSqueezeSignificantlyWide(sq.heroPosition, sq.code)
+      ? `${spot}: ЗАВЕДОМО мусорная рука для сквиза — по эталону так не сквизят ни из какой позиции.`
+      : `${spot}: в пределах допустимого — ширина сквиза сильно зависит от спота (из блайндов против позднего опена сквизуют широко), жёсткого вердикта чарт не даёт; оцени велью-составляющую и фолд-эквити по обстоятельствам.`;
+  }
+
+  // SB-лимп при фолде до Hero — по эталону продукта НЕ утечка (дёшево смотрим флоп,
+  // сильной рукой рейзим): страхуем тренера от старого рефлекса «лимп = ошибка».
+  const sbLimp = detectHeroSbLimp(snapshot);
+  if (sbLimp) {
+    return `SB-лимп ${sbLimp} при фолде до тебя: по эталону это НЕ утечка — дешёвый комплит против одного BB нормален (сильной рукой тут рейзят 3-3.5bb). Не называй сам лимп ошибкой; смотри розыгрыш постфлопа.`;
   }
 
   const open = detectHeroOpen(snapshot);

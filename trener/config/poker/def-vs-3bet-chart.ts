@@ -55,3 +55,19 @@ export function isFourBetSignificantlyWide(heroPos: string, code: string): boole
   if (!isDefVs3betPosition(heroPos)) return false;
   return isWiderThan(FOURBET_RANGE[heroPos], FOURBET_TOLERANCE[heroPos], code);
 }
+
+// Слой клетки для вердикта тренера (preflop-chart-fact): FOURBET — велью, BLUFF —
+// блокер весом, BORDER — полоса допуска, OUT — по эталону не 4-бетится. Из тех же
+// множеств, что грейдер, — вердикт и грейдер разойтись не могут.
+export type FourBetCellState = "FOURBET" | "BLUFF" | "BORDER" | "OUT";
+
+const FOURBET_VALUE_SET = Object.fromEntries(
+  POSITIONS.map((p) => [p, buildRange(FOURBET_VALUE[p])]),
+) as Record<OpenPosition, Set<string>>;
+
+export function fourBetCellState(pos: OpenPosition, code: string): FourBetCellState {
+  if (FOURBET_VALUE_SET[pos].has(code)) return "FOURBET";
+  if (FOURBET_RANGE[pos].has(code)) return "BLUFF";
+  if (FOURBET_TOLERANCE[pos].has(code)) return "BORDER";
+  return "OUT";
+}
