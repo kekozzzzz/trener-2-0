@@ -60,6 +60,11 @@ const CASE_FIXES: Array<[string, string]> = [
   ["баттону", "BTN"],
   ["баттона", "BTN"],
   ["баттон", "BTN"],
+  ["батоном", "BTN"],
+  ["батоне", "BTN"],
+  ["батону", "BTN"],
+  ["батона", "BTN"],
+  ["батон", "BTN"],
 ];
 
 export function cleanCoachText(text: string): string {

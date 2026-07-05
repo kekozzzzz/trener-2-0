@@ -42,5 +42,6 @@ describe("cleanCoachText", () => {
     expect(cleanCoachText("против кнопки в него входит много рук")).toBe("против BTN в него входит много рук");
     expect(cleanCoachText("Кнопка открывает широко, ты на кнопке")).toBe("BTN открывает широко, ты на BTN");
     expect(cleanCoachText("опен с баттона, баттон широкий")).toBe("опен с BTN, BTN широкий");
+    expect(cleanCoachText("Батон ставит, против батона")).toBe("BTN ставит, против BTN");
   });
 });
