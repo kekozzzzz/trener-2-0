@@ -580,7 +580,14 @@
     "viewed": "Viewed",
     "reviewingNowTitle": "Reviewing now",
     "reviewingNowNote": "The coach is looking at these hands - they'll appear above once ready.",
-    "reviewing": "Reviewing"
+    "reviewing": "Reviewing",
+    "importanceCooler": "Cooler",
+    "entryBadge": "Re-entry #{n}",
+    "coolersTitle": "{count, plural, one {# cooler} other {# coolers}} - bad luck",
+    "coolersNote": "Money went in while you were far ahead and the opponent got there. These are not mistakes - there is nothing to review, the coach leaves them alone.",
+    "coolerCaptionFlop": "Money went in on the flop with {equity}% - the opponent got there. A cooler, not a mistake.",
+    "coolerCaptionTurn": "Money went in on the turn with {equity}% - the opponent got there. A cooler, not a mistake.",
+    "coolerCaptionRiver": "Money went in on the river with {equity}% - the opponent got there. A cooler, not a mistake."
   },
   "FocusSlot": {
     "startHereTitle": "Start here",
@@ -848,6 +855,7 @@
     "openingPayment": "Opening payment…"
   },
   "TournamentRow": {
+    "entryBadge": "Re-entry #{n}",
     "styleLoose": "Loose",
     "styleTight": "Tight",
     "stylePassive": "Passive",

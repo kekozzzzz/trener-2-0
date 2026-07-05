@@ -13,6 +13,7 @@ export type TournamentListItem = {
   handsCount: number | null;
   resultBuyins: number | null;
   styleDiagnosis: PlayerStyle | null;
+  entryNumber: number; // 1 — первый вход, 2+ — перезаход (re-entry)
   fullyReviewed: boolean;  // турнир пройден целиком: разбор открыт, готов, и каждая карточная раздача завершена/просмотрена
 };
 
@@ -37,6 +38,7 @@ async function queryTournaments(playerId: string, limit?: number): Promise<Tourn
       handsCount: true,
       resultBuyins: true,
       styleDiagnosis: true,
+      entryNumber: true,
     },
   });
 
@@ -85,6 +87,7 @@ async function queryTournaments(playerId: string, limit?: number): Promise<Tourn
       handsCount: t.handsCount,
       resultBuyins: t.resultBuyins != null ? Number(t.resultBuyins) : null,
       styleDiagnosis: t.styleDiagnosis,
+      entryNumber: t.entryNumber,
       fullyReviewed,
     };
   });

@@ -105,15 +105,38 @@ export async function uploadTournament(input: UploadInput): Promise<UploadResult
   // Часовой лимит загрузок (checkUploadQuota) остаётся в точке входа страницы.
 
   // Дедупликация: тот же игрок уже загрузил турнир с этим номером с той же площадки.
-  // Повтор не создаём — отдаём ссылку на существующий разбор (deletedAt: null — удалённый
-  // можно загрузить заново).
-  const duplicate = await prisma.tournament.findFirst({
+  // Тот же номер — ещё не значит тот же файл: GG пишет КАЖДЫЙ вход в турнир (re-entry)
+  // отдельным файлом с одним номером. Различаем по моментам раздач: раздачи совпадают —
+  // настоящий дубль (ссылка на существующий разбор); раздачи другие — это перезаход,
+  // создаём отдельный турнир с номером входа (план 2026-07-05-кулеры-и-перезаходы).
+  const sameKey = await prisma.tournament.findMany({
     where: { playerId, room, externalTournamentId, deletedAt: null },
-    select: { id: true },
+    select: { id: true, entryNumber: true },
   });
 
-  if (duplicate) {
-    return { ok: false, error: "DUPLICATE", existingTournamentId: duplicate.id };
+  let entryNumber = 1;
+  if (sameKey.length > 0) {
+    const newTimes = new Set(
+      parsed.data.hands
+        .map((h) => (h.playedAt ? new Date(h.playedAt).getTime() : null))
+        .filter((t): t is number => t !== null),
+    );
+    const existingHands = await prisma.hand.findMany({
+      where: { tournamentId: { in: sameKey.map((t) => t.id) }, playedAt: { not: null } },
+      select: { playedAt: true },
+    });
+    const existingTimes = new Set(existingHands.map((h) => h.playedAt!.getTime()));
+    let overlap = 0;
+    for (const t of newTimes) if (existingTimes.has(t)) overlap += 1;
+
+    // Без таймстемпов раздач надёжно не различить — консервативно считаем дублем
+    // (прежнее поведение). Совпала хотя бы половина раздач — тоже дубль.
+    const isDuplicate =
+      newTimes.size === 0 || existingTimes.size === 0 || overlap / newTimes.size >= 0.5;
+    if (isDuplicate) {
+      return { ok: false, error: "DUPLICATE", existingTournamentId: sameKey[0].id };
+    }
+    entryNumber = Math.max(...sameKey.map((t) => t.entryNumber)) + 1;
   }
 
   const tournament = await prisma.$transaction(async (tx) => {
@@ -124,6 +147,7 @@ export async function uploadTournament(input: UploadInput): Promise<UploadResult
         room,
         name,
         externalTournamentId,
+        entryNumber,
         status: "UPLOADED",
       },
     });

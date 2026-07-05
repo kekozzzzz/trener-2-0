@@ -10,6 +10,7 @@ import { assessAiAccess } from "@/features/usage/budget";
 import { isSubscriptionGateEnabled } from "@/config/plans";
 import { bigBlindFromSnapshot } from "@/parser/big-blind";
 import { heroDecisionLabel } from "@/parser/hand-summary";
+import { detectHeroCooler } from "@/parser/cooler";
 import type { TableSnapshot } from "@/parser/types";
 import { HoleCards } from "@/components/poker/hole-cards";
 import { unlockTournamentAnalysisAction } from "./actions";
@@ -99,7 +100,9 @@ export default async function TournamentPage({
         ? t("importanceStrong")
         : level === "MEDIUM"
           ? t("importanceMedium")
-          : level;
+          : level === "COOLER"
+            ? t("importanceCooler")
+            : level;
   // Состояние диалога → подпись бейджа. QUESTION_ASKED/ANSWER_RECEIVED — «в работе».
   const dialogueLabel = (state: string) =>
     state === "VERDICT_SHOWN" ? t("dialogueDone") : t("dialogueInProgress");
@@ -172,6 +175,7 @@ export default async function TournamentPage({
           <p className="mt-2 font-mono text-label uppercase tracking-label text-muted-foreground">
             {dateFormat.format(tournament.playedAt)}
             {tournament.room && ` · ${tournament.room}`}
+            {tournament.entryNumber > 1 && ` · ${t("entryBadge", { n: tournament.entryNumber })}`}
           </p>
 
           {error === "LIMIT_REACHED" && (
@@ -300,6 +304,15 @@ export default async function TournamentPage({
     select: { id: true, importanceLevel: true, chipResult: true, tableData: true, viewedAt: true },
   });
 
+  // Кулеры — тихая стопка (план 2026-07-05-кулеры-и-перезаходы): потери, где парсер по
+  // вскрытию видит, что Hero был далеко впереди и соперник доехал. Без диалога и LLM —
+  // подпись детерминированная, от детектора; карточка не кликается (разбирать нечего).
+  const coolerHands = await prisma.hand.findMany({
+    where: { tournamentId: id, importanceLevel: "COOLER" },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, chipResult: true, tableData: true },
+  });
+
   // Раздачи карточки, которые ещё разбираются (отобраны, но разбор не готов и диалога нет).
   // Показываем их «в работе» с коротким описанием, пока турнир досчитывается — чтобы было
   // видно, что именно тренер сейчас смотрит. Когда всё готово — список пуст.
@@ -363,6 +376,7 @@ export default async function TournamentPage({
         <p className="mt-2 font-mono text-label uppercase tracking-label text-muted-foreground">
           {dateFormat.format(tournament.playedAt)}
           {tournament.room && ` · ${tournament.room}`}
+          {tournament.entryNumber > 1 && ` · ${t("entryBadge", { n: tournament.entryNumber })}`}
         </p>
 
         {/* Пока турнир досчитывается — баннер с честными этапами. Он же опрашивает статус и
@@ -532,6 +546,66 @@ export default async function TournamentPage({
                       <ArrowRight className="size-4 text-muted-foreground transition-colors duration-150 ease-out group-hover:text-primary" />
                     </div>
                   </Link>
+                );
+              })}
+            </div>
+          </details>
+        )}
+
+        {/* Кулеры — не повезло, не ошибки: свёрнутая тихая стопка без ссылок и чата.
+            Подпись считает детектор парсера по снимку (Правило 1), LLM не участвует. */}
+        {coolerHands.length > 0 && (
+          <details className="group mt-16">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 border border-border bg-card p-6 transition-colors duration-150 ease-out hover:border-primary [&::-webkit-details-marker]:hidden">
+              <span className="font-mono text-label uppercase tracking-label text-muted-foreground">
+                {t("coolersTitle", { count: coolerHands.length })}
+              </span>
+              <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform duration-150 ease-out group-open:rotate-180" />
+            </summary>
+            <p className="mt-4 text-small text-muted-foreground">{t("coolersNote")}</p>
+            <div className="mt-8 space-y-4">
+              {coolerHands.map((hand) => {
+                const snap = hand.tableData as unknown as TableSnapshot;
+                const cooler = detectHeroCooler(snap);
+                const caption = cooler
+                  ? t(
+                      cooler.street === "FLOP"
+                        ? "coolerCaptionFlop"
+                        : cooler.street === "TURN"
+                          ? "coolerCaptionTurn"
+                          : "coolerCaptionRiver",
+                      { equity: cooler.equityPct },
+                    )
+                  : null;
+                const bb = bigBlindFromSnapshot(snap);
+                const bbResult = bb ? hand.chipResult / bb : null;
+                const sign = hand.chipResult >= 0 ? "+" : "";
+                return (
+                  <div
+                    key={hand.id}
+                    className="flex items-center justify-between gap-4 border border-border bg-card p-6"
+                  >
+                    <div className="flex min-w-0 items-center gap-4">
+                      <Badge variant="outline" className="shrink-0">
+                        {t("importanceCooler")}
+                      </Badge>
+                      <HoleCards cards={snap.heroCards ?? []} />
+                      {caption && (
+                        <span className="min-w-0 text-small text-muted-foreground">{caption}</span>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 flex-col items-end">
+                      <span className="font-mono text-body text-foreground">
+                        {bbResult !== null ? `${sign}${bbResult.toFixed(1)} BB` : `${sign}${hand.chipResult}`}
+                      </span>
+                      {bbResult !== null && (
+                        <span className="font-mono text-small text-muted-foreground">
+                          {sign}
+                          {hand.chipResult} {t("chips")}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 );
               })}
             </div>

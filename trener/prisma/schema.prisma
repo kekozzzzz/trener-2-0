@@ -195,6 +195,7 @@ model Tournament {
   room           String?          @map("room")                    // площадка из HH-файла (пока только "GGPoker")
   name           String?          @map("name")                    // название турнира из заголовка HH
   externalTournamentId String?    @map("external_tournament_id")  // номер турнира из HH — ключ дедупликации (по игроку+площадке)
+  entryNumber    Int              @default(1) @map("entry_number") // номер входа: 1 — первый, 2+ — перезаходы (re-entry; GG пишет каждый вход отдельным файлом с тем же номером турнира)
   vpipPercent    Decimal?         @map("vpip_percent") @db.Decimal(5, 2)
   handsCount     Int?             @map("hands_count")
   resultBuyins   Decimal?         @map("result_buyins") @db.Decimal(8, 2)  // НЕ деньги — единица «бай-ин», может быть дробной
@@ -270,6 +271,7 @@ enum HandImportance {
   CRITICAL // крупная потеря фишек — диалог обязателен
   STRONG   // значимая ситуация — короткое подтверждение
   MEDIUM   // средняя — разбор по запросу игрока
+  COOLER   // потеря, где Hero был далеко впереди (соперник доехал) — тихая стопка без диалога и LLM
 }
 
 model Hand {

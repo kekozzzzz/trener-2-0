@@ -580,7 +580,14 @@
     "viewed": "Просмотрено",
     "reviewingNowTitle": "Разбираем сейчас",
     "reviewingNowNote": "Тренер смотрит эти раздачи - они появятся выше, как будут готовы.",
-    "reviewing": "Разбираем"
+    "reviewing": "Разбираем",
+    "importanceCooler": "Кулер",
+    "entryBadge": "Перезаход №{n}",
+    "coolersTitle": "{count, plural, one {# кулер} few {# кулера} many {# кулеров} other {# кулера}} - не повезло",
+    "coolersNote": "Здесь деньги зашли, когда ты был далеко впереди, а соперник доехал. Это не ошибки - разбирать нечего, тренер их не трогает.",
+    "coolerCaptionFlop": "На флопе деньги зашли с {equity}% - соперник доехал. Кулер, не ошибка.",
+    "coolerCaptionTurn": "На тёрне деньги зашли с {equity}% - соперник доехал. Кулер, не ошибка.",
+    "coolerCaptionRiver": "На ривере деньги зашли с {equity}% - соперник доехал. Кулер, не ошибка."
   },
   "FocusSlot": {
     "startHereTitle": "Начни отсюда",
@@ -848,6 +855,7 @@
     "openingPayment": "Открываем оплату…"
   },
   "TournamentRow": {
+    "entryBadge": "Перезаход №{n}",
     "styleLoose": "Лузовый",
     "styleTight": "Тайтовый",
     "stylePassive": "Пассивный",

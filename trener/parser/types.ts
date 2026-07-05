@@ -36,7 +36,9 @@ export type TableSnapshot = {
   level?: number; // номер уровня блайндов из заголовка HH (стадия турнира) — для схемы стола
 };
 
-export type HandImportance = "CRITICAL" | "STRONG" | "MEDIUM";
+// COOLER — крупная потеря, где парсер по вскрытию видит, что Hero был далеко впереди
+// (соперник доехал): тихая стопка без диалога и LLM (план 2026-07-05-кулеры-и-перезаходы).
+export type HandImportance = "CRITICAL" | "STRONG" | "MEDIUM" | "COOLER";
 
 export type PlayerStyle = "LOOSE" | "TIGHT" | "PASSIVE" | "AGGRESSIVE";
 

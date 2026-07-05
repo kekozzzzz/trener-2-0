@@ -70,6 +70,9 @@ export async function TournamentRow({ tournament }: { tournament: TournamentList
             {tournament.name ?? t("tournament")}
           </span>
           {tournament.room && <Badge variant="outline">{roomLabel(tournament.room)}</Badge>}
+          {tournament.entryNumber > 1 && (
+            <Badge variant="outline">{t("entryBadge", { n: tournament.entryNumber })}</Badge>
+          )}
           {tournament.fullyReviewed && <Badge variant="done">{t("passed")}</Badge>}
           {status.ready ? (
             tournament.styleDiagnosis && (

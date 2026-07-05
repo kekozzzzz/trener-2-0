@@ -1,5 +1,6 @@
 import type { HandImportance, ParsedHandSnapshot, PlayerStyle, TableAction } from "../types";
 import { detectHeroLuckyWin } from "../lucky-win";
+import { detectHeroCooler } from "../cooler";
 
 // Потолок критических раздач (каждая ведёт сократовский диалог «почему»). Число адаптивное:
 // берём все спорные потери, отсортированные по размеру, но не больше потолка. 7 — запас под
@@ -49,9 +50,21 @@ export function isContestedDecision(actions: TableAction[]): boolean {
 export function assignImportanceLevels(hands: ParsedHandSnapshot[]): HandImportance[] {
   const contested = hands.map((hand) => isContestedDecision(hand.tableSnapshot.actions));
 
+  // Кулеры — спорные ПОТЕРИ, где Hero в момент крупного вложения был далеко впереди
+  // вскрытой руки соперника (тот доехал) и префлоп чистый: разбирать нечего, «сыграл
+  // правильно, не повезло». В критические не идут — уходят в тихую стопку без диалога
+  // (план 2026-07-05-кулеры-и-перезаходы). Детектор дёшев: сразу null без вскрытия.
+  const coolerSet = new Set(
+    hands
+      .map((hand, index) => ({ index, hand }))
+      .filter(({ index, hand }) => contested[index] && hand.chipResult < 0)
+      .filter(({ hand }) => detectHeroCooler(hand.tableSnapshot) !== null)
+      .map(({ index }) => index),
+  );
+
   const criticalCandidates = hands
     .map((hand, index) => ({ index, hand }))
-    .filter(({ index, hand }) => contested[index] && hand.chipResult < 0)
+    .filter(({ index, hand }) => contested[index] && hand.chipResult < 0 && !coolerSet.has(index))
     .sort((a, b) => Math.abs(b.hand.chipResult) - Math.abs(a.hand.chipResult))
     .slice(0, MAX_CRITICAL_HANDS)
     .map(({ index }) => index);
@@ -72,6 +85,7 @@ export function assignImportanceLevels(hands: ParsedHandSnapshot[]): HandImporta
   }
 
   return hands.map((hand, index) => {
+    if (coolerSet.has(index)) return "COOLER";
     if (criticalSet.has(index)) return "CRITICAL";
     if (contested[index] && hand.chipResult > 0) return "STRONG";
     return "MEDIUM";
