@@ -12,7 +12,9 @@ import { squeezePosition } from "@/config/poker/squeeze-chart";
 // до опена (грязный банк); второй рейз до Hero (уже 3-бет); Hero не рейзит; короткий
 // стек; позиция не судима.
 
-export type HeroSqueeze = { heroPosition: OpenPosition; code: string };
+// Сквизуют чаще всего именно из блайндов — SB/BB судимы наравне с остальными
+// (найдено аудитом 2026-07-06: сквиз AQs из BB оставался без вердикта чарта).
+export type HeroSqueeze = { heroPosition: OpenPosition | "SB" | "BB"; code: string };
 
 export function detectHeroSqueeze(snapshot: TableSnapshot): HeroSqueeze | null {
   const heroSeat = snapshot.seats.find((s) => s.label === "Hero");
@@ -45,7 +47,9 @@ export function detectHeroSqueeze(snapshot: TableSnapshot): HeroSqueeze | null {
     // Первое добровольное действие — Hero. Сквиз: есть опен + коллер, и Hero рейзит.
     if (raiseCount !== 1 || callers < 1) return null;
     if (a.action !== "RAISE") return null; // фолд/колл/олл-ин — не сквиз
-    const heroPosition = squeezePosition(heroSeat.position, heroSeat.positionName);
+    const heroPosition =
+      squeezePosition(heroSeat.position, heroSeat.positionName) ??
+      (heroSeat.position === "SB" || heroSeat.position === "BB" ? heroSeat.position : null);
     if (!heroPosition) return null;
     const code = handCode(snapshot.heroCards);
     if (!code) return null;
