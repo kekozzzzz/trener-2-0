@@ -11,6 +11,10 @@ import { BlurFade } from "@/components/ui/blur-fade";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { HandTable } from "@/components/poker/hand-table";
+import type { TableState } from "@/parser/table-state";
+import { GRID_RANKS, cellCode } from "@/config/poker/hand-grid";
+import { buildRange } from "@/config/poker/hand-range";
 
 // Лендинг — в белом списке индексации (заголовок и описание берёт из корневого layout).
 export const metadata = indexable;
@@ -138,6 +142,8 @@ export default async function HomePage() {
           </BlurFade>
         </div>
       </section>
+
+      <ProductShowcase />
 
       <section className="border-t border-border">
         <div className="mx-auto max-w-5xl px-8 py-16">
@@ -268,6 +274,109 @@ export default async function HomePage() {
 // Иллюстративная карточка разбора для hero. Не настоящие данные пользователя — показывает
 // форму продукта: спот → сократовский вопрос → числа парсера. Числа в JetBrains Mono
 // (design-system.md §2), ключевые — акцентным лаймом. Некликабельная: без hover-состояния.
+
+// ── Витрина продукта (QA 2026-07-05, п.16): настоящие экраны, а не описания. ───
+// Демо-раздача для стола: реальный спот (оверпара против олл-ина на тёрне),
+// обезличенный. Рендерится ТЕМ ЖЕ компонентом HandTable, что и в разборе.
+const DEMO_BB = 250;
+const DEMO_TABLE: TableState = {
+  tableSize: 8,
+  buttonSeat: 7,
+  heroCards: ["Ks", "Kh"],
+  board: ["2d", "7s", "Js", "Td"],
+  potSoFar: 96 * DEMO_BB,
+  bigBlind: DEMO_BB,
+  smallBlind: 125,
+  ante: 35,
+  level: 5,
+  street: "TURN",
+  decisionActor: "Player 5",
+  playersAfterHero: 0,
+  seats: [
+    { label: "Player 1", position: "EARLY", positionName: "UTG+1", startingStack: 79 * DEMO_BB, remainingStack: 79 * DEMO_BB, seatNumber: 1, isHero: false, folded: true, isCurrent: false, streetBet: 0, lastAction: { action: "FOLD" } },
+    { label: "Player 2", position: "EARLY", positionName: "UTG", startingStack: 114 * DEMO_BB, remainingStack: 114 * DEMO_BB, seatNumber: 2, isHero: false, folded: true, isCurrent: false, streetBet: 0, lastAction: { action: "FOLD" } },
+    { label: "Player 3", position: "HJ", positionName: "HJ", startingStack: 72 * DEMO_BB, remainingStack: 72 * DEMO_BB, seatNumber: 3, isHero: false, folded: true, isCurrent: false, streetBet: 0, lastAction: { action: "FOLD" } },
+    { label: "Hero", position: "EARLY", positionName: "LJ", startingStack: 86 * DEMO_BB, remainingStack: 59 * DEMO_BB, seatNumber: 4, isHero: true, folded: false, isCurrent: false, streetBet: 0, lastAction: null },
+    { label: "Player 4", position: "CO", positionName: "CO", startingStack: 69 * DEMO_BB, remainingStack: 69 * DEMO_BB, seatNumber: 5, isHero: false, folded: true, isCurrent: false, streetBet: 0, lastAction: { action: "FOLD" } },
+    { label: "Player 5", position: "BTN", positionName: "BTN", startingStack: 47 * DEMO_BB, remainingStack: 0, seatNumber: 7, isHero: false, folded: false, isCurrent: true, streetBet: 35 * DEMO_BB, lastAction: { action: "ALL_IN", amount: 35 * DEMO_BB } },
+    { label: "Player 6", position: "SB", positionName: "SB", startingStack: 208 * DEMO_BB, remainingStack: 207 * DEMO_BB, seatNumber: 8, isHero: false, folded: true, isCurrent: false, streetBet: 0, lastAction: { action: "FOLD" } },
+  ],
+};
+
+// Отмеченный диапазон для витринной сетки — реальная отметка игрока (широкий опен BTN).
+const DEMO_RANGE = buildRange([
+  "22+", "A2s+", "K2s+", "Q4s+", "J5s+", "T6s+", "96s+", "85s+", "74s+", "63s+", "52s+", "42s+",
+  "A2o+", "K6o+", "Q7o+", "J8o+", "T8o+", "98o",
+]);
+const DEMO_GRID_SIZE = GRID_RANKS.length;
+
+// Статичная мини-сетка 13x13 (без интерактива): как выглядит ответ диапазоном.
+function DemoRangeGrid() {
+  return (
+    <div
+      className="grid w-full max-w-[360px] select-none gap-px"
+      style={{ gridTemplateColumns: `repeat(${DEMO_GRID_SIZE}, minmax(0, 1fr))` }}
+    >
+      {Array.from({ length: DEMO_GRID_SIZE }).map((_, row) =>
+        Array.from({ length: DEMO_GRID_SIZE }).map((__, col) => {
+          const code = cellCode(row, col);
+          const on = DEMO_RANGE.has(code);
+          return (
+            <div
+              key={code}
+              className={cn(
+                "flex aspect-square items-center justify-center border font-mono leading-none",
+                on ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground/40"
+              )}
+            >
+              <span className="text-[0.45rem] sm:text-[0.55rem]">{code}</span>
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
+async function ProductShowcase() {
+  const t = await getTranslations("Landing");
+  return (
+    <section className="border-t border-border bg-background">
+      <div className="mx-auto max-w-5xl px-8 py-16 sm:py-24">
+        <div className="mx-auto max-w-2xl space-y-4 text-center">
+          <h2 className="text-h1">{t("showcaseTitle")}</h2>
+          <p className="text-body text-muted-foreground">{t("showcaseSubtitle")}</p>
+        </div>
+
+        <div className="mt-12">
+          <HandTable state={DEMO_TABLE} nick={null} />
+          <p className="mt-3 font-mono text-label uppercase tracking-label text-muted-foreground">
+            {t("showcaseTableCaption")}
+          </p>
+        </div>
+
+        <div className="mt-12 grid gap-8 lg:grid-cols-2">
+          <div>
+            <DemoRangeGrid />
+            <p className="mt-3 max-w-[360px] font-mono text-label uppercase tracking-label text-muted-foreground">
+              {t("showcaseGridCaption")}
+            </p>
+          </div>
+          <div className="border border-primary bg-card p-6">
+            <p className="font-mono text-label uppercase tracking-label text-primary">
+              {t("showcaseVerdictLabel")}
+            </p>
+            <p className="mt-3 text-body text-foreground">{t("showcaseVerdictText")}</p>
+            <p className="mt-4 font-mono text-label uppercase tracking-label text-muted-foreground">
+              {t("showcaseVerdictNote")}
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 async function HandPreview() {
   const t = await getTranslations("Landing");
 
@@ -290,9 +399,9 @@ async function HandPreview() {
           {t("previewSituationLine1End")}
         </p>
         <p>
-          {t("previewSituationFlopLabel")}<span className="font-mono text-foreground">K 9 4</span>
-          {t("previewSituationTurnLabel")}<span className="font-mono text-foreground">7</span>
-          {t("previewSituationRiverLabel")}<span className="font-mono text-foreground">Q</span>
+          {t("previewSituationFlopLabel")}<span className="font-mono text-foreground">K♦ 9♠ 4♦</span>
+          {t("previewSituationTurnLabel")}<span className="font-mono text-foreground">7♣</span>
+          {t("previewSituationRiverLabel")}<span className="font-mono text-foreground">Q♦</span>
           {t("previewSituationLine2End")}
         </p>
       </div>

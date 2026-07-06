@@ -20,6 +20,8 @@ interface PricingCardProps {
   cta?: ReactNode
   buttonText?: string
   buttonHref?: string
+  // Выделенный тариф («Рекомендуем») — лаймовая рамка и бейдж (QA 2026-07-05, п.17).
+  featuredLabel?: string
 }
 
 export function PricingCard({
@@ -32,9 +34,15 @@ export function PricingCard({
   cta,
   buttonText,
   buttonHref = "#upload",
+  featuredLabel,
 }: PricingCardProps) {
   return (
-    <div className="border border-border bg-card">
+    <div className={cn("relative border bg-card", featuredLabel ? "border-primary" : "border-border")}>
+      {featuredLabel && (
+        <span className="absolute -top-3 left-8 border border-primary bg-background px-2 py-0.5 font-mono text-label uppercase tracking-label text-primary">
+          {featuredLabel}
+        </span>
+      )}
       <div className="space-y-6 p-8">
         <div className="space-y-1">
           <h3 className="text-h3">{title}</h3>

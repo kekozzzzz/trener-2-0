@@ -72,8 +72,10 @@ export default async function PricingPage() {
         </div>
 
         <div className="mt-12 grid items-stretch gap-4 lg:grid-cols-3">
-          {plans.map((plan) => {
+          {plans.map((plan, planIndex) => {
             const isCurrent = currentPlan === plan.code;
+            // Средний тариф выделяем «Рекомендуем» — якорь выбора (QA 2026-07-05, п.17).
+            const featured = planIndex === 1;
 
             let cta;
             if (!session) {
@@ -123,6 +125,7 @@ export default async function PricingPage() {
                 period={tc("perMonth")}
                 volumeNote={volumeNote(plan.tournamentLimit)}
                 cta={cta}
+                featuredLabel={featured ? t("recommended") : undefined}
               />
             );
           })}
