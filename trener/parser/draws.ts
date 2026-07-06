@@ -225,3 +225,77 @@ export function readHeroDraw(hero: string[], board: string[]): DrawRead | null {
     backdoorOnly: false,
   };
 }
+
+// Подпись «до чего» улучшает аут (родительный падеж, по категории handValue).
+const CATEGORY_GEN: Record<number, string> = {
+  2: "пары",
+  3: "двух пар",
+  4: "сета/трипса",
+  5: "стрита",
+  6: "флеша",
+  7: "фулл-хауса",
+  8: "каре",
+  9: "стрит-флеша",
+};
+
+export type OutsTarget = { toCategory: string; count: number; dirty: number };
+export type ImprovementOuts = {
+  outsRaw: number; // все одно-карточные ауты, поднимающие КАТЕГОРИЮ руки Hero
+  outsClean: number; // из них «чистые» (не спаривают борд и не достраивают флеш сопернику)
+  byTarget: OutsTarget[]; // разбивка по итоговой руке, сильные первыми
+  taintReasons: string[]; // почему часть аутов грязная (для честной подачи)
+};
+
+// ВСЕ ауты Hero на улучшение — не только флеш/стрит-дро (readHeroDraw), а любая карта
+// следующей улицы, поднимающая КАТЕГОРИЮ его руки: пара→две пары→сет→фулл и т.д.
+// Перебор колоды (правило 1: число считает парсер, не LLM — иначе модель выдумывает).
+// Аут засчитываем, только если рука Hero с этой картой И выше прежней, И сильнее голого
+// борда (иначе улучшение играет борд — оно общее для всех, не личное усиление Hero).
+// Грязные ауты помечаем детерминированно по борду (карт соперника не знаем): карта
+// спаривает борд (у соперника возможны две пары/фулл сильнее) ИЛИ на борде становится
+// 3+ одной масти, а сам Hero флеш не собрал (возможен флеш против него). Чистые — без
+// этих флагов. null — борд не флоп/тёрн или улучшить категорию нечем.
+export function improvementOuts(hero: string[], board: string[]): ImprovementOuts | null {
+  if (hero.length < 2 || board.length < 3 || board.length > 4) return null;
+
+  const oldHeroCat = handCategory([...hero, ...board]);
+  const deck = unseenCards([...hero, ...board]);
+
+  const groups = new Map<number, { count: number; dirty: number }>();
+  const reasons = new Set<string>();
+  let raw = 0;
+  let clean = 0;
+
+  for (const c of deck) {
+    const newHeroCat = handCategory([...hero, ...board, c]);
+    if (newHeroCat <= oldHeroCat) continue; // категория руки Hero не выросла
+    const newBoardCat = handCategory([...board, c]);
+    if (newHeroCat <= newBoardCat) continue; // улучшение играет борд, а не Hero
+
+    raw++;
+    const finalBoard = [...board, c];
+    let dirty = false;
+    if (boardPaired(finalBoard)) {
+      dirty = true;
+      reasons.add("спаривают борд (у соперника возможны две пары/фулл сильнее)");
+    }
+    if (threeOfASuit(finalBoard) && newHeroCat !== 6 && newHeroCat !== 9) {
+      dirty = true;
+      reasons.add("на борде 3+ одной масти (возможен флеш у соперника)");
+    }
+
+    const g = groups.get(newHeroCat) ?? { count: 0, dirty: 0 };
+    g.count++;
+    if (dirty) g.dirty++;
+    else clean++;
+    groups.set(newHeroCat, g);
+  }
+
+  if (raw === 0) return null;
+
+  const byTarget: OutsTarget[] = [...groups.entries()]
+    .sort((a, b) => b[0] - a[0])
+    .map(([cat, g]) => ({ toCategory: CATEGORY_GEN[cat] ?? "лучшей руки", count: g.count, dirty: g.dirty }));
+
+  return { outsRaw: raw, outsClean: clean, byTarget, taintReasons: [...reasons] };
+}

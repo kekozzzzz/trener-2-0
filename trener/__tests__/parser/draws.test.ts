@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readHeroDraw, drawEquity } from "@/parser/draws";
+import { readHeroDraw, drawEquity, improvementOuts } from "@/parser/draws";
 
 // Ауты Hero — точным перебором. Числа аутов проверяемы руками; эквити — производное
 // (1 карта = ауты/нераскрытые), для 2 карт проверяем границы и clean ≤ raw.
@@ -99,5 +99,44 @@ describe("drawEquity — точный перебор", () => {
 
   it("готовая рука → null", () => {
     expect(drawEquity(["Ah", "Kh"], ["2h", "7h", "Qh"], 1)).toBeNull();
+  });
+});
+
+describe("improvementOuts — ЛЮБЫЕ ауты на улучшение (перебор)", () => {
+  it("77 на монотоне 9♣K♣4♣: 11 всего, 0 чистых (2 сет + 9 спаривают борд, всё грязное)", () => {
+    // Тот самый спот из разбора, где тренер выдумал «сет из 6 аутов». До сета ровно 2
+    // (7♥,7♣), плюс 9 карт спаривают борд → слабые две пары. Борд монотонный → всё грязное.
+    const io = improvementOuts(["7s", "7d"], ["9c", "Kc", "4c"]);
+    expect(io?.outsRaw).toBe(11);
+    expect(io?.outsClean).toBe(0);
+    expect(io?.byTarget[0]).toEqual({ toCategory: "сета/трипса", count: 2, dirty: 2 });
+    expect(io?.byTarget[1]).toEqual({ toCategory: "двух пар", count: 9, dirty: 9 });
+    expect(io?.taintReasons.length).toBe(2); // и спаривание борда, и монотон
+  });
+
+  it("карманная пара до сета — ровно 2 аута; на сухом радужном борде они чистые", () => {
+    const io = improvementOuts(["8s", "8d"], ["2h", "7c", "Ks"]);
+    expect(io?.byTarget[0]).toEqual({ toCategory: "сета/трипса", count: 2, dirty: 0 });
+    expect(io?.outsClean).toBe(2); // 2 сет-аута чистые; спаривания борда — грязные
+    expect(io?.byTarget[1]).toEqual({ toCategory: "двух пар", count: 9, dirty: 9 });
+    expect(io?.taintReasons.some((r) => /спаривают борд/.test(r))).toBe(true);
+  });
+
+  it("оверкарты A-Q на низком борде: 6 чистых аутов на пару (спаривание борда играет борд — не в счёт)", () => {
+    const io = improvementOuts(["As", "Qd"], ["2c", "7h", "9s"]);
+    expect(io?.outsRaw).toBe(6); // 3 туза + 3 дамы
+    expect(io?.outsClean).toBe(6);
+    expect(io?.byTarget).toEqual([{ toCategory: "пары", count: 6, dirty: 0 }]);
+    expect(io?.taintReasons.length).toBe(0);
+  });
+
+  it("на ривере аутов нет (карт больше не будет) → null", () => {
+    expect(improvementOuts(["7s", "7d"], ["9c", "Kc", "4c", "2d", "Jh"])).toBeNull();
+  });
+
+  it("инварианты: чистых ≤ всего, сумма разбивки = всего", () => {
+    const io = improvementOuts(["8s", "8d"], ["2h", "7c", "Ks"]);
+    expect(io!.outsClean).toBeLessThanOrEqual(io!.outsRaw);
+    expect(io!.byTarget.reduce((s, t) => s + t.count, 0)).toBe(io!.outsRaw);
   });
 });

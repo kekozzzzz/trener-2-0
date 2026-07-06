@@ -2,7 +2,7 @@ import type { Street, TableAction, TableSnapshot } from "./types";
 import { bigBlindFromSnapshot } from "./big-blind";
 import { boardUpToStreet } from "./table-state";
 import { heroMadeHand } from "./made-hand";
-import { readHeroDraw, drawEquity, type DrawRead } from "./draws";
+import { readHeroDraw, drawEquity, improvementOuts, type DrawRead } from "./draws";
 import { handCode } from "@/config/poker/hand-codes";
 import { preflopChartFact } from "./preflop-chart-fact";
 
@@ -442,6 +442,28 @@ export function renderHandFacts(snapshot: TableSnapshot): string {
   }
   if (snapshot.board.length >= 3 && !drawSeen)
     lines.push("Дро у Hero нет (ни флеш-дро, ни стрит-дро) — на дро ты не попал, не приписывай его.");
+
+  // ВСЕ ауты Hero на улучшение (не только флеш/стрит-дро): любая карта, поднимающая
+  // категорию руки — пара/две пары/сет/фулл и т.д. Перебором (правило 1), чтобы у тренера
+  // ВСЕГДА было честное число, а не выдуманное (баг «сет из 6 аутов» у 77 на монотоне).
+  // Отдельно всего/чистых: грязные ауты усиливают номинально, но обычно оставляют позади.
+  let prevOuts = "";
+  for (const street of ["FLOP", "TURN"] as const) {
+    const b = boardUpToStreet(snapshot.board, street);
+    if (b.length < 3) continue;
+    const io = improvementOuts(snapshot.heroCards, b);
+    if (!io) continue;
+    const parts = io.byTarget.map(
+      (t) => `${t.count} до ${t.toCategory}${t.dirty > 0 ? ` (${t.dirty} грязных)` : ""}`,
+    );
+    const key = `${io.outsRaw}|${io.outsClean}|${parts.join(",")}`;
+    if (key === prevOuts) continue;
+    prevOuts = key;
+    let line = `Ауты Hero на улучшение на ${STREET_RU[street]} (перебор колоды, следующая карта; любое повышение руки): всего ${io.outsRaw}, из них чистых ${io.outsClean}. Разбивка: ${parts.join(", ")}.`;
+    if (io.taintReasons.length > 0)
+      line += ` Грязные ауты ${io.taintReasons.join("; ")} — усиливают руку номинально, но обычно оставляют позади; игроку опирайся на ЧИСТЫЕ, а не на общее число.`;
+    lines.push(line);
+  }
 
   // Готовая рука Hero по улицам — состав комбинации считает парсер (правило 1), чтобы
   // модель не выдумывала «пару, которой нет» и не путала фулл с двумя парами. Показываем
