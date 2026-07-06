@@ -24,13 +24,16 @@ const THREEBET_VALUE: Record<OpenPosition, string[]> = {
 // Ревизия 2026-07-06 (согласована логика с правкой Артёма по защите BB от 04.07:
 // «3-бет TT против позднего опена — нормальная линия, не спью»): против поздних
 // позиций в весовой слой добавлены TT (CO/BTN/SB), 99 и AJs/KQs (BTN).
+// Ревизия 2026-07-06 (правка Артёма: «3-бет KQs только с баттона — бред»): KQs
+// добавлен весом на всех позициях. Заодно закрыты инверсии «оффсьютная в чарте, а
+// одномастная той же руки — нет» (QJo без QJs и т.п.) и дыры вида KTo без KJo/ATo.
 const THREEBET_BLUFF: Record<OpenPosition, string[]> = {
-  UTG: ["A5s", "A4s", "KJs"],
-  MP: ["A5s", "A4s", "KJs"],
-  HJ: ["JJ", "A5s", "A4s", "A3s", "KJs", "AJo", "KQo"],
-  CO: ["TT", "AJs", "A5s", "A4s", "A3s", "KJs", "KQo", "AJo", "KTo", "76s", "65s"],
-  BTN: ["TT", "99", "AJs", "KQs", "A5s", "A4s", "A3s", "A2s", "K9s+", "KJo", "QJo", "ATo", "KTo", "QTo", "JTo"],
-  SB: ["JJ", "TT", "A5s", "A4s", "A3s", "KJs", "QJs", "JTs"],
+  UTG: ["A5s", "A4s", "KQs", "KJs"],
+  MP: ["A5s", "A4s", "KQs", "KJs"],
+  HJ: ["JJ", "AJs", "A5s", "A4s", "A3s", "KQs", "KJs", "AQo", "AJo", "KQo"],
+  CO: ["TT", "AJs", "ATs", "A5s", "A4s", "A3s", "KQs", "KJs", "KTs", "KQo", "KJo", "AJo", "ATo", "KTo", "76s", "65s"],
+  BTN: ["TT", "99", "AJs", "ATs", "A9s", "A5s", "A4s", "A3s", "A2s", "K9s+", "QJs", "QTs", "JTs", "KQo", "KJo", "QJo", "AJo", "ATo", "KTo", "QTo", "JTo"],
+  SB: ["JJ", "TT", "A5s", "A4s", "A3s", "KQs", "KJs", "QJs", "JTs"],
 };
 
 const POSITIONS: OpenPosition[] = ["UTG", "MP", "HJ", "CO", "BTN", "SB"];
