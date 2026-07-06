@@ -3,6 +3,7 @@
 // ответа модели проверяется одинаково, чем бы её ни обслуживали.
 
 import type {
+  CoachNotesResult,
   ChatReplyResult,
   HandAnalysisRequest,
   HandAnalysisResult,
@@ -156,6 +157,25 @@ export function validateTournamentSummary(result: Partial<TournamentSummaryResul
     throw new Error("LLM вернул обзор турнира без overview");
   }
   return { overview: cleanCoachText(result.overview) };
+}
+
+// Дневник тренера: массив заметок с необязательной ссылкой на прежнюю (basedOn ≥ 1).
+// Кривые элементы отбрасываем поштучно (не валим весь ответ), тексты чистим словарём.
+export function validateCoachNotes(result: { notes?: unknown }): CoachNotesResult {
+  if (!Array.isArray(result.notes)) {
+    throw new Error("LLM вернул дневник без массива notes");
+  }
+  const notes: CoachNotesResult["notes"] = [];
+  for (const raw of result.notes) {
+    const item = raw as { text?: unknown; basedOn?: unknown };
+    if (typeof item?.text !== "string" || item.text.trim().length === 0) continue;
+    const basedOn =
+      typeof item.basedOn === "number" && Number.isInteger(item.basedOn) && item.basedOn >= 1
+        ? item.basedOn
+        : undefined;
+    notes.push({ text: cleanCoachText(item.text), basedOn });
+  }
+  return { notes };
 }
 
 export function validatePlayerCharacteristic(

@@ -53,6 +53,7 @@ const card: PlayerCard = {
   leaks: [
     { label: "лимпы (вход в банк коллом вместо рейза или фолда)", priorTotal: 7, daysWithLeak: 4, windowDays: 9, improvedLastDay: false },
   ],
+  notes: [{ date: "2026-06-28", text: "Договорились фолдить колл 3-бета вне позиции." }],
 };
 
 describe("renderPlayerCard", () => {
@@ -90,7 +91,7 @@ const tournament: TournamentContext = {
   handsCount: 100,
   vpipPercent: 20,
   resultBuyins: -1,
-  styleDiagnosis: "TIGHT_PASSIVE",
+  styleDiagnosis: "TIGHT",
 };
 
 describe("карточка во всех 4 ролях", () => {

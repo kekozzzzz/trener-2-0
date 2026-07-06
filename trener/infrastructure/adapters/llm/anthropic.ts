@@ -15,8 +15,9 @@ import { buildVerdictPrompt, buildVerdictSystemPrompt } from "@/config/prompts/v
 import { buildChatReplyPrompt, buildChatReplySystemPrompt } from "@/config/prompts/chat-reply";
 import { buildTournamentSummaryPrompt, buildTournamentSummarySystemPrompt } from "@/config/prompts/tournament-summary";
 import { buildPlayerCharacteristicPrompt, buildPlayerCharacteristicSystemPrompt } from "@/config/prompts/player-characteristic";
+import { buildCoachNotesPrompt, buildCoachNotesSystemPrompt } from "@/config/prompts/coach-notes";
 import { recordLlmUsage } from "@/features/usage/llm-usage";
-import {
+import { validateCoachNotes,
   extractJson,
   validateChatReply,
   validateHandAnalysis,
@@ -26,6 +27,8 @@ import {
   validateVerdict,
 } from "./parse";
 import type {
+  CoachNotesRequest,
+  CoachNotesResult,
   ChatReplyRequest,
   ChatReplyResult,
   HandAnalysisRequest,
@@ -185,6 +188,14 @@ export const anthropicLlmAdapter: LlmPort = {
       playerId: meta?.playerId,
     });
     return validateTournamentSummary(parsed as Partial<TournamentSummaryResult>);
+  },
+
+  async generateCoachNotes(request: CoachNotesRequest, meta?: LlmCallMeta): Promise<CoachNotesResult> {
+    const parsed = await callClaude(buildCoachNotesSystemPrompt(request.maxNotes), buildCoachNotesPrompt(request), {
+      step: "COACH_NOTES",
+      playerId: meta?.playerId,
+    });
+    return validateCoachNotes(parsed as { notes?: unknown });
   },
 
   async generatePlayerCharacteristic(

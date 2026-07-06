@@ -26,6 +26,28 @@ export type PlayerCard = {
   characteristic: string | null; // сводная характеристика игры (если уже собрана)
   tournamentsCounted: number; // на скольких турнирах основана характеристика
   leaks: PlayerCardLeak[]; // активные системные ошибки окна (может быть пусто)
+  // Заметки из дневника тренера (фаза 2): качественные наблюдения с датами;
+  // протухшие (90 дней / 1000 турниров, config/memory.ts) уже отрезаны кодом.
+  notes: { date: string; text: string }[];
+};
+
+// Вход обновления «дневника тренера» после пройденного диалога (фаза 2 плана
+// 2026-07-06-память-тренера-об-игроке). Даты заметок и протухание — на стороне кода
+// (features/memory/coach-notes.ts), модель работает только с текстами и номерами.
+export type CoachNotesRequest = {
+  existingNotes: { date: string; text: string }[]; // живые заметки (нумерует промпт, с 1)
+  cards: string[]; // карманные карты Hero в разобранной раздаче
+  chipResult: number;
+  rounds: DialogueRoundSummary[]; // весь пройденный диалог
+  verdict: string; // итоговый вердикт разбора
+  leaks: PlayerCardLeak[]; // системные лики — контекст, чтобы модель их НЕ дублировала
+  maxNotes: number; // потолок заметок (config/memory.ts COACH_NOTES_MAX)
+};
+
+export type CoachNotesResult = {
+  // basedOn — номер прежней заметки (нумерация промпта, с 1), если наблюдение
+  // продолжает её: код сохранит дату первого появления. Без basedOn — новая заметка.
+  notes: { text: string; basedOn?: number | null }[];
 };
 
 // Вход адаптера — обезличенный снимок стола (Hero/Player N, без никнеймов) +
@@ -319,6 +341,7 @@ export interface LlmPort {
   generateChatReply(request: ChatReplyRequest, meta?: LlmCallMeta): Promise<ChatReplyResult>;
   generateTournamentSummary(request: TournamentSummaryRequest, meta?: LlmCallMeta): Promise<TournamentSummaryResult>;
   generatePlayerCharacteristic(request: PlayerCharacteristicRequest, meta?: LlmCallMeta): Promise<PlayerCharacteristicResult>;
+  generateCoachNotes(request: CoachNotesRequest, meta?: LlmCallMeta): Promise<CoachNotesResult>;
 
   // Лёгкая проверка доступности Claude для /api/health: GET /v1/models через тот же
   // релей (без расхода токенов) — проверяет именно путь, что ломается (релей, доверие

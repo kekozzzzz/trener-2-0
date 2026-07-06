@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@prisma/client";
 import type { PlayerCard, PlayerCardLeak } from "@/infrastructure/adapters/llm/types";
 import { countLeaks, gameDayKey, leakDynamics, type LeakDynamics, type LeakKind } from "@/features/profile/leak-trend";
+import { pruneCoachNotes, type StoredCoachNotes } from "@/features/memory/coach-notes";
 import { LEAK_WINDOW_DAYS } from "@/config/leaks";
 
 // «Карточка ученика» — что тренер ЗНАЕТ об игроке по всей его базе, для промптов всех
@@ -64,10 +65,18 @@ export async function getPlayerCard(db: PrismaClient, playerId: string, playedAt
   return card;
 }
 
+// Сброс кэша карточек игрока — зовёт шаг дневника после новой заметки, чтобы она
+// попала в карточку следующего разбора сразу, а не после TTL.
+export function invalidatePlayerCardCache(playerId: string): void {
+  for (const key of cache.keys()) {
+    if (key.startsWith(playerId + ":")) cache.delete(key);
+  }
+}
+
 async function buildPlayerCard(db: PrismaClient, playerId: string, currentDay: string): Promise<PlayerCard | null> {
   const profile = await db.playerProfile.findUnique({
     where: { playerId },
-    select: { characteristic: true, tournamentsCounted: true },
+    select: { characteristic: true, tournamentsCounted: true, coachNotes: true },
   });
 
   // Окно ликов — как в features/profile/queries.ts: учтённые турниры не позже
@@ -113,12 +122,21 @@ async function buildPlayerCard(db: PrismaClient, playerId: string, currentDay: s
     leaks = buildCardLeaks(leakDynamics(priorCounts, currentCounts), priorDays.length);
   }
 
+  // Заметки дневника тренера (фаза 2): протухшие (90 дней / 1000 турниров) отрезает
+  // код; «сегодня» для возраста — день разбираемого турнира.
+  const stored = (profile?.coachNotes ?? null) as StoredCoachNotes | null;
+  const notes = pruneCoachNotes(stored?.notes ?? [], currentDay, profile?.tournamentsCounted ?? 0).map((n) => ({
+    date: n.date,
+    text: n.text,
+  }));
+
   const characteristic = profile?.characteristic ?? null;
-  if (!characteristic && leaks.length === 0) return null; // тренеру нечего вспомнить
+  if (!characteristic && leaks.length === 0 && notes.length === 0) return null; // тренеру нечего вспомнить
 
   return {
     characteristic,
     tournamentsCounted: profile?.tournamentsCounted ?? 0,
     leaks,
+    notes,
   };
 }

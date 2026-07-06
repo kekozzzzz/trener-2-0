@@ -3,6 +3,7 @@ import type { TableSnapshot } from "@/parser/types";
 import type { VerdictRequest } from "@/infrastructure/adapters/llm/types";
 import type { Locale } from "@/i18n/config";
 import { getLlmAdapter } from "@/infrastructure/adapters/llm";
+import { enqueue } from "../enqueue";
 import { opponentsForHand } from "./opponents-for-hand";
 import { buildRangeReads } from "./range-facts";
 import { getPlayerCard } from "@/features/memory/player-card";
@@ -103,4 +104,8 @@ export const generateVerdictStep: StepHandler = async (task, db) => {
     where: { handId },
     data: { verdict: result.verdict, state: "VERDICT_SHOWN" },
   });
+
+  // Дневник тренера: занятие завершено (вердикт есть) — тренер записывает наблюдения
+  // об ученике (фоновая задача, приоритет обычный; идемпотентность внутри шага).
+  await enqueue(db, { type: "UPDATE_COACH_NOTES", payload: { handId } });
 };

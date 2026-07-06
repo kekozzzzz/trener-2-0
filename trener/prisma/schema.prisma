@@ -160,6 +160,10 @@ model PlayerProfile {
   avgHandsCount      Decimal?  @map("avg_hands_count") @db.Decimal(8, 2)
   tournamentsCounted Int       @default(0) @map("tournaments_counted")
   characteristic     String?   @map("characteristic") // сводный текст-характеристика игры по всем турнирам; NULL пока не собран. Числа в нём — от парсера (правило 1)
+  // Дневник тренера: качественные заметки об ученике с датами + учтённые диалоги
+  // (план 2026-07-06-память-тренера-об-игроке, фаза 2). Живут ограниченно:
+  // 90 дней / 1000 турниров (config/memory.ts), протухшие отрезает код.
+  coachNotes         Json?     @map("coach_notes")
   recalculatedAt     DateTime? @map("recalculated_at")
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")

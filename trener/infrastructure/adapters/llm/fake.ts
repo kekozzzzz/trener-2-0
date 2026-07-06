@@ -1,4 +1,6 @@
 import type {
+  CoachNotesRequest,
+  CoachNotesResult,
   ChatReplyRequest,
   ChatReplyResult,
   HandAnalysisRequest,
@@ -90,6 +92,17 @@ export const fakeLlmAdapter: LlmPort = {
         : "";
     return {
       overview: `(фейк) Общая картина: стиль ${request.tournament.styleDiagnosis}, VPIP ${request.tournament.vpipPercent}%.${leak} Показательно: ${links}.`,
+    };
+  },
+
+  async generateCoachNotes(request: CoachNotesRequest): Promise<CoachNotesResult> {
+    // Детерминированно: прежние заметки сохраняются (basedOn), плюс одна новая из
+    // вердикта занятия — для тестов шага очереди без сети и расходов.
+    return {
+      notes: [
+        ...request.existingNotes.map((_, i) => ({ text: `(фейк) прежняя заметка ${i + 1}`, basedOn: i + 1 })),
+        { text: `(фейк) вывод занятия: ${request.verdict.slice(0, 60)}` },
+      ].slice(0, request.maxNotes),
     };
   },
 
