@@ -9,7 +9,7 @@
 import type { NextQuestionRequest, PriorSpot } from "@/infrastructure/adapters/llm/types";
 import type { Locale } from "@/i18n/config";
 import { coachFramework, renderTableSnapshot, renderOpponents, renderRangeReads } from "./hand-analysis";
-import { renderPlayerCard } from "./player-card";
+import { renderPlayerCard, renderRepeatedLeak } from "./player-card";
 
 // Языковая строка диалога: на русском — про чистый русский без калек; на английском
 // (locale "en") — про естественный английский без машинного перевода. Остальные
@@ -89,12 +89,13 @@ export function buildDialogueQuestionPrompt(request: NextQuestionRequest): strin
   const opponentsBlock = renderOpponents(request.opponents, locale);
   const rangeBlock = renderRangeReads(request.rangeReads, locale);
   const cardBlock = renderPlayerCard(request.playerCard);
+  const repeatBlock = renderRepeatedLeak(request.repeatedLeak);
 
   return `Контекст турнира: ${tournament.handsCount} раздач, VPIP ${tournament.vpipPercent}%, стиль игрока — ${tournament.styleDiagnosis}.
 
 Результат Hero в этой раздаче — ${chipResult} фишек.
 
-${cardBlock ? `${cardBlock}\n\n` : ""}${opponentsBlock ? `${opponentsBlock}\n\n` : ""}${renderTableSnapshot(request.tableSnapshot, locale)}${priorBlock}${rangeBlock ? `\n\n${rangeBlock}` : ""}
+${cardBlock ? `${cardBlock}\n\n` : ""}${repeatBlock ? `${repeatBlock}\n\n` : ""}${opponentsBlock ? `${opponentsBlock}\n\n` : ""}${renderTableSnapshot(request.tableSnapshot, locale)}${priorBlock}${rangeBlock ? `\n\n${rangeBlock}` : ""}
 
 Ориентир — черновик разбора этой раздачи (игрок его не видит, используй только как ориентир, куда ведёт диалог): «${draftVerdict}»
 

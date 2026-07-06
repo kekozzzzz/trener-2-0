@@ -44,6 +44,7 @@ const cache = new Map<string, { at: number; card: PlayerCard | null }>();
 // Чистая сборка списка ликов карточки из динамики лик-трекера (покрыта тестами).
 export function buildCardLeaks(dynamics: LeakDynamics[], windowDays: number): PlayerCardLeak[] {
   return dynamics.slice(0, CARD_MAX_LEAKS).map((d) => ({
+    kind: d.kind,
     label: LEAK_LABELS[d.kind],
     priorTotal: d.priorTotal,
     daysWithLeak: d.window.filter((n) => n > 0).length,
@@ -63,6 +64,19 @@ export async function getPlayerCard(db: PrismaClient, playerId: string, playedAt
   if (cache.size >= CARD_CACHE_MAX) cache.clear(); // простая защита от разрастания
   cache.set(key, { at: Date.now(), card });
   return card;
+}
+
+// Фаза 3 памяти: детерминированное совпадение ошибки ТЕКУЩЕЙ раздачи (метки
+// hand.spot.marks, их ставит парсер) с системным ликом карточки. Совпало — тренер
+// ОБЯЗАН сослаться (жёсткий блок в промпте), это уже не «инструкция по вкусу».
+// LUCKY_WIN здесь не участвует: доезд — не лик карточки, его ведёт спот-память.
+export function repeatedLeakFor(
+  spot: { marks?: { kind: string }[] } | null | undefined,
+  card: PlayerCard | null,
+): PlayerCardLeak | null {
+  if (!spot?.marks?.length || !card || card.leaks.length === 0) return null;
+  const kinds = new Set(spot.marks.map((m) => m.kind));
+  return card.leaks.find((l) => kinds.has(l.kind)) ?? null;
 }
 
 // Сброс кэша карточек игрока — зовёт шаг дневника после новой заметки, чтобы она

@@ -1,4 +1,4 @@
-import type { PlayerCard } from "@/infrastructure/adapters/llm/types";
+import type { PlayerCard, PlayerCardLeak } from "@/infrastructure/adapters/llm/types";
 
 // Блок «Твой ученик» — память тренера об игроке для промптов всех ролей (разбор,
 // диалог, вердикт, чат). Правило 1: характеристика сформулирована отдельным шагом
@@ -37,4 +37,12 @@ ${parts.join("\n\n")}
 function formatNoteDate(date: string): string {
   const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(date);
   return m ? `${m[2]}.${m[1]}` : date;
+}
+
+// Фаза 3 памяти: жёсткий блок при детерминированном совпадении ошибки текущей раздачи
+// с системным ликом карточки. Это не рекомендация, а обязанность: совпадение уже
+// посчитал код по меткам парсера, тренеру остаётся только сказать об этом игроку.
+export function renderRepeatedLeak(leak: PlayerCardLeak | null | undefined): string {
+  if (!leak) return "";
+  return `СОВПАДЕНИЕ НАШЁЛ ПАРСЕР (не догадка): решение в ЭТОЙ раздаче — то же самое, что системная ошибка игрока из карточки: ${leak.label} — уже ${leak.priorTotal} раз за ${leak.daysWithLeak} из ${leak.windowDays} последних игровых дней, и вот снова. Ты ОБЯЗАН сказать об этом игроку прямо, одной-двумя фразами: назови ошибку и число повторов («это уже ${leak.priorTotal + 1}-й раз за последние дни») и дай понять, что это паттерн, а не случайность. Других чисел не выдумывай.`;
 }

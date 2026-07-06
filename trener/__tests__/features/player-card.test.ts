@@ -8,8 +8,8 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { buildCardLeaks } from "@/features/memory/player-card";
-import { renderPlayerCard } from "@/config/prompts/player-card";
+import { buildCardLeaks, repeatedLeakFor } from "@/features/memory/player-card";
+import { renderPlayerCard, renderRepeatedLeak } from "@/config/prompts/player-card";
 import { buildHandAnalysisPrompt } from "@/config/prompts/hand-analysis";
 import { buildDialogueQuestionPrompt } from "@/config/prompts/dialogue-question";
 import { buildVerdictPrompt } from "@/config/prompts/verdict";
@@ -51,7 +51,7 @@ const card: PlayerCard = {
   characteristic: "Тайтовый игрок, VPIP 19%, переплачивает с дро.",
   tournamentsCounted: 12,
   leaks: [
-    { label: "лимпы (вход в банк коллом вместо рейза или фолда)", priorTotal: 7, daysWithLeak: 4, windowDays: 9, improvedLastDay: false },
+    { kind: "LIMP", label: "лимпы (вход в банк коллом вместо рейза или фолда)", priorTotal: 7, daysWithLeak: 4, windowDays: 9, improvedLastDay: false },
   ],
   notes: [{ date: "2026-06-28", text: "Договорились фолдить колл 3-бета вне позиции." }],
 };
@@ -93,6 +93,36 @@ const tournament: TournamentContext = {
   resultBuyins: -1,
   styleDiagnosis: "TIGHT",
 };
+
+describe("фаза 3 — обязательная ссылка при совпадении", () => {
+  it("совпадение метки раздачи с ликом карточки находится детерминированно", () => {
+    expect(repeatedLeakFor({ marks: [{ kind: "LIMP" }] }, card)?.kind).toBe("LIMP");
+    expect(repeatedLeakFor({ marks: [{ kind: "OPEN_WIDE" }] }, card)).toBeNull();
+    expect(repeatedLeakFor({ marks: [] }, card)).toBeNull();
+    expect(repeatedLeakFor(null, card)).toBeNull();
+    expect(repeatedLeakFor({ marks: [{ kind: "LIMP" }] }, null)).toBeNull();
+  });
+
+  it("жёсткий блок рендерится с числом повторов и обязанностью, промпт его включает", () => {
+    const block = renderRepeatedLeak(card.leaks[0]);
+    expect(block).toContain("СОВПАДЕНИЕ НАШЁЛ ПАРСЕР");
+    expect(block).toContain("ОБЯЗАН");
+    expect(block).toContain("уже 8-й раз");
+    expect(renderRepeatedLeak(null)).toBe("");
+
+    const prompt = buildVerdictPrompt({
+      locale: "ru",
+      history: [{ roundNumber: 1, question: "?", answer: "!" }],
+      draftVerdict: "черновик",
+      chipResult: -1000,
+      tableSnapshot: snapshot,
+      tournament,
+      playerCard: card,
+      repeatedLeak: card.leaks[0],
+    });
+    expect(prompt).toContain("СОВПАДЕНИЕ НАШЁЛ ПАРСЕР");
+  });
+});
 
 describe("карточка во всех 4 ролях", () => {
   it("hand-analysis / dialogue / verdict / chat включают блок при наличии карточки и не включают без неё", () => {

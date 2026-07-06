@@ -9,7 +9,7 @@ import type { StoredSpot } from "@/features/memory/spot-marks";
 import { opponentsForHand } from "./opponents-for-hand";
 import { buildRangeReads } from "./range-facts";
 import { enqueue } from "../enqueue";
-import { getPlayerCard } from "@/features/memory/player-card";
+import { getPlayerCard, repeatedLeakFor } from "@/features/memory/player-card";
 
 type GenerateDialogueQuestionPayload = {
   handId: string;
@@ -87,6 +87,8 @@ export const generateDialogueQuestionStep: StepHandler = async (task, db) => {
   const tableSnapshot = hand.tableData as unknown as TableSnapshot;
   const opponents = await opponentsForHand(db, hand);
 
+  const playerCard = await getPlayerCard(db, tournament.playerId, tournament.playedAt);
+
   const request: NextQuestionRequest = {
     // Язык ответа тренера — язык интерфейса игрока (Player.locale); дефолт ru.
     locale: (tournament.player.locale as Locale) ?? "ru",
@@ -108,7 +110,9 @@ export const generateDialogueQuestionStep: StepHandler = async (task, db) => {
     // (правило 1: эквити/комбо/сверки посчитаны кодом до вызова ИИ).
     rangeReads: buildRangeReads({ history, tableSnapshot, opponents }),
     // Карточка ученика — память тренера об игроке (см. features/memory/player-card).
-    playerCard: await getPlayerCard(db, tournament.playerId, tournament.playedAt),
+    playerCard,
+    // Фаза 3 памяти: детерминированное совпадение ошибки раздачи с ликом карточки.
+    repeatedLeak: repeatedLeakFor(currentFp, playerCard),
   };
 
   const result = await getLlmAdapter().generateNextQuestion(request, { playerId: tournament.playerId });

@@ -15,6 +15,7 @@ export type TournamentContext = {
 // сформулирована отдельным шагом на числах парсера, лики посчитал лик-трекер.
 // Идёт во все роли тренера (разбор, диалог, вердикт, чат) как фоновое знание.
 export type PlayerCardLeak = {
+  kind: string; // вид лика (LeakKind лик-трекера) — для детерминированного совпадения
   label: string; // человеческое имя системной ошибки (рус.)
   priorTotal: number; // сколько раз за окно прошлых игровых дней
   daysWithLeak: number; // в скольких прошлых игровых днях встречалась
@@ -65,6 +66,9 @@ export type HandAnalysisRequest = {
   // показываем (не HUD). Может быть пусто (мало рук на оппонентов). Промпт — отдельно.
   opponents?: OpponentFact[];
   playerCard?: PlayerCard | null; // память тренера об игроке (карточка ученика)
+  // Фаза 3 памяти: ошибка ЭТОЙ раздачи детерминированно совпала с системным ликом
+  // карточки (совпадение нашёл код по меткам парсера) — тренер ОБЯЗАН сказать об этом.
+  repeatedLeak?: PlayerCardLeak | null;
 };
 
 // Состав результата зависит от importanceLevel:
@@ -142,6 +146,7 @@ export type NextQuestionRequest = {
   opponents?: OpponentFact[]; // профили злодеев по рукам ДО этой (см. HandAnalysisRequest.opponents)
   rangeReads?: RangeRead[]; // отмеченные игроком диапазоны + числа парсера против них
   playerCard?: PlayerCard | null; // память тренера об игроке (карточка ученика)
+  repeatedLeak?: PlayerCardLeak | null; // совпадение ошибки раздачи с ликом карточки (фаза 3)
 };
 
 export type NextQuestionResult = {
@@ -169,6 +174,7 @@ export type VerdictRequest = {
   opponents?: OpponentFact[]; // профили злодеев по рукам ДО этой (см. HandAnalysisRequest.opponents)
   rangeReads?: RangeRead[]; // отмеченные игроком диапазоны + числа парсера против них
   playerCard?: PlayerCard | null; // память тренера об игроке (карточка ученика)
+  repeatedLeak?: PlayerCardLeak | null; // совпадение ошибки раздачи с ликом карточки (фаза 3)
 };
 
 export type VerdictResult = {

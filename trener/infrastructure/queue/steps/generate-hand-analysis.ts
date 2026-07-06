@@ -8,7 +8,7 @@ import { getLlmAdapter } from "@/infrastructure/adapters/llm";
 import { applyRangeMarker, applyTableMarker } from "@/config/dialogue";
 import { opponentsForHand } from "./opponents-for-hand";
 import { enqueue } from "../enqueue";
-import { getPlayerCard } from "@/features/memory/player-card";
+import { getPlayerCard, repeatedLeakFor } from "@/features/memory/player-card";
 
 type GenerateHandAnalysisPayload = {
   handId: string;
@@ -40,6 +40,8 @@ export const generateHandAnalysisStep: StepHandler = async (task, db) => {
       );
     }
 
+    const playerCard = await getPlayerCard(db, tournament.playerId, tournament.playedAt);
+
     const request: HandAnalysisRequest = {
       // Язык ответа тренера — язык интерфейса игрока (Player.locale); дефолт ru.
       locale: (tournament.player.locale as Locale) ?? "ru",
@@ -57,7 +59,10 @@ export const generateHandAnalysisStep: StepHandler = async (task, db) => {
       opponents: await opponentsForHand(db, hand),
       // Карточка ученика — память тренера об игроке (характеристика + системные лики
       // окна до дня этого турнира); null, если вспоминать пока нечего.
-      playerCard: await getPlayerCard(db, tournament.playerId, tournament.playedAt),
+      playerCard,
+      // Фаза 3 памяти: ошибка этой раздачи совпала с системным ликом карточки —
+      // совпадение детерминированное (метки парсера), тренер обязан о нём сказать.
+      repeatedLeak: repeatedLeakFor(hand.spot as { marks?: { kind: string }[] } | null, playerCard),
     };
 
     const result = await getLlmAdapter().generateHandAnalysis(request, { playerId: tournament.playerId });
