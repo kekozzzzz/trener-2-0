@@ -177,11 +177,11 @@
   "Landing": {
     "showcaseTitle": "Inside a review",
     "showcaseSubtitle": "These are not mockups - they are real product screens: the same table, the same grid, the same coach.",
-    "showcaseTableCaption": "The table at the decision point: an overpair of kings facing a BTN all-in on the turn - the review starts here",
+    "showcaseTableCaption": "The table at the decision point: pocket fives facing a BTN all-in preflop - the review starts here",
     "showcaseGridCaption": "You answer range questions right on the grid - the parser counts combos and equity itself",
     "showcaseVerdictLabel": "Coach's verdict",
     "showcaseVerdictText": "You are right: calling with 55 is profitable here. If he shoves 20-25% of hands, the fives have about 54% equity at a 44% price. Losing does not make the call a mistake - it was a correct cooler, just bad luck.",
-    "showcaseVerdictNote": "A real verdict from a review - the numbers were computed by the parser, not the AI",
+    "showcaseVerdictNote": "A real verdict from a review",
     "badge": "Socratic AI coach",
     "heroTitle": "Stop losing money on the same mistakes",
     "heroSubtitle": "The same leaks show up tournament after tournament and cost you real money. Whygrid finds them in your own hands and guides you with questions until you see where you spilled chips yourself - instead of memorizing someone else's advice.",

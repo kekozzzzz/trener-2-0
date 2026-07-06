@@ -276,30 +276,33 @@ export default async function HomePage() {
 // (design-system.md §2), ключевые — акцентным лаймом. Некликабельная: без hover-состояния.
 
 // ── Витрина продукта (QA 2026-07-05, п.16): настоящие экраны, а не описания. ───
-// Демо-раздача для стола: реальный спот (оверпара против олл-ина на тёрне),
-// обезличенный. Рендерится ТЕМ ЖЕ компонентом HandTable, что и в разборе.
+// Демо-раздача для стола: реальный спот (карманные пятёрки против олл-ина BTN
+// на префлопе — короткий стек), обезличенный. Числа сходятся с вердиктом витрины:
+// цена колла ~44% (колл 14bb в банк 17.8bb), диапазон пуша 20-25%.
+// Рендерится ТЕМ ЖЕ компонентом HandTable, что и в разборе.
 const DEMO_BB = 250;
 const DEMO_TABLE: TableState = {
   tableSize: 8,
-  buttonSeat: 7,
-  heroCards: ["Ks", "Kh"],
-  board: ["2d", "7s", "Js", "Td"],
-  potSoFar: 96 * DEMO_BB,
+  buttonSeat: 6,
+  heroCards: ["5s", "5h"],
+  board: [],
+  potSoFar: 17.8 * DEMO_BB,
   bigBlind: DEMO_BB,
   smallBlind: 125,
   ante: 35,
   level: 5,
-  street: "TURN",
+  street: "PREFLOP",
   decisionActor: "Player 5",
   playersAfterHero: 0,
   seats: [
-    { label: "Player 1", position: "EARLY", positionName: "UTG+1", startingStack: 79 * DEMO_BB, remainingStack: 79 * DEMO_BB, seatNumber: 1, isHero: false, folded: true, isCurrent: false, streetBet: 0, lastAction: { action: "FOLD" } },
-    { label: "Player 2", position: "EARLY", positionName: "UTG", startingStack: 114 * DEMO_BB, remainingStack: 114 * DEMO_BB, seatNumber: 2, isHero: false, folded: true, isCurrent: false, streetBet: 0, lastAction: { action: "FOLD" } },
-    { label: "Player 3", position: "HJ", positionName: "HJ", startingStack: 72 * DEMO_BB, remainingStack: 72 * DEMO_BB, seatNumber: 3, isHero: false, folded: true, isCurrent: false, streetBet: 0, lastAction: { action: "FOLD" } },
-    { label: "Hero", position: "EARLY", positionName: "LJ", startingStack: 86 * DEMO_BB, remainingStack: 59 * DEMO_BB, seatNumber: 4, isHero: true, folded: false, isCurrent: false, streetBet: 0, lastAction: null },
-    { label: "Player 4", position: "CO", positionName: "CO", startingStack: 69 * DEMO_BB, remainingStack: 69 * DEMO_BB, seatNumber: 5, isHero: false, folded: true, isCurrent: false, streetBet: 0, lastAction: { action: "FOLD" } },
-    { label: "Player 5", position: "BTN", positionName: "BTN", startingStack: 47 * DEMO_BB, remainingStack: 0, seatNumber: 7, isHero: false, folded: false, isCurrent: true, streetBet: 35 * DEMO_BB, lastAction: { action: "ALL_IN", amount: 35 * DEMO_BB } },
-    { label: "Player 6", position: "SB", positionName: "SB", startingStack: 208 * DEMO_BB, remainingStack: 207 * DEMO_BB, seatNumber: 8, isHero: false, folded: true, isCurrent: false, streetBet: 0, lastAction: { action: "FOLD" } },
+    { label: "Player 1", position: "EARLY", positionName: "UTG", startingStack: 60 * DEMO_BB, remainingStack: 60 * DEMO_BB, seatNumber: 1, isHero: false, folded: true, isCurrent: false, streetBet: 0, lastAction: { action: "FOLD" } },
+    { label: "Player 2", position: "EARLY", positionName: "UTG+1", startingStack: 88 * DEMO_BB, remainingStack: 88 * DEMO_BB, seatNumber: 2, isHero: false, folded: true, isCurrent: false, streetBet: 0, lastAction: { action: "FOLD" } },
+    { label: "Player 3", position: "EARLY", positionName: "LJ", startingStack: 41 * DEMO_BB, remainingStack: 41 * DEMO_BB, seatNumber: 3, isHero: false, folded: true, isCurrent: false, streetBet: 0, lastAction: { action: "FOLD" } },
+    { label: "Player 4", position: "HJ", positionName: "HJ", startingStack: 25 * DEMO_BB, remainingStack: 25 * DEMO_BB, seatNumber: 4, isHero: false, folded: true, isCurrent: false, streetBet: 0, lastAction: { action: "FOLD" } },
+    { label: "Player 7", position: "CO", positionName: "CO", startingStack: 52 * DEMO_BB, remainingStack: 52 * DEMO_BB, seatNumber: 5, isHero: false, folded: true, isCurrent: false, streetBet: 0, lastAction: { action: "FOLD" } },
+    { label: "Player 5", position: "BTN", positionName: "BTN", startingStack: 15 * DEMO_BB, remainingStack: 0, seatNumber: 6, isHero: false, folded: false, isCurrent: true, streetBet: 15 * DEMO_BB, lastAction: { action: "ALL_IN", amount: 15 * DEMO_BB } },
+    { label: "Player 6", position: "SB", positionName: "SB", startingStack: 33 * DEMO_BB, remainingStack: 33 * DEMO_BB, seatNumber: 7, isHero: false, folded: true, isCurrent: false, streetBet: 0, lastAction: { action: "FOLD" } },
+    { label: "Hero", position: "BB", positionName: "BB", startingStack: 34 * DEMO_BB, remainingStack: 33 * DEMO_BB, seatNumber: 8, isHero: true, folded: false, isCurrent: false, streetBet: 1 * DEMO_BB, lastAction: null },
   ],
 };
 
@@ -348,7 +351,7 @@ async function ProductShowcase() {
           <p className="text-body text-muted-foreground">{t("showcaseSubtitle")}</p>
         </div>
 
-        <div className="mt-12">
+        <div className="mx-auto mt-12 max-w-2xl">
           <HandTable state={DEMO_TABLE} nick={null} />
           <p className="mt-3 font-mono text-label uppercase tracking-label text-muted-foreground">
             {t("showcaseTableCaption")}
