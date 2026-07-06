@@ -8,6 +8,7 @@ import { getLlmAdapter } from "@/infrastructure/adapters/llm";
 import { applyRangeMarker, applyTableMarker } from "@/config/dialogue";
 import { opponentsForHand } from "./opponents-for-hand";
 import { enqueue } from "../enqueue";
+import { getPlayerCard } from "@/features/memory/player-card";
 
 type GenerateHandAnalysisPayload = {
   handId: string;
@@ -54,6 +55,9 @@ export const generateHandAnalysisStep: StepHandler = async (task, db) => {
       // Профиль злодеев ЭТОЙ раздачи — по рукам турнира ДО неё (что игрок мог знать
       // к решению). Тот же хелпер, что у диалога/вердикта/чата.
       opponents: await opponentsForHand(db, hand),
+      // Карточка ученика — память тренера об игроке (характеристика + системные лики
+      // окна до дня этого турнира); null, если вспоминать пока нечего.
+      playerCard: await getPlayerCard(db, tournament.playerId, tournament.playedAt),
     };
 
     const result = await getLlmAdapter().generateHandAnalysis(request, { playerId: tournament.playerId });

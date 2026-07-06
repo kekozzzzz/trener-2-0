@@ -10,6 +10,24 @@ export type TournamentContext = {
   styleDiagnosis: PlayerStyle;
 };
 
+// «Карточка ученика» — память тренера об игроке по всей его базе (план
+// 2026-07-06-память-тренера-об-игроке, фаза 1). Правило 1: характеристика уже
+// сформулирована отдельным шагом на числах парсера, лики посчитал лик-трекер.
+// Идёт во все роли тренера (разбор, диалог, вердикт, чат) как фоновое знание.
+export type PlayerCardLeak = {
+  label: string; // человеческое имя системной ошибки (рус.)
+  priorTotal: number; // сколько раз за окно прошлых игровых дней
+  daysWithLeak: number; // в скольких прошлых игровых днях встречалась
+  windowDays: number; // сколько прошлых игровых дней в окне
+  improvedLastDay: boolean; // в день разбираемого турнира — ни разу (прогресс)
+};
+
+export type PlayerCard = {
+  characteristic: string | null; // сводная характеристика игры (если уже собрана)
+  tournamentsCounted: number; // на скольких турнирах основана характеристика
+  leaks: PlayerCardLeak[]; // активные системные ошибки окна (может быть пусто)
+};
+
 // Вход адаптера — обезличенный снимок стола (Hero/Player N, без никнеймов) +
 // уже посчитанные метрики раздачи и турнира (правило 1 — LLM не вычисляет числа).
 export type HandAnalysisRequest = {
@@ -24,6 +42,7 @@ export type HandAnalysisRequest = {
   // (чем рыбнее, тем шире диапазон). Правило 1: типы посчитал парсер. Тип игроку НЕ
   // показываем (не HUD). Может быть пусто (мало рук на оппонентов). Промпт — отдельно.
   opponents?: OpponentFact[];
+  playerCard?: PlayerCard | null; // память тренера об игроке (карточка ученика)
 };
 
 // Состав результата зависит от importanceLevel:
@@ -100,6 +119,7 @@ export type NextQuestionRequest = {
   priorSpots?: PriorSpot[]; // похожие прошлые раздачи игрока (память) — опционально
   opponents?: OpponentFact[]; // профили злодеев по рукам ДО этой (см. HandAnalysisRequest.opponents)
   rangeReads?: RangeRead[]; // отмеченные игроком диапазоны + числа парсера против них
+  playerCard?: PlayerCard | null; // память тренера об игроке (карточка ученика)
 };
 
 export type NextQuestionResult = {
@@ -126,6 +146,7 @@ export type VerdictRequest = {
   tournament: TournamentContext;
   opponents?: OpponentFact[]; // профили злодеев по рукам ДО этой (см. HandAnalysisRequest.opponents)
   rangeReads?: RangeRead[]; // отмеченные игроком диапазоны + числа парсера против них
+  playerCard?: PlayerCard | null; // память тренера об игроке (карточка ученика)
 };
 
 export type VerdictResult = {
@@ -150,6 +171,7 @@ export type ChatReplyRequest = {
   tableSnapshot: TableSnapshot;
   tournament: TournamentContext;
   opponents?: OpponentFact[]; // профили злодеев по рукам ДО этой (см. HandAnalysisRequest.opponents)
+  playerCard?: PlayerCard | null; // память тренера об игроке (карточка ученика)
 };
 
 export type ChatReplyResult = {

@@ -13,6 +13,7 @@
 import type { ChatReplyRequest, ChatMessageSummary } from "@/infrastructure/adapters/llm/types";
 import type { Locale } from "@/i18n/config";
 import { coachFramework, renderTableSnapshot, renderOpponents } from "./hand-analysis";
+import { renderPlayerCard } from "./player-card";
 
 // Системный промпт чата под язык игрока: роль и «## Как отвечать в чате» — русские
 // (внутренние инструкции), язык ответа задаёт coachFramework(locale).
@@ -39,12 +40,13 @@ function renderHistory(history: ChatMessageSummary[]): string {
 export function buildChatReplyPrompt(request: ChatReplyRequest): string {
   const { tournament, chipResult, history, analysisSummary, locale } = request;
   const opponentsBlock = renderOpponents(request.opponents, locale);
+  const cardBlock = renderPlayerCard(request.playerCard);
 
   return `Контекст турнира: ${tournament.handsCount} раздач, VPIP ${tournament.vpipPercent}%, стиль игрока — ${tournament.styleDiagnosis}.
 
 Результат Hero в этой раздаче — ${chipResult} фишек.
 
-${opponentsBlock ? `${opponentsBlock}\n\n` : ""}${renderTableSnapshot(request.tableSnapshot, locale)}
+${cardBlock ? `${cardBlock}\n\n` : ""}${opponentsBlock ? `${opponentsBlock}\n\n` : ""}${renderTableSnapshot(request.tableSnapshot, locale)}
 
 Готовый разбор этой раздачи:
 ${analysisSummary}

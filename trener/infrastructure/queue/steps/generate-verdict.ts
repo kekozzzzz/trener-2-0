@@ -5,6 +5,7 @@ import type { Locale } from "@/i18n/config";
 import { getLlmAdapter } from "@/infrastructure/adapters/llm";
 import { opponentsForHand } from "./opponents-for-hand";
 import { buildRangeReads } from "./range-facts";
+import { getPlayerCard } from "@/features/memory/player-card";
 
 type GenerateVerdictPayload = {
   handId: string;
@@ -92,6 +93,8 @@ export const generateVerdictStep: StepHandler = async (task, db) => {
     // Диапазоны, отмеченные игроком на сетке, + точные числа парсера против них
     // (правило 1: эквити/комбо/сверки посчитаны кодом до вызова ИИ).
     rangeReads: buildRangeReads({ history, tableSnapshot, opponents }),
+    // Карточка ученика — память тренера об игроке (см. features/memory/player-card).
+    playerCard: await getPlayerCard(db, tournament.playerId, tournament.playedAt),
   };
 
   const result = await getLlmAdapter().generateVerdict(request, { playerId: tournament.playerId });

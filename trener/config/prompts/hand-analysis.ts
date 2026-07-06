@@ -11,6 +11,7 @@ import { renderHandFacts } from "@/parser/facts";
 import { bigBlindFromSnapshot } from "@/parser/big-blind";
 import type { HandAnalysisRequest, RangeRead } from "@/infrastructure/adapters/llm/types";
 import type { Locale } from "@/i18n/config";
+import { renderPlayerCard } from "./player-card";
 
 // Общий «мозг» тренера — рамка разбора, тон и язык. Делится со всеми ролями
 // (разбор, диалог, вердикт, чат), чтобы голос и принципы тренера были едиными.
@@ -409,12 +410,13 @@ function outputSchemaFor(request: HandAnalysisRequest): string {
 export function buildHandAnalysisPrompt(request: HandAnalysisRequest): string {
   const { tournament, importanceLevel, chipResult, locale } = request;
   const opponentsBlock = renderOpponents(request.opponents, locale);
+  const cardBlock = renderPlayerCard(request.playerCard);
 
   return `Контекст турнира: ${tournament.handsCount} раздач, VPIP ${tournament.vpipPercent}%, стиль игрока — ${tournament.styleDiagnosis}.
 
 Раздача отмечена парсером как ${importanceLevel}, результат Hero в этой раздаче — ${chipResult} фишек.
 
-${opponentsBlock ? `${opponentsBlock}\n\n` : ""}${renderTableSnapshot(request.tableSnapshot, locale)}
+${cardBlock ? `${cardBlock}\n\n` : ""}${opponentsBlock ? `${opponentsBlock}\n\n` : ""}${renderTableSnapshot(request.tableSnapshot, locale)}
 
 Верни JSON строго такого вида:
 ${outputSchemaFor(request)}`;

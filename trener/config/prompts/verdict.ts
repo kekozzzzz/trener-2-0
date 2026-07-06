@@ -8,6 +8,7 @@
 import type { VerdictRequest, DialogueRoundSummary } from "@/infrastructure/adapters/llm/types";
 import type { Locale } from "@/i18n/config";
 import { coachFramework, renderTableSnapshot, renderOpponents, renderRangeReads } from "./hand-analysis";
+import { renderPlayerCard } from "./player-card";
 
 // Системный промпт вердикта под язык игрока: роль и «## Как собрать вердикт» — русские
 // (внутренние инструкции), язык ответа задаёт coachFramework(locale).
@@ -43,12 +44,13 @@ export function buildVerdictPrompt(request: VerdictRequest): string {
   const { tournament, chipResult, history, draftVerdict, locale } = request;
   const opponentsBlock = renderOpponents(request.opponents, locale);
   const rangeBlock = renderRangeReads(request.rangeReads, locale);
+  const cardBlock = renderPlayerCard(request.playerCard);
 
   return `Контекст турнира: ${tournament.handsCount} раздач, VPIP ${tournament.vpipPercent}%, стиль игрока — ${tournament.styleDiagnosis}.
 
 Результат Hero в этой раздаче — ${chipResult} фишек.
 
-${opponentsBlock ? `${opponentsBlock}\n\n` : ""}${renderTableSnapshot(request.tableSnapshot, locale)}${rangeBlock ? `\n\n${rangeBlock}` : ""}
+${cardBlock ? `${cardBlock}\n\n` : ""}${opponentsBlock ? `${opponentsBlock}\n\n` : ""}${renderTableSnapshot(request.tableSnapshot, locale)}${rangeBlock ? `\n\n${rangeBlock}` : ""}
 
 История диалога по этой раздаче:
 ${renderHistory(history)}

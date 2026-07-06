@@ -9,6 +9,7 @@ import type { StoredSpot } from "@/features/memory/spot-marks";
 import { opponentsForHand } from "./opponents-for-hand";
 import { buildRangeReads } from "./range-facts";
 import { enqueue } from "../enqueue";
+import { getPlayerCard } from "@/features/memory/player-card";
 
 type GenerateDialogueQuestionPayload = {
   handId: string;
@@ -106,6 +107,8 @@ export const generateDialogueQuestionStep: StepHandler = async (task, db) => {
     // Диапазоны, отмеченные игроком на сетке, + точные числа парсера против них
     // (правило 1: эквити/комбо/сверки посчитаны кодом до вызова ИИ).
     rangeReads: buildRangeReads({ history, tableSnapshot, opponents }),
+    // Карточка ученика — память тренера об игроке (см. features/memory/player-card).
+    playerCard: await getPlayerCard(db, tournament.playerId, tournament.playedAt),
   };
 
   const result = await getLlmAdapter().generateNextQuestion(request, { playerId: tournament.playerId });
