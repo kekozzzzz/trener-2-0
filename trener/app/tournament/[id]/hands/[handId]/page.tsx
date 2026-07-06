@@ -14,7 +14,8 @@ import { AnswerForm } from "./answer-form";
 import { RangeAnswerForm } from "./range-answer-form";
 import { splitMarkers } from "@/config/dialogue";
 import { HandTable } from "@/components/poker/hand-table";
-import { tableStateUpTo, lastActionIndex, tableSignature } from "@/parser/table-state";
+import { ScaleToFit } from "@/components/scale-to-fit";
+import { tableStateUpTo, lastActionIndex, tableSignature, type TableState } from "@/parser/table-state";
 import { WaitClient } from "./wait-client";
 import { ChatThread } from "./chat-thread";
 import { ChatForm } from "./chat-form";
@@ -23,6 +24,18 @@ import { MarkViewed } from "./mark-viewed";
 import { ScrollToLatest } from "./scroll-to-latest";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+// Стол в разборе: вписан в колонку целиком, без горизонтальной прокрутки.
+// Плашки мест торчат за край сукна (~52px), поэтому обычный режим со скроллом
+// давал бегунок на любой ширине колонки < ~1040px. Режим fit + ScaleToFit
+// масштабирует стол под ширину (на узком экране уменьшается, не прокручивается).
+function FitHandTable({ state, nick }: { state: TableState; nick: string | null }) {
+  return (
+    <ScaleToFit baseWidth={960}>
+      <HandTable state={state} nick={nick} fit />
+    </ScaleToFit>
+  );
+}
 
 // Заголовок вкладки (QA 2026-07-05, п.10). Локаль — из next-intl.
 export async function generateMetadata() {
@@ -204,7 +217,7 @@ export default async function HandDialoguePage({
 
         {showFallbackTable && (
           <div className="mt-8">
-            <HandTable state={tableStateUpTo(snapshot, lastActionIndex(snapshot))} nick={nick} />
+            <FitHandTable state={tableStateUpTo(snapshot, lastActionIndex(snapshot))} nick={nick} />
           </div>
         )}
 
@@ -219,7 +232,7 @@ export default async function HandDialoguePage({
                     {t("questionLabel", { number: round.roundNumber })}
                   </p>
                   {tableActionIndex !== null && showTableForRound.get(round.roundNumber) && (
-                    <HandTable state={tableStateUpTo(snapshot, tableActionIndex)} nick={nick} />
+                    <FitHandTable state={tableStateUpTo(snapshot, tableActionIndex)} nick={nick} />
                   )}
                   <p className="text-body text-foreground">{personalizeHero(text, nick)}</p>
                   <div className="border border-border bg-card p-4">
@@ -243,7 +256,7 @@ export default async function HandDialoguePage({
                     {t("questionLabel", { number: openRound.roundNumber })}
                   </p>
                   {tableActionIndex !== null && showTableForRound.get(openRound.roundNumber) && (
-                    <HandTable state={tableStateUpTo(snapshot, tableActionIndex)} nick={nick} />
+                    <FitHandTable state={tableStateUpTo(snapshot, tableActionIndex)} nick={nick} />
                   )}
                   <p className="text-h3 text-foreground">{personalizeHero(text, nick)}</p>
                   {isRange ? (
