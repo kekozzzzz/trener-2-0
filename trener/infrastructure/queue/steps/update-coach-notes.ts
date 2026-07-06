@@ -6,6 +6,7 @@ import { getPlayerCard, invalidatePlayerCardCache } from "@/features/memory/play
 import { mergeCoachNotes, pruneCoachNotes, type StoredCoachNotes } from "@/features/memory/coach-notes";
 import { gameDayKey } from "@/features/profile/leak-trend";
 import { COACH_NOTES_MAX, COACH_NOTES_SEEN_DIALOGUES } from "@/config/memory";
+import { safeNotifyAdmin } from "@/infrastructure/adapters/notify";
 
 type UpdateCoachNotesPayload = {
   handId: string; // диалог ищем по раздаче (dialogue.handId уникален)
@@ -70,6 +71,15 @@ export const updateCoachNotesStep: StepHandler = async (task, db) => {
   const result = await getLlmAdapter().generateCoachNotes(request, { playerId });
 
   const notes = mergeCoachNotes(existing, result, today, counted);
+
+  // Сигнал тесноты дневника (вопрос Артёма 2026-07-06 «как узнаем, что тренер
+  // забывает?»): модель хотела сохранить больше заметок, чем влезает, — код обрезал.
+  // Владельцу уходит пинг в Telegram; станет частым — поднимем COACH_NOTES_MAX.
+  if (result.notes.length > COACH_NOTES_MAX) {
+    void safeNotifyAdmin(
+      `Дневник тренера упёрся в потолок: модель предложила ${result.notes.length} заметок при лимите ${COACH_NOTES_MAX} (игрок ${playerId}). Лишние обрезаны кодом — если такие сигналы пойдут часто, стоит поднять COACH_NOTES_MAX в config/memory.ts.`,
+    );
+  }
   const seenDialogues = [...(stored?.seenDialogues ?? []), dialogue.id].slice(-COACH_NOTES_SEEN_DIALOGUES);
   const coachNotes: StoredCoachNotes = { notes, seenDialogues };
 
