@@ -452,7 +452,9 @@
       "chico": "If some file isn't recognized - let us know and we'll fix it."
     },
     "paths": {
-      "pokerstars": ["The path is shown in \"Where To Save\" in the same settings"],
+      "pokerstars": [
+        "The path is shown in \"Where To Save\" in the same settings"
+      ],
       "winamax": [
         "Documents\\Winamax Poker\\accounts\\[your nickname]\\history",
         "new client: AppData\\Roaming\\winamax\\documents\\accounts\\[your nickname]\\history"
@@ -461,9 +463,15 @@
         "Documents\\888poker\\HandHistory",
         "sometimes: AppData\\Roaming\\PacificPoker\\HandHistory"
       ],
-      "acr": ["default: C:\\AmericasCardroom\\handHistory"],
-      "ipoker": ["AppData\\Local\\[client name]\\data\\[your nickname]\\History\\Data"],
-      "chico": ["the folder you set in the history settings"]
+      "acr": [
+        "default: C:\\AmericasCardroom\\handHistory"
+      ],
+      "ipoker": [
+        "AppData\\Local\\[client name]\\data\\[your nickname]\\History\\Data"
+      ],
+      "chico": [
+        "the folder you set in the history settings"
+      ]
     },
     "steps": {
       "ggpoker": [
@@ -780,7 +788,7 @@
     "groupLate": "Late (HJ-SB)",
     "groupEarlyOur": "Early (UTG/MP)",
     "groupLateOur": "Late (HJ-BTN)",
-    "legendBorder": "Tolerance border - not a mistake, not a recommendation",
+    "legendBorder": "Borderline: not a mistake, but not a recommendation - the coach won't flag these",
     "legendFold": "Fold",
     "title": "Charts",
     "intro": "The reference ranges your coach judges your play against. This is the baseline; how you actually open is shown in \"Your charts\" on \"My tournaments\".",
@@ -793,7 +801,6 @@
     "cell_OUT": "not opened",
     "legendAlways": "Always open - the core of the range",
     "legendSometimes": "Sometimes, depending on the spot (roughly half the time)",
-    "legendBorder": "Borderline: not a mistake, but not a recommendation - the coach won't flag these",
     "legendOut": "Not opened",
     "disclaimer": "This is not GTO solver output - these are your coach's working ranges for micro-stakes tournaments. The core matches solver ranges; in early positions our ranges are softer than the solver's - the coach only punishes clearly loose opens, not borderline hands. Want to play tighter - stick to the solid lime zone.",
     "depthNote": "Baseline for stacks of 20 big blinds and deeper: shorter stacks are push-fold territory. Deeper than 60 blinds the edges can widen slightly.",
@@ -839,7 +846,10 @@
     "isoLegendIso": "Isolate with a raise",
     "isoLegendOverlimp": "Small pair: overlimp - isolating with it counts as a mistake",
     "isoLegendOut": "Fold",
-    "isoDisclaimer": "Isolation is almost the opening range, but slightly tighter: small pairs 22-66 are better off just limping along (set-mining cheaply), and the junky bottom folds. Against several limpers or with a big sizing isolate even tighter."
+    "isoDisclaimer": "Isolation is almost the opening range, but slightly tighter: small pairs 22-66 are better off just limping along (set-mining cheaply), and the junky bottom folds. Against several limpers or with a big sizing isolate even tighter.",
+    "ctaTitle": "And how do you open?",
+    "ctaText": "That's the baseline. Upload your hand histories - the parser will compare your game against these very charts for free and build your personal charts: where you're wider than the norm and where you're tighter. No subscription needed.",
+    "ctaButton": "Upload your hands"
   },
   "PlayerCharts": {
     "hide": "Hide charts",

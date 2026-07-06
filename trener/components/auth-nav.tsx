@@ -17,6 +17,10 @@ export async function AuthNav() {
         <Link href="/pricing" className="text-muted-foreground transition-colors hover:text-foreground">
           {t("pricing")}
         </Link>
+        {/* Чарты публичные (решение Артёма 2026-07-06) — гость видит их из шапки. */}
+        <Link href="/charts" className="text-muted-foreground transition-colors hover:text-foreground">
+          {t("charts")}
+        </Link>
         {/* Обе двери ведут на /enter — вход по ссылке первым; пароль и классическая
             регистрация остаются доступны по ссылкам с самой формы. */}
         <Link href="/enter" className="text-muted-foreground transition-colors hover:text-foreground">

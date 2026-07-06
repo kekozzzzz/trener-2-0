@@ -1,14 +1,26 @@
-import { noindex } from "@/lib/seo";
+import { indexable } from "@/lib/seo";
 import { getLocale } from "next-intl/server";
 
-// Заголовок вкладки — иначе все страницы назывались как лендинг (QA 2026-07-05, п.10).
+// Страница публичная и открыта поиску (решение Артёма 2026-07-06): чарты гуглятся
+// бесплатно где угодно — мы ничего не теряем, а получаем поисковый трафик по запросам
+// вида «пуш фолд чарт» и дверь в продукт («загрузи руки — сравним с этой же нормой»).
 export async function generateMetadata() {
   const locale = await getLocale();
-  return { ...noindex, title: locale === "en" ? "Charts" : "Чарты" };
+  return {
+    ...indexable,
+    title: locale === "en" ? "MTT Preflop Charts" : "Префлоп-чарты для MTT",
+    description:
+      locale === "en"
+        ? "Reference preflop charts for MTT poker: opening ranges, push-fold, BB defense, 3-bet vs open, resteal, call vs push. Free, no signup required."
+        : "Эталонные префлоп-чарты для покерных турниров: открытия по позициям, пуш-фолд, защита BB, 3-бет против опена, рестил, коллы против пуша. Бесплатно, без регистрации.",
+  };
 }
+import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import { requireSession } from "@/features/auth/session";
+import { getSession } from "@/features/auth/session";
 import { PageHeader } from "@/components/page-header";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { ReferenceChartsPanel } from "@/components/charts/reference-charts-panel";
 import { PushChartPanel } from "@/components/charts/push-chart-panel";
 import { BBDefensePanel } from "@/components/charts/bb-defense-panel";
@@ -27,11 +39,10 @@ import {
 // (зеркала игрока). Нужна заданиям на сессию: «не открывайся шире нормы» честно
 // только когда норму можно посмотреть (план 2026-07-03-задание-на-сессию.md,
 // Фаза 1.5). Учебный материал ВНЕ игры (не realtime-подсказки — GG-безопасно).
-// Доступ: залогиненным, без пейволла (приманка ценности, решение на показе формы).
-// v1 — открытия первым (RFI); дальше по конвейеру: пуш-фолд, защита BB, vs-опен,
-// изоляция (данные собраны, см. memory/план).
+// Доступ: ПУБЛИЧНЫЙ, без логина (решение Артёма 2026-07-06 — бесплатный магнит:
+// чарты у всех бесплатные, наша ценность не в них, а в сравнении с ТВОЕЙ игрой).
 export default async function ChartsPage() {
-  await requireSession();
+  const session = await getSession();
   const t = await getTranslations("ReferenceCharts");
 
   return (
@@ -128,6 +139,19 @@ export default async function ChartsPage() {
           <div className="mt-6">
             <SqueezePanel />
           </div>
+        </div>
+
+        {/* Дверь в продукт: норма выше — а дальше сравнение с СОБСТВЕННОЙ игрой.
+            Загрузка и «Твои чарты» бесплатны (считает парсер, без ИИ) — зазыв честный. */}
+        <div className="mt-16 border-t border-border pt-16">
+          <h2 className="text-h2">{t("ctaTitle")}</h2>
+          <p className="mt-4 max-w-2xl text-body text-muted-foreground">{t("ctaText")}</p>
+          <Link
+            href={session ? "/tournaments" : "/enter"}
+            className={cn(buttonVariants({ size: "lg" }), "mt-8")}
+          >
+            {t("ctaButton")}
+          </Link>
         </div>
       </section>
     </main>
