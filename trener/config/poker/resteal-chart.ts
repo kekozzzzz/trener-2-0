@@ -1,4 +1,4 @@
-// Чарт РЕСТИЛА — 3-бет-олл-ин на стеке 10–20bb против ОДИНОЧНОГО опена (без коллеров
+// Чарт РЕСТИЛА — 3-бет-олл-ин на стеке 10–25bb против ОДИНОЧНОГО опена (без коллеров
 // между опеном и Hero). Правило 3: диапазоны в конфиге. Правило 1: попадание руки в
 // ренж считает код, не LLM.
 //
@@ -21,7 +21,9 @@ import type { OpenPosition } from "./rfi-chart";
 // Группа позиции ОТКРЫВАШКИ: против ранних (UTG/MP) рестил в разы уже, чем против
 // поздних (HJ/CO/BTN/SB — широкие опены). SB-опен тоже LATE (самый широкий).
 export type RestealOpenerGroup = "EARLY" | "LATE";
-// Стек-бэнд Hero: LOW = 10–13.9bb (почти пуш-фолд, шире), HIGH = 14–20bb (класс. рестил).
+// Стек-бэнд Hero: LOW = 10–13.9bb (почти пуш-фолд, шире), HIGH = 14–25bb (класс. рестил;
+// ревизия 2026-07-06: верх поднят с 20 до 25bb — реджем на 20-25bb стандартен, глубже
+// рестил делается обычным 3-бетом, а не олл-ином, и джем-чартом не судится).
 export type RestealBand = "LOW" | "HIGH";
 
 const JAM_CORE: Record<RestealOpenerGroup, Record<RestealBand, string[]>> = {
@@ -71,10 +73,10 @@ export function restealOpenerGroup(pos: OpenPosition): RestealOpenerGroup {
   return pos === "UTG" || pos === "MP" ? "EARLY" : "LATE";
 }
 
-// Стек-бэнд рестила по стеку Hero в BB: вне 10–20bb спот не судим (короче — пуш-фолд
+// Стек-бэнд рестила по стеку Hero в BB: вне 10–25bb спот не судим (короче — пуш-фолд
 // с другой математикой, глубже — обычный 3-бет, не олл-ин).
 export function restealBandFor(stackBb: number): RestealBand | null {
-  if (stackBb < 10 || stackBb > 20) return null;
+  if (stackBb < 10 || stackBb > 25) return null;
   return stackBb < 14 ? "LOW" : "HIGH";
 }
 

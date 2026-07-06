@@ -5,13 +5,13 @@ import { OPEN_MIN_STACK_BB, openChartPosition } from "@/config/poker/rfi-chart";
 import { restealBandFor, restealOpenerGroup, type RestealBand, type RestealOpenerGroup } from "@/config/poker/resteal-chart";
 
 // Детектор КОЛЛА ПРОТИВ РЕСТИЛА: Hero открылся первым (RFI-рейз), в него прилетел
-// РОВНО один 3-бет-ОЛЛ-ИН со стека 10–20bb (без коллеров между), и Hero решает —
+// РОВНО один 3-бет-ОЛЛ-ИН со стека 10–25bb (без коллеров между), и Hero решает —
 // колл или фолд. Дополняет def-vs-3bet (там джем сознательно исключён). Правило 1:
 // факт, группу нашей позиции, бэнд джемящего и код руки считает парсер.
 
 export type HeroCallVsResteal = {
   openerGroup: RestealOpenerGroup; // группа НАШЕЙ открывавшей позиции (ширина их джема)
-  jamBand: RestealBand; // стек джемящего: LOW 10-14bb / HIGH 14-20bb
+  jamBand: RestealBand; // стек джемящего: LOW 10-14bb / HIGH 14-25bb
   code: string;
   action: "CALL" | "FOLD";
 };
@@ -58,7 +58,7 @@ export function detectHeroCallVsResteal(snapshot: TableSnapshot): HeroCallVsRest
     const jammerSeat = snapshot.seats.find((s) => s.label === jammer);
     if (!jammerSeat) return null;
     const jamBand = restealBandFor(jammerSeat.startingStack / bb);
-    if (!jamBand) return null; // джем вне 10-20bb — другой спот (пуш-фолд или глубокий 3-бет)
+    if (!jamBand) return null; // джем вне 10-25bb — другой спот (пуш-фолд или глубокий 3-бет)
     const heroPos = openChartPosition(heroSeat.position, heroSeat.positionName);
     if (!heroPos) return null;
 

@@ -9,7 +9,7 @@ import {
   type RestealOpenerGroup,
 } from "@/config/poker/resteal-chart";
 
-// Детектор РЕСТИЛА: Hero на стеке 10–20bb отвечает ОЛЛ-ИНОМ на одиночный опен (ровно
+// Детектор РЕСТИЛА: Hero на стеке 10–25bb отвечает ОЛЛ-ИНОМ на одиночный опен (ровно
 // один рейз до Hero, без коллеров между опеном и Hero — с коллером это сквиз-джем,
 // другой спот, не судим). Правило 1: факт, группу опенера, бэнд и код руки считает
 // парсер, не LLM. Родился из аудита 2026-07-05: тренер называл стандартный рестил
@@ -27,7 +27,7 @@ export function detectHeroResteal(snapshot: TableSnapshot): HeroResteal | null {
   const bb = bigBlindFromSnapshot(snapshot);
   if (!bb) return null;
   const band = restealBandFor(heroSeat.startingStack / bb);
-  if (!band) return null; // вне 10–20bb — не рестил-спот
+  if (!band) return null; // вне 10–25bb — не рестил-спот
 
   let raiser: string | null = null;
   let raiseCount = 0;

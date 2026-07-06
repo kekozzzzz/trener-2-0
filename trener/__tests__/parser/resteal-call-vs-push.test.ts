@@ -55,8 +55,13 @@ describe("detectHeroResteal + вердикт чарта", () => {
     expect(fact).toContain("ВНЕ чарта рестила");
   });
 
-  it("глубокий стек (25bb) — не рестил-спот", () => {
-    expect(detectHeroResteal(restealSnap(["As", "2s"], 25, "BTN"))).toBeNull();
+  it("25bb — ещё рестил (HIGH), глубже 25bb — не рестил-спот", () => {
+    expect(detectHeroResteal(restealSnap(["As", "2s"], 25, "BTN"))).toEqual({
+      openerGroup: "LATE",
+      band: "HIGH",
+      code: "A2s",
+    });
+    expect(detectHeroResteal(restealSnap(["As", "2s"], 26, "BTN"))).toBeNull();
   });
 
   it("коллер между опеном и Hero — сквиз, не судим", () => {

@@ -99,12 +99,24 @@ export function parseRangeNotation(text: string): string[] {
   return [...set];
 }
 
-// Расширяет диапазон на `step` шагов вниз по младшей карте (пары не трогаем — они
-// уже покрыты явно). Даёт «граничную» полосу допуска: руку в ней не флагаем.
+// Расширяет диапазон на `step` шагов вниз: у кикер-рук — по младшей карте, у ПАР — на
+// пару ниже (JJ в диапазоне → TT в допуске). Раньше пары сознательно пропускались —
+// и «соседняя пара снизу» летела в «заметно шире нормы» во всех грейдерах сразу
+// (ревизия чартов 2026-07-06: JJ при границе QQ+ жёстко флагался). Полоса допуска —
+// «не ошибка, но и не рекомендация».
 export function withTolerance(range: Set<string>, step: number): Set<string> {
   const tol = new Set(range);
   for (const code of range) {
-    if (code.length !== 3) continue; // пропускаем пары
+    if (code.length === 2 && code[0] === code[1]) {
+      // пара: допуск — пары на step ниже
+      const v0 = rankValue(code[0]);
+      for (let s = 1; s <= step; s++) {
+        const v = v0 - s;
+        if (v >= 0) tol.add(RANK_CHARS[v] + RANK_CHARS[v]);
+      }
+      continue;
+    }
+    if (code.length !== 3) continue;
     const high = code[0];
     const suit = code[2];
     const lowV = rankValue(code[1]);

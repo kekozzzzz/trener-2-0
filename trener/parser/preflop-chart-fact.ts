@@ -100,13 +100,13 @@ function spotVerdict(snapshot: TableSnapshot): string | null {
     return `${spot}: фолд — по чарту.`;
   }
 
-  // Рестил (3-бет-олл-ин 10–20bb против одиночного опена) — чарт собран из публичных
+  // Рестил (3-бет-олл-ин 10–25bb против одиночного опена) — чарт собран из публичных
   // равновесий (ICMIZER/Upswing/Nash, среднее; см. config/poker/resteal-chart.ts).
   const rs = detectHeroResteal(snapshot);
   if (rs) {
     const state = restealCellState(rs.openerGroup, rs.band, rs.code);
     const opener = rs.openerGroup === "EARLY" ? "ранней позиции" : "поздней позиции";
-    const stack = rs.band === "LOW" ? "10-14 BB" : "14-20 BB";
+    const stack = rs.band === "LOW" ? "10-14 BB" : "14-25 BB";
     const spot = `рестил (3-бет-олл-ин) ${rs.code} на стеке ${stack} против опена с ${opener}`;
     if (state === "JAM") return `${spot}: в чарте — СТАНДАРТНЫЙ рестил, это не ошибка.`;
     if (state === "JAM_WEIGHT")
@@ -149,13 +149,13 @@ function spotVerdict(snapshot: TableSnapshot): string | null {
     return null; // фолд против опена вне BB — дефолт, не комментируем
   }
 
-  // Колл против рестила (мы открылись → в нас 3-бет-олл-ин 10-20bb): зеркало
+  // Колл против рестила (мы открылись → в нас 3-бет-олл-ин 10-25bb): зеркало
   // рестил-чарта, тот же источник данных (см. call-vs-resteal-chart.ts).
   const cvr = detectHeroCallVsResteal(snapshot);
   if (cvr) {
     const state = callVsRestealCellState(cvr.openerGroup, cvr.jamBand, cvr.code);
     const our = cvr.openerGroup === "EARLY" ? "ранней" : "поздней";
-    const stack = cvr.jamBand === "LOW" ? "10-14 BB" : "14-20 BB";
+    const stack = cvr.jamBand === "LOW" ? "10-14 BB" : "14-25 BB";
     const spot = `колл ${cvr.code} против 3-бет-олл-ина ${stack} (ты открывался с ${our} позиции)`;
     if (cvr.action === "CALL") {
       if (state === "CALL") return `${spot}: в чарте — стандартный колл (против твоего опена с ${our} позиции джемят ${cvr.openerGroup === "LATE" ? "широко" : "узко и сильно"}).`;

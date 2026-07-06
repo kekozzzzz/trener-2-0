@@ -23,8 +23,14 @@ const ISO_RANGE = Object.fromEntries(
   }),
 ) as Record<OpenPosition, Set<string>>;
 
+// Допуск не возвращает оверлимп-пары обратно: 22-66 выкинуты из изоляции
+// СОЗНАТЕЛЬНО (правило Артёма «мелкие пары — оверлимп»), это не граница чарта.
 const ISO_TOLERANCE = Object.fromEntries(
-  POSITIONS.map((p) => [p, withTolerance(ISO_RANGE[p], 1)]),
+  POSITIONS.map((p) => {
+    const t = withTolerance(ISO_RANGE[p], 1);
+    for (const pair of OVERLIMP_PAIRS) t.delete(pair);
+    return [p, t];
+  }),
 ) as Record<OpenPosition, Set<string>>;
 
 export function isIsoPosition(pos: string): pos is OpenPosition {

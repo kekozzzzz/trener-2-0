@@ -748,7 +748,7 @@
   "ReferenceCharts": {
     "bvbTitle": "Blind versus blind",
     "bvbIntro": "Everyone folded, the small blind open-raised - how to defend the BB. The widest defence in the game: the SB opens very wide.",
-    "restealTitle": "Resteal - 3-bet all-in at 10-20 BB",
+    "restealTitle": "Resteal - 3-bet all-in at 10-25 BB",
     "restealIntro": "Someone opened and you are short - which hands to jam. Pick the opener's position and your stack.",
     "restealOpenerLabel": "Opener position:",
     "restealBandLabel": "Your stack:",
@@ -761,7 +761,7 @@
     "cvpLegendCall": "Call - in the chart",
     "bandShort": "up to 10 BB",
     "cvrTitle": "Calling a resteal",
-    "cvrIntro": "You opened and got 3-bet jammed for 10-20 BB - what continues. Against a late open they rejam wide, against an early one - tight and strong.",
+    "cvrIntro": "You opened and got 3-bet jammed for 10-25 BB - what continues. Against a late open they rejam wide, against an early one - tight and strong.",
     "cvrOpenerLabel": "Your open position:",
     "cvrBandLabel": "Jammer's stack:",
     "cvrLegendCall": "Call - in the chart",

@@ -10,15 +10,16 @@ describe("stackBandFor / isOpenShoveSignificantlyWide", () => {
     expect(stackBandFor(15)).toBeNull();
   });
 
-  it("UTG на 12bb: AA в норме, 72o и 55 шире нормы", () => {
+  it("UTG на 12bb: AA в норме, 72o и 44 шире нормы, 55 — граница допуска", () => {
     expect(isOpenShoveSignificantlyWide("MID", "UTG", "AA")).toBe(false); // 66+
     expect(isOpenShoveSignificantlyWide("MID", "UTG", "72o")).toBe(true);
-    expect(isOpenShoveSignificantlyWide("MID", "UTG", "55")).toBe(true); // UTG MID = 66+
+    expect(isOpenShoveSignificantlyWide("MID", "UTG", "55")).toBe(false); // сосед 66 — допуск
+    expect(isOpenShoveSignificantlyWide("MID", "UTG", "44")).toBe(true); // а 44 уже явно вне
   });
 
-  it("шире по позиции/стеку: 55 норм на SHORT-CO, но не на MID-UTG", () => {
-    expect(isOpenShoveSignificantlyWide("SHORT", "CO", "55")).toBe(false); // CO 0-9 = 22+
-    expect(isOpenShoveSignificantlyWide("MID", "UTG", "55")).toBe(true);
+  it("шире по позиции/стеку: 44 норм на SHORT-CO, но не на MID-UTG", () => {
+    expect(isOpenShoveSignificantlyWide("SHORT", "CO", "44")).toBe(false); // CO 0-9 = 22+
+    expect(isOpenShoveSignificantlyWide("MID", "UTG", "44")).toBe(true);
   });
 
   it("даже широкий пуш не включает мусор 72o", () => {

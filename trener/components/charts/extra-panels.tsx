@@ -111,7 +111,7 @@ export function RestealPanel() {
         options={["LOW", "HIGH"] as RestealBand[]}
         value={band}
         onChange={setBand}
-        labels={{ LOW: "10-14 BB", HIGH: "14-20 BB" }}
+        labels={{ LOW: "10-14 BB", HIGH: "14-25 BB" }}
       />
       <Grid13
         cellClass={(code) => {
@@ -199,7 +199,7 @@ export function CallVsRestealPanel() {
         options={["LOW", "HIGH"] as RestealBand[]}
         value={band}
         onChange={setBand}
-        labels={{ LOW: "10-14 BB", HIGH: "14-20 BB" }}
+        labels={{ LOW: "10-14 BB", HIGH: "14-25 BB" }}
       />
       <Grid13
         cellClass={(code) => {
