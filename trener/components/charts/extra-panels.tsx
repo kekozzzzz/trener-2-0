@@ -12,6 +12,7 @@ import { isSqueezeSignificantlyWide } from "@/config/poker/squeeze-chart";
 import type { OpenPosition } from "@/config/poker/rfi-chart";
 import type { StackBand } from "@/config/poker/push-fold-chart";
 import { cn } from "@/lib/utils";
+import { LegendSwatch } from "@/components/charts/legend";
 
 // Панели «доборных» эталонов (QA 2026-07-05, пункт 7): тренер судит этими чартами
 // (parser/preflop-chart-fact) — значит, игрок должен мочь их посмотреть. Раскраска
@@ -83,7 +84,7 @@ function Legend({ items }: { items: { swatch: string; label: string }[] }) {
     <div className="mt-6 flex flex-col gap-2 text-small text-muted-foreground">
       {items.map((it) => (
         <span key={it.label} className="flex items-center gap-2">
-          <span className={cn("inline-block size-3 border", it.swatch)} />
+          <LegendSwatch className={it.swatch} />
           {it.label}
         </span>
       ))}
@@ -126,10 +127,10 @@ export function RestealPanel() {
       />
       <Legend
         items={[
-          { swatch: "border-primary bg-primary", label: t("restealLegendJam") },
-          { swatch: "border-primary bg-card", label: t("restealLegendWeight") },
-          { swatch: "border-border bg-card opacity-60", label: t("legendBorder") },
-          { swatch: "border-border bg-card opacity-30", label: t("legendFold") },
+          { swatch: "border-primary bg-primary text-primary-foreground", label: t("restealLegendJam") },
+          { swatch: "border-primary bg-card text-primary", label: t("restealLegendWeight") },
+          { swatch: "border-border bg-card text-muted-foreground", label: t("legendBorder") },
+          { swatch: "border-border bg-card text-muted-foreground/30", label: t("legendFold") },
         ]}
       />
     </>
@@ -170,9 +171,9 @@ export function CallVsPushPanel() {
       />
       <Legend
         items={[
-          { swatch: "border-primary bg-primary", label: t("cvpLegendCall") },
-          { swatch: "border-border bg-card opacity-60", label: t("legendBorder") },
-          { swatch: "border-border bg-card opacity-30", label: t("legendFold") },
+          { swatch: "border-primary bg-primary text-primary-foreground", label: t("cvpLegendCall") },
+          { swatch: "border-border bg-card text-muted-foreground", label: t("legendBorder") },
+          { swatch: "border-border bg-card text-muted-foreground/30", label: t("legendFold") },
         ]}
       />
     </>
@@ -213,9 +214,9 @@ export function CallVsRestealPanel() {
       />
       <Legend
         items={[
-          { swatch: "border-primary bg-primary", label: t("cvrLegendCall") },
-          { swatch: "border-border bg-card opacity-60", label: t("legendBorder") },
-          { swatch: "border-border bg-card opacity-30", label: t("cvrLegendFold") },
+          { swatch: "border-primary bg-primary text-primary-foreground", label: t("cvrLegendCall") },
+          { swatch: "border-border bg-card text-muted-foreground", label: t("legendBorder") },
+          { swatch: "border-border bg-card text-muted-foreground/30", label: t("cvrLegendFold") },
         ]}
       />
     </>
@@ -241,11 +242,11 @@ export function BvbPanel() {
       />
       <Legend
         items={[
-          { swatch: "border-primary bg-primary", label: t("bbLegendThreebet") },
-          { swatch: "border-primary bg-card", label: t("bbLegendThreebetBluff") },
-          { swatch: "border-border bg-card", label: t("bbLegendCall") },
-          { swatch: "border-border bg-card opacity-60", label: t("bbLegendCallSometimes") },
-          { swatch: "border-border bg-card opacity-30", label: t("legendFold") },
+          { swatch: "border-primary bg-primary text-primary-foreground", label: t("bbLegendThreebet") },
+          { swatch: "border-primary bg-card text-primary", label: t("bbLegendThreebetBluff") },
+          { swatch: "border-border bg-card text-foreground", label: t("bbLegendCall") },
+          { swatch: "border-border bg-card text-muted-foreground", label: t("bbLegendCallSometimes") },
+          { swatch: "border-border bg-card text-muted-foreground/30", label: t("legendFold") },
         ]}
       />
     </>
@@ -275,10 +276,10 @@ export function FourBetPanel() {
       />
       <Legend
         items={[
-          { swatch: "border-primary bg-primary", label: t("fourbetLegendValue") },
-          { swatch: "border-primary bg-card", label: t("fourbetLegendBluff") },
-          { swatch: "border-border bg-card opacity-60", label: t("legendBorder") },
-          { swatch: "border-border bg-card opacity-30", label: t("fourbetLegendOut") },
+          { swatch: "border-primary bg-primary text-primary-foreground", label: t("fourbetLegendValue") },
+          { swatch: "border-primary bg-card text-primary", label: t("fourbetLegendBluff") },
+          { swatch: "border-border bg-card text-muted-foreground", label: t("legendBorder") },
+          { swatch: "border-border bg-card text-muted-foreground/30", label: t("fourbetLegendOut") },
         ]}
       />
     </>
@@ -299,8 +300,8 @@ export function SqueezePanel() {
       />
       <Legend
         items={[
-          { swatch: "border-primary bg-card", label: t("squeezeLegendOk") },
-          { swatch: "border-border bg-card opacity-30", label: t("squeezeLegendOut") },
+          { swatch: "border-primary bg-card text-primary", label: t("squeezeLegendOk") },
+          { swatch: "border-border bg-card text-muted-foreground/30", label: t("squeezeLegendOut") },
         ]}
       />
     </>

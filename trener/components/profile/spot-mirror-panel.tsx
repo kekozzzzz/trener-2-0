@@ -6,6 +6,7 @@ import type { OpenChartCell } from "@/features/profile/open-chart";
 import { CHARACTERISTIC_RELIABLE_FROM } from "@/config/profile";
 import { OpenChartGrid } from "./open-chart-grid";
 import { cn } from "@/lib/utils";
+import { LegendSwatch } from "@/components/charts/legend";
 
 // Слой зеркала: одно действие в споте («колл», «3-бет», «пуш до 10 BB»…). judged —
 // решает раскраску: true → лаймом «шире нормы» (флаг wide из агрегатора), false →
@@ -103,26 +104,26 @@ export function SpotMirrorPanel({
         {layer.judged ? (
           <>
             <span className="flex items-center gap-2">
-              <span className="inline-block size-3 border border-primary bg-primary" />
+              <LegendSwatch className="border-primary bg-primary text-primary-foreground" />
               {t("legendJudgedWide", { noun: layer.noun })}
             </span>
             <span className="flex items-center gap-2">
-              <span className="inline-block size-3 border border-primary bg-card" />
+              <LegendSwatch className="border-primary bg-card text-primary" />
               {t("legendJudgedThin", { noun: layer.noun })}
             </span>
             <span className="flex items-center gap-2">
-              <span className="inline-block size-3 border border-border bg-card" />
+              <LegendSwatch className="border-border bg-card text-foreground" />
               {t("legendJudgedNormal", { noun: layer.noun })}
             </span>
           </>
         ) : (
           <>
             <span className="flex items-center gap-2">
-              <span className="inline-block size-3 border border-border bg-card" />
+              <LegendSwatch className="border-border bg-card text-foreground" />
               {t("legendPlainPlayed", { noun: layer.noun })}
             </span>
             <span className="flex items-center gap-2">
-              <span className="inline-block size-3 border border-border bg-card opacity-30" />
+              <LegendSwatch className="border-border bg-card text-muted-foreground/30" />
               {t("legendPlainNot")}
             </span>
           </>

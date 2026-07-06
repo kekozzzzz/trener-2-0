@@ -7,6 +7,7 @@ import type { OpenChartFacts } from "@/features/profile/open-chart";
 import { CHARACTERISTIC_RELIABLE_FROM } from "@/config/profile";
 import { OpenChartGrid } from "./open-chart-grid";
 import { cn } from "@/lib/utils";
+import { LegendSwatch } from "@/components/charts/legend";
 
 const POSITIONS: { key: OpenPosition; label: string }[] = [
   { key: "UTG", label: "UTG" },
@@ -98,26 +99,26 @@ export function OpenChartPanel({
         {isSbLimp ? (
           <>
             <span className="flex items-center gap-2">
-              <span className="inline-block size-3 border border-border bg-card" />
+              <LegendSwatch className="border-border bg-card text-foreground" />
               {t("legendLimpPlayed")}
             </span>
             <span className="flex items-center gap-2">
-              <span className="inline-block size-3 border border-border bg-card opacity-30" />
+              <LegendSwatch className="border-border bg-card text-muted-foreground/30" />
               {t("legendLimpNot")}
             </span>
           </>
         ) : (
           <>
             <span className="flex items-center gap-2">
-              <span className="inline-block size-3 border border-primary bg-primary" />
+              <LegendSwatch className="border-primary bg-primary text-primary-foreground" />
               {t("legendWide")}
             </span>
             <span className="flex items-center gap-2">
-              <span className="inline-block size-3 border border-primary bg-card" />
+              <LegendSwatch className="border-primary bg-card text-primary" />
               {t("legendWideThin")}
             </span>
             <span className="flex items-center gap-2">
-              <span className="inline-block size-3 border border-border bg-card" />
+              <LegendSwatch className="border-border bg-card text-foreground" />
               {t("legendNormal")}
             </span>
           </>

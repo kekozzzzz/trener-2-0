@@ -9,6 +9,7 @@ import {
   type StackBand,
 } from "@/config/poker/push-fold-chart";
 import { cn } from "@/lib/utils";
+import { LegendSwatch } from "@/components/charts/legend";
 
 const SIZE = GRID_RANKS.length; // 13
 
@@ -104,15 +105,15 @@ export function PushChartPanel() {
       {/* Легенда */}
       <div className="mt-6 flex flex-col gap-2 text-small text-muted-foreground">
         <span className="flex items-center gap-2">
-          <span className="inline-block size-3 border border-primary bg-primary" />
+          <LegendSwatch className="border-primary bg-primary text-primary-foreground" />
           {t("pushLegendAlways")}
         </span>
         <span className="flex items-center gap-2">
-          <span className="inline-block size-3 border border-border bg-card" />
+          <LegendSwatch className="border-border bg-card text-foreground" />
           {t("legendBorder")}
         </span>
         <span className="flex items-center gap-2">
-          <span className="inline-block size-3 border border-border bg-card opacity-30" />
+          <LegendSwatch className="border-border bg-card text-muted-foreground/30" />
           {t("pushLegendOut")}
         </span>
       </div>
