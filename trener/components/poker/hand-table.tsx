@@ -81,7 +81,20 @@ function CardBack() {
 
 const pct = (x: number, y: number) => ({ left: `${(x / W) * 100}%`, top: `${(y / H) * 100}%` });
 
-export async function HandTable({ state, nick }: { state: TableState; nick: string | null }) {
+export async function HandTable({
+  state,
+  nick,
+  fit = false,
+}: {
+  state: TableState;
+  nick: string | null;
+  // fit: стол вписывается в контейнер целиком, без горизонтальной прокрутки.
+  // Плашки мест торчат за край сукна на пол-ширины (~52px), поэтому в этом режиме
+  // добавляем боковые поля, чтобы они помещались, и убираем min-w/скролл. Для
+  // витрины на главной (там стол масштабируется под любую ширину компонентом
+  // ScaleToFit). На странице разбора режим по умолчанию — прокрутка (QA-решение).
+  fit?: boolean;
+}) {
   const t = await getTranslations("HandTable");
   const labels: TableLabels = {
     street: {
@@ -140,8 +153,11 @@ export async function HandTable({ state, nick }: { state: TableState; nick: stri
       {/* Боксы мест и карты — в фиксированных px, поэтому на телефоне стол не сжимаем,
           а прокручиваем по горизонтали (min-w) — иначе плашки наезжали друг на друга
           (QA 2026-07-05, пункт 6). */}
-      <div className="overflow-x-auto">
-      <div className="relative mx-auto w-full min-w-[560px]" style={{ aspectRatio: `${W} / ${H}` }}>
+      <div className={fit ? "px-14" : "overflow-x-auto"}>
+      <div
+        className={cn("relative mx-auto w-full", !fit && "min-w-[560px]")}
+        style={{ aspectRatio: `${W} / ${H}` }}
+      >
         {/* сукно-многоугольник по формату стола */}
         <svg
           className="absolute inset-0 h-full w-full"

@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { HandTable } from "@/components/poker/hand-table";
+import { ScaleToFit } from "@/components/scale-to-fit";
 import type { TableState } from "@/parser/table-state";
 import { GRID_RANKS, cellCode } from "@/config/poker/hand-grid";
 import { buildRange } from "@/config/poker/hand-range";
@@ -351,8 +352,10 @@ async function ProductShowcase() {
           <p className="text-body text-muted-foreground">{t("showcaseSubtitle")}</p>
         </div>
 
-        <div className="mx-auto mt-12 max-w-2xl">
-          <HandTable state={DEMO_TABLE} nick={null} />
+        <div className="mx-auto mt-12 max-w-4xl">
+          <ScaleToFit baseWidth={896}>
+            <HandTable state={DEMO_TABLE} nick={null} fit />
+          </ScaleToFit>
           <p className="mt-3 font-mono text-label uppercase tracking-label text-muted-foreground">
             {t("showcaseTableCaption")}
           </p>
