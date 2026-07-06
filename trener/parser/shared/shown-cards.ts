@@ -6,10 +6,13 @@ import type { Seat } from "../types";
 // карты цепляются к обезличенному месту (Seat.shownCards), в вывод ник не попадает.
 //
 // Форматы строк вскрытия:
-//   GG / PokerStars / Chico / 888:  «ник: shows [Ah Kd] (...)»
-//   Winamax / WPN:                  «ник shows [Ah Kd] (...)»
-// Один регэксп с необязательным двоеточием кроет все; ник — до « shows».
-const SHOWS_LINE = /^(.+?):? shows \[([2-9TJQKA][cdhs]) ([2-9TJQKA][cdhs])\]/gm;
+//   GG / PokerStars / Chico:  «ник: shows [Ah Kd] (...)»
+//   Winamax / WPN:            «ник shows [Ah Kd] (...)»
+//   888poker:                 «ник shows [ Jh, Ac ]» — пробелы и запятая внутри скобок
+//     (найдено аудитом по румам 2026-07-06: 888 давал 0 вскрытий → детекторы кулера
+//      и доезда на этом руме молчали).
+// Один регэксп кроет все: двоеточие опционально, разделитель карт — запятая и/или пробел.
+const SHOWS_LINE = /^(.+?):? shows \[\s*([2-9TJQKA][cdhs])[,\s]\s*([2-9TJQKA][cdhs])\s*\]/gm;
 
 export function shownCardsByNick(handText: string): Map<string, [string, string]> {
   const out = new Map<string, [string, string]>();
