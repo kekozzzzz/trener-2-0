@@ -22,11 +22,14 @@ export async function AuthNav() {
           {t("charts")}
         </Link>
         {/* Обе двери ведут на /enter — вход по ссылке первым; пароль и классическая
-            регистрация остаются доступны по ссылкам с самой формы. */}
-        <Link href="/enter" className="text-muted-foreground transition-colors hover:text-foreground">
+            регистрация остаются доступны по ссылкам с самой формы. Обе — полноценные
+            кнопки (не текст-ссылки): гость на лендинге сразу видит, куда нажать
+            (обратная связь тестера 2026-07-08). «Войти» — рамка, «Регистрация» —
+            залитая акцентом (главное действие входа). */}
+        <Link href="/enter" className={cn(buttonVariants({ variant: "outline" }))}>
           {t("login")}
         </Link>
-        <Link href="/enter" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+        <Link href="/enter" className={cn(buttonVariants())}>
           {t("register")}
         </Link>
         <LangSwitcher />

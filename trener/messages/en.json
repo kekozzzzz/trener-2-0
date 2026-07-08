@@ -183,8 +183,8 @@
     "showcaseVerdictText": "You are right: calling with 55 is profitable here. If he shoves 20-25% of hands, the fives have about 54% equity at a 44% price. Losing does not make the call a mistake - it was a correct cooler, just bad luck.",
     "showcaseVerdictNote": "A real verdict from a review",
     "badge": "Socratic AI coach",
-    "heroTitle": "Stop losing money on the same mistakes",
-    "heroSubtitle": "The same leaks show up tournament after tournament and cost you real money. Whygrid finds them in your own hands and guides you with questions until you see where you spilled chips yourself - instead of memorizing someone else's advice.",
+    "heroTitle": "Your hands, reviewed - instead of an expensive coach",
+    "heroSubtitle": "AI finds the leaks in your tournaments and walks you through each tricky hand - with questions, not ready-made advice, so you spot the mistake yourself.",
     "ctaUpload": "Upload a tournament",
     "myTournaments": "My tournaments",
     "signIn": "Sign in",
@@ -424,7 +424,9 @@
     "noFile": "No file selected",
     "selectedCount": "Files selected: {count}",
     "chooseFiles": "Choose files",
-    "chooseFile": "Choose file"
+    "chooseFile": "Choose file",
+    "dropHint": "or drag files right here",
+    "dropNow": "Drop to upload"
   },
   "UploadGuide": {
     "toggle": "How to export your hands",
@@ -632,7 +634,10 @@
     "stageSummary": "Building the tournament's big picture",
     "handOne": "hand",
     "handFew": "hands",
-    "handMany": "hands"
+    "handMany": "hands",
+    "reassurance": "The review runs on our servers and takes a few minutes - that's normal, nothing is stuck. Hands appear one by one.",
+    "etaAbout": "about {min} min left",
+    "etaUnderMinute": "less than a minute left"
   },
   "ParsingWait": {
     "metrics": "Computing VPIP, chip losses, SPR...",
