@@ -4,8 +4,10 @@ import {
   getOpenrouterModel,
   getSttInstruction,
   getSttProxySecret,
+  getSttRetries,
   getSttTimeoutMs,
 } from "@/config/stt";
+import { resilientFetch } from "@/infrastructure/adapters/http/resilient-fetch";
 import type { SttPort, TranscribeRequest, TranscribeResult } from "./types";
 
 // Адаптер распознавания речи через OpenRouter (боевая модель — Voxtral, см.
@@ -71,12 +73,18 @@ function buildHeaders(): Record<string, string> {
 
 export const openrouterSttAdapter: SttPort = {
   async transcribe(request: TranscribeRequest): Promise<TranscribeResult> {
-    const res = await fetch(`${getOpenrouterBaseUrl()}${CHAT_PATH}`, {
-      method: "POST",
-      headers: buildHeaders(),
-      body: buildBody(request),
-      signal: AbortSignal.timeout(getSttTimeoutMs()),
-    });
+    // Таймаут + быстрый повтор при временной икоте релея (обрыв/502/504): голос
+    // интерактивен, разовый сбой релея не должен зажигать красную ошибку у микрофона.
+    // Полный таймаут не повторяется — уходит наверх. См. resilient-fetch.ts.
+    const res = await resilientFetch(
+      `${getOpenrouterBaseUrl()}${CHAT_PATH}`,
+      {
+        method: "POST",
+        headers: buildHeaders(),
+        body: buildBody(request),
+      },
+      { timeoutMs: getSttTimeoutMs(), retries: getSttRetries(), label: "STT" },
+    );
 
     if (!res.ok) {
       const detail = await res.text().catch(() => "");

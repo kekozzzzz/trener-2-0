@@ -30,6 +30,16 @@ export function getSttTimeoutMs(): number {
   return Number.isInteger(raw) && raw > 0 ? raw : DEFAULT_TIMEOUT_MS;
 }
 
+// Сколько раз ДОПОЛНИТЕЛЬНО переповторить распознавание при ВРЕМЕННОМ сбое релея
+// (обрыв, 502/503/504) — по свежему соединению, с короткой паузой. Голос интерактивен:
+// повтор гасит икоту релея, чтобы человек не увидел красную ошибку у микрофона из-за
+// разового сбоя. Полный таймаут этим НЕ повторяется (см. resilient-fetch.ts). В env (правило 3).
+const DEFAULT_STT_RETRIES = 2;
+export function getSttRetries(): number {
+  const raw = Number(process.env.STT_RETRIES);
+  return Number.isInteger(raw) && raw >= 0 ? raw : DEFAULT_STT_RETRIES;
+}
+
 export function getSttMaxAudioBytes(): number {
   const raw = Number(process.env.STT_MAX_AUDIO_BYTES);
   return Number.isInteger(raw) && raw > 0 ? raw : DEFAULT_MAX_AUDIO_BYTES;
