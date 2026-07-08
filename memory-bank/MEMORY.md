@@ -36,7 +36,7 @@
 - [DeepSeek migration](project_deepseek_migration.md) — разбор на DeepSeek (OpenRouter→КЗ-релей) ~10-16× дешевле; LIVE; откат флагом LLM_PROVIDER
 - [Voice input STT](project_voice_input_stt.md) — голос через Voxtral (OpenRouter→релей); LIVE; 2026-07-04 (d33323b): микрофон и у заметки под сеткой; учёт затрат в LlmUsage (шаг STT, точная цена usage.cost); отказы модели/кавычки/преамбулы срезаются, ошибка у кнопки красная
 - [Dynamic dialogue length](project_dynamic_dialogue_length.md) — длину диалога (1..12) задаёт ИИ флагом complete; ЗАДЕПЛОЕНО
-- [Queue latency](project_queue_latency.md) — concurrency 10; узкое место DeepSeek ~10с/раздача
+- [Queue latency](project_queue_latency.md) — concurrency 10; узкое место DeepSeek ~10с/раздача; 🔧2026-07-08 фикс «нет таймаута на LLM» (зависший релей вешал разбор на ~15 мин + «замерзало») — таймаут вызова в openrouter-адаптере, ⏳в коде на ветке, НЕ задеплоено
 - [Scaling triggers](project_scaling_triggers.md) — воркер последовательный; рычаг №1 параллельный воркер
 - [Health monitoring](project_health_monitoring.md) — /api/health (db+telegram+claude+worker) + UptimeRobot; серт следим сами
 - [Payments — ЮKassa](project_payments_yookassa.md) — ЮKassa LIVE, возвраты есть; осталось юр-флаги (РКН/трансгранич.)
