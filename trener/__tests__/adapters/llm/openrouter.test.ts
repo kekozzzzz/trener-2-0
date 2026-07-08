@@ -22,6 +22,7 @@ const ENV_KEYS = [
   "OPENROUTER_MODEL",
   "ANTHROPIC_PROXY_SECRET",
   "LLM_CALL_TIMEOUT_MS",
+  "LLM_CALL_RETRIES",
 ] as const;
 const savedEnv: Record<string, string | undefined> = {};
 
@@ -31,6 +32,7 @@ beforeEach(() => {
   process.env.OPENROUTER_BASE_URL = "https://relay.example/openrouter/api/v1";
   delete process.env.ANTHROPIC_PROXY_SECRET;
   process.env.LLM_CALL_TIMEOUT_MS = "12345";
+  process.env.LLM_CALL_RETRIES = "0"; // по умолчанию в тестах без повторов — быстрее и детерминированнее
 });
 
 afterEach(() => {
@@ -88,5 +90,24 @@ describe("openRouterLlmAdapter — таймаут вызова", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(openRouterLlmAdapter.generatePlayerCharacteristic(REQ)).rejects.toThrow(/fetch failed/);
+  });
+
+  it("временный 502 от релея → повтор по свежему соединению, человек не замечает", async () => {
+    process.env.LLM_CALL_RETRIES = "1";
+    const fetchMock = vi
+      .fn()
+      // первый заход — перегруженный релей отдал 502
+      .mockResolvedValueOnce({ ok: false, status: 502, text: async () => "bad gateway" } as Response)
+      // повтор — уже здоровый ответ
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ choices: [{ message: { content: '{"characteristic":"ок"}' } }] }),
+      } as Response);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await openRouterLlmAdapter.generatePlayerCharacteristic(REQ);
+    expect(result.characteristic).toBe("ок");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

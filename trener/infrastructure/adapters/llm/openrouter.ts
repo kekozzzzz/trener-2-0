@@ -1,11 +1,13 @@
 import {
   getAnthropicMaxTokens,
   getAnthropicProxySecret,
+  getLlmCallRetries,
   getLlmCallTimeoutMs,
   getOpenRouterApiKey,
   getOpenRouterBaseUrl,
   getOpenRouterModel,
 } from "@/config/llm";
+import { resilientFetch } from "@/infrastructure/adapters/http/resilient-fetch";
 import { getHealthCheckTimeoutMs } from "@/config/health";
 import { buildHandAnalysisPrompt, buildHandAnalysisSystemPrompt } from "@/config/prompts/hand-analysis";
 import { buildDialogueQuestionPrompt, buildDialogueQuestionSystemPrompt } from "@/config/prompts/dialogue-question";
@@ -54,13 +56,13 @@ async function rawCall(system: string, prompt: string): Promise<{ text: string; 
   const proxySecret = getAnthropicProxySecret();
   if (proxySecret) headers["x-proxy-secret"] = proxySecret;
 
-  // Таймаут на вызов: зависший релей не должен подвешивать воркер очереди дольше этого
-  // (config/llm.ts). Без signal fetch висит ~5 минут (дефолт undici), лейн занят, разбор
-  // «замерзает». AbortSignal.timeout бросает DOMException 'TimeoutError' — переводим её в
-  // понятную ошибку, чтобы обычный retry/карантин очереди отработал как при любом сбое.
-  let res: Response;
-  try {
-    res = await fetch(`${getOpenRouterBaseUrl()}/chat/completions`, {
+  // Устойчивый вызов через релей: таймаут (зависший релей не должен держать лейн воркера
+  // ~5 мин — дефолт undici) + быстрый повтор по свежему соединению при временной икоте
+  // релея (обрыв/502/504), чтобы разбор не запинался заметно. Полный таймаут не
+  // повторяется — уходит наверх, там штатный retry/карантин очереди. См. resilient-fetch.ts.
+  const res = await resilientFetch(
+    `${getOpenRouterBaseUrl()}/chat/completions`,
+    {
       method: "POST",
       headers,
       body: JSON.stringify({
@@ -71,14 +73,9 @@ async function rawCall(system: string, prompt: string): Promise<{ text: string; 
           { role: "user", content: prompt },
         ],
       }),
-      signal: AbortSignal.timeout(getLlmCallTimeoutMs()),
-    });
-  } catch (err) {
-    if (err instanceof DOMException && err.name === "TimeoutError") {
-      throw new Error(`OpenRouter: таймаут вызова (${getLlmCallTimeoutMs()} мс) — релей не ответил`);
-    }
-    throw err;
-  }
+    },
+    { timeoutMs: getLlmCallTimeoutMs(), retries: getLlmCallRetries(), label: "OpenRouter" },
+  );
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");

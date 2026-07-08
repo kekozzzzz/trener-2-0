@@ -63,6 +63,16 @@ export function getLlmCallTimeoutMs(): number {
   return Number.isInteger(raw) && raw > 0 ? raw : DEFAULT_LLM_CALL_TIMEOUT_MS;
 }
 
+// Сколько раз ДОПОЛНИТЕЛЬНО переповторить вызов при ВРЕМЕННОМ сбое релея (обрыв
+// соединения, 502/503/504 от перегруженного nginx) — по свежему соединению, с короткой
+// паузой. Гасит разовую икоту релея незаметно для человека. Полный таймаут этим НЕ
+// повторяется (см. resilient-fetch.ts). 0 — без повторов. В env (правило 3).
+const DEFAULT_LLM_CALL_RETRIES = 2;
+export function getLlmCallRetries(): number {
+  const raw = Number(process.env.LLM_CALL_RETRIES);
+  return Number.isInteger(raw) && raw >= 0 ? raw : DEFAULT_LLM_CALL_RETRIES;
+}
+
 // Прокси для вызовов Claude. Нужен, когда сервер стоит в регионе, который Anthropic
 // не обслуживает (например РФ — запрос с местного IP отбивается 403). Запросы идут
 // через CONNECT-туннель: прокси не расшифровывает трафик, ключ и данные раздач
