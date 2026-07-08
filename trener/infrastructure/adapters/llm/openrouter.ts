@@ -1,6 +1,7 @@
 import {
   getAnthropicMaxTokens,
   getAnthropicProxySecret,
+  getLlmCallTimeoutMs,
   getOpenRouterApiKey,
   getOpenRouterBaseUrl,
   getOpenRouterModel,
@@ -53,18 +54,31 @@ async function rawCall(system: string, prompt: string): Promise<{ text: string; 
   const proxySecret = getAnthropicProxySecret();
   if (proxySecret) headers["x-proxy-secret"] = proxySecret;
 
-  const res = await fetch(`${getOpenRouterBaseUrl()}/chat/completions`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      model: getOpenRouterModel(),
-      max_tokens: getAnthropicMaxTokens(),
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: prompt },
-      ],
-    }),
-  });
+  // Таймаут на вызов: зависший релей не должен подвешивать воркер очереди дольше этого
+  // (config/llm.ts). Без signal fetch висит ~5 минут (дефолт undici), лейн занят, разбор
+  // «замерзает». AbortSignal.timeout бросает DOMException 'TimeoutError' — переводим её в
+  // понятную ошибку, чтобы обычный retry/карантин очереди отработал как при любом сбое.
+  let res: Response;
+  try {
+    res = await fetch(`${getOpenRouterBaseUrl()}/chat/completions`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model: getOpenRouterModel(),
+        max_tokens: getAnthropicMaxTokens(),
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: prompt },
+        ],
+      }),
+      signal: AbortSignal.timeout(getLlmCallTimeoutMs()),
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "TimeoutError") {
+      throw new Error(`OpenRouter: таймаут вызова (${getLlmCallTimeoutMs()} мс) — релей не ответил`);
+    }
+    throw err;
+  }
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
