@@ -71,7 +71,18 @@ function StageRow({
   );
 }
 
-export function AnalysisProgress({ tournamentId }: { tournamentId: string }) {
+export function AnalysisProgress({
+  tournamentId,
+  handSeconds,
+  summarySeconds,
+  concurrency,
+}: {
+  tournamentId: string;
+  // Реальное среднее время недавних разборов (правило 1) — для оценки ДО живой скорости.
+  handSeconds: number | null;
+  summarySeconds: number | null;
+  concurrency: number;
+}) {
   const router = useRouter();
   const t = useTranslations("AnalysisProgress");
   const HAND = [t("handOne"), t("handFew"), t("handMany")] as const;
@@ -153,6 +164,20 @@ export function AnalysisProgress({ tournamentId }: { tournamentId: string }) {
   const handsDone =
     summaryReady || status === "CARD_READY" || (handsKnown && ready >= total);
 
+  // Оценка ДО живой скорости (правило 1 — по реальному среднему, не константа): раздачи
+  // считаются волнами по числу лейнов воркера, плюс сборка общей картины. Показываем, пока
+  // не разобрана ни одна раздача (живой оценки ещё нет). < 45с → «меньше минуты».
+  const upfrontMinutes =
+    handSeconds && total > 0
+      ? (() => {
+          const waves = Math.ceil(total / Math.max(1, concurrency));
+          const sec = waves * handSeconds + (summarySeconds ?? 0);
+          return sec < 45 ? 0 : Math.ceil(sec / 60);
+        })()
+      : null;
+  // Живая оценка точнее — как только появится, вытесняет предварительную.
+  const shownEta = etaMinutes !== null ? etaMinutes : upfrontMinutes;
+
   const stage2: StageState = handsKnown ? "done" : "active";
   const stage3: StageState = !handsKnown ? "pending" : handsDone ? "done" : "active";
   const stage4: StageState = summaryReady ? "done" : handsDone ? "active" : "pending";
@@ -193,9 +218,9 @@ export function AnalysisProgress({ tournamentId }: { tournamentId: string }) {
               <span className="text-primary">{ready}</span> {t("stageReviewingOf")} {total}
             </span>
             <LoadingDots />
-            {etaMinutes !== null && (
+            {shownEta !== null && (
               <span className="font-mono text-muted-foreground">
-                · {etaMinutes === 0 ? t("etaUnderMinute") : t("etaAbout", { min: etaMinutes })}
+                · {shownEta === 0 ? t("etaUnderMinute") : t("etaAbout", { min: shownEta })}
               </span>
             )}
           </span>

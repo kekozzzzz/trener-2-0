@@ -23,6 +23,8 @@ import { cn } from "@/lib/utils";
 import { ParsingWaitClient } from "./parsing-wait-client";
 import { AutoUnlockClient } from "./auto-unlock-client";
 import { AnalysisProgress } from "./analysis-progress";
+import { getAnalysisTimingSec } from "@/features/tournaments/estimate";
+import { getQueueConcurrency } from "@/config/queue";
 import { StartHereCard, SessionDoneCard, type FocusHand } from "@/components/tournament/focus-slot";
 import { MetricsGlossary } from "@/components/metrics/glossary";
 import { LoadingDots } from "@/components/ui/loading-dots";
@@ -446,6 +448,12 @@ export default async function TournamentPage({
   // чтобы раздачи и картина всплывали сами, без ручного обновления страницы.
   const processing = tournament.status !== "CARD_READY" || !summary?.overview;
 
+  // «Разбор займёт примерно N минут» для баннера — по реальному среднему времени недавних
+  // разборов (правило 1). Считаем только пока идёт разбор, иначе лишний запрос не нужен.
+  const analysisTiming = processing
+    ? await getAnalysisTimingSec(prisma)
+    : { handSeconds: null, summarySeconds: null };
+
   return (
     <main>
       <PageHeader />
@@ -470,7 +478,12 @@ export default async function TournamentPage({
             подгоняет страницу, чтобы разборы раздач всплывали в списках ниже по очереди. */}
         {processing && (
           <div className="mt-12 border border-border bg-card p-6">
-            <AnalysisProgress tournamentId={id} />
+            <AnalysisProgress
+              tournamentId={id}
+              handSeconds={analysisTiming.handSeconds}
+              summarySeconds={analysisTiming.summarySeconds}
+              concurrency={getQueueConcurrency()}
+            />
           </div>
         )}
 
