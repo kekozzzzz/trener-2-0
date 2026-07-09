@@ -15,3 +15,15 @@ export function getQueueConcurrency(): number {
   if (Number.isInteger(raw) && raw >= 1 && raw <= 32) return raw;
   return DEFAULT_CONCURRENCY;
 }
+
+// Сколько задача может «висеть» в PROCESSING, прежде чем считается осиротевшей: процесс
+// умер во время обработки (pm2 restart) ЛИБО лейн завис на сетевом вызове. claimTask берёт
+// только PENDING, сама себя такая задача не починит — её возвращает жнец (reapStuckTasks),
+// и по этому же порогу health/дайджест считают «воркер завис». Порог заметно больше самого
+// долгого шага (LLM-вызов ≤90с даже с повторами), чтобы не трогать живую работу. Правило 3 —
+// в .env (QUEUE_STUCK_TIMEOUT_MS), тюнить без передеплоя. Единый источник для worker.ts и health.
+const DEFAULT_STUCK_PROCESSING_MS = 10 * 60_000;
+export function getStuckProcessingThresholdMs(): number {
+  const raw = Number(process.env.QUEUE_STUCK_TIMEOUT_MS);
+  return Number.isInteger(raw) && raw > 0 ? raw : DEFAULT_STUCK_PROCESSING_MS;
+}

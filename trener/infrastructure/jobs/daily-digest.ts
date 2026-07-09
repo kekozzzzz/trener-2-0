@@ -1,5 +1,7 @@
 import type { PrismaClient } from "@prisma/client";
-import { getQueueStuckThresholdMs } from "@/config/notify";
+import { promises as fs } from "fs";
+import nodePath from "path";
+import { getQueueStuckThresholdMs, getDigestHeartbeatPath } from "@/config/notify";
 import { safeNotifyAdmin } from "@/infrastructure/adapters/notify";
 import { buildCostReport, formatUsd, type CostReport } from "@/features/usage/cost-report";
 
@@ -87,9 +89,29 @@ function renderCostBlock(cost: CostReport): string[] {
   return lines;
 }
 
-// Собирает и отправляет дайджест. Мягко: падение Telegram не роняет cron-запрос
-// (уведомление вторично — данные в БД никуда не делись).
-export async function runDailyDigest(db: PrismaClient): Promise<void> {
+// Собирает и отправляет дайджест. Возвращает, дошёл ли он: cron-роут по этому флагу
+// отдаёт честный статус вместо слепого «sent». Падение Telegram cron-запрос не роняет
+// (данные в БД целы), но и молча не проглатывается — safeNotifyAdmin логирует причину,
+// а false здесь делает провал видимым в статусе крона. При УСПЕХЕ обновляем «пульс» —
+// по нему сторож тишины на релее ловит «сводка вообще перестала приходить».
+export async function runDailyDigest(db: PrismaClient): Promise<boolean> {
   const message = await buildDailyDigest(db);
-  await safeNotifyAdmin(message);
+  const delivered = await safeNotifyAdmin(message);
+  if (delivered) await writeDigestHeartbeat();
+  return delivered;
+}
+
+// Пульс дайджеста: метка времени последней УСПЕШНОЙ отправки. Сторож тишины на релее
+// (независимый Telegram-канал) читает mtime этого файла и бьёт тревогу, если сводка не
+// приходила > суток. Провал записи для самого дайджеста не важен — глушим в лог. В тестах
+// не пишем, чтобы не плодить файлы.
+async function writeDigestHeartbeat(): Promise<void> {
+  if (process.env.NODE_ENV === "test" || process.env.VITEST) return;
+  try {
+    const file = getDigestHeartbeatPath();
+    await fs.mkdir(nodePath.dirname(file), { recursive: true });
+    await fs.writeFile(file, new Date().toISOString(), "utf8");
+  } catch (err) {
+    console.error("[digest] не удалось записать пульс дайджеста:", err);
+  }
 }

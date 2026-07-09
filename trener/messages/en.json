@@ -642,7 +642,10 @@
   "ParsingWait": {
     "metrics": "Computing VPIP, chip losses, SPR...",
     "layout": "Laying out the tournament's hands...",
-    "selecting": "Picking hands to review..."
+    "selecting": "Picking hands to review...",
+    "failed": "We couldn't break down this tournament - that's on our side.",
+    "retry": "Try again",
+    "retrying": "Trying again"
   },
   "HandReview": {
     "lockedTitle": "Review locked",
@@ -665,7 +668,10 @@
     "waitNextStep": "Answer received, preparing the next step",
     "runWorker": "Run worker",
     "workerBusy": "Worker is busy or returned an error",
-    "workerFailed": "Couldn't start the worker"
+    "workerFailed": "Couldn't start the worker",
+    "stepFailed": "Something hiccuped on our side - this step didn't come through. That's on us, not you.",
+    "retry": "Try again",
+    "retrying": "Trying again"
   },
   "Chat": {
     "placeholder": "Ask something about this hand...",
@@ -673,7 +679,10 @@
     "preparingReply": "Preparing a reply",
     "runWorker": "Run worker",
     "workerBusy": "Worker is busy or returned an error",
-    "workerFailed": "Couldn't start the worker"
+    "workerFailed": "Couldn't start the worker",
+    "replyFailed": "Something hiccuped on our side - the reply didn't come through.",
+    "retry": "Try again",
+    "retrying": "Trying again"
   },
   "HandTable": {
     "table": "Table",

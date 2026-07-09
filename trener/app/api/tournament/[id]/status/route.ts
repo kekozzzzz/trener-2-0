@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/infrastructure/db/client";
 import { requireSession } from "@/features/auth/session";
+import { isTournamentParseFailed } from "@/features/queue-recovery/queries";
 
 export async function GET(
   _request: Request,
@@ -29,10 +30,15 @@ export async function GET(
     where: { tournamentId: id, selectedForCard: true, analysis: { not: Prisma.DbNull } },
   });
 
+  // failed=true, если парсинг турнира сдох в карантин (иначе экран парсинга крутится вечно).
+  // Считаем только пока турнир не разобран.
+  const failed = tournament.status === "UPLOADED" ? await isTournamentParseFailed(id) : false;
+
   return NextResponse.json({
     status: tournament.status,
     summaryReady: tournament.summary !== null,
     handsTotal,
     handsReady,
+    failed,
   });
 }

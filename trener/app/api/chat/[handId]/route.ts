@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getChat } from "@/features/chat/queries";
+import { isChatReplyFailed } from "@/features/queue-recovery/queries";
 import { authorizeHand } from "@/features/auth/ownership";
 
 export async function GET(
@@ -16,5 +17,9 @@ export async function GET(
 
   const chat = await getChat(handId);
   if (!chat) return NextResponse.json({ error: "not_found" }, { status: 404 });
-  return NextResponse.json(chat);
+
+  // failed=true, если ответ тренера сдох в карантин (иначе «готовим ответ…» навсегда).
+  // Считаем только когда реально ждём ответа.
+  const failed = chat.awaitingReply ? await isChatReplyFailed(handId) : false;
+  return NextResponse.json({ ...chat, failed });
 }

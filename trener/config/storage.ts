@@ -24,6 +24,15 @@ export function getS3Config(): S3Config {
   };
 }
 
+// Предел ожидания одной операции с хранилищем (PutObject). У AWS SDK v3 по умолчанию
+// таймаут запроса фактически не ограничен — зависшая загрузка держала бы лейн воркера
+// (карточки автопостинга/образцы форматов кладутся из фоновых задач). В .env (правило 3).
+const DEFAULT_STORAGE_CALL_TIMEOUT_MS = 20_000;
+export function getStorageCallTimeoutMs(): number {
+  const raw = Number(process.env.STORAGE_CALL_TIMEOUT_MS);
+  return Number.isInteger(raw) && raw > 0 ? raw : DEFAULT_STORAGE_CALL_TIMEOUT_MS;
+}
+
 // Хранилище считается настроенным, только когда есть адрес, бакет и оба ключа.
 // Иначе — noop-адаптер (нераспознанные файлы просто не складываются).
 export function isStorageConfigured(): boolean {

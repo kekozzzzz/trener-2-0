@@ -39,6 +39,17 @@ export function getYooKassaWebhookIps(): string[] {
     .filter(Boolean);
 }
 
+// Предел ожидания одного вызова к API ЮKassa. Без него зависший вызов (ЮKassa приняла
+// соединение, но молчит) держит fetch дефолтом undici ~5 мин: в фоновом автопродлении это
+// занимает лейн воркера, в вебхуке — тормозит ответ ЮKassa (она долбит ретраями). С таймаутом
+// вызов падает быстро, а повтор обеспечивают верхние уровни (очередь с backoff / ретраи
+// вебхука ЮKassa; POST идемпотентен по Idempotence-Key). В .env (правило 3).
+const DEFAULT_PAYMENTS_CALL_TIMEOUT_MS = 20_000;
+export function getPaymentsCallTimeoutMs(): number {
+  const raw = Number(process.env.PAYMENTS_CALL_TIMEOUT_MS);
+  return Number.isInteger(raw) && raw > 0 ? raw : DEFAULT_PAYMENTS_CALL_TIMEOUT_MS;
+}
+
 // Включён ли рекуррент (сохранение карты для автопродления). По умолчанию ВЫКЛ:
 // возможность автоплатежей у магазина ЮKassa активируется отдельно по запросу
 // (иначе ЮKassa отвечает 403 "store can't make recurring payments"). Пока выключено —

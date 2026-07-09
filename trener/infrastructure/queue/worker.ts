@@ -1,19 +1,15 @@
 import type { PrismaClient } from "@prisma/client";
 import type { RawTask, WorkerResult } from "./types";
 import { getHandler } from "./registry";
+import { getStuckProcessingThresholdMs } from "@/config/queue";
 import { safeNotifyAdmin } from "@/infrastructure/adapters/notify";
 
 // После MAX_ATTEMPTS неудач задача уходит в карантин (POISONED).
 const MAX_ATTEMPTS = 3;
 // Базовая задержка для retry: умножается на номер попытки.
 const RETRY_DELAY_BASE_MS = 30_000;
-// Сколько задача может «висеть» в PROCESSING, прежде чем считается осиротевшей.
-// Если процесс умер во время обработки (напр. pm2 restart), claimTask её больше
-// не возьмёт — он выбирает только PENDING. Reaper возвращает такие в очередь.
-// Порог должен быть заметно больше реального времени самого долгого шага (LLM-вызов).
-// Переопределяется из .env, чтобы тюнить без передеплоя.
-const STUCK_PROCESSING_TIMEOUT_MS =
-  Number(process.env.QUEUE_STUCK_TIMEOUT_MS) || 10 * 60_000;
+// Порог «зависшей» PROCESSING-задачи вынесен в общий конфиг (config/queue.ts) — тем же
+// значением пользуется health-проверка воркера, чтобы «зависло» трактовалось одинаково.
 
 // Разгребает очередь до конца, гоняя `concurrency` воркеров параллельно. Каждый
 // крутит runWorkerOnce, пока тот возвращает задачи. Параллельность безопасна:
@@ -94,7 +90,7 @@ export type ReapResult = { requeued: number; poisoned: number };
 // Вызывать один раз в начале прогона очереди (не внутри runWorkerOnce — тот крутится
 // в цикле). Время «висения» считаем по updated_at: claimTask бьёт его при захвате.
 export async function reapStuckTasks(db: PrismaClient): Promise<ReapResult> {
-  const cutoff = new Date(Date.now() - STUCK_PROCESSING_TIMEOUT_MS);
+  const cutoff = new Date(Date.now() - getStuckProcessingThresholdMs());
 
   // 1. Исчерпавшие попытки → карантин. Иначе при процессе, падающем именно на этой
   // задаче, она крутилась бы вечно: краш минует catch в runWorkerOnce, poison не наступит.

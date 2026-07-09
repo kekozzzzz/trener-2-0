@@ -11,6 +11,7 @@ import {
   getYooKassaApiUrl,
   getYooKassaSecretKey,
   getYooKassaShopId,
+  getPaymentsCallTimeoutMs,
 } from "@/config/payments";
 import type {
   ChargeSavedParams,
@@ -116,6 +117,9 @@ async function postPayment(body: unknown, idempotenceKey: string): Promise<YooKa
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
+    // Таймаут против зависшего вызова (иначе fetch висит ~5 мин, занимая лейн автопродления).
+    // Повтор безопасен: тот же Idempotence-Key не создаёт второй платёж — ретраит очередь.
+    signal: AbortSignal.timeout(getPaymentsCallTimeoutMs()),
   });
   const json = (await res.json()) as YooKassaPayment & { description?: string };
   if (!res.ok) {
@@ -180,6 +184,7 @@ export const yooKassaPaymentsAdapter: PaymentsPort = {
     const res = await fetch(`${getYooKassaApiUrl()}/payments/${encodeURIComponent(externalPaymentId)}`, {
       method: "GET",
       headers: { Authorization: authHeader() },
+      signal: AbortSignal.timeout(getPaymentsCallTimeoutMs()),
     });
     const json = (await res.json()) as YooKassaPayment;
     if (!res.ok) {
@@ -194,6 +199,7 @@ export const yooKassaPaymentsAdapter: PaymentsPort = {
     const res = await fetch(`${getYooKassaApiUrl()}/refunds/${encodeURIComponent(refundId)}`, {
       method: "GET",
       headers: { Authorization: authHeader() },
+      signal: AbortSignal.timeout(getPaymentsCallTimeoutMs()),
     });
     const json = (await res.json()) as YooKassaRefund;
     if (!res.ok) {

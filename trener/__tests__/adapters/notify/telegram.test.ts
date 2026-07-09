@@ -20,6 +20,7 @@ const ENV_KEYS = [
   "TELEGRAM_ADMIN_CHAT_ID",
   "TELEGRAM_BASE_URL",
   "TELEGRAM_PROXY_SECRET",
+  "TELEGRAM_CALL_RETRIES",
 ] as const;
 
 const savedEnv: Record<string, string | undefined> = {};
@@ -30,6 +31,9 @@ beforeEach(() => {
   process.env.TELEGRAM_ADMIN_CHAT_ID = "440359604";
   process.env.TELEGRAM_BASE_URL = "https://92.60.75.87/tg";
   process.env.TELEGRAM_PROXY_SECRET = "secret-xyz";
+  // Без повторов: устойчивость релея (таймаут/повтор) проверяется в resilient-fetch.test.ts,
+  // здесь тесты про сам адаптер — держим их одношаговыми и быстрыми.
+  process.env.TELEGRAM_CALL_RETRIES = "0";
 });
 
 afterEach(() => {
@@ -78,13 +82,20 @@ describe("telegramNotifyAdapter.notifyAdmin", () => {
 });
 
 describe("safeNotifyAdmin", () => {
-  it("глушит ошибку доставки — не пробрасывает наверх", async () => {
+  it("доставка удалась → true", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 } as Response);
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(safeNotifyAdmin("привет")).resolves.toBe(true);
+  });
+
+  it("глушит ошибку доставки, не пробрасывает наверх и возвращает false", async () => {
     const fetchMock = vi.fn().mockRejectedValue(new Error("сеть упала"));
     vi.stubGlobal("fetch", fetchMock);
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    // Не должно бросить, несмотря на падение fetch.
-    await expect(safeNotifyAdmin("тревога")).resolves.toBeUndefined();
+    // Не должно бросить, несмотря на падение fetch; false = «не дошло» для честного статуса.
+    await expect(safeNotifyAdmin("тревога")).resolves.toBe(false);
     expect(errorSpy).toHaveBeenCalled();
   });
 });

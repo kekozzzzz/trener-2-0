@@ -7,6 +7,8 @@ import {
   getAnthropicModel,
   getAnthropicProxySecret,
   getAnthropicProxyUrl,
+  getLlmCallTimeoutMs,
+  getLlmCallRetries,
 } from "@/config/llm";
 import { getHealthCheckTimeoutMs } from "@/config/health";
 import { buildHandAnalysisPrompt, buildHandAnalysisSystemPrompt } from "@/config/prompts/hand-analysis";
@@ -80,7 +82,14 @@ function getClient(): Anthropic {
     // Свой undici-Agent сюда НЕ передаём: версия пакета undici в проекте не совпадает
     // со встроенной в Node, и передача Agent в глобальный fetch валит каждый вызов
     // (UND_ERR_INVALID_ARG: invalid onRequestStart method).
-    options.maxRetries = 5;
+    //
+    // ⚠️ Таймаут ОБЯЗАТЕЛЕН (симметрично OpenRouter, resilient-fetch.ts). Без него у SDK
+    // дефолт ~10 мин НА ПОПЫТКУ: зависший релей держит лейн воркера десятки минут, а жнец
+    // не подберёт его, пока идёт прогон (single-flight, kick.ts). Это запасной провайдер —
+    // включается ровно когда OpenRouter лёг, т.е. в момент, когда релей и так под стрессом.
+    // timeout — предел ОДНОЙ попытки; maxRetries из конфига (было жёстко 5 → худшие ~час).
+    options.timeout = getLlmCallTimeoutMs();
+    options.maxRetries = getLlmCallRetries();
     const proxySecret = getAnthropicProxySecret();
     if (proxySecret) {
       options.defaultHeaders = { "x-proxy-secret": proxySecret };

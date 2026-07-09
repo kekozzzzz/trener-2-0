@@ -36,7 +36,8 @@
 - [DeepSeek migration](project_deepseek_migration.md) — разбор на DeepSeek (OpenRouter→КЗ-релей) ~10-16× дешевле; LIVE; откат флагом LLM_PROVIDER
 - [Voice input STT](project_voice_input_stt.md) — голос через Voxtral (OpenRouter→релей); LIVE; 2026-07-04 (d33323b): микрофон и у заметки под сеткой; учёт затрат в LlmUsage (шаг STT, точная цена usage.cost); отказы модели/кавычки/преамбулы срезаются, ошибка у кнопки красная; 🔧2026-07-08 устойчивость к икоте релея (resilientFetch: таймаут+повтор), ⏳в коде на ветке
 - [Dynamic dialogue length](project_dynamic_dialogue_length.md) — длину диалога (1..12) задаёт ИИ флагом complete; ЗАДЕПЛОЕНО
-- [Queue latency](project_queue_latency.md) — concurrency 10; узкое место DeepSeek ~10с/раздача; 🔧2026-07-08 фикс «зависший релей вешал разбор на ~15 мин + замерзало + молчал дайджест» — общий resilientFetch (таймаут + быстрый повтор при икоте релея) у LLM И голоса, чтобы человек не замечал; ⏳в коде на ветке, НЕ задеплоено
+- [Queue latency](project_queue_latency.md) — concurrency 10; узкое место DeepSeek ~10с/раздача; 🔧2026-07-08 фикс «зависший релей вешал разбор на ~15 мин + замерзало + молчал дайджест» — общий resilientFetch (таймаут + быстрый повтор при икоте релея) у LLM И голоса; 3 коммита (a1ff944/ea746a9/e30aae0) в master 08.07→автодеплой; 🔧2026-07-09 доделка дайджеста (честный sent/failed) + РОУНД УСТОЙЧИВОСТИ: таймаут запасного Claude, жнец независим от single-flight, health ловит зависшие PROCESSING, таймауты Telegram-моста/ЮKassa/ЦБ/email/S3; + вечная крутилка вылечена ([[project_stuck_step_recovery]]) + сторож тишины дайджеста (heartbeat в коде + digest-watchdog.timer на релее УЖЕ живёт) — всё в коде, ждёт «выкатывай»; второй релей отложен до первых людей
+- [Stuck-step recovery](project_stuck_step_recovery.md) — вечная крутилка: диалог/чат/парс при POISONED показывают «не получилось, повторить» вместо бесконечного «готовим…»; features/queue-recovery/ + failed в статус-роутах + капы; в коде, ждёт выкатки [[project_queue_latency]]
 - [Scaling triggers](project_scaling_triggers.md) — воркер последовательный; рычаг №1 параллельный воркер
 - [Health monitoring](project_health_monitoring.md) — /api/health (db+telegram+claude+worker) + UptimeRobot; серт следим сами
 - [Payments — ЮKassa](project_payments_yookassa.md) — ЮKassa LIVE, возвраты есть; осталось юр-флаги (РКН/трансгранич.)
@@ -50,7 +51,7 @@
 - [Owner comp access](project_owner_comp_access.md) — владелец admin-байпасом (isAdminEmail); тестер zebster@bk.ru max до 2099
 - [SEO/метаданные](project_seo_metadata.md) — описания+robots+sitemap LIVE; favicon ждёт логотипа
 - [Nginx upload limit](project_nginx_upload_limit.md) — 413 при пачке файлов; client_max_body_size 50m на обоих nginx; осталось global-error.tsx + чек размера на клиенте
-- [Deploy status](project_deploy_status.md) — whygrid.app через КЗ-релей (Cloudflare убран); ❗серт продлить до 2026-09-20; SSH к ВМ через релей-jump
+- [Deploy status](project_deploy_status.md) — whygrid.app через КЗ-релей (Cloudflare убран); серт АВТО-продляется до 2026-09-23 (certbot.timer, ручное не нужно); SSH к ВМ через релей-jump; live-сверка 09.07: автодеплой ТЕПЕРЬ применяет миграции + шлёт отчёты прямо в Telegram мимо релея (независимый канал); всё живо
 - [LLM connectivity block](project_llm_connectivity_block.md) — РЕШЕНО: LLM из РФ через релей-nginx (Казахстан)
 - [Deploy pipeline hang](project_deploy_pipeline_hang.md) — git fetch без таймаута вешал деплой; фикс timeout 120
 - [Watchdog bot](project_watchdog_bot.md) — тревога при карантине задачи в Telegram (@kekoz_bot); дайджест впереди

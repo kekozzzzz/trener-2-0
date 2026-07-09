@@ -10,6 +10,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  await runDailyDigest(prisma);
-  return NextResponse.json({ status: "sent" });
+  // Честный статус: если доставка не удалась (релей/Telegram молчали, resilientFetch не
+  // спас), НЕ рапортуем «sent» вслепую — иначе провал дайджеста теряется без следа.
+  // safeNotifyAdmin уже залогировал причину; 502 делает провал видимым в логах крона.
+  const delivered = await runDailyDigest(prisma);
+  return delivered
+    ? NextResponse.json({ status: "sent" })
+    : NextResponse.json({ status: "failed" }, { status: 502 });
 }

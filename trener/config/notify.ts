@@ -7,6 +7,8 @@
 // достаёт — сообщения идут через тот же HTTPS-релей в Казахстане, что и Claude.
 // Поэтому базовый адрес настраиваемый: на проде = релей, в деве/тестах пусто.
 
+import nodePath from "path";
+
 // Токен бота от @BotFather. Пусто — бот не настроен, уведомления молча отключены.
 export function getTelegramBotToken(): string {
   return process.env.TELEGRAM_BOT_TOKEN ?? "";
@@ -61,4 +63,42 @@ export function getQueueStuckThresholdMs(): number {
   const parsed = raw ? parseInt(raw, 10) : NaN;
   const minutes = Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_QUEUE_STUCK_MINUTES;
   return minutes * 60 * 1000;
+}
+
+// Путь к «пульсу» дайджеста: файл, который сторож тишины на релее читает, чтобы понять,
+// приходила ли утренняя сводка. Приложение обновляет его при УСПЕШНОЙ отправке; если файл
+// не трогали больше суток — сторож (независимым Telegram-каналом на релее) бьёт тревогу.
+// Так ловится «сводка молча пропала» (крон не сработал / релей лёг), а не только память
+// Артёма «мне утром ничего не пришло». По умолчанию — рядом со служебными файлами приложения
+// (POST_QUEUE_DIR, он уже задан на проде вне git); можно переопределить DIGEST_HEARTBEAT_FILE.
+export function getDigestHeartbeatPath(): string {
+  const explicit = process.env.DIGEST_HEARTBEAT_FILE;
+  if (explicit) return explicit;
+  const dir = process.env.POST_QUEUE_DIR ?? nodePath.join(process.cwd(), ".post-queue");
+  return nodePath.join(dir, "digest-last-ok");
+}
+
+// ──────────────────── Устойчивость вызова Telegram через релей ───────────────
+// Уведомления администратору (дайджест «Сводка за сутки», тревоги очереди, форма
+// поддержки) идут на прод тем же релеем КЗ, что LLM и голос. Без таймаута зависший
+// релей (принял соединение, но молчит) держит fetch дефолтом undici ~5 минут: дайджест
+// молча виснет и, поскольку safeNotifyAdmin глушит ошибку, «теряется без следа». Тот же
+// resilientFetch, что у разбора: таймаут + быстрый повтор при икоте релея (обрыв/502/504).
+//
+// Telegram отвечает за доли секунды — 15с даёт большой запас, не срезая честный ответ.
+// В env (правило проекта №3 — лимиты в конфиге), чтобы тюнить с релея без передеплоя.
+const DEFAULT_TELEGRAM_CALL_TIMEOUT_MS = 15_000;
+export function getTelegramCallTimeoutMs(): number {
+  const raw = Number(process.env.TELEGRAM_CALL_TIMEOUT_MS);
+  return Number.isInteger(raw) && raw > 0 ? raw : DEFAULT_TELEGRAM_CALL_TIMEOUT_MS;
+}
+
+// Сколько раз ДОПОЛНИТЕЛЬНО переповторить вызов при ВРЕМЕННОМ сбое релея (обрыв
+// соединения, 502/503/504 от перегруженного nginx) — по свежему соединению, с короткой
+// паузой. Гасит разовую икоту незаметно. Полный таймаут этим НЕ повторяется (см.
+// resilient-fetch.ts). 0 — без повторов. В env (правило 3).
+const DEFAULT_TELEGRAM_CALL_RETRIES = 2;
+export function getTelegramCallRetries(): number {
+  const raw = Number(process.env.TELEGRAM_CALL_RETRIES);
+  return Number.isInteger(raw) && raw >= 0 ? raw : DEFAULT_TELEGRAM_CALL_RETRIES;
 }

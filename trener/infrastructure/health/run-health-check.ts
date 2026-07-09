@@ -2,6 +2,7 @@ import type { PrismaClient } from "@prisma/client";
 import type { NotifyPort } from "@/infrastructure/adapters/notify";
 import type { LlmPort } from "@/infrastructure/adapters/llm";
 import { getQueueStuckThresholdMs } from "@/config/notify";
+import { getStuckProcessingThresholdMs } from "@/config/queue";
 import { getHealthCheckTimeoutMs } from "@/config/health";
 
 // Сводка здоровья для внешнего монитора. Наружу отдаём только эти имена и ok/fail:
@@ -33,12 +34,23 @@ async function check(fn: () => Promise<boolean>, ms: number): Promise<CheckStatu
   }
 }
 
-// Воркер жив, если нет PENDING-задач, чьё время запуска прошло раньше порога «зависания»
-// (та же логика, что в дайджесте) — значит очередь разгребается.
+// Воркер жив, если очередь разгребается. Две слепые зоны закрыты сразу:
+//  1. PENDING-задачи, чьё время запуска прошло раньше порога (та же логика, что в дайджесте) —
+//     значит воркер вообще не берёт задачи.
+//  2. PROCESSING-задачи, висящие дольше порога осиротевших — значит лейн застрял на зависшем
+//     вызове (напр. запасной Claude через залёгший релей). Без этой проверки health отдавал
+//     ложно-зелёный (задачи в PROCESSING, PENDING пуст) и внешний монитор молчал, пока сайт-
+//     фронт живой, — ровно та невидимость, из-за которой сбой доходил до владельца с суток
+//     опозданием. Теперь такой висяк роняет /api/health → UptimeRobot шлёт письмо (независимо
+//     от релея, которым идут внутренние тревоги).
 async function isWorkerHealthy(db: PrismaClient): Promise<boolean> {
-  const stuckBefore = new Date(Date.now() - getQueueStuckThresholdMs());
-  const stuck = await db.task.count({ where: { status: "PENDING", runAfter: { lt: stuckBefore } } });
-  return stuck === 0;
+  const pendingStuckBefore = new Date(Date.now() - getQueueStuckThresholdMs());
+  const processingStuckBefore = new Date(Date.now() - getStuckProcessingThresholdMs());
+  const [pendingStuck, processingStuck] = await Promise.all([
+    db.task.count({ where: { status: "PENDING", runAfter: { lt: pendingStuckBefore } } }),
+    db.task.count({ where: { status: "PROCESSING", updatedAt: { lt: processingStuckBefore } } }),
+  ]);
+  return pendingStuck === 0 && processingStuck === 0;
 }
 
 export async function runHealthCheck(deps: HealthDeps): Promise<HealthResult> {

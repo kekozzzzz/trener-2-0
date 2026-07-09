@@ -3,7 +3,7 @@
 // нагрузки и затрат нет. При недоступности источника отдаём запасной курс из конфига
 // (НЕ кэшируем его — чтобы при восстановлении источника сразу взять реальный курс).
 
-import { getFallbackUsdRub } from "@/config/exchange-rate";
+import { getFallbackUsdRub, getExchangeRateCallTimeoutMs } from "@/config/exchange-rate";
 import type { ExchangeRatePort } from "./types";
 
 const SOURCE = "https://www.cbr-xml-daily.ru/daily_json.js";
@@ -26,7 +26,9 @@ export const cbrExchangeRate: ExchangeRatePort = {
     if (cache && cache.day === day) return cache.rate;
 
     try {
-      const res = await fetch(SOURCE);
+      // Таймаут, чтобы при зависшем источнике быстро уйти в запасной курс (catch ниже),
+      // а не держать фоновый лейн автопродления ~5 мин дефолтом undici.
+      const res = await fetch(SOURCE, { signal: AbortSignal.timeout(getExchangeRateCallTimeoutMs()) });
       if (!res.ok) throw new Error(`ЦБ курс: HTTP ${res.status}`);
       const json = (await res.json()) as { Valute?: { USD?: { Value?: number } } };
       const rate = json.Valute?.USD?.Value;

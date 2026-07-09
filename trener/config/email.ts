@@ -33,6 +33,15 @@ export function getEmailFromName(): string {
   return process.env.EMAIL_FROM_NAME ?? "Whygrid";
 }
 
+// Предел ожидания одного вызова к Unisender Go. Без него зависший сервис держит fetch
+// дефолтом undici ~5 мин — server action (сброс пароля/подтверждение) висит, а если письмо
+// шлётся из фоновой задачи — занимает лейн воркера. В .env (правило 3).
+const DEFAULT_EMAIL_CALL_TIMEOUT_MS = 15_000;
+export function getEmailCallTimeoutMs(): number {
+  const raw = Number(process.env.EMAIL_CALL_TIMEOUT_MS);
+  return Number.isInteger(raw) && raw > 0 ? raw : DEFAULT_EMAIL_CALL_TIMEOUT_MS;
+}
+
 // Email считается настроенным, только когда есть API-ключ. Иначе — noop-адаптер.
 export function isEmailConfigured(): boolean {
   return getEmailApiKey() !== "";

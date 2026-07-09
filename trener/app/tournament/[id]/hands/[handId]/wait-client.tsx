@@ -4,19 +4,29 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { triggerWorkerAction } from "@/app/status/actions";
+import { retryDialogueStep } from "@/features/queue-recovery/actions";
 import { Button } from "@/components/ui/button";
 import { LoadingDots } from "@/components/ui/loading-dots";
 
 type DialogueResponse = {
   state: "QUESTION_ASKED" | "ANSWER_RECEIVED" | "VERDICT_SHOWN";
+  failed?: boolean;
 };
+
+// Предохранитель от вечного опроса: ~5 минут при 1.2с. Штатно шаг считается ≤30с, а
+// сдохшая задача поизонится за ~3 мин (3 попытки с backoff) — тогда придёт failed. Кап
+// нужен на редкий случай «висит, но ещё не в карантине»: не крутим бесконечно.
+const MAX_POLLS = 250;
 
 export function WaitClient({ handId }: { handId: string }) {
   const router = useRouter();
   const t = useTranslations("HandReview");
+  const [failed, setFailed] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   const [workerError, setWorkerError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const inFlight = useRef(false);
+  const polls = useRef(0);
 
   const poll = useCallback(async () => {
     if (inFlight.current) return;
@@ -25,17 +35,39 @@ export function WaitClient({ handId }: { handId: string }) {
       const res = await fetch(`/api/dialogue/${handId}`);
       if (res.ok) {
         const data: DialogueResponse = await res.json();
-        if (data.state !== "ANSWER_RECEIVED") router.refresh();
+        if (data.state !== "ANSWER_RECEIVED") {
+          router.refresh();
+          return;
+        }
+        if (data.failed) {
+          setFailed(true);
+          return;
+        }
       }
+      polls.current += 1;
+      if (polls.current >= MAX_POLLS) setFailed(true);
     } finally {
       inFlight.current = false;
     }
   }, [handId, router]);
 
   useEffect(() => {
+    if (failed) return;
     const id = setInterval(poll, 1200);
     return () => clearInterval(id);
-  }, [poll]);
+  }, [poll, failed]);
+
+  // Повтор застрявшего шага: перезапускаем сдохшую задачу и снова ждём (сбрасываем кап).
+  async function retry() {
+    setRetrying(true);
+    try {
+      await retryDialogueStep(handId);
+    } finally {
+      polls.current = 0;
+      setFailed(false);
+      setRetrying(false);
+    }
+  }
 
   async function triggerWorker() {
     setWorkerError(null);
@@ -49,6 +81,17 @@ export function WaitClient({ handId }: { handId: string }) {
       setRunning(false);
     }
     await poll();
+  }
+
+  if (failed) {
+    return (
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="text-body text-muted-foreground">{t("stepFailed")}</p>
+        <Button variant="outline" onClick={retry} disabled={retrying}>
+          {retrying ? t("retrying") : t("retry")}
+        </Button>
+      </div>
+    );
   }
 
   return (

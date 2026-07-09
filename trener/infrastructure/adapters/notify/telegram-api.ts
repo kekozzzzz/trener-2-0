@@ -2,7 +2,10 @@ import {
   getTelegramBotToken,
   getTelegramBaseUrl,
   getTelegramProxySecret,
+  getTelegramCallTimeoutMs,
+  getTelegramCallRetries,
 } from "@/config/notify";
+import { resilientFetch } from "@/infrastructure/adapters/http/resilient-fetch";
 
 // Низкоуровневый клиент Telegram Bot API — один модуль на все вызовы (sendMessage,
 // sendPhoto, ответ на нажатия кнопок, webhook). И сторож, и автопостинг ходят сюда,
@@ -44,12 +47,26 @@ export async function callTelegram(
   opts?: { token?: string; signal?: AbortSignal },
 ): Promise<void> {
   const token = opts?.token ?? getTelegramBotToken();
-  const response = await fetch(`${apiBase()}/bot${token}/${method}`, {
+  const url = `${apiBase()}/bot${token}/${method}`;
+  const init: RequestInit = {
     method: "POST",
     headers: proxyHeaders({ "content-type": "application/json" }),
     body: JSON.stringify(body),
-    signal: opts?.signal,
-  });
+  };
+
+  // Если вызывающий передал свой signal (свой таймаут/отмена) — уважаем его, один заход.
+  // Иначе — устойчивый вызов через релей: таймаут (без него зависший релей держит
+  // соединение ~5 мин дефолтом undici — дайджест и тревоги очереди молча виснут и
+  // «теряются») + быстрый повтор при временной икоте релея. Тот же resilientFetch, что
+  // у LLM-разбора и голоса. Тело у sendMessage — строка-JSON, повтор её пересоздаёт.
+  const response = opts?.signal
+    ? await fetch(url, { ...init, signal: opts.signal })
+    : await resilientFetch(url, init, {
+        timeoutMs: getTelegramCallTimeoutMs(),
+        retries: getTelegramCallRetries(),
+        label: "Telegram",
+      });
+
   if (!response.ok) {
     throw new Error(`Telegram ${method} не прошёл: HTTP ${response.status}`);
   }
@@ -92,10 +109,14 @@ export async function sendPhoto(
   if (opts?.caption) form.set("caption", opts.caption);
   if (opts?.replyMarkup) form.set("reply_markup", JSON.stringify(opts.replyMarkup));
 
+  // Таймаут, чтобы зависший релей не держал загрузку ~5 мин (дефолт undici). БЕЗ повтора:
+  // sendPhoto не идемпотентен — повтор после уже прошедшей публикации задвоил бы карточку
+  // в канале. Автопостинг вторичен, разовый провал не критичен.
   const response = await fetch(`${apiBase()}/bot${token}/sendPhoto`, {
     method: "POST",
     headers: proxyHeaders(),
     body: form,
+    signal: AbortSignal.timeout(getTelegramCallTimeoutMs()),
   });
   if (!response.ok) {
     throw new Error(`Telegram sendPhoto не прошёл: HTTP ${response.status}`);
@@ -150,15 +171,21 @@ export async function getUpdates(
   opts?: { token?: string; timeoutSec?: number; signal?: AbortSignal },
 ): Promise<RawUpdate[]> {
   const token = opts?.token ?? getTelegramBotToken();
+  const pollSec = opts?.timeoutSec ?? 0;
   const params = new URLSearchParams({
     offset: String(offset),
-    timeout: String(opts?.timeoutSec ?? 0),
+    timeout: String(pollSec),
     allowed_updates: JSON.stringify(["callback_query", "message"]),
   });
+  // Таймаут ОБЯЗАТЕЛЕН: без него зависший релей держит опрос дефолтом undici ~5 мин, а
+  // страж крона poll-telegram (isRunning) всё это время отдаёт 429 → кнопки ✅/✏️ и входящие
+  // замирают до перезапуска. Даём запас на long-poll (timeoutSec) сверх обычного предела.
+  const signal =
+    opts?.signal ?? AbortSignal.timeout(pollSec * 1000 + getTelegramCallTimeoutMs());
   const response = await fetch(`${apiBase()}/bot${token}/getUpdates?${params.toString()}`, {
     method: "GET",
     headers: proxyHeaders(),
-    signal: opts?.signal,
+    signal,
   });
   if (!response.ok) {
     throw new Error(`Telegram getUpdates не прошёл: HTTP ${response.status}`);

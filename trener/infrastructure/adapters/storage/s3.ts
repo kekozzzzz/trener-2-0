@@ -1,5 +1,5 @@
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import { getS3Config } from "@/config/storage";
+import { getS3Config, getStorageCallTimeoutMs } from "@/config/storage";
 import type { StoragePort } from "./types";
 
 // Адаптер на Yandex Object Storage (S3-совместимое). forcePathStyle — Yandex принимает
@@ -20,8 +20,11 @@ function getClient(): S3Client {
 
 export const s3StorageAdapter: StoragePort = {
   async put(key: string, body: Buffer, contentType: string): Promise<void> {
+    // abortSignal — таймаут на операцию: у AWS SDK v3 дефолт фактически безлимитный,
+    // зависшая загрузка держала бы фоновый лейн воркера.
     await getClient().send(
       new PutObjectCommand({ Bucket: getS3Config().bucket, Key: key, Body: body, ContentType: contentType }),
+      { abortSignal: AbortSignal.timeout(getStorageCallTimeoutMs()) },
     );
   },
 };

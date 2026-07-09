@@ -1,4 +1,4 @@
-import { getEmailApiKey, getEmailApiUrl, getEmailFromAddress, getEmailFromName } from "@/config/email";
+import { getEmailApiKey, getEmailApiUrl, getEmailFromAddress, getEmailFromName, getEmailCallTimeoutMs } from "@/config/email";
 import type { EmailMessage, EmailPort } from "./types";
 
 // Адаптер Unisender Go (транзакционный продукт) — один HTTPS-запрос на email/send.json,
@@ -13,6 +13,8 @@ export const unisenderEmailAdapter: EmailPort = {
         "content-type": "application/json",
         "X-API-KEY": getEmailApiKey(),
       },
+      // Таймаут против зависшего сервиса: не держим server action (сброс пароля) ~5 мин.
+      signal: AbortSignal.timeout(getEmailCallTimeoutMs()),
       body: JSON.stringify({
         message: {
           recipients: [{ email: message.to }],

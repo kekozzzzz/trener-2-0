@@ -15,3 +15,13 @@ export function getFallbackUsdRub(): number {
   const v = Number(process.env.USD_RUB_FALLBACK);
   return Number.isFinite(v) && v > 0 ? v : 95;
 }
+
+// Предел ожидания вызова к источнику курса. Без него зависший источник держит fetch
+// дефолтом undici ~5 мин ПЕРЕД тем, как сработает запасной курс — а вызов идёт из фонового
+// автопродления (занимает лейн воркера). С таймаутом запасной курс берётся быстро. Курс
+// нужен редко (раз в сутки, кэш), короткий таймаут не мешает. В .env (правило 3).
+const DEFAULT_EXCHANGE_RATE_TIMEOUT_MS = 8_000;
+export function getExchangeRateCallTimeoutMs(): number {
+  const raw = Number(process.env.EXCHANGE_RATE_TIMEOUT_MS);
+  return Number.isInteger(raw) && raw > 0 ? raw : DEFAULT_EXCHANGE_RATE_TIMEOUT_MS;
+}

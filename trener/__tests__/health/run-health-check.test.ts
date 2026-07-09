@@ -9,14 +9,18 @@ import type { NotifyPort } from "@/infrastructure/adapters/notify";
 import type { LlmPort } from "@/infrastructure/adapters/llm";
 import { runHealthCheck } from "@/infrastructure/health/run-health-check";
 
-function db(opts: { ok?: boolean; stuck?: number } = {}): PrismaClient {
-  const { ok = true, stuck = 0 } = opts;
+function db(opts: { ok?: boolean; stuck?: number; processingStuck?: number } = {}): PrismaClient {
+  const { ok = true, stuck = 0, processingStuck = 0 } = opts;
   return {
     $queryRaw: async () => {
       if (!ok) throw new Error("db down");
       return [{ "?column?": 1 }];
     },
-    task: { count: async () => stuck },
+    // isWorkerHealthy считает две категории: просроченные PENDING и зависшие PROCESSING.
+    task: {
+      count: async ({ where }: { where: { status: string } }) =>
+        where.status === "PROCESSING" ? processingStuck : stuck,
+    },
   } as unknown as PrismaClient;
 }
 
@@ -63,6 +67,14 @@ describe("runHealthCheck", () => {
 
   it("очередь зависла (есть просроченные PENDING) → worker fail", async () => {
     const r = await runHealthCheck({ db: db({ stuck: 4 }), notify: notify(up), llm: llm(up) });
+    expect(r.status).toBe("down");
+    expect(r.checks.worker).toBe("fail");
+  });
+
+  it("лейн завис в PROCESSING (PENDING пуст) → worker fail — ловим ложно-зелёный", async () => {
+    // Раньше health отдавал ok: PENDING пуст, а висящие PROCESSING не считались → внешний
+    // монитор молчал при застрявшем воркере. Теперь такой висяк роняет монитор.
+    const r = await runHealthCheck({ db: db({ processingStuck: 2 }), notify: notify(up), llm: llm(up) });
     expect(r.status).toBe("down");
     expect(r.checks.worker).toBe("fail");
   });
