@@ -112,6 +112,9 @@ export type MadeHand = {
   category: string; // ключ категории (HIGH/PAIR/TWO_PAIR/…)
   ru: string; // человеческое описание для промпта
   improves: boolean; // улучшают ли карты Hero категорию борда (иначе «играет борд»)
+  // Грубый бакет силы руки для классификации функции ставки (велью/защита/блеф) — единый
+  // источник, чтобы action-shape.ts не переопределял тир пары. «Своей пары нет» = AIR.
+  strength: "STRONG_MADE" | "STRONG_PAIR" | "MID_PAIR" | "WEAK_PAIR" | "AIR";
 };
 
 // Готовая рука Hero по картам + борду (3+ карты). null — префлоп (борда нет).
@@ -129,6 +132,8 @@ export function heroMadeHand(heroCards: string[], board: string[]): MadeHand | n
   const cat = v7[0];
   let category = "HIGH";
   let ru = "";
+  // Сильная готовая (две пары+) — STRONG_MADE; старшая карта без пары — AIR; пары уточняем ниже.
+  let strength: MadeHand["strength"] = cat >= 3 ? "STRONG_MADE" : "AIR";
 
   switch (cat) {
     case 9:
@@ -164,12 +169,20 @@ export function heroMadeHand(heroCards: string[], board: string[]): MadeHand | n
       const pr = v7[1];
       if (!improves) {
         ru = `пара ${GEN_PL[pr]} лежит на борде — своей пары у тебя нет, кикер ${SG[v7[2]] ?? "—"}`;
+        strength = "AIR"; // пара на борде, своей нет — по силе это воздух
       } else if (heroPair && hero[0].rank === pr) {
-        ru = pr > boardRanks[0] ? `оверпара ${GEN_PL[pr]} (выше борда)` : `карманная пара ${GEN_PL[pr]}`;
+        if (pr > boardRanks[0]) {
+          ru = `оверпара ${GEN_PL[pr]} (выше борда)`;
+          strength = "STRONG_PAIR";
+        } else {
+          ru = `карманная пара ${GEN_PL[pr]}`;
+          strength = pr > (boardRanks[1] ?? 0) ? "MID_PAIR" : "WEAK_PAIR";
+        }
       } else {
         const idx = boardRanks.indexOf(pr);
         const tier = idx === 0 ? "топ-пара" : idx === 1 ? "вторая пара" : "слабая пара";
         ru = `${tier} — ${GEN_PL[pr]}`;
+        strength = idx === 0 ? "STRONG_PAIR" : idx === 1 ? "MID_PAIR" : "WEAK_PAIR";
       }
       break;
     }
@@ -178,5 +191,5 @@ export function heroMadeHand(heroCards: string[], board: string[]): MadeHand | n
       ru = "пары нет, ты не попал в борд (только старшая карта)";
   }
 
-  return { category, ru, improves };
+  return { category, ru, improves, strength };
 }
