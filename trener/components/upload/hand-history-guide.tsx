@@ -26,10 +26,32 @@ const HAND_HISTORY_ROOMS: Room[] = [
   { id: "pokerstars", name: "PokerStars", hasPaths: true, hasNote: true },
   { id: "winamax", name: "Winamax", hasPaths: true, hasNote: true },
   { id: "888poker", name: "888poker", hasPaths: true },
-  { id: "acr", name: "ACR / PokerKing", hasTag: true, hasPaths: true },
-  { id: "ipoker", name: "Red Star Poker", hasTag: true, hasPaths: true, hasNote: true },
-  { id: "chico", name: "BetOnline", hasTag: true, hasPaths: true, hasNote: true },
+  { id: "acr", name: "ACR / PokerKing / Black Chip", hasTag: true, hasPaths: true },
+  { id: "ipoker", name: "Red Star / Betfair / Betsson", hasTag: true, hasPaths: true, hasNote: true },
+  { id: "chico", name: "BetOnline / TigerGaming / SportsBetting", hasTag: true, hasPaths: true, hasNote: true },
 ];
+
+// Скриншоты к шагам: номер шага (с нуля) → файл в /public/help.
+// Обработаны: ники и чужие пометки убраны, наши метки — лаймовые.
+const STEP_SHOTS: Record<string, Record<number, string>> = {
+  ggpoker: {
+    2: "/help/01-pokercraft.png",
+    3: "/help/02-tournament.png",
+    4: "/help/03-period.png",
+    5: "/help/04-checkbox.png",
+    6: "/help/05-download.png",
+  },
+  pokerstars: { 3: "/help/pokerstars/settings.png" },
+  winamax: {
+    1: "/help/winamax/menu.png",
+    2: "/help/winamax/options.png",
+    3: "/help/winamax/tracker.png",
+  },
+  "888poker": { 2: "/help/888poker/settings.png" },
+  acr: { 1: "/help/acr/lobby.png", 2: "/help/acr/settings.png" },
+  ipoker: { 1: "/help/ipoker/settings.png" },
+  // chico: публичные скрины слишком мыльные — добавим свой, когда снимем из клиента
+};
 
 // Одна раскрывашка рума: клик по названию раскрывает шаги (пока не нажали — скрыто).
 async function RoomDetails({ room }: { room: Room }) {
@@ -56,14 +78,29 @@ async function RoomDetails({ room }: { room: Room }) {
 
       <div className="px-6 pb-8 pt-2">
         <ol className="space-y-4">
-          {steps.map((step, i) => (
-            <li key={i} className="flex items-start gap-4">
-              <span className="flex size-6 shrink-0 items-center justify-center bg-primary font-mono text-label font-medium text-background">
-                {i + 1}
-              </span>
-              <span className="text-body">{step}</span>
-            </li>
-          ))}
+          {steps.map((step, i) => {
+            const shot = STEP_SHOTS[room.id]?.[i];
+            return (
+              <li key={i} className="flex items-start gap-4">
+                <span className="flex size-6 shrink-0 items-center justify-center bg-primary font-mono text-label font-medium text-background">
+                  {i + 1}
+                </span>
+                <div className="min-w-0 flex-1 space-y-3">
+                  <span className="text-body">{step}</span>
+                  {shot && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={shot}
+                      alt={step}
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full border border-border"
+                    />
+                  )}
+                </div>
+              </li>
+            );
+          })}
         </ol>
 
         {paths && (

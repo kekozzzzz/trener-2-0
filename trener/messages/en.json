@@ -434,8 +434,8 @@
     "uploadLabelPrefix": "You upload:",
     "networkLabels": {
       "acr": "WPN network (Winning Poker Network)",
-      "ipoker": "iPoker network - also Betfair, Betsson and others",
-      "chico": "also TigerGaming, SportsBetting (Chico network)"
+      "ipoker": "iPoker network - any of its skins works",
+      "chico": "Chico network"
     },
     "ext": {
       "ggpoker": ".txt (sometimes inside a .zip - unpack it)",
@@ -449,7 +449,7 @@
     "notes": {
       "ggpoker": "GGPoker has no \"download everything at once\" button. If you played different formats (tournaments, Spin & Gold), go through each section on the left separately.",
       "pokerstars": "Want to see the hand right at the table - enable \"Instant Hand History\" in the table menu (\"Table\"). The history language doesn't matter, we read any.",
-      "winamax": "Windows hides the AppData folder - in Explorer turn on \"Show hidden items\" (the \"View\" tab), otherwise you won't find it. Winamax won't let you change the history folder - take the files from this one.",
+      "winamax": "In the new client the history is saved to disk automatically - no checkbox needed. The old client has one: User Settings → Game settings → \"Save My Hand History\". Windows hides the AppData folder - in Explorer turn on \"Show hidden items\" (the \"View\" tab), otherwise you won't find it.",
       "ipoker": "The client must be in English - otherwise the history might not save correctly. Windows hides the AppData folder - turn on showing hidden items.",
       "chico": "If some file isn't recognized - let us know and we'll fix it."
     },
@@ -458,8 +458,8 @@
         "The path is shown in \"Where To Save\" in the same settings"
       ],
       "winamax": [
-        "Documents\\Winamax Poker\\accounts\\[your nickname]\\history",
-        "new client: AppData\\Roaming\\winamax\\documents\\accounts\\[your nickname]\\history"
+        "AppData\\Roaming\\winamax\\documents\\accounts\\[your nickname]\\history",
+        "old client: Documents\\Winamax Poker\\accounts\\[your nickname]\\history"
       ],
       "888poker": [
         "Documents\\888poker\\HandHistory",
@@ -496,10 +496,10 @@
       ],
       "winamax": [
         "Open the Winamax client and sign in.",
-        "Open \"User Settings\" - usually a gear icon or a menu item with your nickname.",
-        "Go to the \"Game settings\" tab → \"Hand History\".",
-        "Tick \"Save My Hand History\".",
-        "Open the profile folder (path below) and grab the .txt files."
+        "In the top-left corner click the menu button (three bars).",
+        "In the menu pick \"Options\".",
+        "In the list on the left open the \"Tracker\" section - the \"Hand history file location\" row shows the folder with your hand history. The \"Open\" button opens it.",
+        "Grab the tournament .txt files from that folder."
       ],
       "888poker": [
         "Open the 888poker client (lobby) and sign in.",

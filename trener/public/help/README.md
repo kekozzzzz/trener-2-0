@@ -1,16 +1,34 @@
-# Скриншоты инструкции загрузки (PokerCraft)
+# Скриншоты инструкции «Как выгрузить руки»
 
-Картинки для блока «Как выгрузить руки из GGPoker»
-(компонент `components/upload/upload-guide.tsx`). Уже обработаны:
-ник закрашен, аватарка заменена на бренд-знак, добавлены стрелки.
+Картинки для подсказки по румам (компонент `components/upload/hand-history-guide.tsx`,
+карта «шаг → файл» — в константе STEP_SHOTS там же). Все обработаны: ники и чужие
+пометки (стрелки/рамки трекеров) убраны, наши метки — лаймовые рамки/стрелки.
 
-| Файл | Шаг | Стрелка указывает на |
-|---|---|---|
-| `01-pokercraft.png` | 1. Открой PokerCraft | кнопку «PokerCraft…» внизу панели событий |
-| `02-tournament.png` | 2. Раздел «Турнир» | пункт «Турнир» в левом меню |
-| `03-period.png` | 3. Период | «Последние 7 дней» в фильтре «Дата» |
-| `04-checkbox.png` | 4. Галочки | колонку чекбоксов у турниров |
-| `05-download.png` | 5. Скачать руки | красную кнопку «истории игр» |
+## GGPoker (PokerCraft, скриншоты Артёма)
 
-Шаг 6 «Загрузи файл сюда» — без скриншота, это наша же страница.
-Сырые оригиналы с ником — в `raw/` (закрыта от git).
+| Файл | Что показывает |
+|---|---|
+| `01-pokercraft.png` | кнопка «PokerCraft…» внизу панели событий |
+| `02-tournament.png` | пункт «Турнир» в левом меню |
+| `03-period.png` | фильтр «Дата», «Последние 7 дней» |
+| `04-checkbox.png` | колонка чекбоксов у турниров |
+| `05-download.png` | красная кнопка «истории игр» |
+
+## Остальные румы (из публичных гайдов, перерисованы)
+
+| Файл | Что показывает |
+|---|---|
+| `pokerstars/settings.png` | Settings → Playing History → Hand History: галочка + Where To Save |
+| `winamax/menu.png` | кнопка-гамбургер меню в лобби |
+| `winamax/options.png` | пункт OPTIONS в меню |
+| `winamax/tracker.png` | Options → Tracker: строка Hand history file location |
+| `888poker/settings.png` | Settings (шестерёнка) → Game settings: галочка + путь |
+| `acr/lobby.png` | шестерёнка настроек в лобби ACR Poker |
+| `acr/settings.png` | Settings → Hand Histories: галочка Save Hand History + папка |
+| `ipoker/settings.png` | My Account → Settings → General → Store hand history locally |
+
+BetOnline (Chico) пока без скриншота: публичные картинки слишком мыльные,
+снимем сами из клиента (заготовка — Test/hh-screens-raw/chico/).
+
+Сырые оригиналы и источники — в `Test/hh-screens-raw/<рум>/sources.md` (вне git).
+Папка `raw/` (исходники PokerCraft с ником) закрыта от git.
