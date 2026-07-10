@@ -1,12 +1,25 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/infrastructure/db/client";
 import { enqueue, CRITICAL_ANALYSIS_PRIORITY } from "@/infrastructure/queue";
 import { requireSession } from "@/features/auth/session";
 import { assessAiAccess } from "@/features/usage/budget";
 import { checkUploadQuota } from "@/features/usage/limit";
+import { isValidSelfLevel } from "@/config/self-level";
+
+// «Ориентир»: игрок сам отметил уровень понимания покера (мягкий приор для тона
+// тренера, план 2026-07-10-ориентир-уровень-игрока). Аккаунт-уровень (Player), хотя
+// строчка живёт на странице турнира. Пустое/невалидное значение = сброс (NULL).
+// Правило 1/2 соблюдаются в промпте, не здесь: это поле влияет только на тон.
+export async function setSelfLevelAction(level: string, tournamentId: string): Promise<void> {
+  const { playerId } = await requireSession();
+  const value = isValidSelfLevel(level) ? level : null;
+  await prisma.player.update({ where: { id: playerId }, data: { selfLevel: value } });
+  revalidatePath(`/tournament/${tournamentId}`);
+}
 
 // Открыть разбор у запертого турнира (модель «грузи сколько угодно, разбор — у
 // одного бесплатного, остальные под замком»). Платный гейт сохраняется: открываем
