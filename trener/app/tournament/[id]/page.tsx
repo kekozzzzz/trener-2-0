@@ -23,6 +23,8 @@ import { cn } from "@/lib/utils";
 import { ParsingWaitClient } from "./parsing-wait-client";
 import { AutoUnlockClient } from "./auto-unlock-client";
 import { AnalysisProgress } from "./analysis-progress";
+import { SelfLevelLine } from "./self-level";
+import { isValidSelfLevel, isSelfLevelActive } from "@/config/self-level";
 import { getAnalysisTimingSec } from "@/features/tournaments/estimate";
 import { getQueueConcurrency } from "@/config/queue";
 import { StartHereCard, SessionDoneCard, type FocusHand } from "@/components/tournament/focus-slot";
@@ -437,11 +439,23 @@ export default async function TournamentPage({
       : ([...unfinished].sort((a, b) => Math.abs(b.chipResult) - Math.abs(a.chipResult))[0] ?? null);
 
   // Ник игрока для показа вместо «Hero» (только отображение; в LLM не идёт).
+  // selfLevel + счётчики профиля — для строчки «Ориентир» (показываем, пока приор ещё
+  // помогает, план 2026-07-10). avgHandsCount×tournamentsCounted = учтённые руки.
   const me = await prisma.player.findUnique({
     where: { id: session.playerId },
-    select: { nickname: true },
+    select: {
+      nickname: true,
+      selfLevel: true,
+      profile: { select: { tournamentsCounted: true, avgHandsCount: true } },
+    },
   });
   const nick = me?.nickname ?? null;
+  const selfLevel = isValidSelfLevel(me?.selfLevel) ? me.selfLevel : null;
+  const tournamentsCounted = me?.profile?.tournamentsCounted ?? 0;
+  const handsCounted = me?.profile?.avgHandsCount
+    ? Math.round(tournamentsCounted * me.profile.avgHandsCount.toNumber())
+    : 0;
+  const showSelfLevel = isSelfLevelActive({ tournamentsCounted, handsCounted });
 
   // Турнир ещё досчитывается, пока не готова общая картина (она собирается последней,
   // из уже разобранных раздач). Пока идёт — держим живое обновление и плейсхолдеры,
@@ -473,6 +487,10 @@ export default async function TournamentPage({
           {tournament.room && ` · ${tournament.room}`}
           {tournament.entryNumber > 1 && ` · ${t("entryBadge", { n: tournament.entryNumber })}`}
         </p>
+
+        {/* «Ориентир»: тихая строчка самооценки уровня — только пока приор ещё помогает
+            (первые турниры), дальше сервер её скрывает. План 2026-07-10. */}
+        {showSelfLevel && <SelfLevelLine level={selfLevel} tournamentId={id} />}
 
         {/* Пока турнир досчитывается — баннер с честными этапами. Он же опрашивает статус и
             подгоняет страницу, чтобы разборы раздач всплывали в списках ниже по очереди. */}

@@ -707,6 +707,20 @@
     "markHands": "Mark hands on the grid",
     "clear": "Clear"
   },
+  "SelfLevel": {
+    "trigger": "Level",
+    "title": "Who am I talking to?",
+    "intro": "Tell me how deeply you understand poker - I'll adjust how much I explain. It's not a grade and doesn't affect the analysis. Once I see the real picture from your hands, I'll go by that, not by this mark.",
+    "newLabel": "Just starting",
+    "newDesc": "still learning the rules and basics",
+    "basicsLabel": "Know the basics",
+    "basicsDesc": "understand positions and pot odds, but not deeply",
+    "confidentLabel": "Solid understanding",
+    "confidentDesc": "think in ranges, read the hand street by street",
+    "deepLabel": "Deep in theory",
+    "deepDesc": "strong base, no need for the ABCs",
+    "skip": "Not sure / skip"
+  },
   "Glossary": {
     "helpLabel": "What the metrics and abbreviations mean",
     "title": "What the abbreviations mean",
