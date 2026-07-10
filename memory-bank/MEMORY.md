@@ -56,6 +56,7 @@
 - [Deploy pipeline hang](project_deploy_pipeline_hang.md) — git fetch без таймаута вешал деплой; фикс timeout 120
 - [Watchdog bot](project_watchdog_bot.md) — тревога при карантине задачи в Telegram (@kekoz_bot); дайджест впереди
 - [Posting bot](project_posting_bot.md) — @whygrid_bot автопостинг; ждёт перевыпуск токена + админство в канале
+- [Instagram content](project_instagram_content.md) — параллельный план IG рядом с TG @whygrid: одна раздача → лента(карточка 1080×1080 уже квадрат)+карусель+Reels, без двойной работы; ⚠️Meta в РФ заблок.=только органика/VPN, рекламы нет, ссылки некликабельны(«ссылка в шапке»); TG остаётся основным, IG — эксперимент на охват через Reels [[project_marketing]] [[project_posting_bot]]
 - [Telegram bridge](project_telegram_bridge.md) — управление с телефона @kekoz_bot, chat_id 440359604; с 2026-07-05 основной мост живёт на релее 24/7 [[project_remote_workspace]]
 - [Remote workspace](project_remote_workspace.md) — работа с планшета БЕЗ компа: главное окно — вкладка «Код» (память выгружена в memory-bank/ репо), пуш в master = АВТОДЕПЛОЙ сторожем на КЗ-релее (отчёт в Telegram); Termius/Telegram-мост на релее — запасные; настроено 2026-07-05
 - [Marketing](project_marketing.md) — бюджет $300 (50/50 TG/органика); Директ/VK нельзя (покер в стоп-листе)
