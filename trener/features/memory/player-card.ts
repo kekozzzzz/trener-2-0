@@ -3,6 +3,7 @@ import type { PlayerCard, PlayerCardLeak } from "@/infrastructure/adapters/llm/t
 import { countLeaks, gameDayKey, leakDynamics, type LeakDynamics, type LeakKind } from "@/features/profile/leak-trend";
 import { pruneCoachNotes, type StoredCoachNotes } from "@/features/memory/coach-notes";
 import { LEAK_WINDOW_DAYS } from "@/config/leaks";
+import { isSelfLevelActive, isValidSelfLevel } from "@/config/self-level";
 
 // «Карточка ученика» — что тренер ЗНАЕТ об игроке по всей его базе, для промптов всех
 // ролей (разбор, диалог, вердикт, чат). Правило 1: всё детерминированно — сводная
@@ -90,8 +91,20 @@ export function invalidatePlayerCardCache(playerId: string): void {
 async function buildPlayerCard(db: PrismaClient, playerId: string, currentDay: string): Promise<PlayerCard | null> {
   const profile = await db.playerProfile.findUnique({
     where: { playerId },
-    select: { characteristic: true, tournamentsCounted: true, coachNotes: true },
+    select: { characteristic: true, tournamentsCounted: true, coachNotes: true, avgHandsCount: true },
   });
+
+  // «Ориентир» (самооценка уровня, план 2026-07-10) — читаем прямо с игрока: на самом
+  // холодном старте профиля (PlayerProfile) может ещё не быть, а ориентир нужен именно
+  // тогда. Активен, пока не пройдено окно «10 турниров ИЛИ 1500 рук», иначе не идёт в
+  // промпт. Руки — tournamentsCounted × avgHandsCount (обе величины из профиля, 0 без него).
+  const player = await db.player.findUnique({ where: { id: playerId }, select: { selfLevel: true } });
+  const tournamentsCounted = profile?.tournamentsCounted ?? 0;
+  const handsCounted = profile?.avgHandsCount ? Math.round(tournamentsCounted * profile.avgHandsCount.toNumber()) : 0;
+  const activeSelfLevel =
+    isValidSelfLevel(player?.selfLevel) && isSelfLevelActive({ tournamentsCounted, handsCounted })
+      ? player.selfLevel
+      : null;
 
   // Окно ликов — как в features/profile/queries.ts: учтённые турниры не позже
   // отчётного дня → группировка по игровым дням → активные лики прошлых дней.
@@ -145,12 +158,15 @@ async function buildPlayerCard(db: PrismaClient, playerId: string, currentDay: s
   }));
 
   const characteristic = profile?.characteristic ?? null;
-  if (!characteristic && leaks.length === 0 && notes.length === 0) return null; // тренеру нечего вспомнить
+  // Тренеру нечего вспомнить — ни характеристики, ни ликов, ни заметок, ни активного
+  // ориентира. Ориентир держит карточку живой на самом старте, пока остального ещё нет.
+  if (!characteristic && leaks.length === 0 && notes.length === 0 && !activeSelfLevel) return null;
 
   return {
     characteristic,
-    tournamentsCounted: profile?.tournamentsCounted ?? 0,
+    tournamentsCounted,
     leaks,
     notes,
+    selfLevel: activeSelfLevel,
   };
 }

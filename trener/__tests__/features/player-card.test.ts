@@ -54,6 +54,7 @@ const card: PlayerCard = {
     { kind: "LIMP", label: "лимпы (вход в банк коллом вместо рейза или фолда)", priorTotal: 7, daysWithLeak: 4, windowDays: 9, improvedLastDay: false },
   ],
   notes: [{ date: "2026-06-28", text: "Договорились фолдить колл 3-бета вне позиции." }],
+  selfLevel: null,
 };
 
 describe("renderPlayerCard", () => {
@@ -71,6 +72,34 @@ describe("renderPlayerCard", () => {
     expect(renderPlayerCard(improved)).toContain("прогресс");
     expect(renderPlayerCard(null)).toBe("");
     expect(renderPlayerCard(undefined)).toBe("");
+  });
+});
+
+describe("ориентир (самооценка уровня) в карточке", () => {
+  it("активный ориентир добавляет блок «С кем ты говоришь» с оговорками", () => {
+    const block = renderPlayerCard({ ...card, selfLevel: "NEW" });
+    expect(block).toContain("С КЕМ ТЫ ГОВОРИШЬ");
+    expect(block).toContain("самооценка");
+    expect(block).toContain("верь тому, что видишь"); // руки важнее самооценки
+    expect(block).toContain("почему"); // не отменяет сократовский вопрос (правило 2)
+    expect(block).toContain("ТВОЙ УЧЕНИК"); // память тоже на месте, ориентир не вытесняет её
+  });
+
+  it("на холодном старте (памяти ещё нет) рендерит только блок ориентира", () => {
+    const coldStart: PlayerCard = {
+      characteristic: null,
+      tournamentsCounted: 0,
+      leaks: [],
+      notes: [],
+      selfLevel: "DEEP",
+    };
+    const block = renderPlayerCard(coldStart);
+    expect(block).toContain("С КЕМ ТЫ ГОВОРИШЬ");
+    expect(block).not.toContain("ТВОЙ УЧЕНИК");
+  });
+
+  it("без ориентира (null) блока нет", () => {
+    expect(renderPlayerCard(card)).not.toContain("С КЕМ ТЫ ГОВОРИШЬ");
   });
 });
 

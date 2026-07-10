@@ -1,6 +1,7 @@
 import type { HandImportance, PlayerStyle, Street, TableSnapshot } from "@/parser/types";
 import type { OpponentFact } from "@/parser/opponent-profile";
 import type { Locale } from "@/i18n/config";
+import type { SelfLevel } from "@/config/self-level";
 
 // Контекст турнира — только то, что уже посчитал парсер и хранится на Tournament.
 export type TournamentContext = {
@@ -30,6 +31,10 @@ export type PlayerCard = {
   // Заметки из дневника тренера (фаза 2): качественные наблюдения с датами;
   // протухшие (90 дней / 1000 турниров, config/memory.ts) уже отрезаны кодом.
   notes: { date: string; text: string }[];
+  // «Ориентир» — самооценка игроком своего уровня (план 2026-07-10). Мягкий приор
+  // ТОЛЬКО для тона; заполнен лишь пока активен (окно 10 турниров / 1500 рук),
+  // иначе null. Правила 1/2 не затрагивает — влияет на глубину объяснений, не на числа.
+  selfLevel: SelfLevel | null;
 };
 
 // Вход обновления «дневника тренера» после пройденного диалога (фаза 2 плана
