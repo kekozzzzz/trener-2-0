@@ -28,7 +28,7 @@ import { isValidSelfLevel, isSelfLevelActive } from "@/config/self-level";
 import { getAnalysisTimingSec } from "@/features/tournaments/estimate";
 import { getQueueConcurrency } from "@/config/queue";
 import { StartHereCard, SessionDoneCard, type FocusHand } from "@/components/tournament/focus-slot";
-import { MetricsGlossary, FloatingGlossary } from "@/components/metrics/glossary";
+import { FloatingGlossary } from "@/components/metrics/glossary";
 import { LoadingDots } from "@/components/ui/loading-dots";
 
 // Заголовок вкладки (QA 2026-07-05, п.10). Локаль — из next-intl.
@@ -528,12 +528,9 @@ export default async function TournamentPage({
           )}
         </div>
 
-        <div className="mt-16 flex items-center justify-between gap-4">
-          <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
-            {t("metrics")}
-          </p>
-          <MetricsGlossary />
-        </div>
+        <p className="mt-16 font-mono text-label uppercase tracking-label text-muted-foreground">
+          {t("metrics")}
+        </p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <StatCard label={t("vpip")}>
             <p className="mt-2 font-mono text-h2 text-foreground">{vpip}%</p>

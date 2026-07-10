@@ -116,21 +116,9 @@ function GlossaryBody() {
   );
 }
 
-// Встроенная иконка-подсказка (рядом с блоком «Метрики»).
-export function MetricsGlossary() {
-  const t = useTranslations("Glossary");
-  return (
-    <Dialog>
-      <DialogTrigger render={<Button variant="ghost" size="icon-sm" aria-label={t("helpLabel")} />}>
-        <CircleHelp className="text-muted-foreground" />
-      </DialogTrigger>
-      <GlossaryBody />
-    </Dialog>
-  );
-}
-
-// Плавающая кнопка «?» — едет с игроком по странице, на любом месте открывает тот же
-// словарь. Ставится на страницы, где игрок сталкивается с терминами (турнир, разбор).
+// Плавающая кнопка «?» — закреплена наверху справа (под шапкой, чтобы не налезать на
+// меню) и едет с игроком по странице: на любом месте открывает словарь. Единственный
+// «?» на странице. Ставится туда, где игрок сталкивается с терминами (турнир, разбор).
 export function FloatingGlossary() {
   const t = useTranslations("Glossary");
   return (
@@ -141,7 +129,7 @@ export function FloatingGlossary() {
             variant="secondary"
             size="icon"
             aria-label={t("helpLabel")}
-            className="fixed bottom-6 right-6 z-40 bg-card"
+            className="fixed right-6 top-20 z-40 bg-card"
           />
         }
       >
