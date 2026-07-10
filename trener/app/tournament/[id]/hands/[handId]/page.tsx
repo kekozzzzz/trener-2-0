@@ -10,6 +10,7 @@ import { requireSession } from "@/features/auth/session";
 import { personalizeHero } from "@/lib/hero-name";
 import { AuthNav } from "@/components/auth-nav";
 import { Wordmark } from "@/components/ui/wordmark";
+import { FloatingGlossary } from "@/components/metrics/glossary";
 import { AnswerForm } from "./answer-form";
 import { RangeAnswerForm } from "./range-answer-form";
 import { splitMarkers } from "@/config/dialogue";
@@ -167,6 +168,7 @@ export default async function HandDialoguePage({
 
   return (
     <main>
+      <FloatingGlossary />
       <header className="border-b border-border">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-8 py-6">
           <Link href="/">

@@ -28,7 +28,7 @@ import { isValidSelfLevel, isSelfLevelActive } from "@/config/self-level";
 import { getAnalysisTimingSec } from "@/features/tournaments/estimate";
 import { getQueueConcurrency } from "@/config/queue";
 import { StartHereCard, SessionDoneCard, type FocusHand } from "@/components/tournament/focus-slot";
-import { MetricsGlossary } from "@/components/metrics/glossary";
+import { MetricsGlossary, FloatingGlossary } from "@/components/metrics/glossary";
 import { LoadingDots } from "@/components/ui/loading-dots";
 
 // Заголовок вкладки (QA 2026-07-05, п.10). Локаль — из next-intl.
@@ -471,6 +471,7 @@ export default async function TournamentPage({
   return (
     <main>
       <PageHeader />
+      <FloatingGlossary />
       <section className="mx-auto max-w-5xl px-8 py-16">
 
         {duplicate && (
