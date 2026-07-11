@@ -14,7 +14,7 @@ interface PricingCardProps {
   description: string
   priceLabel: string // уже отформатированная цена, напр. «$9» (числа — в моно, см. дизайн-систему)
   period: string // подпись периода (локализуется вызывающим, напр. «в месяц»)
-  volumeNote?: string // строка различия тарифов по объёму (без абсолютных чисел), напр. «× 3 объёма»
+  volumeNote?: string // строка различия тарифов по объёму, напр. «25 разборов турниров в месяц»
   features?: PricingFeatureGroup[] // если не передан — блок «что входит» не рисуем (он общий, ниже колонок)
   // CTA: либо готовый элемент (кнопка оплаты — клиентский компонент), либо ссылка.
   cta?: ReactNode
@@ -37,13 +37,20 @@ export function PricingCard({
   featuredLabel,
 }: PricingCardProps) {
   return (
-    <div className={cn("relative border bg-card", featuredLabel ? "border-primary" : "border-border")}>
+    <div
+      className={cn(
+        "relative flex h-full flex-col border bg-card",
+        featuredLabel ? "border-primary" : "border-border",
+      )}
+    >
       {featuredLabel && (
         <span className="absolute -top-3 left-8 border border-primary bg-background px-2 py-0.5 font-mono text-label uppercase tracking-label text-primary">
           {featuredLabel}
         </span>
       )}
-      <div className="space-y-6 p-8">
+      {/* Колонка на всю высоту, CTA прижата к низу (mt-auto): при разной высоте текста
+          над кнопкой «Оформить» обеих карточек стоят на одной линии. */}
+      <div className="flex flex-1 flex-col gap-6 p-8">
         <div className="space-y-1">
           <h3 className="text-h3">{title}</h3>
           <p className="text-small text-muted-foreground">{description}</p>
@@ -61,11 +68,13 @@ export function PricingCard({
             </p>
           )}
         </div>
-        {cta ?? (
-          <a href={buttonHref} className={cn(buttonVariants(), "w-full justify-center")}>
-            {buttonText}
-          </a>
-        )}
+        <div className="mt-auto">
+          {cta ?? (
+            <a href={buttonHref} className={cn(buttonVariants(), "w-full justify-center")}>
+              {buttonText}
+            </a>
+          )}
+        </div>
       </div>
 
       {features && features.length > 0 && (

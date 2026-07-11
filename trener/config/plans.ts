@@ -13,10 +13,17 @@
 // витрине (а не скрытый бюджет): тарифы отличаются для игрока ценой И числом разборов.
 // Действия ВНУТРИ уже открытого турнира (диалог, чат) лимит не тратят — он уже посчитан.
 //
-// Цены и лимиты согласованы с Артёмом 2026-06-28 (показ в $, оплата в ₽ по курсу ЦБ):
-//   Базовый      $9  → 50 турниров
-//   Продвинутый  $20 → 250 турниров
-//   Максимальный $45 → 500 турниров
+// Цены и лимиты согласованы с Артёмом 2026-07-10 (показ в $, оплата в ₽ по курсу ЦБ),
+// план plans/2026-07-10-новые-тарифы.md:
+//   Базовый      $7  → 25 турниров (порог чувствуется активным игроком — стимул апгрейда)
+//   Продвинутый  $21 → «без ограничений» на витрине; внутри fair-use 300/мес — защита от
+//                      скриптов, живой человек столько физически не разбирает. $21 = 7×3:
+//                      «в три раза дороже, а разборы без счётчика» — читается мгновенно.
+//   Максимальный $45 → СКРЫТ с витрины (hidden): продавал только объём, который никому не
+//                      нужен. Код тарифа жив ради существующих подписок (comp владельца,
+//                      тестер) — гейт и вебхук обязаны его понимать. Вернём с про-фичами.
+// Прежняя сетка (2026-06-28): $9/50, $20/250, $45/500. Действующие basic-подписчики со
+// старым лимитом дожинают оплаченный период на 50 — см. getEffectiveTournamentLimit.
 // Менять цены/лимиты без явного решения нельзя (CLAUDE.md, «спроси разрешения»).
 
 // Коды тарифов — то, что хранится в Subscription.planCode и приходит в metadata
@@ -29,6 +36,12 @@ export type Plan = {
   description: string; // одна строка под заголовком тарифа на странице цен
   priceUsd: number; // цена за период (месяц) в долларах — показ и база пересчёта в ₽
   tournamentLimit: number; // сколько турниров можно РАЗОБРАТЬ за период — гейт и витрина
+  // Витрина показывает «без ограничений» вместо числа; tournamentLimit при этом остаётся
+  // невидимым fair-use предохранителем гейта (от скриптов, не от людей).
+  unlimited?: boolean;
+  // Тариф скрыт со страницы цен (getPlans его не отдаёт), но код обязан его понимать:
+  // существующие подписки с этим planCode продолжают работать через getPlan/гейт.
+  hidden?: boolean;
 };
 
 const CURRENCY = "RUB";
@@ -40,16 +53,17 @@ const PLANS: Record<PlanCode, Plan> = {
   basic: {
     code: "basic",
     title: "Базовый",
-    description: "Если разбираешь турниры время от времени",
-    priceUsd: 9,
-    tournamentLimit: 50,
+    description: "Если разбираешь главные турниры недели",
+    priceUsd: 7,
+    tournamentLimit: 25,
   },
   standard: {
     code: "standard",
     title: "Продвинутый",
     description: "Если играешь и разбираешь регулярно",
-    priceUsd: 20,
-    tournamentLimit: 250,
+    priceUsd: 21,
+    tournamentLimit: 300, // невидимый fair-use (unlimited) — не витрина, а предохранитель
+    unlimited: true,
   },
   max: {
     code: "max",
@@ -57,6 +71,7 @@ const PLANS: Record<PlanCode, Plan> = {
     description: "Если играешь помногу и хочешь разбирать всё",
     priceUsd: 45,
     tournamentLimit: 500,
+    hidden: true, // убран с витрины 2026-07-10; подписки с этим кодом продолжают работать
   },
 };
 
@@ -64,8 +79,9 @@ const PLAN_ORDER: PlanCode[] = ["basic", "standard", "max"];
 
 export const PLANS_LIST: readonly Plan[] = PLAN_ORDER.map((code) => PLANS[code]);
 
+// Тарифы для витрины (страница цен, лендинг): скрытые не показываем.
 export function getPlans(): Plan[] {
-  return PLAN_ORDER.map((code) => PLANS[code]);
+  return PLAN_ORDER.map((code) => PLANS[code]).filter((p) => !p.hidden);
 }
 
 // Тариф по коду. null — если код неизвестен (внешний вход не доверяем).
@@ -101,6 +117,26 @@ export function getFreeTournamentLimit(): number {
 // Лимит разборов (турниров за период) тарифа для гейта. null — неизвестный план.
 export function getPlanTournamentLimit(code: string | null | undefined): number | null {
   return getPlan(code)?.tournamentLimit ?? null;
+}
+
+// Смена сетки 2026-07-10: basic сжался 50 → 25. Кто оплатил период по старым условиям —
+// дожинает его на старом лимите (не отнимаем купленное: критическая поломка №1). Новый
+// период (начался после смены) — уже по новым условиям.
+const LEGACY_BASIC_LIMIT = 50;
+const PRICING_CUTOVER_2026_07_10 = new Date("2026-07-11T00:00:00.000Z");
+
+// Лимит с учётом legacy-условий: periodStart — начало ТЕКУЩЕГО оплаченного периода
+// подписки (после ленивого переката). null — неизвестный план (гейт пропустит защитно).
+export function getEffectiveTournamentLimit(
+  code: string | null | undefined,
+  periodStart: Date,
+): number | null {
+  const plan = getPlan(code);
+  if (!plan) return null;
+  if (plan.code === "basic" && periodStart < PRICING_CUTOVER_2026_07_10) {
+    return Math.max(plan.tournamentLimit, LEGACY_BASIC_LIMIT);
+  }
+  return plan.tournamentLimit;
 }
 
 // Включение подписочного гейта (paywall/стена). По умолчанию ВЫКЛ: пока не дошит

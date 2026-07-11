@@ -36,10 +36,11 @@ export default async function PricingPage() {
     t("feature4"),
   ];
 
-  // Различие тарифов для пользователя — видимое число разборов турниров в месяц.
+  // Различие тарифов для пользователя — объём разборов: у Базового видимое число в месяц,
+  // у Продвинутого «без ограничений» (внутренний fair-use — предохранитель, не витрина).
   // Загрузка и метрики бесплатны и безлимитны; лимит тратит только запуск разбора.
-  const volumeNote = (tournamentLimit: number): string =>
-    t("volumeNote", { limit: tournamentLimit });
+  // Рубли на витрине НЕ показываем (решение Артёма 2026-07-10): точная сумма в ₽ видна
+  // на шаге оплаты, а до того достаточно строки «оплата в рублях по курсу ЦБ».
 
   const session = await getSession();
   const state = session ? await getSubscriptionState(session.playerId) : null;
@@ -71,10 +72,10 @@ export default async function PricingPage() {
           </p>
         </div>
 
-        <div className="mt-12 grid items-stretch gap-4 lg:grid-cols-3">
+        <div className="mx-auto mt-12 grid max-w-3xl items-stretch gap-4 lg:grid-cols-2">
           {plans.map((plan, planIndex) => {
             const isCurrent = currentPlan === plan.code;
-            // Средний тариф выделяем «Рекомендуем» — якорь выбора (QA 2026-07-05, п.17).
+            // Верхний тариф выделяем «Рекомендуем» — якорь выбора (QA 2026-07-05, п.17).
             const featured = planIndex === 1;
 
             let cta;
@@ -123,7 +124,11 @@ export default async function PricingPage() {
                 description={plan.description}
                 priceLabel={formatUsd(plan.priceUsd)}
                 period={tc("perMonth")}
-                volumeNote={volumeNote(plan.tournamentLimit)}
+                volumeNote={
+                  plan.unlimited
+                    ? t("volumeUnlimited")
+                    : t("volumeNote", { limit: plan.tournamentLimit })
+                }
                 cta={cta}
                 featuredLabel={featured ? t("recommended") : undefined}
               />

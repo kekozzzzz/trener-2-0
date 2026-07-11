@@ -56,17 +56,29 @@ describe("assessAiAccess", () => {
     expect(await assessAiAccess(db, "p", { tournamentId: "T9" })).toEqual({ allowed: true });
   });
 
+  // Лимит basic зависит от даты начала периода (legacy 50 до среза 2026-07-11, дальше 25 —
+  // getEffectiveTournamentLimit, тесты в __tests__/config/plans.test.ts). Здесь берём числа,
+  // верные при ОБОИХ лимитах, чтобы тест не зависел от даты прогона.
   it("активная подписка, лимит турниров не исчерпан → доступ", async () => {
-    const db = mockDb({ email: "u@x.ru", subscription: activeSub("basic"), analyzedCount: 10 }); // basic = 50
+    const db = mockDb({ email: "u@x.ru", subscription: activeSub("basic"), analyzedCount: 10 }); // 10 < 25 ≤ 50
     expect(await assessAiAccess(db, "p")).toEqual({ allowed: true });
   });
 
   it("активная подписка, лимит турниров исчерпан → стена LIMIT_REACHED", async () => {
-    const db = mockDb({ email: "u@x.ru", subscription: activeSub("basic"), analyzedCount: 50 }); // basic = 50
+    const db = mockDb({ email: "u@x.ru", subscription: activeSub("basic"), analyzedCount: 50 }); // 50 ≥ обоих лимитов
     const res = await assessAiAccess(db, "p");
     expect(res.allowed).toBe(false);
     if (res.allowed) return;
     expect(res.reason).toBe("LIMIT_REACHED");
+  });
+
+  it("«безлимитный» тариф упирается только в fair-use предохранитель", async () => {
+    // 299 < 300 — доступ есть; сам предохранитель (300) закреплён в тестах конфига.
+    const db = mockDb({ email: "u@x.ru", subscription: activeSub("standard"), analyzedCount: 299 });
+    expect(await assessAiAccess(db, "p")).toEqual({ allowed: true });
+    const wall = mockDb({ email: "u@x.ru", subscription: activeSub("standard"), analyzedCount: 300 });
+    const res = await assessAiAccess(wall, "p");
+    expect(res.allowed).toBe(false);
   });
 
   it("лимит исчерпан, но действие на УЖЕ открытом турнире → доступ (слот не тратит)", async () => {

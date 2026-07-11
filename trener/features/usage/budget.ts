@@ -4,7 +4,7 @@
 // ДО постановки платной задачи. На клиент не попадают.
 
 import type { PrismaClient } from "@prisma/client";
-import { getPlanTournamentLimit, getSubscriptionPeriodDays } from "@/config/plans";
+import { getEffectiveTournamentLimit, getSubscriptionPeriodDays } from "@/config/plans";
 import { isAdminEmail } from "@/config/admin";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -100,13 +100,15 @@ export async function assessAiAccess(
     (sub.nextPaymentAt == null || sub.nextPaymentAt > now);
 
   if (active && sub) {
-    const limit = getPlanTournamentLimit(sub.planCode);
-    // Неизвестный план в подписке — не блокируем (защитно: лучше пропустить, чем
-    // ошибочно закрыть оплаченный доступ; критическая поломка №1 — потерять подписку).
-    if (limit == null) return { allowed: true };
     // Счётчик — с начала ТЕКУЩЕГО периода (ленивый перекат), а не с первой оплаты —
     // иначе при оплате вперёд/смене месяца лимит копился бы бесконечно.
     const periodStart = effectivePeriodStart(sub.currentPeriodStart, now, getSubscriptionPeriodDays());
+    // Лимит с учётом legacy: период, оплаченный до смены сетки 2026-07-10, дожинается
+    // на старом лимите. У «безлимитного» тарифа это невидимый fair-use предохранитель.
+    const limit = getEffectiveTournamentLimit(sub.planCode, periodStart);
+    // Неизвестный план в подписке — не блокируем (защитно: лучше пропустить, чем
+    // ошибочно закрыть оплаченный доступ; критическая поломка №1 — потерять подписку).
+    if (limit == null) return { allowed: true };
     const used = await analyzedThisPeriodCount(db, playerId, periodStart);
     if (used >= limit) {
       // Стена обновится на следующей границе периода (когда счётчик сбросится).
