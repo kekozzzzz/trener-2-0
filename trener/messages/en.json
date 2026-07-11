@@ -1011,6 +1011,7 @@
     "statusFailed": "error",
     "tournament": "Tournament",
     "passed": "Passed",
+    "inProgress": "In review {done}/{total}",
     "vpip": "VPIP"
   },
   "Errors": {

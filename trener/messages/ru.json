@@ -1011,6 +1011,7 @@
     "statusFailed": "ошибка",
     "tournament": "Турнир",
     "passed": "Пройден",
+    "inProgress": "В разборе {done}/{total}",
     "vpip": "VPIP"
   },
   "Errors": {

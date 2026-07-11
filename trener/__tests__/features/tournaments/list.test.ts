@@ -9,12 +9,14 @@
  *  4. Порядок по playedAt desc (свежие сверху).
  *  5. Decimal приводится к number, NULL пробрасывается как null.
  *  6. recentTournaments ограничивает количество.
+ *  7. reviewProgress: null пока не открыл ни одной раздачи; done/total когда начал;
+ *     null снова когда турнир пройден целиком (fullyReviewed).
  *
  * Бьёт в реальную тестовую базу (trener_test).
  */
 
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, type Prisma } from "@prisma/client";
 import { prisma } from "@/infrastructure/db/client";
 import { listMyTournaments, recentTournaments } from "@/features/tournaments/queries";
 
@@ -50,6 +52,35 @@ async function createTournament(seed: TournamentSeed): Promise<string> {
     },
   });
   return t.id;
+}
+
+// Карточная раздача для проверки reviewProgress: опционально просмотренная и/или
+// с сократовским диалогом в заданном состоянии.
+async function createCardHand(
+  tournamentId: string,
+  opts: { viewed?: boolean; dialogueState?: "QUESTION_ASKED" | "ANSWER_RECEIVED" | "VERDICT_SHOWN" } = {},
+): Promise<void> {
+  await db.hand.create({
+    data: {
+      tournamentId,
+      importanceLevel: "CRITICAL",
+      chipResult: -100,
+      tableData: { seats: [], actions: [] } as unknown as Prisma.InputJsonValue,
+      selectedForCard: true,
+      viewedAt: opts.viewed ? new Date() : null,
+      ...(opts.dialogueState
+        ? {
+            dialogue: {
+              create: {
+                state: opts.dialogueState,
+                verdict: opts.dialogueState === "VERDICT_SHOWN" ? "Решение разумное." : null,
+                rounds: { create: { roundNumber: 1, question: "Почему так сыграл?" } },
+              },
+            },
+          }
+        : {}),
+    },
+  });
 }
 
 beforeAll(async () => {
@@ -134,6 +165,52 @@ describe("listMyTournaments", () => {
     expect(empty.resultBuyins).toBeNull();
     expect(empty.handsCount).toBeNull();
     expect(empty.styleDiagnosis).toBeNull();
+  });
+});
+
+describe("reviewProgress (бейдж «В разборе»)", () => {
+  it("null, пока игрок не открыл ни одной карточной раздачи", async () => {
+    const id = await createTournament({ playedAt: new Date("2026-06-10") });
+    await createCardHand(id, { dialogueState: "QUESTION_ASKED" });
+    await createCardHand(id, { dialogueState: "QUESTION_ASKED" });
+
+    const [row] = await listMyTournaments(PLAYER_ID);
+
+    expect(row.id).toBe(id);
+    expect(row.reviewProgress).toBeNull();
+    expect(row.fullyReviewed).toBe(false);
+  });
+
+  it("начат: открыл раздачу, один вердикт из двух → done 1 / total 2", async () => {
+    const id = await createTournament({ playedAt: new Date("2026-06-10") });
+    await createCardHand(id, { viewed: true, dialogueState: "VERDICT_SHOWN" });
+    await createCardHand(id, { dialogueState: "QUESTION_ASKED" });
+
+    const [row] = await listMyTournaments(PLAYER_ID);
+
+    expect(row.reviewProgress).toEqual({ done: 1, total: 2 });
+    expect(row.fullyReviewed).toBe(false);
+  });
+
+  it("пройден целиком: все вердикты показаны → fullyReviewed, reviewProgress null", async () => {
+    const id = await createTournament({ playedAt: new Date("2026-06-10") });
+    await createCardHand(id, { viewed: true, dialogueState: "VERDICT_SHOWN" });
+    await createCardHand(id, { viewed: true, dialogueState: "VERDICT_SHOWN" });
+
+    const [row] = await listMyTournaments(PLAYER_ID);
+
+    expect(row.fullyReviewed).toBe(true);
+    expect(row.reviewProgress).toBeNull();
+  });
+
+  it("турнир без диалогов: прогресс по просмотру простых карточных", async () => {
+    const id = await createTournament({ playedAt: new Date("2026-06-10") });
+    await createCardHand(id, { viewed: true });
+    await createCardHand(id, {});
+
+    const [row] = await listMyTournaments(PLAYER_ID);
+
+    expect(row.reviewProgress).toEqual({ done: 1, total: 2 });
   });
 });
 

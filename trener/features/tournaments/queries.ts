@@ -15,6 +15,11 @@ export type TournamentListItem = {
   styleDiagnosis: PlayerStyle | null;
   entryNumber: number; // 1 — первый вход, 2+ — перезаход (re-entry)
   fullyReviewed: boolean;  // турнир пройден целиком: разбор открыт, готов, и каждая карточная раздача завершена/просмотрена
+  // Разбор начат, но не закончен: игрок открыл хоть одну карточную раздачу, а до
+  // «Пройден» ещё не дошёл. done/total — по тому же критерию, что fullyReviewed
+  // (диалоги до вердикта; без диалогов — просмотр простых), чтобы бейдж «В разборе
+  // 3/5» на 5/5 превращался ровно в «Пройден». null — не начат или уже пройден.
+  reviewProgress: { done: number; total: number } | null;
 };
 
 // Турниры игрока: только свои (по playerId из сессии — защита от IDOR),
@@ -53,12 +58,12 @@ async function queryTournaments(playerId: string, limit?: number): Promise<Tourn
   });
   const handsByTournament = new Map<
     string,
-    { dlgDone: number; dlgTotal: number; simpleDone: number; simpleTotal: number }
+    { dlgDone: number; dlgTotal: number; simpleDone: number; simpleTotal: number; anyViewed: boolean }
   >();
   for (const h of cardHands) {
     const agg =
       handsByTournament.get(h.tournamentId) ??
-      { dlgDone: 0, dlgTotal: 0, simpleDone: 0, simpleTotal: 0 };
+      { dlgDone: 0, dlgTotal: 0, simpleDone: 0, simpleTotal: 0, anyViewed: false };
     if (h.dialogue) {
       agg.dlgTotal += 1;
       if (h.dialogue.state === "VERDICT_SHOWN") agg.dlgDone += 1;
@@ -66,6 +71,9 @@ async function queryTournaments(playerId: string, limit?: number): Promise<Tourn
       agg.simpleTotal += 1;
       if (h.viewedAt !== null) agg.simpleDone += 1;
     }
+    // «Начал разбирать» — открыл страницу хоть одной карточной раздачи (viewedAt
+    // ставится фоном при каждом открытии, и у диалоговых тоже — mark-viewed.tsx).
+    if (h.viewedAt !== null) agg.anyViewed = true;
     handsByTournament.set(h.tournamentId, agg);
   }
 
@@ -77,6 +85,16 @@ async function queryTournaments(playerId: string, limit?: number): Promise<Tourn
         ? agg.dlgDone === agg.dlgTotal
         : agg.simpleTotal > 0 && agg.simpleDone === agg.simpleTotal);
     const fullyReviewed = t.status === "CARD_READY" && t.analysisUnlocked && sessionDone;
+    // Прогресс — по той же шкале, что sessionDone: пока есть диалоговые раздачи,
+    // считаем вердикты; у турнира без диалогов — просмотр простых карточных.
+    const progress =
+      agg == null
+        ? null
+        : agg.dlgTotal > 0
+          ? { done: agg.dlgDone, total: agg.dlgTotal }
+          : { done: agg.simpleDone, total: agg.simpleTotal };
+    const reviewStarted =
+      t.status === "CARD_READY" && t.analysisUnlocked && agg != null && agg.anyViewed;
     return {
       id: t.id,
       name: t.name,
@@ -89,6 +107,7 @@ async function queryTournaments(playerId: string, limit?: number): Promise<Tourn
       styleDiagnosis: t.styleDiagnosis,
       entryNumber: t.entryNumber,
       fullyReviewed,
+      reviewProgress: reviewStarted && !fullyReviewed && progress != null && progress.total > 0 ? progress : null,
     };
   });
 }
