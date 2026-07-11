@@ -44,4 +44,10 @@ describe("cleanCoachText", () => {
     expect(cleanCoachText("опен с баттона, баттон широкий")).toBe("опен с BTN, BTN широкий");
     expect(cleanCoachText("Батон ставит, против батона")).toBe("BTN ставит, против BTN");
   });
+
+  it("CJK-иероглифы в тексте — брак ответа (ошибка → ретрай очереди), не тихая зачистка", () => {
+    expect(() => cleanCoachText("любая пара大概率 оставляет позади")).toThrow();
+    expect(() => cleanCoachText("Сサイズ-з точки зрения")).toThrow();
+    expect(() => cleanCoachText("обычный русский текст с BTN и 3-бетом")).not.toThrow();
+  });
 });
