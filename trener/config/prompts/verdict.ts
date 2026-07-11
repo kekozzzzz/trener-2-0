@@ -9,6 +9,7 @@ import type { VerdictRequest, DialogueRoundSummary } from "@/infrastructure/adap
 import type { Locale } from "@/i18n/config";
 import { coachFramework, renderTableSnapshot, renderOpponents, renderRangeReads } from "./hand-analysis";
 import { renderPlayerCard, renderRepeatedLeak } from "./player-card";
+import { renderCriticalReason } from "@/parser/decision-weight";
 
 // Системный промпт вердикта под язык игрока: роль и «## Как собрать вердикт» — русские
 // (внутренние инструкции), язык ответа задаёт coachFramework(locale).
@@ -46,12 +47,15 @@ export function buildVerdictPrompt(request: VerdictRequest): string {
   const rangeBlock = renderRangeReads(request.rangeReads, locale);
   const cardBlock = renderPlayerCard(request.playerCard);
   const repeatBlock = renderRepeatedLeak(request.repeatedLeak);
+  // Вердикт выносится только по критическим — причина отбора обязана быть перед глазами,
+  // чтобы вердикт судил НАЗВАННОЕ решение (фолд, блеф, недобор), а не искал потерю.
+  const reasonBlock = renderCriticalReason(request.tableSnapshot, chipResult);
 
   return `Контекст турнира: ${tournament.handsCount} раздач, VPIP ${tournament.vpipPercent}%, стиль игрока — ${tournament.styleDiagnosis}.
 
 Результат Hero в этой раздаче — ${chipResult} фишек.
 
-${cardBlock ? `${cardBlock}\n\n` : ""}${repeatBlock ? `${repeatBlock}\n\n` : ""}${opponentsBlock ? `${opponentsBlock}\n\n` : ""}${renderTableSnapshot(request.tableSnapshot, locale)}${rangeBlock ? `\n\n${rangeBlock}` : ""}
+${reasonBlock ? `${reasonBlock}\n\n` : ""}${cardBlock ? `${cardBlock}\n\n` : ""}${repeatBlock ? `${repeatBlock}\n\n` : ""}${opponentsBlock ? `${opponentsBlock}\n\n` : ""}${renderTableSnapshot(request.tableSnapshot, locale)}${rangeBlock ? `\n\n${rangeBlock}` : ""}
 
 История диалога по этой раздаче:
 ${renderHistory(history)}

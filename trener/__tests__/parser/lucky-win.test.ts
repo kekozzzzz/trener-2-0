@@ -96,8 +96,10 @@ describe("detectHeroLuckyWin", () => {
 describe("assignImportanceLevels — доезды в критических", () => {
   it("выигранный доезд становится CRITICAL, обычный выигрыш — STRONG", () => {
     const luckyHand = { chipResult: 1240, tableSnapshot: luckyWinSnap() };
-    // Обычный выигрыш без вскрытия — спорная раздача, но не доезд.
-    const plainSnap = luckyWinSnap();
+    // Обычный выигрыш без вскрытия — спорная раздача, но не доезд. Рука Hero слабая
+    // (воздух), иначе чек-бэк сильной руки на ривере — недобор, и раздачу честно
+    // заберёт канал MISSED_VALUE критических по решению (план 2026-07-11).
+    const plainSnap = luckyWinSnap({ heroCards: ["5d", "4c"] });
     delete plainSnap.seats[0].shownCards;
     const plainWin = { chipResult: 500, tableSnapshot: plainSnap };
 

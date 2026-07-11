@@ -1,12 +1,20 @@
 import type { HandImportance, ParsedHandSnapshot, PlayerStyle, TableAction } from "../types";
 import { detectHeroLuckyWin } from "../lucky-win";
 import { detectHeroCooler } from "../cooler";
+import { topDecisionMark } from "../decision-weight";
 
 // Потолок критических раздач (каждая ведёт сократовский диалог «почему»). Число адаптивное:
 // берём все спорные потери, отсортированные по размеру, но не больше потолка. 7 — запас под
 // турниры-катастрофы (сплошные дорогие проигрыши), но ещё не «допрос»: 20 диалогов за раз
 // игрок не пройдёт, упор на несколько глубоких «почему», а не на количество.
 const MAX_CRITICAL_HANDS = 7;
+
+// Квоты внутри потолка (план 2026-07-11-критические-по-решению): потери — до 5 слотов,
+// тяжёлые решения (крупный фолд, выигранный блеф, недобор…) — до 2 гарантированных.
+// Недобранные слоты свободны для других категорий: потери сверх 5 → решения сверх 2 →
+// доезды в остаток. В турнире-катастрофе решения всё равно получают свои 2 слота.
+const LOSS_SLOTS = 5;
+const DECISION_SLOTS = 2;
 
 // Базовые ориентиры VPIP/PFR для микролимитного MTT (early-stage solid reg ~19/17-25/23,
 // малый разрыв VPIP-PFR = агрессивный, большой = пассивный).
@@ -62,26 +70,43 @@ export function assignImportanceLevels(hands: ParsedHandSnapshot[]): HandImporta
       .map(({ index }) => index),
   );
 
-  const criticalCandidates = hands
+  // Потери — главный материал, как раньше (топ по размеру), но потолок потерь — 5 слотов:
+  // 2 зарезервированы под тяжёлые РЕШЕНИЯ (займут ниже; не наберётся решений — слоты
+  // вернутся потерям и доездам).
+  const lossCandidates = hands
     .map((hand, index) => ({ index, hand }))
     .filter(({ index, hand }) => contested[index] && hand.chipResult < 0 && !coolerSet.has(index))
-    .sort((a, b) => Math.abs(b.hand.chipResult) - Math.abs(a.hand.chipResult))
-    .slice(0, MAX_CRITICAL_HANDS)
-    .map(({ index }) => index);
+    .sort((a, b) => Math.abs(b.hand.chipResult) - Math.abs(a.hand.chipResult));
 
-  const criticalSet = new Set(criticalCandidates);
+  const criticalSet = new Set(lossCandidates.slice(0, LOSS_SLOTS).map(({ index }) => index));
 
-  // Доезды — в остаток потолка, потери приоритетнее. Детектор дёшев для проигранных
-  // и невскрытых раздач (сразу null), перебор эквити идёт только по реальным кандидатам.
-  const luckySlots = MAX_CRITICAL_HANDS - criticalSet.size;
-  if (luckySlots > 0) {
-    const lucky = hands
+  // Тяжёлые решения (план 2026-07-11): крупный фолд после входа, выигранный блеф без
+  // вскрытия, пограничный выигранный колл, недобор. Ранжир — вес решения (банк + цена
+  // в точке решения), а не итог раздачи. Кулеры и уже взятые потери не дублируем.
+  const decisionCandidates = hands
+    .map((hand, index) => ({ index, hand, mark: null as ReturnType<typeof topDecisionMark> }))
+    .filter(({ index }) => !criticalSet.has(index) && !coolerSet.has(index))
+    .map((c) => ({ ...c, mark: topDecisionMark(c.hand.tableSnapshot, c.hand.chipResult) }))
+    .filter((c) => c.mark !== null)
+    .sort((a, b) => (b.mark?.weightBb ?? 0) - (a.mark?.weightBb ?? 0));
+
+  for (const { index } of decisionCandidates.slice(0, DECISION_SLOTS)) criticalSet.add(index);
+
+  // Свободный остаток потолка: потери сверх 5 → решения сверх 2 → доезды. Детектор
+  // доезда дёшев для проигранных и невскрытых раздач (сразу null).
+  const fillers: number[] = [
+    ...lossCandidates.slice(LOSS_SLOTS).map(({ index }) => index),
+    ...decisionCandidates.slice(DECISION_SLOTS).map(({ index }) => index),
+    ...hands
       .map((hand, index) => ({ index, hand }))
-      .filter(({ index, hand }) => contested[index] && hand.chipResult > 0)
+      .filter(({ index, hand }) => contested[index] && hand.chipResult > 0 && !criticalSet.has(index))
       .filter(({ hand }) => detectHeroLuckyWin(hand.tableSnapshot) !== null)
       .sort((a, b) => b.hand.chipResult - a.hand.chipResult)
-      .slice(0, luckySlots);
-    for (const { index } of lucky) criticalSet.add(index);
+      .map(({ index }) => index),
+  ];
+  for (const index of fillers) {
+    if (criticalSet.size >= MAX_CRITICAL_HANDS) break;
+    criticalSet.add(index);
   }
 
   return hands.map((hand, index) => {

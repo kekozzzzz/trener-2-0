@@ -483,7 +483,9 @@ export function renderHandFacts(snapshot: TableSnapshot): string {
       `Ставка соперника (${b.actor}, ${b.street}): ≈${b.sizePctOfPot}% банка (${SIZE_CLASS_RU[b.sizeClass]}).`,
     );
   for (const b of f.heroBets) {
-    let line = `Ставка Hero (${b.street}): ≈${b.sizePctOfPot}% банка (${SIZE_CLASS_RU[b.sizeClass]}); как блеф окупается, если соперник сбрасывает чаще ≈${b.foldsNeededPct}%.`;
+    // foldsNeededPct — ДОЛЯ ДИАПАЗОНА соперника, которая должна сброситься, а НЕ «частота
+    // раз» (правка Артёма 2026-07-10, синхронизирована с цитатой порога в COACH_FRAMEWORK).
+    let line = `Ставка Hero (${b.street}): ≈${b.sizePctOfPot}% банка (${SIZE_CLASS_RU[b.sizeClass]}); как блеф окупается, если сбросится ≥${b.foldsNeededPct}% диапазона соперника.`;
     if (b.drawEquityPct !== undefined)
       line += ` У Hero дро (эквити ≈${b.drawEquityPct}%) — это полу-блеф: при колле банк станет ${b.potIfCalled} (потенциал добора, если доедешь).`;
     lines.push(line);

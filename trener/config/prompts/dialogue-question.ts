@@ -9,6 +9,7 @@
 import type { NextQuestionRequest, PriorSpot } from "@/infrastructure/adapters/llm/types";
 import type { Locale } from "@/i18n/config";
 import { coachFramework, renderTableSnapshot, renderOpponents, renderRangeReads } from "./hand-analysis";
+import { renderCriticalReason } from "@/parser/decision-weight";
 import { renderPlayerCard, renderRepeatedLeak } from "./player-card";
 
 // Языковая строка диалога: на русском — про чистый русский без калек; на английском
@@ -90,12 +91,15 @@ export function buildDialogueQuestionPrompt(request: NextQuestionRequest): strin
   const rangeBlock = renderRangeReads(request.rangeReads, locale);
   const cardBlock = renderPlayerCard(request.playerCard);
   const repeatBlock = renderRepeatedLeak(request.repeatedLeak);
+  // Диалог ведётся только по критическим — причина отбора держит вопросы вокруг
+  // НАЗВАННОГО решения (фолд, блеф, недобор), а не вокруг поиска потери.
+  const reasonBlock = renderCriticalReason(request.tableSnapshot, chipResult);
 
   return `Контекст турнира: ${tournament.handsCount} раздач, VPIP ${tournament.vpipPercent}%, стиль игрока — ${tournament.styleDiagnosis}.
 
 Результат Hero в этой раздаче — ${chipResult} фишек.
 
-${cardBlock ? `${cardBlock}\n\n` : ""}${repeatBlock ? `${repeatBlock}\n\n` : ""}${opponentsBlock ? `${opponentsBlock}\n\n` : ""}${renderTableSnapshot(request.tableSnapshot, locale)}${priorBlock}${rangeBlock ? `\n\n${rangeBlock}` : ""}
+${reasonBlock ? `${reasonBlock}\n\n` : ""}${cardBlock ? `${cardBlock}\n\n` : ""}${repeatBlock ? `${repeatBlock}\n\n` : ""}${opponentsBlock ? `${opponentsBlock}\n\n` : ""}${renderTableSnapshot(request.tableSnapshot, locale)}${priorBlock}${rangeBlock ? `\n\n${rangeBlock}` : ""}
 
 Ориентир — черновик разбора этой раздачи (игрок его не видит, используй только как ориентир, куда ведёт диалог): «${draftVerdict}»
 
