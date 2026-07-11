@@ -48,6 +48,15 @@
   "hooks": {
     "PostToolUse": [
       {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if grep -q \"git commit\" 2>/dev/null; then echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"Напоминание (хук маркетинг-витрины): если этот коммит меняет промпты тренера, тарифы или пользовательские функции продукта - обнови каталог 07-что-умеет-продукт.md в репо whygrid-marketing (локально ~/Desktop/whygrid-marketing) и запушь его. Из облачной сессии этого репо нет - тогда прямо скажи Артёму, что витрина ждёт обновления. Если коммит витрину не задевает (внутренности, тесты, доки) - молча продолжай, ничего не отвечай на это напоминание.\"}}'; fi"
+          }
+        ]
+      },
+      {
         "matcher": "Edit|Write",
         "hooks": [
           {
