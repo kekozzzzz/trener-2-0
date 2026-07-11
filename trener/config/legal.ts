@@ -25,15 +25,16 @@ export const OPERATOR = {
 // передача в страну без адекватной защиты (152-ФЗ, ст. 12) — раскрывается честно
 // в Политике и в согласии при регистрации. См. architecture/07-безопасность.md.
 // Фактическая цепочка ИИ-обработки (2026-07): запросы идут через шлюз OpenRouter к
-// моделям DeepSeek (разбор) и Mistral AI (распознавание голоса); Anthropic — резервная
-// модель (переключается флагом LLM_PROVIDER). Согласие и политика называют всех.
+// моделям Z.ai / Zhipu AI (разбор, GLM — выбран аудитом 2026-07-11), DeepSeek (запасная
+// модель разбора) и Mistral AI (распознавание голоса); Anthropic — резервная модель
+// (переключается флагом LLM_PROVIDER). Согласие и политика называют всех.
 export const AI_PROCESSOR = {
-  name: "OpenRouter, Inc. / DeepSeek / Mistral AI / Anthropic PBC",
+  name: "OpenRouter, Inc. / Z.ai (Zhipu AI) / DeepSeek / Mistral AI / Anthropic PBC",
   country: "США",
 } as const;
 
 // Дата последней редакции юр-документов — показывается на каждой странице.
-export const LEGAL_UPDATED_AT = "05.07.2026";
+export const LEGAL_UPDATED_AT = "11.07.2026";
 
 // Проверка готовности реквизитов к публикации (ФИО заполнено).
 export function isOperatorReady(): boolean {
