@@ -50,6 +50,16 @@ export function getOpenRouterBaseUrl(): string {
   return process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1";
 }
 
+// Режим размышлений думающих моделей (GLM): "off" — полностью выключены (замер 2026-07-11:
+// латентность как у v3.2, ~8-9с/вердикт), "low"/"medium"/"high" — унифицированный effort
+// OpenRouter (low на замере был в 2.5-4 раза медленнее off). Модели без reasoning (DeepSeek
+// V3.2) параметр игнорируют. В env без передеплоя (правило 3); дефолт — off, скорость
+// это приоритет продукта.
+export function getOpenRouterReasoning(): { enabled: false } | { effort: string } {
+  const raw = process.env.OPENROUTER_REASONING || "off";
+  return raw === "off" ? { enabled: false } : { effort: raw };
+}
+
 // Предел ожидания ОДНОГО боевого вызова LLM через релей. Без него зависший релей (принял
 // соединение, но не отвечает) держит fetch по дефолту undici ~5 минут — воркер очереди
 // всё это время занят задачей в PROCESSING, весь разбор турнира «замерзает», а ретраи с

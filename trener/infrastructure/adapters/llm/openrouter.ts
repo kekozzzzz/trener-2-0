@@ -6,6 +6,7 @@ import {
   getOpenRouterApiKey,
   getOpenRouterBaseUrl,
   getOpenRouterModel,
+  getOpenRouterReasoning,
 } from "@/config/llm";
 import { resilientFetch } from "@/infrastructure/adapters/http/resilient-fetch";
 import { getHealthCheckTimeoutMs } from "@/config/health";
@@ -68,11 +69,11 @@ async function rawCall(system: string, prompt: string): Promise<{ text: string; 
       body: JSON.stringify({
         model: getOpenRouterModel(),
         max_tokens: getAnthropicMaxTokens(),
-        // Думающие модели (GLM-5.2) без этого тратят бюджет токенов на рассуждения и
-        // возвращают обрезанный/пустой content. Прод работает на low — ровно в этом
-        // режиме замерялось качество на аудитах 2026-07-11. Модели без reasoning
-        // (DeepSeek V3.2) параметр просто игнорируют.
-        reasoning: { effort: "low" },
+        // Думающие модели (GLM-5.2) без явного режима тратят бюджет токенов на
+        // рассуждения и возвращают обрезанный/пустой content. Режим — из env
+        // (OPENROUTER_REASONING, дефолт off: латентность как у v3.2 по замеру
+        // 2026-07-11). Модели без reasoning (DeepSeek V3.2) параметр игнорируют.
+        reasoning: getOpenRouterReasoning(),
         messages: [
           { role: "system", content: system },
           { role: "user", content: prompt },
