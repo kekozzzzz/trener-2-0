@@ -148,7 +148,7 @@ export function preflopAlternatives(snapshot: TableSnapshot): PreflopAlt | null 
         code: rc.code,
         chartPosition: rc.openerGroup,
         chartState: state,
-        rationale: `${rc.code} на ${rc.band === "LOW" ? "10-14bb" : "14-25bb"} против опена с ${opener} позиции - в чарте рестила: вместо ${played} была ветка 3-бет-ОЛЛ-ИН (на этой глубине обычный 3-бет коммитит, поэтому джем)`,
+        rationale: `${rc.code} на ${rc.band === "LOW" ? "10-14bb" : "14-25bb"} против опена с ${opener} позиции - в чарте рестила: вместо ${played} была ветка 3-бет-ОЛЛ-ИН (на этой глубине обычный 3-бет коммитит, поэтому олл-ин)`,
       };
     }
   }
@@ -250,7 +250,7 @@ export function preflopAlternatives(snapshot: TableSnapshot): PreflopAlt | null 
         code: sc.code,
         chartPosition: sc.position,
         chartState: state,
-        rationale: `${sc.code} с ${sc.position} на коротком стеке - в Nash-пуш-диапазоне: вместо ${played} была ветка ДЖЕМ (на такой глубине джем-или-фолд, мин-рейз/лимп коммитит без фолд-эквити)`,
+        rationale: `${sc.code} с ${sc.position} на коротком стеке - в Nash-пуш-диапазоне: вместо ${played} была ветка ПУШ (на такой глубине пуш-или-фолд, мин-рейз/лимп коммитит без фолд-эквити)`,
       };
     }
   }
