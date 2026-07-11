@@ -68,6 +68,11 @@ async function rawCall(system: string, prompt: string): Promise<{ text: string; 
       body: JSON.stringify({
         model: getOpenRouterModel(),
         max_tokens: getAnthropicMaxTokens(),
+        // Думающие модели (GLM-5.2) без этого тратят бюджет токенов на рассуждения и
+        // возвращают обрезанный/пустой content. Прод работает на low — ровно в этом
+        // режиме замерялось качество на аудитах 2026-07-11. Модели без reasoning
+        // (DeepSeek V3.2) параметр просто игнорируют.
+        reasoning: { effort: "low" },
         messages: [
           { role: "system", content: system },
           { role: "user", content: prompt },
