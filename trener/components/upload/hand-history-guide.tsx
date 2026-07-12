@@ -24,6 +24,9 @@ type Room = {
 const HAND_HISTORY_ROOMS: Room[] = [
   { id: "ggpoker", name: "GGPoker", hasNote: true },
   { id: "pokerstars", name: "PokerStars", hasPaths: true, hasNote: true },
+  // PokerPlanets — преемник PokerStars Sochi (формат = клон PokerStars). Пока без
+  // скриншотов: клиент закрытый, публичных скринов нет — шаги текстом (как Chico).
+  { id: "pokerplanets", name: "PokerPlanets", hasTag: true, hasPaths: true, hasNote: true },
   { id: "winamax", name: "Winamax", hasPaths: true, hasNote: true },
   { id: "888poker", name: "888poker", hasPaths: true },
   { id: "acr", name: "ACR / PokerKing / Black Chip", hasTag: true, hasPaths: true },
@@ -51,6 +54,7 @@ const STEP_SHOTS: Record<string, Record<number, string>> = {
   acr: { 1: "/help/acr/lobby.png", 2: "/help/acr/settings.png" },
   ipoker: { 1: "/help/ipoker/settings.png" },
   // chico: публичные скрины слишком мыльные — добавим свой, когда снимем из клиента
+  // pokerplanets: публичных скринов клиента нет (рум закрытый) — добавим, когда снимем сами
 };
 
 // Одна раскрывашка рума: клик по названию раскрывает шаги (пока не нажали — скрыто).

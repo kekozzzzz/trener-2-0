@@ -105,6 +105,63 @@ describe("parsePokerStarsMtt — формат PokerStars / Chico", () => {
     expect(r.data.hands[0].chipResult).toBe(100); // колл 100 префлоп, бет 80 вернулся, забрал 200
   });
 
+  // PokerPlanets — клон формата PokerStars (тело идентично). Отличия только в шапке:
+  // имя рума, турнир как "Tournament (Название)#id" и UTF-8 BOM в начале файла. Плюс
+  // рум сам обезличивает оппонентов как "PlayerN". Тело должно разбираться PS-парсером.
+  it("парсит PokerPlanets (BOM + Tournament (Название)#id + оппоненты PlayerN)", () => {
+    const pp =
+      "\uFEFF" +
+      [
+        "PokerPlanets Hand #31895771: Tournament (Diadem Bounty)#380908, $2.4000+$0.6000 Hold'em No Limit - Level III (25/50) - 2026/03/30 12:43:12 UTC",
+        "Table '380908 1'(958546) 8-max Seat #1 is the button",
+        "Seat 1: Player1 (10000 in chips)",
+        "Seat 2: HeroPP (10000 in chips)",
+        "Seat 3: Player3 (10000 in chips)",
+        "Player1: posts the ante 10",
+        "HeroPP: posts the ante 10",
+        "Player3: posts the ante 10",
+        "HeroPP: posts small blind 25",
+        "Player3: posts big blind 50",
+        "*** HOLE CARDS ***",
+        "Dealt to HeroPP [Kc Kh]",
+        "Player1: folds",
+        "HeroPP: raises 150 to 200",
+        "Player3: folds",
+        "Uncalled bet (150) returned to HeroPP",
+        "HeroPP collected 130 from pot",
+        "*** SUMMARY ***",
+        "Total pot 130 | Rake 0 ",
+        "Seat 1: Player1 (button) folded before Flop (didn't bet)",
+        "Seat 2: HeroPP (small blind) collected (130)",
+        "Seat 3: Player3 (big blind) folded before Flop",
+      ].join("\n");
+    const buf = Buffer.from(pp);
+
+    // Прямой вызов PS-парсера
+    const r = parsePokerStarsMtt(buf);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.data.room).toBe("PokerPlanets");
+    expect(r.data.externalTournamentId).toBe("380908");
+    expect(r.data.name).toBe("$2.4000+$0.6000 Hold'em No Limit");
+    expect(r.data.playedAt).toBe("2026-03-30T12:43:12.000Z");
+    expect(r.data.handsCount).toBe(1);
+    expect(r.data.vpipPercent).toBe(100); // герой добровольно рейзит
+    expect(r.data.pfrPercent).toBe(100);
+    expect(r.data.hands[0].chipResult).toBe(70); // анте 10 + SB 25, рейз до 200, 150 вернулось, забрал 130
+    // Обезличивание: реальный ник героя не утекает
+    expect(JSON.stringify(r.data.hands)).not.toContain("HeroPP");
+
+    // Роутер направляет PokerPlanets в PS-парсер (несмотря на BOM и форму турнира)
+    const routed = parseHandHistory(buf);
+    expect(routed.ok).toBe(true);
+    if (!routed.ok) return;
+    expect(routed.data.room).toBe("PokerPlanets");
+
+    // Склейка многостольных файлов: ключ турнира вытаскивается из формы со скобками
+    expect(sniffTournamentKey(buf)).toEqual({ room: "PokerPlanets", tournamentId: "380908" });
+  });
+
   // Классический (НЕ-KO) турнир PokerStars: бай-ин из 2 частей "$10+$1", Seat БЕЗ
   // суффикса баунти, room = PokerStars (не Chico). Должен парситься так же.
   it("парсит классический турнир PokerStars без баунти", () => {

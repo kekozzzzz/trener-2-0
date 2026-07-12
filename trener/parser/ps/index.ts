@@ -4,27 +4,31 @@ import { opponentTokenizer, assignOpponentTokens } from "../shared/opponent-toke
 import { assignShownCards, shownCardsByNick } from "../shared/shown-cards";
 import { parseHand } from "./hand";
 
-// PS-семья: PokerStars и Chico пишут раздачи в одном формате. Chico отличается
-// только префиксом стола (CHC_) и отсутствием римских цифр в Level — на разбор не
-// влияет, метим лишь room по имени стола.
-const HAND_HEADER = /^PokerStars (?:Hand|Game) #\d+: Tournament #/m;
-const HAND_SPLIT = /^(?=PokerStars (?:Hand|Game) #\d+: Tournament #)/m;
-const TOURNAMENT_META = /Tournament #(\d+), (.+?) - Level/;
+// PS-семья: PokerStars, Chico и PokerPlanets пишут раздачи в одном формате. Отличия
+// только в шапке: Chico — префикс стола CHC_ и Level без римских цифр; PokerPlanets —
+// имя рума в заголовке и форма турнира "Tournament (Название)#id" (у PS — "Tournament
+// #id"), плюс UTF-8 BOM в начале файла. На разбор ТЕЛА ничего из этого не влияет —
+// метим лишь room и накрываем обе формы шапки.
+const HAND_HEADER = /^(?:PokerStars|PokerPlanets) (?:Hand|Game) #\d+: Tournament [#(]/m;
+const HAND_SPLIT = /^(?=(?:PokerStars|PokerPlanets) (?:Hand|Game) #\d+: Tournament [#(])/m;
+const TOURNAMENT_META = /Tournament (?:#|\(.+?\)#)(\d+), (.+?) - Level/;
 const HAND_TIMESTAMP = /(\d{4})\/(\d{2})\/(\d{2}) (\d{2}):(\d{2}):(\d{2})/g;
 const TABLE_NAME = /^Table '(.+?)'/m;
 const HOLE_CARDS = /^\*\*\* HOLE CARDS \*\*\*/m;
 const DEALT_TO = /^Dealt to (.+?) \[/m; // карты показаны только у героя → так находим его ник
 const FLOP_START = /^\*\*\* FLOP \*\*\*/m;
-const HAND_ID = /^PokerStars (?:Hand|Game) #(\d+):/; // номер раздачи — для дедупа при склейке файлов
+const HAND_ID = /^(?:PokerStars|PokerPlanets) (?:Hand|Game) #(\d+):/; // номер раздачи — для дедупа при склейке файлов
 const BUY_IN_FROM_HEADER = /\$(\d+(?:\.\d+)?)\+\$/;
 
 function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// Chico пишет стол как 'CHC_<id> <n>'. Префикс отличает Chico от настоящего
-// PokerStars — больше различий, влияющих на разбор, нет.
+// Рум метим по шапке: PokerPlanets — по имени рума в заголовке раздачи; Chico — по
+// префиксу стола CHC_ ('CHC_<id> <n>'); иначе настоящий PokerStars. На разбор тела
+// ничего из этого не влияет.
 function detectRoom(text: string): string {
+  if (/^PokerPlanets (?:Hand|Game) #/m.test(text)) return "PokerPlanets";
   const table = TABLE_NAME.exec(text)?.[1] ?? "";
   return table.startsWith("CHC_") ? "Chico" : "PokerStars";
 }
@@ -68,14 +72,15 @@ function seatNamesOf(handText: string): Record<number, string> {
 }
 
 export function parsePokerStarsMtt(buffer: Buffer): ParseResult {
-  // Нормализуем переводы строк: реальные экспорты идут с CRLF, а построчные
-  // парсеры действий (parseVerb с якорем $ без флага m) на хвостовой \r не матчат.
-  const text = buffer.toString("utf-8").replace(/\r\n?/g, "\n");
+  // Срезаем UTF-8 BOM (PokerPlanets шлёт файл с BOM — иначе якорь ^ не сработал бы на
+  // первой раздаче) и нормализуем переводы строк: реальные экспорты идут с CRLF, а
+  // построчные парсеры действий (parseVerb с якорем $ без флага m) на хвостовой \r не матчат.
+  const text = buffer.toString("utf-8").replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
 
   if (!HAND_HEADER.test(text)) {
     return {
       ok: false,
-      error: { type: "UNSUPPORTED_FORMAT", message: "Загрузи турнир PokerStars / Chico" },
+      error: { type: "UNSUPPORTED_FORMAT", message: "Загрузи турнир PokerStars / Chico / PokerPlanets" },
     };
   }
 

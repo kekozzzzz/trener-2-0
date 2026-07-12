@@ -436,7 +436,8 @@
     "networkLabels": {
       "acr": "WPN network (Winning Poker Network)",
       "ipoker": "iPoker network - any of its skins works",
-      "chico": "Chico network"
+      "chico": "Chico network",
+      "pokerplanets": "formerly PokerStars Sochi"
     },
     "ext": {
       "ggpoker": ".txt (sometimes inside a .zip - unpack it)",
@@ -445,14 +446,16 @@
       "888poker": ".txt",
       "acr": ".txt",
       "ipoker": ".xml or .txt",
-      "chico": ".txt"
+      "chico": ".txt",
+      "pokerplanets": ".txt"
     },
     "notes": {
       "ggpoker": "GGPoker has no \"download everything at once\" button. If you played different formats (tournaments, Spin & Gold), go through each section on the left separately.",
       "pokerstars": "Want to see the hand right at the table - enable \"Instant Hand History\" in the table menu (\"Table\"). The history language doesn't matter, we read any.",
       "winamax": "In the new client the history is saved to disk automatically - no checkbox needed. The old client has one: User Settings → Game settings → \"Save My Hand History\". Windows hides the AppData folder - in Explorer turn on \"Show hidden items\" (the \"View\" tab), otherwise you won't find it.",
       "ipoker": "The client must be in English - otherwise the history might not save correctly. Windows hides the AppData folder - turn on showing hidden items.",
-      "chico": "If some file isn't recognized - let us know and we'll fix it."
+      "chico": "If some file isn't recognized - let us know and we'll fix it.",
+      "pokerplanets": "PokerPlanets is the former PokerStars Sochi, so the hands are in PokerStars format and we read them. The room is new, so the settings section may be named a bit differently - if a file isn't recognized, let us know."
     },
     "paths": {
       "pokerstars": [
@@ -474,6 +477,9 @@
       ],
       "chico": [
         "the folder you set in the history settings"
+      ],
+      "pokerplanets": [
+        "the folder you set in the client's hand-history settings"
       ]
     },
     "steps": {
@@ -528,6 +534,13 @@
         "In the lobby, bottom left, open \"Settings\" → \"More options\".",
         "In the \"History\" section enable \"Save Hand History\" and set the folder to save the hands to.",
         "Play - the .txt files land in that folder. Open it and grab the ones you need."
+      ],
+      "pokerplanets": [
+        "Open the PokerPlanets client on your computer and sign in.",
+        "Go to the client settings - usually a gear icon or a menu item in the lobby.",
+        "Find the hand-history section (Hand History / Playing History) and turn on saving history to your computer.",
+        "The folder where the client saves the files is shown right there - note it down (or set your own).",
+        "Open that folder and grab the tournament .txt files."
       ]
     }
   },

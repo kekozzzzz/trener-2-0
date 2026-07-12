@@ -10,13 +10,17 @@ import { parse888Mtt } from "./poker888";
 // Контракт ParseResult / ParsedTournament для остального кода не меняется.
 const GG_HEADER = /^Poker Hand #(?:RC-GGPoker-\d{8}-\d+|TM\d+): Tournament #/m;
 const WPN_HEADER = /^Game Hand #\d+ - Tournament #\d+ - /m;
-const PS_HEADER = /^PokerStars (?:Hand|Game) #\d+: Tournament #/m; // PokerStars + Chico (одна семья)
+// PS-семья: PokerStars, Chico и PokerPlanets пишут раздачи в одном формате. Отличается
+// только токен рума в шапке и форма ссылки на турнир: PS/Chico — "Tournament #id",
+// PokerPlanets — "Tournament (Название)#id". Обе накрываем "Tournament [#(]".
+const PS_HEADER = /^(?:PokerStars|PokerPlanets) (?:Hand|Game) #\d+: Tournament [#(]/m;
 const WINAMAX_HEADER = /^Winamax Poker - Tournament /m;
 const POKER888_HEADER = /^\*\*\*\*\* 888poker Hand History /m;
 const IPOKER_HEADER = /<game\s+gamecode="\d+">/; // XML-формат iPoker; турнир — по <tournamentcode>
 
 export function parseHandHistory(buffer: Buffer): ParseResult {
-  const text = buffer.toString("utf-8");
+  // BOM (PokerPlanets шлёт UTF-8 с BOM) сбил бы якорь ^ на первой раздаче — срезаем.
+  const text = buffer.toString("utf-8").replace(/^\uFEFF/, "");
 
   if (WPN_HEADER.test(text)) return parseWpnMtt(buffer);
   if (GG_HEADER.test(text)) return parseGGPokerMtt(buffer);
@@ -30,7 +34,7 @@ export function parseHandHistory(buffer: Buffer): ParseResult {
     error: {
       type: "UNSUPPORTED_FORMAT",
       message:
-        "Формат файла не распознан. Поддерживаются GGPoker, PokerStars / Chico, Winamax, 888poker, ACR / PokerKing (WPN) и iPoker.",
+        "Формат файла не распознан. Поддерживаются GGPoker, PokerStars / Chico / PokerPlanets, Winamax, 888poker, ACR / PokerKing (WPN) и iPoker.",
     },
   };
 }
@@ -41,21 +45,25 @@ export function parseHandHistory(buffer: Buffer): ParseResult {
 // (ACR/PokerKing: один файл на стол, при балансировке игрока пересаживают). GG и
 // прочие пишут турнир одним файлом — их НЕ группируем (иначе случайно слитый
 // дубль-файл удвоил бы раздачи; дедуп таких ловит обычная дедупликация турниров).
-// WPN (ACR/PokerKing): один файл на стол. PS-семья (PokerStars/Chico) и iPoker —
-// тоже многостольные: один турнир разбит на файлы по столам. Группируем их по
+// WPN (ACR/PokerKing): один файл на стол. PS-семья (PokerStars/Chico/PokerPlanets) и
+// iPoker — тоже многостольные: один турнир разбит на файлы по столам. Группируем их по
 // (площадка+номер турнира). GG пишет турнир одним файлом — его НЕ группируем.
 const WPN_KEY = /^Game Hand #\d+ - Tournament #(\d+)/m;
 const PS_KEY = /^PokerStars (?:Hand|Game) #\d+: Tournament #(\d+)/m;
+// PokerPlanets: номер турнира стоит после метки в скобках — "Tournament (Название)#id".
+const POKERPLANETS_KEY = /^PokerPlanets (?:Hand|Game) #\d+: Tournament \(.+?\)#(\d+)/m;
 const WINAMAX_KEY = /^Table: '.*\((\d+)\)#[^']*'/m; // номер турнира в имени стола Winamax
 const POKER888_KEY = /^Tournament #(\d+) /m;
 const IPOKER_KEY = /<tournamentcode>(\d+)<\/tournamentcode>/;
 
 export function sniffTournamentKey(buffer: Buffer): { room: string; tournamentId: string } | null {
-  const text = buffer.toString("utf-8");
+  const text = buffer.toString("utf-8").replace(/^\uFEFF/, "");
   const wpn = WPN_KEY.exec(text);
   if (wpn) return { room: "WPN", tournamentId: wpn[1] };
   const ps = PS_KEY.exec(text);
   if (ps) return { room: "PS", tournamentId: ps[1] };
+  const pplanets = POKERPLANETS_KEY.exec(text);
+  if (pplanets) return { room: "PokerPlanets", tournamentId: pplanets[1] };
   const winamax = WINAMAX_KEY.exec(text);
   if (winamax) return { room: "Winamax", tournamentId: winamax[1] };
   const p888 = POKER888_KEY.exec(text);
