@@ -3,7 +3,7 @@
 // Глобальная страница ошибки (заменяет корневой layout при крэше рендера) —
 // стили инлайном: globals.css здесь может не загрузиться (QA 2026-07-05, пункт 3;
 // давний хвост из memory: global-error.tsx после 413-инцидента).
-export default function GlobalError({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
+export default function GlobalError(_props: { error: Error & { digest?: string }; reset: () => void }) {
   return (
     <html lang="ru">
       <body
@@ -34,7 +34,7 @@ export default function GlobalError({ reset }: { error: Error & { digest?: strin
         <div style={{ marginTop: 24, display: "flex", gap: 12 }}>
           <button
             type="button"
-            onClick={() => reset()}
+            onClick={() => window.location.reload()}
             style={{
               padding: "12px 20px",
               background: "#D4FF33",

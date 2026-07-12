@@ -18,16 +18,52 @@ const WINAMAX_HEADER = /^Winamax Poker - Tournament /m;
 const POKER888_HEADER = /^\*\*\*\*\* 888poker Hand History /m;
 const IPOKER_HEADER = /<game\s+gamecode="\d+">/; // XML-формат iPoker; турнир — по <tournamentcode>
 
+const VALID_CARD = /^[2-9TJQKA][shdc]$/;
+
+// Санитайзер борда снимка: оставляем только валидные карты, убираем ДУБЛИ (ран-ит-твайс
+// или повторные Dealing-строки в 888/iPoker склеивают борд с повторами) и лишние карты
+// сверх 5. Без этого мусорный борд (>5 карт с дублями) уходил в промпт целиком (строка
+// «Борд:» в hand-analysis.ts) и рассинхронивался с поулично нарезанными фактами → тренер
+// строил разбор на выдуманной доске (баг реального тестера 12.07: борд «J-5-J-T» с
+// апелляцией к картам, которых там нет). Правило 1/2: лучше чистый борд, чем противоречивый.
+// Чистая функция; экспортируется для теста.
+export function sanitizeBoard(board: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const c of board) {
+    if (!VALID_CARD.test(c)) continue; // битый токен
+    if (seen.has(c)) continue; // дубль (одна и та же карта борда встречена дважды)
+    seen.add(c);
+    out.push(c);
+    if (out.length === 5) break; // борд не длиннее ривера (5 карт)
+  }
+  return out;
+}
+
+// Единая пост-проверка для ВСЕХ румов: чистим борд каждой раздачи перед выдачей в разбор.
+function sanitizeParsedBoards(result: ParseResult): ParseResult {
+  if (!result.ok) return result;
+  for (const hand of result.data.hands) {
+    const raw = hand.tableSnapshot.board;
+    const clean = sanitizeBoard(raw);
+    if (clean.length !== raw.length || clean.some((c, i) => c !== raw[i])) {
+      hand.tableSnapshot.board = clean;
+    }
+  }
+  return result;
+}
+
 export function parseHandHistory(buffer: Buffer): ParseResult {
   // BOM (PokerPlanets шлёт UTF-8 с BOM) сбил бы якорь ^ на первой раздаче — срезаем.
   const text = buffer.toString("utf-8").replace(/^\uFEFF/, "");
 
-  if (WPN_HEADER.test(text)) return parseWpnMtt(buffer);
-  if (GG_HEADER.test(text)) return parseGGPokerMtt(buffer);
-  if (PS_HEADER.test(text)) return parsePokerStarsMtt(buffer);
-  if (WINAMAX_HEADER.test(text)) return parseWinamaxMtt(buffer);
-  if (POKER888_HEADER.test(text)) return parse888Mtt(buffer);
-  if (IPOKER_HEADER.test(text) && /<tournamentcode>/.test(text)) return parseIpokerMtt(buffer);
+  if (WPN_HEADER.test(text)) return sanitizeParsedBoards(parseWpnMtt(buffer));
+  if (GG_HEADER.test(text)) return sanitizeParsedBoards(parseGGPokerMtt(buffer));
+  if (PS_HEADER.test(text)) return sanitizeParsedBoards(parsePokerStarsMtt(buffer));
+  if (WINAMAX_HEADER.test(text)) return sanitizeParsedBoards(parseWinamaxMtt(buffer));
+  if (POKER888_HEADER.test(text)) return sanitizeParsedBoards(parse888Mtt(buffer));
+  if (IPOKER_HEADER.test(text) && /<tournamentcode>/.test(text))
+    return sanitizeParsedBoards(parseIpokerMtt(buffer));
 
   return {
     ok: false,

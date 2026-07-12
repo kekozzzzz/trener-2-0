@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { ChevronDown } from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
@@ -31,6 +31,33 @@ export function SelfLevelLine({
   const [current, setCurrent] = useState<SelfLevel | null>(level);
   const [, startTransition] = useTransition();
 
+  // Первый заход, пока уровень не задан: авто-открыть диалог ОДИН раз. Тихую строчку
+  // реальный тестер (12.07) не заметил и ждал, думая, что идёт расчёт. Флаг «уже показывали»
+  // — в localStorage (без миграции БД). Разбор идёт ЗА диалогом, диалог его не блокирует;
+  // «пропустить»/крестик/клик по фону закрывают, строчка остаётся точкой повторного входа.
+  const SEEN_KEY = "wg_selflevel_seen";
+  function markSeen() {
+    try {
+      localStorage.setItem(SEEN_KEY, "1");
+    } catch {
+      /* приватный режим / localStorage недоступен — не критично */
+    }
+  }
+  useEffect(() => {
+    if (level !== null) return; // уровень уже выбирался — не навязываемся
+    try {
+      if (localStorage.getItem(SEEN_KEY) === "1") return; // уже показывали в этом браузере
+    } catch {
+      return; // нет доступа к localStorage — не рискуем навязчивым авто-показом
+    }
+    setOpen(true);
+  }, [level]);
+
+  function handleOpenChange(next: boolean) {
+    setOpen(next);
+    if (!next) markSeen();
+  }
+
   const shortLabel: Record<SelfLevel, string> = {
     NEW: t("newLabel"),
     BASICS: t("basicsLabel"),
@@ -45,6 +72,7 @@ export function SelfLevelLine({
   };
 
   function choose(value: SelfLevel | "") {
+    markSeen();
     setCurrent(value === "" ? null : value);
     setOpen(false);
     startTransition(() => {
@@ -57,7 +85,7 @@ export function SelfLevelLine({
     : t("trigger");
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger className="mt-3 inline-flex items-center gap-1 font-mono text-label uppercase tracking-label text-muted-foreground transition-colors hover:text-foreground">
         {triggerText}
         <ChevronDown className="size-3" />

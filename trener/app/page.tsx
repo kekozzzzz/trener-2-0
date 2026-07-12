@@ -78,6 +78,26 @@ export default async function HomePage() {
     },
   ];
 
+  // На чём основан разбор — довод доверия перед возражениями (числа от кода, норма от
+  // открытых чартов, роль ИИ). Ответ на вопрос тестера «на чём основано / кто решил».
+  const BASIS: {
+    label: string;
+    title: string;
+    description: string;
+    linkHref?: string;
+    linkText?: string;
+  }[] = [
+    { label: t("basisNumbersLabel"), title: t("basisNumbersTitle"), description: t("basisNumbersDescription") },
+    {
+      label: t("basisChartsLabel"),
+      title: t("basisChartsTitle"),
+      description: t("basisChartsDescription"),
+      linkHref: "/charts",
+      linkText: t("basisChartsLink"),
+    },
+    { label: t("basisCoachLabel"), title: t("basisCoachTitle"), description: t("basisCoachDescription") },
+  ];
+
   // Отработка трёх возражений нашей аудитории (думающий микролимитник).
   // Снимаем «дорого / не верю / сам разберусь» прямо на лендинге, перед призывом.
   const OBJECTIONS = [
@@ -215,6 +235,43 @@ export default async function HomePage() {
                 </div>
               ))}
             </div>
+          </BlurFade>
+        </div>
+      </section>
+
+      {/* На чём основан разбор — доверие перед возражениями: числа от кода, норма от
+          открытых чартов, роль ИИ. Отвечает на вопрос «на чём основано / кто решил, что точно». */}
+      <section className="border-t border-border">
+        <div className="mx-auto max-w-5xl px-8 py-16">
+          <BlurFade direction="up" offset={8} blur="0px" duration={0.3} delay={0.08}>
+            <h2 className="text-h2 text-center">{t("basisTitle")}</h2>
+          </BlurFade>
+          <BlurFade direction="up" offset={8} blur="0px" duration={0.3} delay={0.12}>
+            <div className="mt-8 grid divide-y divide-border border border-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+              {BASIS.map((item) => (
+                <div key={item.label} className="p-8 text-center">
+                  <p className="font-mono text-label uppercase tracking-label text-primary">
+                    {item.label}
+                  </p>
+                  <h3 className="mt-4 text-h3">{item.title}</h3>
+                  <p className="mt-2 text-small text-muted-foreground">{item.description}</p>
+                  {item.linkHref && (
+                    <Link
+                      href={item.linkHref}
+                      className="mt-4 inline-flex items-center gap-1 font-mono text-label uppercase tracking-label text-primary transition-colors hover:text-foreground"
+                    >
+                      {item.linkText}
+                      <ArrowRight className="size-3" />
+                    </Link>
+                  )}
+                </div>
+              ))}
+            </div>
+          </BlurFade>
+          <BlurFade direction="up" offset={8} blur="0px" duration={0.3} delay={0.16}>
+            <p className="mx-auto mt-8 max-w-2xl text-center text-small text-muted-foreground">
+              {t("basisAudience")}
+            </p>
           </BlurFade>
         </div>
       </section>
