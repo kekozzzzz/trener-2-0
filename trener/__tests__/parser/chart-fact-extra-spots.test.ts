@@ -221,11 +221,10 @@ describe("блайнд-против-блайнда", () => {
   });
 });
 
-// Разбор коуча 2026-07-12: анти-нит перекос на SB. Открытие K5o и долимп K6o с малого
-// блайнда клеймились утечкой — коуч (реальный тренер) назвал это нитовой ошибкой.
-// Данные чартов НЕ трогаем, чиним ПОДАЧУ: вне рейз-ренжа SB ≠ мусор, слабые руки лимпят.
+// Разбор коуча 2026-07-12: анти-нит перекос на SB. Подача чинится (вне рейз-ренжа SB ≠ мусор,
+// слабые руки лимпят), а сам SB рейз-ренж ПОДРАСШИРЕН по коучу (K5o+, одобрено Артёмом «чуть-чуть»).
 describe("анти-нит на SB (разбор коуча)", () => {
-  it("K5o открытие с SB — не клеймо «шире нормы», предлагает лимп", () => {
+  it("K5o открытие с SB — теперь стандартное открытие (ренж подрасширен по коучу)", () => {
     const fact = preflopChartFact(
       snap({
         seats: [
@@ -234,6 +233,27 @@ describe("анти-нит на SB (разбор коуча)", () => {
           { label: "Player 2", position: "BTN", startingStack: 4000 },
         ],
         heroCards: ["Kh", "5d"],
+        actions: [
+          { street: "PREFLOP", actor: "Hero", action: "POST_SB", amount: 50 },
+          { street: "PREFLOP", actor: "Player 1", action: "POST_BB", amount: 100 },
+          { street: "PREFLOP", actor: "Player 2", action: "FOLD" },
+          { street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 250 },
+        ],
+      }),
+    );
+    expect(fact).toContain("стандартное открытие");
+    expect(fact).not.toContain("шире нормы для этой позиции");
+  });
+
+  it("K3o открытие с SB (вне ренжа) — не клеймо «шире нормы», предлагает лимп", () => {
+    const fact = preflopChartFact(
+      snap({
+        seats: [
+          { label: "Hero", position: "SB", startingStack: 4000 },
+          { label: "Player 1", position: "BB", startingStack: 4000 },
+          { label: "Player 2", position: "BTN", startingStack: 4000 },
+        ],
+        heroCards: ["Kh", "3d"],
         actions: [
           { street: "PREFLOP", actor: "Hero", action: "POST_SB", amount: 50 },
           { street: "PREFLOP", actor: "Player 1", action: "POST_BB", amount: 100 },

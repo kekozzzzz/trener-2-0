@@ -10,7 +10,8 @@
  *  GET /enter/verify:
  *   5. Токен нового email → redirect /enter/complete + cookie намерения, токен погашен.
  *   6. Токен существующего игрока → redirect / + сессия, токен погашен.
- *   7. Истёкший / использованный / кривой токен → redirect /enter?error=invalid.
+ *   7. Истёкший / использованный ПОСЛЕ грейса / кривой токен → invalid; использованный
+ *      В ПРЕДЕЛАХ грейс-окна (60с) → проходит (почтовые сканеры/префетч не ломают вход).
  *  completeRegistrationAction:
  *   8. Живая cookie намерения + согласие → аккаунт без пароля (passwordHash NULL),
  *      cookie намерения снята, сессия выдана, redirect /.
@@ -189,10 +190,25 @@ describe("GET /enter/verify", () => {
     expect(await prisma.player.count({ where: { email: NEW_EMAIL } })).toBe(0);
   });
 
-  it("использованный токен второй раз → redirect /enter?error=invalid", async () => {
+  it("использованный токен второй раз В ПРЕДЕЛАХ ГРЕЙСА → проходит (сканеры/префетч не ломают вход)", async () => {
     const token = await requestAndGetToken(NEW_EMAIL);
-    await verifyGet(verifyRequest(token));
+    await verifyGet(verifyRequest(token)); // первый проход (например, почтовый антивирус)
 
+    // второй проход сразу же — в пределах грейс-окна → НЕ invalid, тот же результат (идемпотентно)
+    const res = await verifyGet(verifyRequest(token));
+    expect(res.headers.get("location")).toMatch(/\/enter\/complete$/);
+    expect(res.cookies.get("pending_registration")?.value).toBeTruthy();
+  });
+
+  it("использованный токен ПОСЛЕ грейса (>60с назад) → redirect /enter?error=invalid", async () => {
+    const token = await requestAndGetToken(NEW_EMAIL);
+    await verifyGet(verifyRequest(token)); // погасили токен
+
+    // сдвигаем usedAt за пределы грейс-окна — повторный проход уже недействителен
+    await prisma.magicLinkToken.updateMany({
+      where: { email: NEW_EMAIL },
+      data: { usedAt: new Date(Date.now() - 61_000) },
+    });
     const res = await verifyGet(verifyRequest(token));
     expect(res.headers.get("location")).toMatch(/\/enter\?error=invalid$/);
   });

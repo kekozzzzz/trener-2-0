@@ -22,10 +22,21 @@ export async function GET(req: NextRequest) {
     where: { tokenHash: hashMagicToken(token) },
     select: { id: true, email: true, usedAt: true, expiresAt: true },
   });
-  if (!row || row.usedAt || row.expiresAt < new Date()) return invalid();
+  const now = new Date();
+  if (!row || row.expiresAt < now) return invalid();
 
-  // Одноразовость: гасим токен сразу на клике, до развилки.
-  await prisma.magicLinkToken.update({ where: { id: row.id }, data: { usedAt: new Date() } });
+  // Грейс одноразовости: почтовые антивирусы/префетч часто «прокликивают» ссылку РАНЬШЕ
+  // пользователя и гасят её — тогда настоящий клик упирался в «ссылка недействительна»
+  // (баг реального тестера 12.07). Разрешаем повторный проход короткое окно после первого
+  // использования — идемпотентно (тот же email → тот же вход/регистрация). Окно узкое, риск
+  // не растёт: у кого есть ссылка, тот и так владеет письмом.
+  const GRACE_MS = 60_000;
+  if (row.usedAt && now.getTime() - row.usedAt.getTime() > GRACE_MS) return invalid();
+
+  // Гасим токен только на ПЕРВОМ проходе — иначе окно грейса сдвигалось бы с каждым кликом.
+  if (!row.usedAt) {
+    await prisma.magicLinkToken.update({ where: { id: row.id }, data: { usedAt: now } });
+  }
 
   // Существующий аккаунт (включая зарегистрированный по паролю) → сразу входим.
   const player = await prisma.player.findFirst({
