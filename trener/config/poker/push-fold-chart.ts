@@ -99,3 +99,10 @@ export function pushCellState(band: StackBand, pos: PushPosition, code: string):
   if (PUSH_TOLERANCE[band][pos].has(code)) return "BORDER";
   return "OUT";
 }
+
+// Коды пуш-диапазона позиции × стек-бэнда — для эквити руки Hero против диапазона
+// пушера (parser/chart-equity-fact.ts, факты-v2 фаза 1). Тот же Set, что видит грейдер
+// и страница /charts, — эквити и вердикт чарта не разойдутся.
+export function pushRangeCodes(band: StackBand, pos: PushPosition): string[] {
+  return [...PUSH_RANGE[band][pos]];
+}

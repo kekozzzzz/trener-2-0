@@ -5,6 +5,8 @@ import { heroMadeHand } from "./made-hand";
 import { readHeroDraw, drawEquity, improvementOuts, type DrawRead } from "./draws";
 import { handCode } from "@/config/poker/hand-codes";
 import { preflopChartFact } from "./preflop-chart-fact";
+import { renderChartEquityFacts } from "./chart-equity-fact";
+import { renderAllInGeometry } from "./allin-geometry";
 
 // Дешёвые детерминированные факты раздачи — общая покерная арифметика, которую
 // парсер считает за LLM (правило 1: тренер числа не вычисляет). Всё выводится из
@@ -20,6 +22,16 @@ import { preflopChartFact } from "./preflop-chart-fact";
 const RANKS: Record<string, number> = {
   "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8, "9": 9,
   T: 10, J: 11, Q: 12, K: 13, A: 14,
+};
+
+// Имена рангов для маркеров опасности борда (родительный мн. и единственное).
+const GEN_PL_RU: Record<number, string> = {
+  14: "тузов", 13: "королей", 12: "дам", 11: "валетов", 10: "десяток", 9: "девяток",
+  8: "восьмёрок", 7: "семёрок", 6: "шестёрок", 5: "пятёрок", 4: "четвёрок", 3: "троек", 2: "двоек",
+};
+const SG_RU: Record<number, string> = {
+  14: "тузом", 13: "королём", 12: "дамой", 11: "валетом", 10: "десяткой", 9: "девяткой",
+  8: "восьмёркой", 7: "семёркой", 6: "шестёркой", 5: "пятёркой", 4: "четвёркой", 3: "тройкой", 2: "двойкой",
 };
 
 type Card = { rank: number; suit: string };
@@ -85,14 +97,14 @@ const CONNECTED_RU: Record<BoardTexture["connected"], string> = {
 // крупная/овербет читается как сила или поляризация.
 export type BetSizeClass = "SMALL" | "STANDARD" | "LARGE" | "OVERBET";
 
-function sizeClass(pctOfPot: number): BetSizeClass {
+export function sizeClass(pctOfPot: number): BetSizeClass {
   if (pctOfPot < 33) return "SMALL"; // блок/проб-бет
   if (pctOfPot <= 80) return "STANDARD"; // 1/3, 1/2, 3/4 — не реагируем
   if (pctOfPot <= 110) return "LARGE"; // больше стандарта = сила
   return "OVERBET"; // ставка больше банка — поляризация
 }
 
-const SIZE_CLASS_RU: Record<BetSizeClass, string> = {
+export const SIZE_CLASS_RU: Record<BetSizeClass, string> = {
   SMALL: "мелкая",
   STANDARD: "стандарт",
   LARGE: "крупная",
@@ -360,6 +372,73 @@ const STREET_RU: Record<Street, string> = {
   RIVER: "ривере",
 };
 
+// Факты-v2 фаза 4: маркеры опасности борда для ГОТОВОЙ руки — считает парсер (правило 1),
+// чтобы модель не «прикидывала на глаз», что на спаренном/тройном борде фулл-хаус уже в
+// игре, и не звала слабую готовую руку натсами. Спаренный борд → фулл-хаус возможен; борд
+// с трипсом → любая пара соперника уже фулл; свой фулл может быть НЕ старшим. Только борд
+// (3+ карты) — решение принимают до вскрытия, поэтому факт безопасен и для разбора.
+export function boardDangerFacts(heroCards: string[], board: string[]): string[] {
+  const b = board.map(parseCard).filter((c): c is Card => c !== null);
+  if (b.length < 3) return [];
+  const out: string[] = [];
+
+  const boardCount = new Map<number, number>();
+  for (const c of b) boardCount.set(c.rank, (boardCount.get(c.rank) ?? 0) + 1);
+  const tripRank = [...boardCount.entries()].filter(([, n]) => n >= 3).map(([r]) => r).sort((a, z) => z - a)[0];
+  const pairRanks = [...boardCount.entries()].filter(([, n]) => n === 2).map(([r]) => r).sort((a, z) => z - a);
+
+  if (tripRank != null) {
+    out.push(
+      `Опасность борда: на доске трипс (${GEN_PL_RU[tripRank]}) - у любого соперника с карманной парой уже фулл-хаус, и любая карта, спаривающая борд, тоже достраивает фулл. Всё слабее фулла здесь резко обесценено - не считай готовую руку ниже фулла сильной.`,
+    );
+  } else if (pairRanks.length > 0) {
+    const bp = pairRanks[0];
+    out.push(
+      `Опасность борда: доска спарена (${GEN_PL_RU[bp]}) - фулл-хаус уже в игре: у соперника с ${SG_RU[bp]} трипс, а любая пара к борду достраивает фулл. Две пары и сет здесь уязвимы фуллу.`,
+    );
+
+    // Свой фулл может быть младшим: тройка Hero ниже старшей пары борда → соперник с
+    // этой парой собирает фулл выше. Считаем по объединённым рангам (не «на глаз»).
+    const hero = heroCards.map(parseCard).filter((c): c is Card => c !== null);
+    const combined = new Map<number, number>(boardCount);
+    for (const c of hero) combined.set(c.rank, (combined.get(c.rank) ?? 0) + 1);
+    const heroTrips = [...combined.entries()].filter(([, n]) => n >= 3).map(([r]) => r).sort((a, z) => z - a)[0];
+    const mh = heroMadeHand(heroCards, board);
+    if (mh?.category === "FULL_HOUSE" && heroTrips != null && bp > heroTrips) {
+      out.push(
+        `И твой фулл-хаус НЕ старший: тройка у тебя из ${GEN_PL_RU[heroTrips]}, а на борде пара ${GEN_PL_RU[bp]} старше - старший фулл с тройкой ${GEN_PL_RU[bp]} (у соперника с ${SG_RU[bp]} и парной борду картой) бьёт твой. Рука сильная, но не натсовая - крупный банк строй осторожно.`,
+      );
+    }
+  }
+
+  return out;
+}
+
+// Факты-v2 фаза 4: вскрытые на шоудауне карты соперников с ГОТОВОЙ комбинацией (правило 1:
+// состав руки считает парсер). ТОЛЬКО для вердикта — на этапе диалога карты соперника
+// раскрывать нельзя (это спойлер к «прочти его диапазон»). Снимок уже хранит shownCards
+// (parser/shared/shown-cards); модель не должна писать «вероятно, сет», когда карты видны.
+export function renderShowdownFacts(snapshot: TableSnapshot): string {
+  const board = snapshot.board;
+  const lines: string[] = [];
+  for (const seat of snapshot.seats) {
+    if (seat.label === "Hero" || !seat.shownCards || seat.shownCards.length !== 2) continue;
+    const cards = seat.shownCards.join(" ");
+    const code = handCode(seat.shownCards);
+    const mh = board.length >= 3 ? heroMadeHand(seat.shownCards, board) : null;
+    if (mh) {
+      lines.push(`${seat.label} вскрыл ${cards}${code ? ` (${code})` : ""}: ${mh.ru}.`);
+    } else {
+      lines.push(`${seat.label} вскрыл ${cards}${code ? ` (${code})` : ""}.`);
+    }
+  }
+  if (lines.length === 0) return "";
+  return [
+    "Вскрытые карты соперников на шоудауне и их готовая комбинация (посчитал парсер - НЕ гадай «вероятно, сет/флеш», состав руки уже дан):",
+    ...lines,
+  ].join("\n");
+}
+
 export function renderHandFacts(snapshot: TableSnapshot): string {
   const f = computeHandFacts(snapshot);
   const lines: string[] = [];
@@ -388,6 +467,17 @@ export function renderHandFacts(snapshot: TableSnapshot): string {
   // модель не судила префлоп «на глаз» и не спорила с нашими же чартами.
   const chart = preflopChartFact(snapshot);
   if (chart) lines.push(chart);
+
+  // Факты-v2 фазы 1-2: эквити руки Hero против чартового диапазона соперника + фолд-эквити
+  // рестила. Цена колла префлоп-олл-ина берётся из уже посчитанного heroFacing (пот-оддс),
+  // чтобы модель сравнивала эквити с готовым порогом, а не выводила его сама.
+  const preflopFacing = f.heroFacing.find((h) => h.street === "PREFLOP");
+  lines.push(...renderChartEquityFacts(snapshot, preflopFacing ? preflopFacing.equityToCallPct : null));
+
+  // Факты-v2 фаза 3: геометрия ре-пуша Hero поверх чужого олл-ина (эффективный риск,
+  // возврат излишка, кого реально можно выбить, мёртвые деньги). Пусто, если не ре-пуш.
+  const geometry = renderAllInGeometry(snapshot);
+  if (geometry) lines.push(geometry);
 
   if (f.heroStackBb !== null) lines.push(`Стек Hero на старте раздачи: ${f.heroStackBb} BB.`);
   if (f.effectiveStackBb !== null && f.effectiveStackBb !== f.heroStackBb)
@@ -476,6 +566,23 @@ export function renderHandFacts(snapshot: TableSnapshot): string {
     if (!mh || mh.ru === prevMade) continue;
     prevMade = mh.ru;
     lines.push(`Готовая рука Hero на ${STREET_RU[street]}: ${mh.ru}.`);
+  }
+
+  // Маркеры опасности борда (фаза 4) ПО УЛИЦАМ — как текстура/готовая рука/ауты выше:
+  // спаренный/тройной борд → фулл-хаус в игре, свой фулл может быть младшим. Считаем на
+  // каждой улице отдельно и метим улицей, чтобы пара/трипс, пришедшие только на ривере, не
+  // утекали в пре-риверное решение (тот же лик, что чинили поуличной текстурой). Дедуп по
+  // содержанию: опасность, не изменившаяся с прошлой улицы, второй раз не повторяем.
+  let prevDanger = "";
+  for (const street of ["FLOP", "TURN", "RIVER"] as const) {
+    const b = boardUpToStreet(snapshot.board, street);
+    if (b.length < 3) continue;
+    const dangers = boardDangerFacts(snapshot.heroCards, b);
+    if (dangers.length === 0) continue;
+    const key = dangers.join("|");
+    if (key === prevDanger) continue;
+    prevDanger = key;
+    for (const d of dangers) lines.push(d.replace("Опасность борда:", `Опасность борда на ${STREET_RU[street]}:`));
   }
 
   for (const b of f.bets)

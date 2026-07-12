@@ -19,6 +19,8 @@ export type HeroCallVsPush = {
   pusherBand: StackBand;
   code: string;
   action: "CALL" | "FOLD";
+  pusherLabel: string; // обезличенное место пушера — для эквити против его точного пуш-диапазона
+  heroJammed: boolean; // Hero ответил олл-ином поверх (ре-пуш+изоляция), а не плоским коллом
 };
 
 export function detectHeroCallVsPush(snapshot: TableSnapshot): HeroCallVsPush | null {
@@ -48,6 +50,7 @@ export function detectHeroCallVsPush(snapshot: TableSnapshot): HeroCallVsPush | 
     if (a.action === "CALL" || a.action === "ALL_IN") action = "CALL";
     else if (a.action === "FOLD") action = "FOLD";
     else return null; // чек/бет — не колл-против-пуша
+    const heroJammed = a.action === "ALL_IN";
 
     const pusherSeat = snapshot.seats.find((s) => s.label === pusher);
     if (!pusherSeat) return null;
@@ -58,7 +61,7 @@ export function detectHeroCallVsPush(snapshot: TableSnapshot): HeroCallVsPush | 
 
     const code = handCode(snapshot.heroCards);
     if (!code) return null;
-    return { pusherGroup: pusherGroup(pos), pusherBand: band, code, action };
+    return { pusherGroup: pusherGroup(pos), pusherBand: band, code, action, pusherLabel: pusher, heroJammed };
   }
 
   return null;

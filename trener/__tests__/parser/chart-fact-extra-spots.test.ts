@@ -220,3 +220,71 @@ describe("блайнд-против-блайнда", () => {
     expect(fact).toContain("дефолт фолд");
   });
 });
+
+// Разбор коуча 2026-07-12: анти-нит перекос на SB. Открытие K5o и долимп K6o с малого
+// блайнда клеймились утечкой — коуч (реальный тренер) назвал это нитовой ошибкой.
+// Данные чартов НЕ трогаем, чиним ПОДАЧУ: вне рейз-ренжа SB ≠ мусор, слабые руки лимпят.
+describe("анти-нит на SB (разбор коуча)", () => {
+  it("K5o открытие с SB — не клеймо «шире нормы», предлагает лимп", () => {
+    const fact = preflopChartFact(
+      snap({
+        seats: [
+          { label: "Hero", position: "SB", startingStack: 4000 },
+          { label: "Player 1", position: "BB", startingStack: 4000 },
+          { label: "Player 2", position: "BTN", startingStack: 4000 },
+        ],
+        heroCards: ["Kh", "5d"],
+        actions: [
+          { street: "PREFLOP", actor: "Hero", action: "POST_SB", amount: 50 },
+          { street: "PREFLOP", actor: "Player 1", action: "POST_BB", amount: 100 },
+          { street: "PREFLOP", actor: "Player 2", action: "FOLD" },
+          { street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 250 },
+        ],
+      }),
+    );
+    expect(fact).toContain("НЕ утечка");
+    expect(fact).toContain("ЛИМПЯТ");
+    expect(fact).not.toContain("шире нормы для этой позиции");
+  });
+
+  it("K6o долимп с SB за лимпером — не утечка (дешёвый комплит)", () => {
+    const fact = preflopChartFact(
+      snap({
+        seats: [
+          { label: "Hero", position: "SB", startingStack: 4000 },
+          { label: "Player 1", position: "BB", startingStack: 4000 },
+          { label: "Player 2", position: "BTN", startingStack: 4000 },
+        ],
+        heroCards: ["Kh", "6d"],
+        actions: [
+          { street: "PREFLOP", actor: "Hero", action: "POST_SB", amount: 50 },
+          { street: "PREFLOP", actor: "Player 1", action: "POST_BB", amount: 100 },
+          { street: "PREFLOP", actor: "Player 2", action: "CALL", amount: 100 }, // лимпер впереди
+          { street: "PREFLOP", actor: "Hero", action: "CALL", amount: 50 }, // комплит SB
+        ],
+      }),
+    );
+    expect(fact).toContain("НЕ утечка");
+    expect(fact).toContain("за лимпером");
+  });
+
+  // Контроль: правка бьёт ТОЛЬКО по SB — с ранней позиции K5o-открытие остаётся «шире нормы».
+  it("K5o открытие с HJ — по-прежнему шире нормы (ранние позиции не размыты)", () => {
+    const fact = preflopChartFact(
+      snap({
+        seats: [
+          { label: "Hero", position: "HJ", startingStack: 4000 },
+          { label: "Player 1", position: "SB", startingStack: 4000 },
+          { label: "Player 2", position: "BB", startingStack: 4000 },
+        ],
+        heroCards: ["Kh", "5d"],
+        actions: [
+          { street: "PREFLOP", actor: "Player 1", action: "POST_SB", amount: 50 },
+          { street: "PREFLOP", actor: "Player 2", action: "POST_BB", amount: 100 },
+          { street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 220 },
+        ],
+      }),
+    );
+    expect(fact).toContain("шире нормы для этой позиции");
+  });
+});

@@ -19,6 +19,7 @@ export type HeroResteal = {
   openerGroup: RestealOpenerGroup;
   band: RestealBand;
   code: string;
+  openerLabel: string; // обезличенное место опенера — для точного RFI-диапазона и фолд-эквити
 };
 
 export function detectHeroResteal(snapshot: TableSnapshot): HeroResteal | null {
@@ -58,7 +59,7 @@ export function detectHeroResteal(snapshot: TableSnapshot): HeroResteal | null {
 
     const code = handCode(snapshot.heroCards);
     if (!code) return null;
-    return { openerGroup: restealOpenerGroup(openerPos), band, code };
+    return { openerGroup: restealOpenerGroup(openerPos), band, code, openerLabel: raiser };
   }
 
   return null;

@@ -39,7 +39,7 @@ describe("detectHeroResteal + вердикт чарта", () => {
   it("A2s 14.5bb против опена BTN — весовая клетка, не ошибка (кейс аудита)", () => {
     const s = restealSnap(["As", "2s"], 14.5, "BTN");
     const rs = detectHeroResteal(s);
-    expect(rs).toEqual({ openerGroup: "LATE", band: "HIGH", code: "A2s" });
+    expect(rs).toEqual({ openerGroup: "LATE", band: "HIGH", code: "A2s", openerLabel: "Player 1" });
     const fact = preflopChartFact(s);
     expect(fact).toContain("рестил");
     expect(fact).toContain("не считается");
@@ -60,6 +60,7 @@ describe("detectHeroResteal + вердикт чарта", () => {
       openerGroup: "LATE",
       band: "HIGH",
       code: "A2s",
+      openerLabel: "Player 1",
     });
     expect(detectHeroResteal(restealSnap(["As", "2s"], 26, "BTN"))).toBeNull();
   });
@@ -99,7 +100,14 @@ describe("detectHeroCallVsPush + вердикт чарта", () => {
   it("55 против пуша BTN 12.6bb — стандартный колл (кейс аудита)", () => {
     const s = callVsPushSnap(["5s", "5d"], 12.6, "BTN", "ALL_IN");
     const d = detectHeroCallVsPush(s);
-    expect(d).toEqual({ pusherGroup: "LATE", pusherBand: "MID", code: "55", action: "CALL" });
+    expect(d).toEqual({
+      pusherGroup: "LATE",
+      pusherBand: "MID",
+      code: "55",
+      action: "CALL",
+      pusherLabel: "Player 1",
+      heroJammed: true,
+    });
     const fact = preflopChartFact(s);
     expect(fact).toContain("СТАНДАРТНЫЙ колл");
   });

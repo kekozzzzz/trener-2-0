@@ -7,6 +7,7 @@ import { enqueue } from "../enqueue";
 import { opponentsForHand } from "./opponents-for-hand";
 import { buildRangeReads } from "./range-facts";
 import { getPlayerCard, repeatedLeakFor } from "@/features/memory/player-card";
+import { isBountyTournament } from "@/config/tournament-format";
 
 type GenerateVerdictPayload = {
   handId: string;
@@ -90,6 +91,7 @@ export const generateVerdictStep: StepHandler = async (task, db) => {
       vpipPercent: tournament.vpipPercent.toNumber(),
       resultBuyins: tournament.resultBuyins.toNumber(),
       styleDiagnosis: tournament.styleDiagnosis,
+      isBounty: isBountyTournament(tournament.name),
     },
     // Тип оппонента перед тренером и на этапе вердикта, не только в первичном разборе.
     opponents,

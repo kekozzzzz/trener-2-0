@@ -9,6 +9,7 @@ import { applyRangeMarker, applyTableMarker } from "@/config/dialogue";
 import { opponentsForHand } from "./opponents-for-hand";
 import { enqueue } from "../enqueue";
 import { getPlayerCard, repeatedLeakFor } from "@/features/memory/player-card";
+import { isBountyTournament } from "@/config/tournament-format";
 
 type GenerateHandAnalysisPayload = {
   handId: string;
@@ -53,6 +54,7 @@ export const generateHandAnalysisStep: StepHandler = async (task, db) => {
         vpipPercent: tournament.vpipPercent.toNumber(),
         resultBuyins: tournament.resultBuyins.toNumber(),
         styleDiagnosis: tournament.styleDiagnosis,
+        isBounty: isBountyTournament(tournament.name),
       },
       // Профиль злодеев ЭТОЙ раздачи — по рукам турнира ДО неё (что игрок мог знать
       // к решению). Тот же хелпер, что у диалога/вердикта/чата.

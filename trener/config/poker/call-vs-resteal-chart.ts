@@ -46,3 +46,9 @@ export function callVsRestealCellState(group: RestealOpenerGroup, band: RestealB
   if (CALL_TOLERANCE[group][band].has(code)) return "BORDER";
   return "OUT";
 }
+
+// Коды диапазона, которым опенер КОЛЛИРУЕТ рестил Hero — для эквити руки Hero «при
+// колле» (parser/chart-equity-fact.ts, факты-v2 фаза 1). Тот же Set, что грейдер.
+export function callVsRestealRangeCodes(group: RestealOpenerGroup, band: RestealBand): string[] {
+  return [...CALL_RANGE[group][band]];
+}

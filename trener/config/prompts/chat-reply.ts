@@ -12,8 +12,9 @@
 
 import type { ChatReplyRequest, ChatMessageSummary } from "@/infrastructure/adapters/llm/types";
 import type { Locale } from "@/i18n/config";
-import { coachFramework, renderTableSnapshot, renderOpponents } from "./hand-analysis";
+import { coachFramework, renderTableSnapshot, renderOpponents, renderBountyFact } from "./hand-analysis";
 import { renderPlayerCard } from "./player-card";
+import { renderShowdownFacts } from "@/parser/facts";
 
 // Системный промпт чата под язык игрока: роль и «## Как отвечать в чате» — русские
 // (внутренние инструкции), язык ответа задаёт coachFramework(locale).
@@ -41,12 +42,15 @@ export function buildChatReplyPrompt(request: ChatReplyRequest): string {
   const { tournament, chipResult, history, analysisSummary, locale } = request;
   const opponentsBlock = renderOpponents(request.opponents, locale);
   const cardBlock = renderPlayerCard(request.playerCard);
+  // Вскрытые карты соперников — в чате уместны: он идёт ПОСЛЕ вердикта, спойлера уже нет,
+  // а на простых раздачах (без диалога/вердикта) иначе руку соперника не узнать (правило 1).
+  const showdownBlock = renderShowdownFacts(request.tableSnapshot);
 
-  return `Контекст турнира: ${tournament.handsCount} раздач, VPIP ${tournament.vpipPercent}%, стиль игрока — ${tournament.styleDiagnosis}.
+  return `Контекст турнира: ${tournament.handsCount} раздач, VPIP ${tournament.vpipPercent}%, стиль игрока — ${tournament.styleDiagnosis}.${renderBountyFact(tournament) ? `\n${renderBountyFact(tournament)}` : ""}
 
 Результат Hero в этой раздаче — ${chipResult} фишек.
 
-${cardBlock ? `${cardBlock}\n\n` : ""}${opponentsBlock ? `${opponentsBlock}\n\n` : ""}${renderTableSnapshot(request.tableSnapshot, locale)}
+${cardBlock ? `${cardBlock}\n\n` : ""}${opponentsBlock ? `${opponentsBlock}\n\n` : ""}${renderTableSnapshot(request.tableSnapshot, locale)}${showdownBlock ? `\n\n${showdownBlock}` : ""}
 
 Готовый разбор этой раздачи:
 ${analysisSummary}

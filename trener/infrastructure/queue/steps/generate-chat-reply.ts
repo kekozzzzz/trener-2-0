@@ -7,6 +7,7 @@ import { buildAnalysisSummary } from "@/features/chat/analysis-summary";
 import { isChatAvailable } from "@/features/chat/availability";
 import { opponentsForHand } from "./opponents-for-hand";
 import { getPlayerCard } from "@/features/memory/player-card";
+import { isBountyTournament } from "@/config/tournament-format";
 
 type GenerateChatReplyPayload = {
   handId: string;
@@ -78,6 +79,7 @@ export const generateChatReplyStep: StepHandler = async (task, db) => {
       vpipPercent: tournament.vpipPercent.toNumber(),
       resultBuyins: tournament.resultBuyins.toNumber(),
       styleDiagnosis: tournament.styleDiagnosis,
+      isBounty: isBountyTournament(tournament.name),
     },
     // Тип оппонента перед тренером и в свободном чате, не только в первичном разборе.
     opponents: await opponentsForHand(db, hand),

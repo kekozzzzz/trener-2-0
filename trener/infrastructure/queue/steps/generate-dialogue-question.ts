@@ -10,6 +10,7 @@ import { opponentsForHand } from "./opponents-for-hand";
 import { buildRangeReads } from "./range-facts";
 import { enqueue } from "../enqueue";
 import { getPlayerCard, repeatedLeakFor } from "@/features/memory/player-card";
+import { isBountyTournament } from "@/config/tournament-format";
 
 type GenerateDialogueQuestionPayload = {
   handId: string;
@@ -102,6 +103,7 @@ export const generateDialogueQuestionStep: StepHandler = async (task, db) => {
       vpipPercent: tournament.vpipPercent.toNumber(),
       resultBuyins: tournament.resultBuyins.toNumber(),
       styleDiagnosis: tournament.styleDiagnosis,
+      isBounty: isBountyTournament(tournament.name),
     },
     priorSpots,
     // Тип оппонента перед тренером и на этапе диалога, не только в первичном разборе.
