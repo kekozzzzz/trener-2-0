@@ -14,6 +14,7 @@ import { splitMarkers } from "@/config/dialogue";
 import { parseRangeNotation } from "@/config/poker/hand-range";
 import { percentOf, formatRange } from "@/config/poker/hand-grid";
 import { equityVsRange, cutBetween } from "@/parser/range-equity";
+import { rangeBuckets } from "@/parser/range-buckets";
 import { tableStateUpTo, lastActionIndex, boardUpToStreet } from "@/parser/table-state";
 
 const GRID_CODES_TOTAL = 169;
@@ -55,6 +56,8 @@ export function buildRangeReads({ history, tableSnapshot, opponents }: RangeFact
     const board = boardUpToStreet(tableSnapshot.board, street);
 
     const equity = board.length >= 3 ? equityVsRange(tableSnapshot.heroCards, board, codes) : null;
+    // Раскладка комбо на этом борде (кого бьёшь/кто бьёт, кто заплатит велью) — постфлоп.
+    const buckets = board.length >= 3 ? rangeBuckets(tableSnapshot.heroCards, board, codes) : null;
     const gridPct = Math.round(percentOf(codes));
 
     const cut = prev
@@ -71,6 +74,7 @@ export function buildRangeReads({ history, tableSnapshot, opponents }: RangeFact
       street,
       equityPct: equity?.equityPct ?? null,
       combosLive: equity?.combosLive ?? null,
+      buckets,
       vpipContrast: solo
         ? {
             seatLabel: solo.seatLabel,

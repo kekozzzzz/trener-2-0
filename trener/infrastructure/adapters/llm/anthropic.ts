@@ -169,7 +169,7 @@ export const anthropicLlmAdapter: LlmPort = {
       step: "DIALOGUE_QUESTION",
       playerId: meta?.playerId,
     });
-    return validateNextQuestion(parsed as Partial<NextQuestionResult>);
+    return validateNextQuestion(parsed as Partial<NextQuestionResult>, request.locale);
   },
 
   async generateVerdict(request: VerdictRequest, meta?: LlmCallMeta): Promise<VerdictResult> {
@@ -177,7 +177,7 @@ export const anthropicLlmAdapter: LlmPort = {
       step: "VERDICT",
       playerId: meta?.playerId,
     });
-    return validateVerdict(parsed as Partial<VerdictResult>);
+    return validateVerdict(parsed as Partial<VerdictResult>, request.locale);
   },
 
   async generateChatReply(request: ChatReplyRequest, meta?: LlmCallMeta): Promise<ChatReplyResult> {
@@ -185,7 +185,7 @@ export const anthropicLlmAdapter: LlmPort = {
       step: "CHAT_REPLY",
       playerId: meta?.playerId,
     });
-    return validateChatReply(parsed as Partial<ChatReplyResult>);
+    return validateChatReply(parsed as Partial<ChatReplyResult>, request.locale);
   },
 
   async generateTournamentSummary(
@@ -196,7 +196,7 @@ export const anthropicLlmAdapter: LlmPort = {
       step: "TOURNAMENT_SUMMARY",
       playerId: meta?.playerId,
     });
-    return validateTournamentSummary(parsed as Partial<TournamentSummaryResult>);
+    return validateTournamentSummary(parsed as Partial<TournamentSummaryResult>, request.locale);
   },
 
   async generateCoachNotes(request: CoachNotesRequest, meta?: LlmCallMeta): Promise<CoachNotesResult> {
@@ -215,7 +215,7 @@ export const anthropicLlmAdapter: LlmPort = {
       step: "PLAYER_CHARACTERISTIC",
       playerId: meta?.playerId,
     });
-    return validatePlayerCharacteristic(parsed as Partial<PlayerCharacteristicResult>);
+    return validatePlayerCharacteristic(parsed as Partial<PlayerCharacteristicResult>, request.locale);
   },
 
   // Проверка доступности Claude для /api/health: GET /v1/models тем же клиентом

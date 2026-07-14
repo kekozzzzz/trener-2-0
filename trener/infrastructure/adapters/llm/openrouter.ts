@@ -48,7 +48,14 @@ import type {
 
 // Один HTTP-вызов к OpenAI-совместимому API (OpenRouter → DeepSeek) через релей.
 // Возвращает {текст ответа, usage}. Сам не парсит — это делает caller с повтором.
-async function rawCall(system: string, prompt: string): Promise<{ text: string; usage: Record<string, unknown> }> {
+// Режим размышления можно переопределить на вызов (гибрид: CRITICAL-разборы и диалог считаются с
+// reasoning low ради качества, обычные note-разборы — по дефолту off ради скорости). undefined = дефолт.
+type Reasoning = { enabled: false } | { effort: string };
+async function rawCall(
+  system: string,
+  prompt: string,
+  reasoning?: Reasoning,
+): Promise<{ text: string; usage: Record<string, unknown> }> {
   const headers: Record<string, string> = {
     Authorization: `Bearer ${getOpenRouterApiKey()}`,
     "Content-Type": "application/json",
@@ -73,7 +80,8 @@ async function rawCall(system: string, prompt: string): Promise<{ text: string; 
         // рассуждения и возвращают обрезанный/пустой content. Режим — из env
         // (OPENROUTER_REASONING, дефолт off: латентность как у v3.2 по замеру
         // 2026-07-11). Модели без reasoning (DeepSeek V3.2) параметр игнорируют.
-        reasoning: getOpenRouterReasoning(),
+        // Override на вызов (гибрид CRITICAL→low) имеет приоритет над env-дефолтом.
+        reasoning: reasoning ?? getOpenRouterReasoning(),
         messages: [
           { role: "system", content: system },
           { role: "user", content: prompt },
@@ -103,10 +111,11 @@ async function callOpenRouter(
   system: string,
   prompt: string,
   ctx: { step: string; playerId?: string },
+  reasoning?: Reasoning,
 ): Promise<unknown> {
   let lastErr: unknown;
   for (let attempt = 0; attempt < 2; attempt++) {
-    const { text, usage } = await rawCall(system, prompt);
+    const { text, usage } = await rawCall(system, prompt, reasoning);
     if (ctx.playerId) {
       const cached = Number((usage.prompt_tokens_details as { cached_tokens?: number } | undefined)?.cached_tokens ?? 0);
       const promptTokens = Number(usage.prompt_tokens ?? 0);
@@ -131,29 +140,43 @@ async function callOpenRouter(
   throw new Error(`OpenRouter вернул невалидный JSON после повтора: ${(lastErr as Error)?.message ?? ""}`);
 }
 
+// Гибрид размышления (регресс 2026-07-14): reasoning low режет смысловые галлюцинации в 3-4×, но
+// +50% латентности. Включаем его ТОЛЬКО там, где качество важнее скорости: CRITICAL-разбор и весь
+// сократовский диалог/вердикт (они бывают лишь у CRITICAL-раздач). Обычные note-разборы и прочие
+// роли — по env-дефолту (off), ради скорости. Меняешь порог — правь reasoning ниже, не env глобально.
+const REASONING_LOW: Reasoning = { effort: "low" };
+
 export const openRouterLlmAdapter: LlmPort = {
   async generateHandAnalysis(request: HandAnalysisRequest, meta?: LlmCallMeta): Promise<HandAnalysisResult> {
-    const parsed = await callOpenRouter(buildHandAnalysisSystemPrompt(request.locale), buildHandAnalysisPrompt(request), {
-      step: "HAND_ANALYSIS",
-      playerId: meta?.playerId,
-    });
+    const parsed = await callOpenRouter(
+      buildHandAnalysisSystemPrompt(request.locale),
+      buildHandAnalysisPrompt(request),
+      { step: "HAND_ANALYSIS", playerId: meta?.playerId },
+      request.importanceLevel === "CRITICAL" ? REASONING_LOW : undefined,
+    );
     return validateHandAnalysis(parsed as Partial<HandAnalysisResult>, request);
   },
 
   async generateNextQuestion(request: NextQuestionRequest, meta?: LlmCallMeta): Promise<NextQuestionResult> {
-    const parsed = await callOpenRouter(buildDialogueQuestionSystemPrompt(request.locale), buildDialogueQuestionPrompt(request), {
-      step: "DIALOGUE_QUESTION",
-      playerId: meta?.playerId,
-    });
-    return validateNextQuestion(parsed as Partial<NextQuestionResult>);
+    // Диалог бывает только у CRITICAL-раздач → всегда low.
+    const parsed = await callOpenRouter(
+      buildDialogueQuestionSystemPrompt(request.locale),
+      buildDialogueQuestionPrompt(request),
+      { step: "DIALOGUE_QUESTION", playerId: meta?.playerId },
+      REASONING_LOW,
+    );
+    return validateNextQuestion(parsed as Partial<NextQuestionResult>, request.locale);
   },
 
   async generateVerdict(request: VerdictRequest, meta?: LlmCallMeta): Promise<VerdictResult> {
-    const parsed = await callOpenRouter(buildVerdictSystemPrompt(request.locale), buildVerdictPrompt(request), {
-      step: "VERDICT",
-      playerId: meta?.playerId,
-    });
-    return validateVerdict(parsed as Partial<VerdictResult>);
+    // Вердикт завершает диалог CRITICAL-раздачи → всегда low.
+    const parsed = await callOpenRouter(
+      buildVerdictSystemPrompt(request.locale),
+      buildVerdictPrompt(request),
+      { step: "VERDICT", playerId: meta?.playerId },
+      REASONING_LOW,
+    );
+    return validateVerdict(parsed as Partial<VerdictResult>, request.locale);
   },
 
   async generateChatReply(request: ChatReplyRequest, meta?: LlmCallMeta): Promise<ChatReplyResult> {
@@ -161,7 +184,7 @@ export const openRouterLlmAdapter: LlmPort = {
       step: "CHAT_REPLY",
       playerId: meta?.playerId,
     });
-    return validateChatReply(parsed as Partial<ChatReplyResult>);
+    return validateChatReply(parsed as Partial<ChatReplyResult>, request.locale);
   },
 
   async generateTournamentSummary(
@@ -172,7 +195,7 @@ export const openRouterLlmAdapter: LlmPort = {
       step: "TOURNAMENT_SUMMARY",
       playerId: meta?.playerId,
     });
-    return validateTournamentSummary(parsed as Partial<TournamentSummaryResult>);
+    return validateTournamentSummary(parsed as Partial<TournamentSummaryResult>, request.locale);
   },
 
   async generateCoachNotes(request: CoachNotesRequest, meta?: LlmCallMeta): Promise<CoachNotesResult> {
@@ -191,7 +214,7 @@ export const openRouterLlmAdapter: LlmPort = {
       step: "PLAYER_CHARACTERISTIC",
       playerId: meta?.playerId,
     });
-    return validatePlayerCharacteristic(parsed as Partial<PlayerCharacteristicResult>);
+    return validatePlayerCharacteristic(parsed as Partial<PlayerCharacteristicResult>, request.locale);
   },
 
   // Health-проверка: GET /models тем же путём (через релей), без расхода токенов.

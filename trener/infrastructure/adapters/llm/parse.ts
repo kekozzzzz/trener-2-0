@@ -12,6 +12,7 @@ import type {
   TournamentSummaryResult,
   VerdictResult,
 } from "./types";
+import type { Locale } from "@/i18n/config";
 
 // Claude/DeepSeek иногда оборачивают JSON в markdown-код-блок несмотря на инструкцию — снимаем его.
 export function extractJson(text: string): string {
@@ -113,6 +114,31 @@ const CASE_FIXES: Array<[string, string]> = [
   ["playable-руки", "играбельной руки"],
   ["playable", "играбельной"],
   ["cheaper", "дешевле"], // тестер 12.07: «cheaper заколлирует» — англицизм в русском тексте
+  // «без риска» запрещено фреймворком (риск есть у любой линии), но GLM изредка пишет
+  // (регресс 2026-07-13, 1/92) — мягко чиним на «без лишнего риска» (риск не обнуляется).
+  ["без риска", "без лишнего риска"],
+];
+
+// Латинские вкрапления, чистимые ТОЛЬКО в русском тексте (в en «Hero»/«vs» — легитимны/иначе, а «ты»
+// в английский ответ подставлять нельзя). Регресс 2026-07-14: «Hero» — самый частый латинский мусор у
+// обеих моделей; чистим падежные формы → «ты/тебя», чтобы не бракова́ть весь разбор из-за одного
+// слова (раньше firstStrayLatin ронял ответ целиком, теряя до 16% разборов).
+const RU_LATIN_FIXES: Array<[string, string]> = [
+  ["у Hero", "у тебя"],
+  ["у hero", "у тебя"],
+  ["против Hero", "против тебя"],
+  ["против hero", "против тебя"],
+  ["для Hero", "для тебя"],
+  ["для hero", "для тебя"],
+  ["Hero", "ты"],
+  ["hero", "ты"],
+  [" vs ", " против "],
+  ["Nash", "равновесие"],
+  ["effectively", "по сути"],
+  // Латинские покерные аббревиатуры-жаргон (регресс 2026-07-14) → русскими словами. Короткие
+  // (IP) не чистим — рискуют задеть слова; их редкие вхождения добьёт бэкстоп (брак+ретрай).
+  ["OOP", "вне позиции"],
+  ["GTO", "по теории"],
 ];
 
 // CJK-иероглифы (кит./яп./кор.) — редкий сбой мультиязычных моделей (GLM-5.2 на аудите
@@ -121,7 +147,70 @@ const CASE_FIXES: Array<[string, string]> = [
 // бракуем целиком — очередь ретраит генерацию, свежий ответ почти всегда чистый.
 const CJK_RE = /[぀-ヿ㐀-鿿豈-﫿가-힯]/;
 
-export function cleanCoachText(text: string): string {
+// Латинские слова-галлюцинации и англицизмы в русском тексте игроку (COACH «## Язык»:
+// латиницей допустимы ТОЛЬКО коды позиций и ранги/нотация карт). Промпт-запрет модель
+// иногда нарушает (инцидент 2026-07-12: «HoFlush» вместо «флеша»), а словарь CASE_FIXES
+// латает лишь известные формы — поэтому здесь код-бэкстоп: любой латинский токен вне белого
+// списка бракует ответ целиком, очередь ретраит (как CJK). Пропускаем ТОЛЬКО: коды позиций,
+// всё-заглавные аббревиатуры (SPR/ICM/GTO — внутренние, безобидны) и нотацию рук (A, AKs,
+// QJo, T9s, Kx). Ловим слова со строчными латинскими буквами: value, showdown, HoFlush, Hero.
+const POSITION_CODES = new Set(["UTG", "MP", "HJ", "CO", "LJ", "EP", "BTN", "SB", "BB"]);
+// Разрешённые заглавные аббревиатуры — ЯВНЫМ списком, а не «любые 2-5 заглавных»: иначе сырые
+// токены-действия из снимка (RAISE/CHECK/BET/CALL/FOLD) и англицизмы капсом (VALUE/FLUSH)
+// проскакивают в текст игроку (инцидент «_RAISE_» на регрессе 2026-07-13).
+const ABBREV = new Set(["SPR", "ICM", "GTO", "VPIP", "PFR", "MTT", "PKO", "EV", "BI", "RFI", "AF", "WTSD", "MDF"]);
+const HAS_LATIN = /[A-Za-z]/;
+const HAND_NOTATION = /^[AKQJT2-9]{1,2}[sox]?$/i; // A, K, AKs, QJo, T9s, Kx
+const CARD_CODE = /^[AKQJT2-9][cdhs]$/i; // код карты из снимка: Kd, 7c, Ts (модель порой эхнёт)
+const BLIND_TOKEN = /^\d*(bb|sb)$/i; // стек/ставка в блайндах: 20bb, 15sb, bb
+
+// Цена ложного брака высока (3 ретрая очереди → POISONED + тревога), поэтому бракуем
+// КОНСЕРВАТИВНО: только слова со строчными латинскими буквами (value, showdown, HoFlush,
+// Hero), а всё двусмысленное пропускаем — коды позиций (регистронезависимо), заглавные
+// аббревиатуры, нотацию рук, коды карт, стеки в блайндах, одиночные буквы (C-бет), числа.
+function firstStrayLatin(text: string): string | null {
+  // Токены — по буквам И цифрам, иначе нотация с цифрой рвётся (A6s → «A»+«s», ложный брак).
+  const tokens = text.match(/[A-Za-z0-9]+/g);
+  if (!tokens) return null;
+  for (const t of tokens) {
+    if (!HAS_LATIN.test(t)) continue; // чистые числа (стеки, банк) — не латиница
+    if (t.length === 1) continue; // одиночная латинская буква (C-бет, инициал) — не мусор-слово
+    if (POSITION_CODES.has(t.toUpperCase())) continue; // код позиции регистронезависимо
+    if (ABBREV.has(t.toUpperCase())) continue; // разрешённая аббревиатура (SPR, ICM…)
+    if (HAND_NOTATION.test(t)) continue; // нотация руки
+    if (CARD_CODE.test(t)) continue; // код карты
+    if (BLIND_TOKEN.test(t)) continue; // стек в блайндах
+    return t; // латинское слово вне разрешённого — мусор/англицизм
+  }
+  return null;
+}
+
+// Карты, которые тренер вправе называть С МАСТЬЮ, — только реально существующие в раздаче: борд,
+// карты Hero и вскрытые карты соперников. Всё остальное «K♥», названное со значком масти, — выдумка
+// (регресс 2026-07-14: «9♥ 9♥ 8♦» с несуществующей второй девяткой червей; «каре тузов» на борде из
+// четырёх двоек). Гипотетику модель пишет РАНГОМ без масти («любая семёрка»), её не трогаем.
+const SUIT_SYM: Record<string, string> = { "♠": "s", "♥": "h", "♦": "d", "♣": "c" };
+export function allowedCardSet(snapshot: {
+  board?: string[];
+  heroCards?: string[];
+  seats?: { shownCards?: string[] }[];
+}): Set<string> {
+  const cards = [...(snapshot.board ?? []), ...(snapshot.heroCards ?? [])];
+  for (const s of snapshot.seats ?? []) if (s.shownCards) cards.push(...s.shownCards);
+  return new Set(cards.filter((c) => c && c.length >= 2).map((c) => c[0].toUpperCase() + c[1].toLowerCase()));
+}
+// Первая карта-со-значком-масти в тексте, которой НЕТ в снимке (выдуманная), или null.
+function strayCard(text: string, allowed: Set<string>): string | null {
+  const re = /([AKQJT2-9])\s*([♠♥♦♣])/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const code = m[1].toUpperCase() + SUIT_SYM[m[2]];
+    if (!allowed.has(code)) return `${m[1]}${m[2]}`;
+  }
+  return null;
+}
+
+export function cleanCoachText(text: string, locale: Locale = "ru", allowedCards?: Set<string>): string {
   if (CJK_RE.test(text)) {
     throw new Error("LLM вернул CJK-иероглифы в тексте для игрока");
   }
@@ -131,6 +220,29 @@ export function cleanCoachText(text: string): string {
     const capFrom = from[0].toUpperCase() + from.slice(1);
     const capTo = to[0].toUpperCase() + to.slice(1);
     out = out.split(from).join(to).split(capFrom).join(capTo);
+  }
+  // Латинский бэкстоп ТОЛЬКО для русского ответа (в en весь текст законно латиница) и ПОСЛЕ
+  // словаря: замены «кнопка»→«BTN» создают легитимную латиницу, которая проходит как код позиции.
+  if (locale === "ru") {
+    // Сначала чистим известные латинские вкрапления (Hero→ты и т.п.), только потом бракуем остаток.
+    for (const [from, to] of RU_LATIN_FIXES) {
+      const capFrom = from[0].toUpperCase() + from.slice(1);
+      const capTo = to[0].toUpperCase() + to.slice(1);
+      out = out.split(from).join(to).split(capFrom).join(capTo);
+    }
+    // Сокращение «65k»/«65к» (тысячи фишек) → «65 тыс.» (регресс 2026-07-14: иначе «65k» бракуется).
+    out = out.replace(/(\d+)\s*[kKкК]\b/g, "$1 тыс.");
+    const stray = firstStrayLatin(out);
+    if (stray !== null) {
+      throw new Error(`LLM вернул латиницу в тексте для игрока: «${stray}»`);
+    }
+  }
+  // Выдуманные карты (со значком масти вне снимка) — брак, очередь ретраит (Правило 1: борд священен).
+  if (allowedCards) {
+    const bad = strayCard(out, allowedCards);
+    if (bad !== null) {
+      throw new Error(`LLM назвал карту вне снимка: «${bad}»`);
+    }
   }
   return out;
 }
@@ -156,15 +268,18 @@ export function validateHandAnalysis(
     throw new Error("LLM вернул разбор без обязательных полей played/optimal");
   }
 
+  // Допустимые карты раздачи — чтобы поймать выдуманные масти/карты в тексте (Правило 1).
+  const cards = allowedCardSet(request.tableSnapshot);
+
   if (request.importanceLevel === "CRITICAL") {
     if (typeof result.question !== "string" || typeof result.draftVerdict !== "string") {
       throw new Error("LLM вернул CRITICAL-разбор без question/draftVerdict");
     }
     return {
-      played: cleanCoachText(result.played),
-      optimal: cleanCoachText(result.optimal),
-      question: cleanCoachText(result.question),
-      draftVerdict: cleanCoachText(result.draftVerdict),
+      played: cleanCoachText(result.played, request.locale, cards),
+      optimal: cleanCoachText(result.optimal, request.locale, cards),
+      question: cleanCoachText(result.question, request.locale, cards),
+      draftVerdict: cleanCoachText(result.draftVerdict, request.locale, cards),
       answerMode: parseAnswerMode(result.answerMode),
       tableActionIndex: parseTableActionIndex(result.tableActionIndex),
     };
@@ -174,20 +289,23 @@ export function validateHandAnalysis(
     throw new Error(`LLM вернул ${request.importanceLevel}-разбор без note`);
   }
   return {
-    played: cleanCoachText(result.played),
-    optimal: cleanCoachText(result.optimal),
-    note: cleanCoachText(result.note),
+    played: cleanCoachText(result.played, request.locale, cards),
+    optimal: cleanCoachText(result.optimal, request.locale, cards),
+    note: cleanCoachText(result.note, request.locale, cards),
   };
 }
 
-export function validateVerdict(result: Partial<VerdictResult>): VerdictResult {
+export function validateVerdict(result: Partial<VerdictResult>, locale: Locale = "ru"): VerdictResult {
   if (typeof result.verdict !== "string") {
     throw new Error("LLM вернул вердикт без поля verdict");
   }
-  return { verdict: cleanCoachText(result.verdict) };
+  return { verdict: cleanCoachText(result.verdict, locale) };
 }
 
-export function validateNextQuestion(result: Partial<NextQuestionResult>): NextQuestionResult {
+export function validateNextQuestion(
+  result: Partial<NextQuestionResult>,
+  locale: Locale = "ru",
+): NextQuestionResult {
   const complete = result.complete === true;
   // При complete=true вопрос не нужен (диалог завершён) — поле может отсутствовать.
   if (!complete && typeof result.question !== "string") {
@@ -195,24 +313,27 @@ export function validateNextQuestion(result: Partial<NextQuestionResult>): NextQ
   }
   return {
     complete,
-    question: typeof result.question === "string" ? cleanCoachText(result.question) : "",
+    question: typeof result.question === "string" ? cleanCoachText(result.question, locale) : "",
     answerMode: parseAnswerMode(result.answerMode),
     tableActionIndex: parseTableActionIndex(result.tableActionIndex),
   };
 }
 
-export function validateChatReply(result: Partial<ChatReplyResult>): ChatReplyResult {
+export function validateChatReply(result: Partial<ChatReplyResult>, locale: Locale = "ru"): ChatReplyResult {
   if (typeof result.reply !== "string") {
     throw new Error("LLM вернул ответ без поля reply");
   }
-  return { reply: cleanCoachText(result.reply) };
+  return { reply: cleanCoachText(result.reply, locale) };
 }
 
-export function validateTournamentSummary(result: Partial<TournamentSummaryResult>): TournamentSummaryResult {
+export function validateTournamentSummary(
+  result: Partial<TournamentSummaryResult>,
+  locale: Locale = "ru",
+): TournamentSummaryResult {
   if (typeof result.overview !== "string") {
     throw new Error("LLM вернул обзор турнира без overview");
   }
-  return { overview: cleanCoachText(result.overview) };
+  return { overview: cleanCoachText(result.overview, locale) };
 }
 
 // Дневник тренера: массив заметок с необязательной ссылкой на прежнюю (basedOn ≥ 1).
@@ -236,9 +357,10 @@ export function validateCoachNotes(result: { notes?: unknown }): CoachNotesResul
 
 export function validatePlayerCharacteristic(
   result: Partial<PlayerCharacteristicResult>,
+  locale: Locale = "ru",
 ): PlayerCharacteristicResult {
   if (typeof result.characteristic !== "string") {
     throw new Error("LLM вернул характеристику без поля characteristic");
   }
-  return { characteristic: cleanCoachText(result.characteristic) };
+  return { characteristic: cleanCoachText(result.characteristic, locale) };
 }

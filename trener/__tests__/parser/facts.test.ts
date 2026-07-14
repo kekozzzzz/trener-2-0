@@ -37,6 +37,56 @@ describe("boardTexture", () => {
   });
 });
 
+describe("computeHandFacts — баги расчёта из свипа 2026-07-12", () => {
+  it("баг 1: цена колла ограничена остатком стека Hero при шове больше стека", () => {
+    // Hero стек 1000, вложил префлоп 300 (остаток 700); соперник шовит 4700 на флопе.
+    const s = snap({
+      seats: [
+        { label: "Hero", position: "BTN", startingStack: 1000 },
+        { label: "Player 1", position: "BB", startingStack: 5000 },
+      ],
+      heroCards: ["Ah", "Kd"],
+      board: ["2c", "7h", "Td"],
+      actions: [
+        { street: "PREFLOP", actor: "Hero", action: "POST_SB", amount: 50 },
+        { street: "PREFLOP", actor: "Player 1", action: "POST_BB", amount: 100 },
+        { street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 300 },
+        { street: "PREFLOP", actor: "Player 1", action: "CALL", amount: 200 },
+        { street: "FLOP", actor: "Player 1", action: "ALL_IN", amount: 4700 },
+      ],
+      potTotal: 2000,
+    });
+    const flop = computeHandFacts(s).heroFacing.find((h) => h.street === "FLOP");
+    expect(flop).toBeDefined();
+    expect(flop!.toCall).toBe(700); // остаток стека, а не весь шов 4700
+    expect(flop!.equityToCallPct).toBe(35); // банк без непокрытого излишка (было бы 47)
+  });
+
+  it("баг 3: эффективный стек не считает сбросившегося до флопа крупного соперника", () => {
+    const s = snap({
+      seats: [
+        { label: "Hero", position: "BTN", startingStack: 10000 },
+        { label: "Player 1", position: "SB", startingStack: 8000 }, // крупный, сбросит префлоп
+        { label: "Player 2", position: "BB", startingStack: 2000 }, // живой коротыш
+      ],
+      heroCards: ["Ah", "Kd"],
+      board: ["2c", "7h", "Td"],
+      actions: [
+        { street: "PREFLOP", actor: "Player 1", action: "POST_SB", amount: 50 },
+        { street: "PREFLOP", actor: "Player 2", action: "POST_BB", amount: 100 },
+        { street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 300 },
+        { street: "PREFLOP", actor: "Player 1", action: "FOLD" },
+        { street: "PREFLOP", actor: "Player 2", action: "CALL", amount: 200 },
+        { street: "FLOP", actor: "Player 2", action: "CHECK" },
+        { street: "FLOP", actor: "Hero", action: "CHECK" },
+      ],
+      potTotal: 700,
+    });
+    // против живого коротыша 2000/100 = 20 BB, не против сброшенного SB (8000 → было бы 80)
+    expect(computeHandFacts(s).effectiveStackBb).toBe(20);
+  });
+});
+
 describe("computeHandFacts — арифметика банка", () => {
   // Hero BB (20), Player2 BTN бетит полбанка на флопе, Hero перед решением.
   const s = snap({
@@ -257,5 +307,299 @@ describe("computeHandFacts — полу-блеф Hero собирает банк 
     expect(heroBet?.drawEquityPct).toBeLessThanOrEqual(36);
     expect(heroBet?.potIfCalled).toBe(360); // 120 + 2*120
     expect(heroBet?.sizeClass).toBe("LARGE"); // 120/120 = 100%
+  });
+});
+
+describe("renderHandFacts — контекст-факты (свип 2026-07-12)", () => {
+  it("уровень, мёртвые деньги, M-фактор, живые по улицам", () => {
+    const s = snap({
+      seats: [
+        { label: "Hero", position: "BTN", positionName: "BTN", startingStack: 3000 },
+        { label: "Player 1", position: "BB", positionName: "BB", startingStack: 3000 },
+        { label: "Player 2", position: "SB", positionName: "SB", startingStack: 3000 },
+      ],
+      heroCards: ["Ac", "Kd"],
+      board: ["Kh", "7c", "2d", "9s"],
+      level: 12,
+      actions: [
+        { street: "PREFLOP", actor: "Hero", action: "POST_ANTE", amount: 30 },
+        { street: "PREFLOP", actor: "Player 1", action: "POST_ANTE", amount: 30 },
+        { street: "PREFLOP", actor: "Player 2", action: "POST_ANTE", amount: 30 },
+        { street: "PREFLOP", actor: "Player 2", action: "POST_SB", amount: 50 },
+        { street: "PREFLOP", actor: "Player 1", action: "POST_BB", amount: 100 },
+        { street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 250 },
+        { street: "PREFLOP", actor: "Player 2", action: "FOLD" },
+        { street: "PREFLOP", actor: "Player 1", action: "CALL", amount: 150 },
+        { street: "FLOP", actor: "Player 1", action: "CHECK" },
+        { street: "FLOP", actor: "Hero", action: "CHECK" },
+        { street: "TURN", actor: "Player 1", action: "CHECK" },
+        { street: "TURN", actor: "Hero", action: "CHECK" },
+      ],
+      potTotal: 590,
+    });
+    const out = renderHandFacts(s);
+    expect(out).toContain("Уровень блайндов турнира: 12");
+    expect(out).toContain("Форсы (анте+блайнды) в банке на старте");
+    expect(out).toContain("M-фактор Hero: 12.5");
+    expect(out).toContain("на тёрн осталось");
+  });
+});
+
+// Свип-факт 2: замазанность (pot-committed) — доля стека в банке, остаток после колла, олл-ин ли.
+describe("computeHandFacts — замазанность (pot-committed)", () => {
+  // Короткий Hero (200) вложил префлоп 80 (40%), на флопе перед бетом 80: остаток после колла 40 ≤ банк.
+  const s = snap({
+    seats: [
+      { label: "Hero", position: "BB", startingStack: 200 },
+      { label: "Player 2", position: "BTN", startingStack: 2000 },
+    ],
+    board: ["2c", "7h", "Kd"],
+    actions: [
+      { street: "PREFLOP", actor: "Player 2", action: "POST_SB", amount: 10 },
+      { street: "PREFLOP", actor: "Hero", action: "POST_BB", amount: 20 },
+      { street: "PREFLOP", actor: "Player 2", action: "RAISE", amount: 80 },
+      { street: "PREFLOP", actor: "Hero", action: "CALL", amount: 60 },
+      { street: "FLOP", actor: "Hero", action: "CHECK" },
+      { street: "FLOP", actor: "Player 2", action: "BET", amount: 80 },
+    ],
+  });
+  const facing = computeHandFacts(s).heroFacing.find((h) => h.street === "FLOP");
+
+  it("доля вложенного стека и остаток после колла", () => {
+    expect(facing?.committedBeforePct).toBe(40); // 80 / 200
+    expect(facing?.remainingAfterCallBb).toBe(2); // (120 − 80) / 20
+    expect(facing?.heroAllInOnCall).toBe(false);
+    expect(facing?.potCommitted).toBe(true);
+  });
+
+  it("рендер называет замазанность числом, без приказа коллировать", () => {
+    const out = renderHandFacts(s);
+    expect(out).toContain("Ты уже вложил ≈40% стека");
+    expect(out).toContain("SPR<1");
+    expect(out).toContain("решай по эквити");
+  });
+
+  it("колл-в-олл-ин помечается как олл-ин, не как замазанность", () => {
+    const allInSnap = snap({
+      seats: [
+        { label: "Hero", position: "BB", startingStack: 100 },
+        { label: "Player 2", position: "BTN", startingStack: 2000 },
+      ],
+      board: ["2c", "7h", "Kd"],
+      actions: [
+        { street: "PREFLOP", actor: "Player 2", action: "POST_SB", amount: 10 },
+        { street: "PREFLOP", actor: "Hero", action: "POST_BB", amount: 20 },
+        { street: "PREFLOP", actor: "Player 2", action: "RAISE", amount: 40 },
+        { street: "PREFLOP", actor: "Hero", action: "CALL", amount: 20 },
+        { street: "FLOP", actor: "Hero", action: "CHECK" },
+        { street: "FLOP", actor: "Player 2", action: "BET", amount: 200 }, // перекрывает остаток Hero
+      ],
+    });
+    const f = computeHandFacts(allInSnap).heroFacing.find((h) => h.street === "FLOP");
+    expect(f?.heroAllInOnCall).toBe(true);
+    expect(f?.potCommitted).toBe(false); // олл-ин не зовём «замазанностью»
+    expect(renderHandFacts(allInSnap)).toContain("Колл ставит тебя в олл-ин");
+  });
+
+  // Ревью (интеграция MEDIUM): имплайд-оддсы советовали недостижимый добор рядом с «ты замазан».
+  // Теперь если нужный добор больше остатка после колла — честно «по эквити это фолд».
+  it("недостижимый добор: имплайды больше остатка → фолд, не совет добрать", () => {
+    const s = snap({
+      seats: [
+        { label: "Hero", position: "BB", startingStack: 20000 },
+        { label: "Player 2", position: "BTN", startingStack: 40000 },
+      ],
+      heroCards: ["Ah", "2h"],
+      board: ["Kh", "7h", "3c", "9s"],
+      actions: [
+        { street: "PREFLOP", actor: "Player 2", action: "POST_SB", amount: 500 },
+        { street: "PREFLOP", actor: "Hero", action: "POST_BB", amount: 1000 },
+        { street: "PREFLOP", actor: "Player 2", action: "RAISE", amount: 4000 },
+        { street: "PREFLOP", actor: "Hero", action: "CALL", amount: 3000 },
+        { street: "FLOP", actor: "Hero", action: "CHECK" },
+        { street: "FLOP", actor: "Player 2", action: "BET", amount: 4000 },
+        { street: "FLOP", actor: "Hero", action: "CALL", amount: 4000 },
+        { street: "TURN", actor: "Hero", action: "CHECK" },
+        { street: "TURN", actor: "Player 2", action: "BET", amount: 8000 },
+      ],
+    });
+    const facing = computeHandFacts(s).heroFacing.find((h) => h.street === "TURN");
+    expect(facing?.impliedUnreachable).toBe(true);
+    expect(facing?.potCommitted).toBe(true);
+    // Тёрн-строка честно говорит «фолд» и НЕ советует добор (флоп-строка добор советует легитимно).
+    const turnLine = renderHandFacts(s)
+      .split("\n")
+      .find((l) => l.startsWith("Решение Hero на TURN"))!;
+    expect(turnLine).toContain("по эквити это фолд");
+    expect(turnLine).not.toContain("доберёшь ещё");
+  });
+});
+
+// Свип-факт 4: геометрия НЕ-олл-ин префлоп-агрессии — мёртвые деньги + break-even фолд-эквити.
+describe("computeHandFacts — геометрия префлоп-агрессии", () => {
+  it("опен: Hero рейзит первым, лимперов и рейзов до него нет", () => {
+    const s = snap({
+      seats: [
+        { label: "Player 1", position: "SB", startingStack: 2000 },
+        { label: "Player 2", position: "BB", startingStack: 2000 },
+        { label: "Hero", position: "BTN", startingStack: 2000 },
+      ],
+      actions: [
+        { street: "PREFLOP", actor: "Player 1", action: "POST_SB", amount: 10 },
+        { street: "PREFLOP", actor: "Player 2", action: "POST_BB", amount: 20 },
+        { street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 50 },
+      ],
+    });
+    expect(computeHandFacts(s).preflopAgg).toEqual({
+      riskBb: 2.5, // 50 / 20
+      deadMoneyBb: 1.5, // (10 + 20) / 20
+      foldsNeededPct: 63, // 50 / (30 + 50) ≈ 0.625
+      kind: "опен",
+    });
+    expect(renderHandFacts(s)).toContain("Твой префлоп-опен: рискуешь 2.5 BB, в банке до тебя 1.5 BB");
+  });
+
+  it("изоляция: до Hero был лимпер", () => {
+    const s = snap({
+      seats: [
+        { label: "Player 1", position: "SB", startingStack: 2000 },
+        { label: "Player 2", position: "BB", startingStack: 2000 },
+        { label: "Player 3", position: "EARLY", startingStack: 2000 },
+        { label: "Hero", position: "BTN", startingStack: 2000 },
+      ],
+      actions: [
+        { street: "PREFLOP", actor: "Player 1", action: "POST_SB", amount: 10 },
+        { street: "PREFLOP", actor: "Player 2", action: "POST_BB", amount: 20 },
+        { street: "PREFLOP", actor: "Player 3", action: "CALL", amount: 20 }, // лимп
+        { street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 80 },
+      ],
+    });
+    expect(computeHandFacts(s).preflopAgg?.kind).toBe("изоляция");
+  });
+
+  it("3-бет: до Hero был рейз", () => {
+    const s = snap({
+      seats: [
+        { label: "Player 1", position: "SB", startingStack: 2000 },
+        { label: "Player 2", position: "BB", startingStack: 2000 },
+        { label: "Player 3", position: "EARLY", startingStack: 2000 },
+        { label: "Hero", position: "BTN", startingStack: 2000 },
+      ],
+      actions: [
+        { street: "PREFLOP", actor: "Player 1", action: "POST_SB", amount: 10 },
+        { street: "PREFLOP", actor: "Player 2", action: "POST_BB", amount: 20 },
+        { street: "PREFLOP", actor: "Player 3", action: "RAISE", amount: 60 },
+        { street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 180 },
+      ],
+    });
+    expect(computeHandFacts(s).preflopAgg?.kind).toBe("3-бет");
+  });
+
+  it("пуш (олл-ин) НЕ репортится как геометрия — покрыт push-fold", () => {
+    const s = snap({
+      seats: [
+        { label: "Player 1", position: "SB", startingStack: 2000 },
+        { label: "Player 2", position: "BB", startingStack: 2000 },
+        { label: "Hero", position: "BTN", startingStack: 300 },
+      ],
+      actions: [
+        { street: "PREFLOP", actor: "Player 1", action: "POST_SB", amount: 10 },
+        { street: "PREFLOP", actor: "Player 2", action: "POST_BB", amount: 20 },
+        { street: "PREFLOP", actor: "Hero", action: "ALL_IN", amount: 300 },
+      ],
+    });
+    expect(computeHandFacts(s).preflopAgg).toBeNull();
+  });
+});
+
+// Свип-кандидат 5: геометрия второго барреля — SPR следующей улицы, если ставку заколлируют.
+describe("computeHandFacts — геометрия второго барреля (nextStreetSpr)", () => {
+  it("тёрн-бет коммитит стек: после колла SPR ривера ≤ 1", () => {
+    const s = snap({
+      seats: [
+        { label: "Hero", position: "BB", startingStack: 3000 },
+        { label: "Player 2", position: "BTN", startingStack: 3000 },
+      ],
+      board: ["2c", "7h", "Kd", "9s"],
+      actions: [
+        { street: "PREFLOP", actor: "Player 2", action: "POST_SB", amount: 50 },
+        { street: "PREFLOP", actor: "Hero", action: "POST_BB", amount: 100 },
+        { street: "PREFLOP", actor: "Player 2", action: "RAISE", amount: 300 },
+        { street: "PREFLOP", actor: "Hero", action: "CALL", amount: 200 },
+        { street: "FLOP", actor: "Hero", action: "BET", amount: 400 },
+        { street: "FLOP", actor: "Player 2", action: "CALL", amount: 400 },
+        { street: "TURN", actor: "Hero", action: "BET", amount: 1000 },
+      ],
+    });
+    const turnBet = computeHandFacts(s).heroBets.find((b) => b.street === "TURN");
+    expect(turnBet?.nextStreetSpr).toBeLessThanOrEqual(1);
+    expect(turnBet?.commitsStack).toBe(true);
+    expect(renderHandFacts(s)).toContain("уже коммитит стек");
+  });
+
+  it("глубокая мелкая ставка НЕ коммитит: SPR следующей улицы > 1", () => {
+    const s = snap({
+      seats: [
+        { label: "Hero", position: "BB", startingStack: 20000 },
+        { label: "Player 2", position: "BTN", startingStack: 20000 },
+      ],
+      board: ["2c", "7h", "Kd"],
+      actions: [
+        { street: "PREFLOP", actor: "Player 2", action: "POST_SB", amount: 50 },
+        { street: "PREFLOP", actor: "Hero", action: "POST_BB", amount: 100 },
+        { street: "PREFLOP", actor: "Player 2", action: "RAISE", amount: 300 },
+        { street: "PREFLOP", actor: "Hero", action: "CALL", amount: 200 },
+        { street: "FLOP", actor: "Hero", action: "BET", amount: 300 },
+      ],
+    });
+    const flopBet = computeHandFacts(s).heroBets.find((b) => b.street === "FLOP");
+    expect(flopBet?.nextStreetSpr).toBeGreaterThan(1);
+    expect(flopBet?.commitsStack).toBe(false);
+  });
+
+  // Ревью доводок (MEDIUM): при чек-рейзе соперник докладывает МЕНЬШЕ risk (он уже вложил на
+  // улице) → potIfCalled не должен считать «доложит ровно risk».
+  it("чек-рейз: potIfCalled учитывает реальный до-колл соперника, не 2×risk", () => {
+    const s = snap({
+      seats: [
+        { label: "Hero", position: "BB", startingStack: 5000 },
+        { label: "Player 2", position: "BTN", startingStack: 5000 },
+      ],
+      board: ["2c", "7h", "Kd"],
+      actions: [
+        { street: "PREFLOP", actor: "Player 2", action: "RAISE", amount: 100 },
+        { street: "PREFLOP", actor: "Hero", action: "CALL", amount: 100 },
+        // банк к флопу = 200
+        { street: "FLOP", actor: "Hero", action: "CHECK" },
+        { street: "FLOP", actor: "Player 2", action: "BET", amount: 100 }, // банк 300, вложил 100
+        { street: "FLOP", actor: "Hero", action: "RAISE", amount: 300 }, // чек-рейз to 300, risk 300
+      ],
+    });
+    const flopBet = computeHandFacts(s).heroBets.find((b) => b.street === "FLOP");
+    // potIfCalled = potBefore(300) + risk(300) + oppCall(300−100=200) = 800, а не 300+2×300=900.
+    expect(flopBet?.potIfCalled).toBe(800);
+  });
+
+  it("ривер-ставка: nextStreetSpr не считается (следующей улицы нет)", () => {
+    const s = snap({
+      seats: [
+        { label: "Hero", position: "BB", startingStack: 3000 },
+        { label: "Player 2", position: "BTN", startingStack: 3000 },
+      ],
+      board: ["2c", "7h", "Kd", "9s", "3d"],
+      actions: [
+        { street: "PREFLOP", actor: "Player 2", action: "POST_SB", amount: 50 },
+        { street: "PREFLOP", actor: "Hero", action: "POST_BB", amount: 100 },
+        { street: "PREFLOP", actor: "Player 2", action: "CALL", amount: 50 },
+        { street: "PREFLOP", actor: "Hero", action: "CHECK" },
+        { street: "FLOP", actor: "Hero", action: "CHECK" },
+        { street: "FLOP", actor: "Player 2", action: "CHECK" },
+        { street: "TURN", actor: "Hero", action: "CHECK" },
+        { street: "TURN", actor: "Player 2", action: "CHECK" },
+        { street: "RIVER", actor: "Hero", action: "BET", amount: 200 },
+      ],
+    });
+    const riverBet = computeHandFacts(s).heroBets.find((b) => b.street === "RIVER");
+    expect(riverBet?.nextStreetSpr).toBeUndefined();
   });
 });

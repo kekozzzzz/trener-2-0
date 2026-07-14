@@ -7,6 +7,7 @@ import { triggerWorkerAction } from "@/app/status/actions";
 import { retryDialogueStep } from "@/features/queue-recovery/actions";
 import { Button } from "@/components/ui/button";
 import { LoadingDots } from "@/components/ui/loading-dots";
+import { ElapsedTimer } from "@/components/ui/elapsed-timer";
 
 type DialogueResponse = {
   state: "QUESTION_ASKED" | "ANSWER_RECEIVED" | "VERDICT_SHOWN";
@@ -95,11 +96,16 @@ export function WaitClient({ handId }: { handId: string }) {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-4">
-      <p className="flex items-center gap-2 font-mono text-label uppercase tracking-label text-muted-foreground">
-        {t("waitNextStep")}
-        <LoadingDots />
-      </p>
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-4">
+        <p className="flex items-center gap-2 font-mono text-label uppercase tracking-label text-muted-foreground">
+          {t("waitNextStep")}
+          <LoadingDots />
+          <ElapsedTimer className="normal-case tracking-normal text-primary" />
+        </p>
+      </div>
+      {/* Подсказка про время: на CRITICAL-раздачах включён режим размышления → ответ дольше. */}
+      <p className="text-small text-muted-foreground">{t("thinkingHint")}</p>
       {/* Ручной «пинок» очереди — только для локальной разработки, где нет
           постоянного воркера. На проде воркер крутится сам, кнопка не нужна. */}
       {process.env.NODE_ENV !== "production" && (

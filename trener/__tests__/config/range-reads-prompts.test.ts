@@ -20,6 +20,7 @@ const READ: RangeRead = {
   street: "TURN",
   equityPct: 41,
   combosLive: 52,
+  buckets: { total: 52, beats: 30, losesTo: 20, ties: 2, worsePays: 12, worseAir: 18 },
   vpipContrast: { seatLabel: "Player 3", vpip: 22, handsObserved: 40, gapPp: -16 },
   cut: { vsRound: 1, foldPct: 63, addedCombos: 12 },
 };

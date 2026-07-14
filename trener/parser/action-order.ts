@@ -31,21 +31,32 @@ const VERB_RU: Record<TableAction["action"], string> = {
   ALL_IN: "олл-ин",
 };
 
-// Только постфлоп: префлоп-позиция и так ясна из мест и RFI-фактов, а путаница коуча
-// была именно постфлоп (многовей, Hero не последний).
-const POSTFLOP: Street[] = ["FLOP", "TURN", "RIVER"];
+// Все улицы. Постфлоп путал коуча (многовей, Hero не последний); ПРЕФЛОП добавлен под сквиз-риск
+// (свип): кто ещё сидит за спиной Hero и мог зайти/сквизнуть — модель это достраивала из списка.
+const STREETS: Street[] = ["PREFLOP", "FLOP", "TURN", "RIVER"];
+
+// Вынужденные ставки — НЕ действия для порядка хода: на префлопе блайнды/анте постятся ПЕРВЫМИ
+// хронологически, но игрок SB/BB действует добровольно ПОЗЖЕ. Если их учесть, блайнды ложно
+// уедут в начало порядка. На постфлопе форсов нет — фильтр безвреден.
+const FORCED = new Set<TableAction["action"]>(["POST_ANTE", "POST_SB", "POST_BB"]);
 
 export function renderActionOrder(snapshot: TableSnapshot): string {
   const posOf = new Map<string, string>();
   for (const s of snapshot.seats) posOf.set(s.label, s.positionName ?? s.position);
-  const pos = (label: string) => posOf.get(label) ?? label;
+  // «OTHER» (баттон не распознан → позиция не вычислена) — не латиница и не «Player N» в русском
+  // тексте: показываем нейтральное «соперник». Путь достижим лишь при несчитанном баттоне, где и
+  // прочий позиционный слой деградирует; число «N могли» при этом верное.
+  const pos = (label: string) => {
+    const p = posOf.get(label) ?? label;
+    return p === "OTHER" ? "соперник" : p;
+  };
 
   const lines: string[] = [];
-  for (const street of POSTFLOP) {
-    const streetActions = snapshot.actions.filter((a) => a.street === street);
+  for (const street of STREETS) {
+    const streetActions = snapshot.actions.filter((a) => a.street === street && !FORCED.has(a.action));
     if (streetActions.length === 0) continue;
 
-    // Порядок первого действия каждого игрока на улице = порядок мест (первый орбит).
+    // Порядок первого ДОБРОВОЛЬНОГО действия каждого игрока на улице = порядок мест (первый орбит).
     const order: string[] = [];
     const firstAction = new Map<string, TableAction>();
     for (const a of streetActions) {
@@ -61,6 +72,18 @@ export function renderActionOrder(snapshot: TableSnapshot): string {
 
     const before = order.slice(0, heroIdx);
     const behind = order.slice(heroIdx + 1);
+
+    if (street === "PREFLOP") {
+      // Сквиз-риск ценен ТОЛЬКО когда за спиной Hero есть живые (кому сквизить). Hero закрывает
+      // префлоп-экшн (behind пусто) - факта нет: некому зайти/ре-рейзнуть.
+      if (behind.length === 0) continue;
+      const beforeText = before.length
+        ? `до тебя: ${before.map((p) => `${pos(p)} ${VERB_RU[firstAction.get(p)!.action]}`).join(", ")}`
+        : "ты действуешь первым";
+      const behindText = `за тобой оставались ${behind.map((p) => pos(p)).join(", ")} - ${behind.length} ${behind.length === 1 ? "мог" : "могли"} войти или сквизнуть`;
+      lines.push(`На префлопе ${beforeText}; ${behindText}.`);
+      continue;
+    }
 
     const beforeText = before.length
       ? `до тебя: ${before.map((p) => `${pos(p)} ${VERB_RU[firstAction.get(p)!.action]}`).join(", ")}`

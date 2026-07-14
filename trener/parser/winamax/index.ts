@@ -2,6 +2,7 @@ import type { ParseResult } from "../types";
 import { assignImportanceLevels, computePostflopAggressionFactor, diagnoseStyle } from "../ggpoker/classify";
 import { opponentTokenizer, assignOpponentTokens } from "../shared/opponent-tokens";
 import { assignShownCards, shownCardsByNick } from "../shared/shown-cards";
+import { assignCollected, collectedByNick } from "../shared/collected";
 import { parseHand } from "./hand";
 
 // Winamax: заголовок "Winamax Poker - Tournament \"Имя\" buyIn: 18€ + 2€ level: N -
@@ -129,6 +130,7 @@ export function parseWinamaxMtt(buffer: Buffer): ParseResult {
     const namesBySeat = seatNamesOf(dealtHands[index]);
     assignOpponentTokens(snapshot.tableSnapshot.seats, namesBySeat, tokenFor);
     assignShownCards(snapshot.tableSnapshot.seats, namesBySeat, shownCardsByNick(dealtHands[index]));
+    assignCollected(snapshot.tableSnapshot.seats, namesBySeat, collectedByNick(dealtHands[index]));
   });
   const importanceLevels = assignImportanceLevels(snapshots);
   const hands = snapshots.map((snapshot, index) => ({

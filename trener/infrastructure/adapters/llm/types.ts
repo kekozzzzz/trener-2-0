@@ -135,6 +135,9 @@ export type RangeRead = {
   street: Street | null; // улица точки решения вопроса (по метке {{table:N}})
   equityPct: number | null; // эквити руки Hero против диапазона; null — префлоп/нет живых комбо
   combosLive: number | null; // живых комбо после вычета карт Hero и борда
+  // Раскладка диапазона на конкретном борде (postflop): сколько комбо Hero бьёт/позади и из
+  // побитых сколько заплатят велью (пара+) vs сбросят (воздух). null — префлоп/нет комбо.
+  buckets: { total: number; beats: number; losesTo: number; ties: number; worsePays: number; worseAir: number } | null;
   // Сверка с профилем оппонента (когда в раздаче ровно один известный злодей):
   // gapPp = отмеченный процент минус его VPIP, в процентных пунктах.
   vpipContrast: { seatLabel: string; vpip: number; handsObserved: number; gapPp: number } | null;

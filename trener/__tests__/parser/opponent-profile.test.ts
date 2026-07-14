@@ -114,3 +114,18 @@ describe("profileHandOpponents", () => {
     expect(profileHandOpponents(many("CALL", 5), current)).toHaveLength(0);
   });
 });
+
+describe("classifyOpponent — прошлые вскрытия (публичный ридс)", () => {
+  it("собирает руки, с которыми оппонент доходил до вскрытия раньше", () => {
+    const withShow = (cards: [string, string]) => {
+      const h = hand("CALL");
+      const v = h.tableData.seats.find((s) => s.label === "Villain")!;
+      (v as { shownCards?: string[] }).shownCards = cards;
+      return h;
+    };
+    const hands = [withShow(["Ah", "Kd"]), withShow(["7c", "2c"]), ...many("CALL", 8)];
+    const p = classifyOpponent(hands, VTOK);
+    expect(p.shownHands).toContain("AKo");
+    expect(p.shownHands).toContain("72s");
+  });
+});

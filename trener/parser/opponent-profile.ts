@@ -1,4 +1,5 @@
 import type { TableSnapshot } from "./types";
+import { handCode } from "@/config/poker/hand-codes";
 import {
   OPP_MIN_HANDS,
   OPP_SOLID_HANDS,
@@ -7,6 +8,8 @@ import {
   OPP_GAP_PASSIVE,
   OPP_GAP_AGGRO,
 } from "@/config/poker/opponent";
+
+const SHOWN_HANDS_MAX = 8; // сколько прошлых вскрытий оппонента показать (последние)
 
 // Детерминированный профиль оппонента — внутренний ПРИОР для тренера (чем рыбнее, тем
 // шире диапазон). Правило 1: частоты и тип считает код, не LLM. НЕ показываем игроку
@@ -26,17 +29,20 @@ export type OpponentProfile = {
   limpRate: number; // %
   type: OpponentType;
   confidence: "none" | "tentative" | "solid";
+  shownHands: string[]; // руки (коды), с которыми оппонент доходил до вскрытия РАНЬШЕ в турнире
 };
 
 // Факт для тренера: профиль злодея ТЕКУЩЕЙ раздачи под его меткой "Player N" (токен
 // наружу не отдаём). Только определённые типы (UNKNOWN отсеиваем — «нет ридса»).
 export type OpponentFact = {
   seatLabel: string; // "Player <место>" из текущей раздачи
+  position?: string; // позиция оппонента за столом (UTG/CO/BTN…) — чтобы тренер звал его позицией, не "Player N"
   type: Exclude<OpponentType, "UNKNOWN">;
   confidence: "tentative" | "solid";
   vpip: number;
   pfr: number;
   handsObserved: number;
+  shownHands?: string[]; // с чем доходил до вскрытия раньше в турнире (публичный ридс)
 };
 
 type Involvement = { present: boolean; vpip: boolean; pfr: boolean; limp: boolean };
@@ -70,6 +76,7 @@ export function classifyOpponent(hands: { tableData: unknown }[], token: string)
   let vpipN = 0;
   let pfrN = 0;
   let limpN = 0;
+  const shownHands: string[] = [];
 
   for (const h of hands) {
     const snap = h.tableData as unknown as TableSnapshot;
@@ -80,6 +87,11 @@ export function classifyOpponent(hands: { tableData: unknown }[], token: string)
     if (inv.vpip) vpipN += 1;
     if (inv.pfr) pfrN += 1;
     if (inv.limp) limpN += 1;
+    // Публичный ридс: с чем оппонент реально доходил до вскрытия (игрок это видел за столом).
+    if (seat.shownCards?.length === 2) {
+      const code = handCode(seat.shownCards);
+      if (code) shownHands.push(code);
+    }
   }
 
   const pct = (x: number) => (n === 0 ? 0 : Math.round((x / n) * 1000) / 10);
@@ -104,7 +116,7 @@ export function classifyOpponent(hands: { tableData: unknown }[], token: string)
     else type = "REG";
   }
 
-  return { handsObserved: n, vpip, pfr, limpRate, type, confidence };
+  return { handsObserved: n, vpip, pfr, limpRate, type, confidence, shownHands: shownHands.slice(-SHOWN_HANDS_MAX) };
 }
 
 // Добровольно вложил в ЭТОЙ раздаче (в банке с Hero) — на любой улице: релевантный злодей.
@@ -130,11 +142,18 @@ export function profileHandOpponents(
     if (p.type === "UNKNOWN") continue;
     facts.push({
       seatLabel: seat.label,
+      position:
+        seat.positionName && seat.positionName !== "OTHER"
+          ? seat.positionName
+          : seat.position !== "OTHER"
+            ? seat.position
+            : undefined,
       type: p.type,
       confidence: p.confidence as "tentative" | "solid",
       vpip: p.vpip,
       pfr: p.pfr,
       handsObserved: p.handsObserved,
+      shownHands: p.shownHands,
     });
   }
   return facts;

@@ -8,7 +8,7 @@
 
 import type { NextQuestionRequest, PriorSpot } from "@/infrastructure/adapters/llm/types";
 import type { Locale } from "@/i18n/config";
-import { coachFramework, renderTableSnapshot, renderOpponents, renderRangeReads, renderBountyFact } from "./hand-analysis";
+import { coachFramework, renderTableSnapshot, renderOpponents, renderRangeReads, renderBountyFact, resultInBb } from "./hand-analysis";
 import { renderCriticalReason } from "@/parser/decision-weight";
 import { renderPlayerCard, renderRepeatedLeak } from "./player-card";
 
@@ -100,7 +100,7 @@ export function buildDialogueQuestionPrompt(request: NextQuestionRequest): strin
 
   return `Контекст турнира: ${tournament.handsCount} раздач, VPIP ${tournament.vpipPercent}%, стиль игрока — ${tournament.styleDiagnosis}.${renderBountyFact(tournament) ? `\n${renderBountyFact(tournament)}` : ""}
 
-Результат Hero в этой раздаче — ${chipResult} фишек.
+Результат Hero в этой раздаче — ${chipResult} фишек${resultInBb(chipResult, request.tableSnapshot)}.
 
 ${reasonBlock ? `${reasonBlock}\n\n` : ""}${cardBlock ? `${cardBlock}\n\n` : ""}${repeatBlock ? `${repeatBlock}\n\n` : ""}${opponentsBlock ? `${opponentsBlock}\n\n` : ""}${renderTableSnapshot(request.tableSnapshot, locale)}${priorBlock}${rangeBlock ? `\n\n${rangeBlock}` : ""}
 

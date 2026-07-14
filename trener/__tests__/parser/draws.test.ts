@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { readHeroDraw, drawEquity, improvementOuts } from "@/parser/draws";
+import {
+  readHeroDraw,
+  drawEquity,
+  improvementOuts,
+  overcardsToPair,
+  scareCards,
+  fallenCardImpact,
+} from "@/parser/draws";
 
 // Ауты Hero — точным перебором. Числа аутов проверяемы руками; эквити — производное
 // (1 карта = ауты/нераскрытые), для 2 карт проверяем границы и clean ≤ raw.
@@ -8,7 +15,7 @@ describe("readHeroDraw — ауты, чистые/грязные, бэкдоры
   it("флеш-дро: 9 аутов, 1 грязный (туз пары борда), 8 чистых", () => {
     // A♥K♥ на 2♥7♥Q♠: 9 червовых аутов; Q♥ спаривает Q борда → грязный.
     const d = readHeroDraw(["Ah", "Kh"], ["2h", "7h", "Qs"]);
-    expect(d?.kind).toBe("флеш-дро");
+    expect(d?.kind).toContain("флеш-дро"); // + нат-статус (у AK — к натсам)
     expect(d?.outsRaw).toBe(9);
     expect(d?.outsClean).toBe(8);
     expect(d?.taintReason).toMatch(/спаривают борд/);
@@ -138,5 +145,99 @@ describe("improvementOuts — ЛЮБЫЕ ауты на улучшение (пе�
     const io = improvementOuts(["8s", "8d"], ["2h", "7c", "Ks"]);
     expect(io!.outsClean).toBeLessThanOrEqual(io!.outsRaw);
     expect(io!.byTarget.reduce((s, t) => s + t.count, 0)).toBe(io!.outsRaw);
+  });
+});
+
+describe("нат-статус дро / оверкарты / scare (свип зелёные 2026-07-13)", () => {
+  it("флеш-дро к натсам (туз масти в руке) vs НЕ к натсам (младшее)", () => {
+    expect(readHeroDraw(["Ah", "Kh"], ["2h", "7h", "Qs"])?.kind).toContain("к НАТСАМ");
+    const low = readHeroDraw(["5h", "6h"], ["2h", "7h", "Qs"]);
+    expect(low?.kind).toContain("НЕ к натсам");
+    expect(low?.kind).toContain("проиграть старшему");
+  });
+
+  it("оверкарты к паре: 99 на 2-5-K → 4 оверкарты (T,J,Q,A; K на борде)", () => {
+    const o = overcardsToPair(["9c", "9d"], ["2h", "5s", "Kc"]);
+    expect(o?.count).toBe(4); // T, J, Q, A (K уже на борде — исключён)
+  });
+
+  // Регресс из ревью: свой кикер выше пары — НЕ угроза (его приход даёт Hero две пары).
+  it("топ-пара с большим кикером (KQ на Q72) → только 1 оверкарта (туз), K не в счёт", () => {
+    const o = overcardsToPair(["Kh", "Qs"], ["Qd", "7c", "2h"]);
+    expect(o?.count).toBe(1); // только A; K — свой кикер, приход K = две пары Hero
+  });
+
+  it("оверкарт нет у топ-пары тузом; воздух → null", () => {
+    expect(overcardsToPair(["Ac", "Kd"], ["As", "9d", "2h"])).toBeNull(); // туз — оверкарт нет
+    expect(overcardsToPair(["7c", "2d"], ["As", "9d", "Kh"])).toBeNull(); // воздух
+  });
+
+  // Регресс из ревью: scare не завышается на уже-флешевом борде и на сете.
+  it("scare НЕ завышается: пара на уже-монотонном борде — не вся колода страшная", () => {
+    const s = scareCards(["9c", "9d"], ["8h", "7h", "5h"]); // борд уже 3 червы
+    // угроза флеша уже есть, следующая карта её не создаёт → count заметно меньше total
+    if (s) expect(s.count).toBeLessThan(s.total);
+  });
+
+  it("scare на сете не помечает оверкарты (голая оверкарта сет не бьёт)", () => {
+    const s = scareCards(["9c", "9d"], ["9h", "5s", "2d"]); // сет девяток, сухой борд
+    // ни флеша (2→3), ни стрита, ни спаривания сверх сета → мало/ноль
+    expect(s === null || s.count < 10).toBe(true);
+  });
+
+  it("scare-карты: у пары на дровяном борде есть страшные, у сухого — меньше", () => {
+    const wet = scareCards(["9c", "9d"], ["8h", "7h", "2s"]); // стрит/флеш-угрозы
+    expect(wet).not.toBeNull();
+    expect(wet!.count).toBeGreaterThan(0);
+  });
+});
+
+describe("fallenCardImpact — ярлык выпавшей карты тёрна/ривера", () => {
+  it("усилила: 98 на K-9-2, тёрн 8 → две пары", () => {
+    const r = fallenCardImpact(["9c", "8h"], ["Kd", "9s", "2c"], "8d");
+    expect(r?.kind).toBe("boost");
+    expect(r?.detail).toContain("двух пар");
+  });
+
+  it("скэр: третья карта одной масти (флеш-угроза)", () => {
+    // Hero сет королей на 7♠2♠K♥; тёрн 9♠ — третья пика, флеш-угроза сопернику.
+    const r = fallenCardImpact(["Kc", "Kd"], ["7s", "2s", "Kh"], "9s");
+    expect(r?.kind).toBe("scare");
+    expect(r?.detail).toContain("флеш-угроза");
+  });
+
+  it("дро сгорело: флеш-дро на тёрне, ривер мимо масти", () => {
+    const r = fallenCardImpact(["Ah", "2h"], ["Kh", "7h", "3c", "9s"], "Tc");
+    expect(r?.kind).toBe("busted");
+    expect(r?.detail).toContain("не доехало");
+  });
+
+  it("блэнк: оверпара, тёрн ничего не меняет", () => {
+    const r = fallenCardImpact(["Ac", "Ad"], ["7h", "3s", "2c"], "9d");
+    expect(r?.kind).toBe("blank");
+  });
+
+  // Ревью доводок (HIGH): busted НЕ должен срабатывать на комбо-руке (топ-пара + флеш-дро):
+  // готовая рука осталась, это не «блеф-кэтчер». Ривер-блэнк при топ-паре → blank, не busted.
+  it("топ-пара + флеш-дро, ривер мимо масти → blank, НЕ busted", () => {
+    const r = fallenCardImpact(["As", "Qs"], ["Ah", "8s", "5s", "2d"], "3c");
+    expect(r?.kind).toBe("blank"); // топ-пара тузов осталась — не блеф-кэтчер
+  });
+});
+
+describe("scareCards — собственные флеш-ауты не считаются угрозой (ревью согласованности)", () => {
+  it("пара + флеш-дро: приход своей масти — АУТ Hero, не скэр", () => {
+    // AsQs на Ah 8s 5s: топ-пара тузов + нат-флеш-дро (2 пики у Hero, 2 на борде). 3-я пика даёт
+    // Hero флеш — это его аут, а НЕ страшная карта. Флеш-угрозы быть не должно.
+    const r = scareCards(["As", "Qs"], ["Ah", "8s", "5s"]);
+    // на A-8-5 нет ни стрит-борда, ни пары → без флеш-скэра остаётся 0 → null
+    expect(r).toBeNull();
+  });
+
+  it("пара БЕЗ флеш-дро в масти угрозы: скэр остаётся", () => {
+    // 9c9d на 8h 7h 2s: 3-я черва — угроза (у Hero нет черв), скэр считается.
+    const r = scareCards(["9c", "9d"], ["8h", "7h", "2s"]);
+    expect(r).not.toBeNull();
+    expect(r!.count).toBeGreaterThan(0);
   });
 });

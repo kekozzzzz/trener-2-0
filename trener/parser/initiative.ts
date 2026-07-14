@@ -9,17 +9,122 @@ import { bigBlindFromSnapshot } from "./big-blind";
 
 const STREET_ORDER: Record<Street, number> = { PREFLOP: 0, FLOP: 1, TURN: 2, RIVER: 3 };
 const STREET_RU: Record<Street, string> = { PREFLOP: "префлопе", FLOP: "флопе", TURN: "тёрне", RIVER: "ривере" };
+const STREET_BOARD_LEN: Record<Street, number> = { PREFLOP: 0, FLOP: 3, TURN: 4, RIVER: 5 };
+
+// Инициатива по улицам строкой для промпта (правило 1): кто префлоп-агрессор и у кого лид,
+// входя в каждую постфлоп-улицу, — чтобы модель не реконструировала «чью доску»/c-bet/баррель
+// из сырого списка действий. Соперников зовём ПОЗИЦИЕЙ (не «Player N»), Hero — «ты».
+export function renderInitiative(snapshot: TableSnapshot): string {
+  if (snapshot.board.length < 3) return ""; // до флопа отдельный факт не нужен
+  const name = (label: string | null): string | null => {
+    if (!label) return null;
+    if (label === "Hero") return "ты";
+    const seat = snapshot.seats.find((s) => s.label === label);
+    const pn = seat?.positionName && seat.positionName !== "OTHER" ? seat.positionName : undefined;
+    return pn ?? (seat && seat.position !== "OTHER" ? seat.position : null);
+  };
+  const parts: string[] = [];
+  const preAgg = currentAggressor(snapshot, "FLOP"); // агрессор входя во флоп = префлоп-агрессор
+  parts.push(
+    preAgg
+      ? `префлоп инициативу взял ${name(preAgg) ?? "соперник (позиция не определена)"}`
+      : "префлоп никто не рейзил (лимпованный банк) - инициативы ни у кого",
+  );
+  for (const street of ["TURN", "RIVER"] as const) {
+    if (snapshot.board.length < STREET_BOARD_LEN[street]) break;
+    const agg = currentAggressor(snapshot, street);
+    parts.push(
+      `входя в ${STREET_RU[street]} - ${agg ? `у ${name(agg) ?? "соперника"}` : "инициативы нет (прошлую улицу прочекали)"}`,
+    );
+  }
+  return `Инициатива (последнее агрессивное действие - считает парсер; «чью доску», c-bet и баррель бери отсюда, не собирай из списка сам): ${parts.join("; ")}.`;
+}
 
 // Кто держит инициативу, ВХОДЯ в улицу `street` = актор последнего агрессивного действия
 // на предыдущих улицах. null — до этой улицы никто не был агрессивен (напр. лимп-банк).
+// ВАЖНО: олл-ин-КОЛЛ парсеры эмитят как action ALL_IN (не CALL) — его инициативой считать
+// НЕЛЬЗЯ, иначе тот, кто лишь заколлировал шов, получает «инициативу» (бьёт по кулерам с
+// колл-олл-ином). Поэтому ведём currentBet по улицам и засчитываем ALL_IN в агрессию только
+// когда он реально поднимает ставку (raw > currentBet) — тот же критерий, что в facts.ts walkPot.
 export function currentAggressor(snapshot: TableSnapshot, street: Street): string | null {
   const target = STREET_ORDER[street];
   let aggressor: string | null = null;
+  let curStreet: Street | null = null;
+  let currentBet = 0;
+  const committed = new Map<string, number>();
   for (const a of snapshot.actions) {
     if (STREET_ORDER[a.street] >= target) break; // только предыдущие улицы
-    if (a.action === "BET" || a.action === "RAISE" || a.action === "ALL_IN") aggressor = a.actor;
+    if (a.street !== curStreet) {
+      curStreet = a.street;
+      currentBet = 0;
+      committed.clear();
+    }
+    const c = committed.get(a.actor) ?? 0;
+    const raw = a.amount ?? 0;
+    switch (a.action) {
+      case "POST_SB":
+      case "POST_BB":
+        committed.set(a.actor, c + raw);
+        currentBet = Math.max(currentBet, c + raw);
+        break;
+      case "BET":
+        committed.set(a.actor, c + raw);
+        currentBet = c + raw;
+        aggressor = a.actor;
+        break;
+      case "CALL":
+        committed.set(a.actor, c + raw);
+        break;
+      case "RAISE":
+      case "ALL_IN": {
+        const isRaise = a.action === "RAISE" || raw > currentBet;
+        if (isRaise) {
+          committed.set(a.actor, raw);
+          currentBet = raw;
+          aggressor = a.actor;
+        } else {
+          committed.set(a.actor, c + raw); // олл-ин как колл-добор — не агрессия
+        }
+        break;
+      }
+    }
   }
   return aggressor;
+}
+
+// Тактические метки для промпта: c-bet (первый бет флопа от префлоп-агрессора) и чек-рейзы
+// по улицам. Фреймворк на них прямо опирается («чек-рейз на тёрне почти всегда сила», «c-bet»),
+// а раньше модель распознавала паттерн из сырого списка [N] и путала. Правило 1 — считает парсер.
+export function renderTacticalMarks(snapshot: TableSnapshot): string {
+  if (snapshot.board.length < 3) return "";
+  const name = (label: string): string => {
+    if (label === "Hero") return "ты";
+    const seat = snapshot.seats.find((s) => s.label === label);
+    const pn = seat?.positionName && seat.positionName !== "OTHER" ? seat.positionName : undefined;
+    return pn ?? (seat && seat.position !== "OTHER" ? seat.position : "соперник");
+  };
+  const marks: string[] = [];
+
+  // c-bet: первый агрессивный ход на флопе — бет префлоп-агрессора.
+  const preAgg = currentAggressor(snapshot, "FLOP");
+  const flopFirstAgg = snapshot.actions.find(
+    (a) => a.street === "FLOP" && (a.action === "BET" || a.action === "RAISE" || a.action === "ALL_IN"),
+  );
+  if (preAgg && flopFirstAgg && flopFirstAgg.actor === preAgg && flopFirstAgg.action === "BET")
+    marks.push(`c-bet (продолженную ставку префлоп-агрессора) на флопе поставил ${name(preAgg)}`);
+
+  // Чек-рейзы по улицам: тот же actor сначала CHECK, затем RAISE/ALL_IN-рейз на той же улице.
+  for (const street of ["FLOP", "TURN", "RIVER"] as const) {
+    const checked = new Set<string>();
+    for (const a of snapshot.actions.filter((x) => x.street === street)) {
+      if (a.action === "CHECK") checked.add(a.actor);
+      else if ((a.action === "RAISE" || a.action === "ALL_IN") && checked.has(a.actor))
+        marks.push(`чек-рейз на ${STREET_RU[street]} сделал ${name(a.actor)}`);
+    }
+  }
+
+  if (marks.length === 0) return "";
+  return `Тактические метки (считает парсер - c-bet/чек-рейз бери отсюда, не выводи из списка действий сам): ${marks.join("; ")}.`;
 }
 
 export type InitiativeRead = {

@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { retryChatReply } from "@/features/queue-recovery/actions";
 import { Button } from "@/components/ui/button";
 import { LoadingDots } from "@/components/ui/loading-dots";
+import { ElapsedTimer } from "@/components/ui/elapsed-timer";
 
 type ChatResponse = {
   awaitingReply: boolean;
@@ -79,9 +80,13 @@ export function ChatWaitClient({ handId }: { handId: string }) {
   }
 
   return (
-    <p className="flex items-center gap-2 font-mono text-label uppercase tracking-label text-muted-foreground">
-      {t("preparingReply")}
-      <LoadingDots />
-    </p>
+    <div className="flex flex-col gap-2">
+      <p className="flex items-center gap-2 font-mono text-label uppercase tracking-label text-muted-foreground">
+        {t("preparingReply")}
+        <LoadingDots />
+        <ElapsedTimer className="normal-case tracking-normal text-primary" />
+      </p>
+      <p className="text-small text-muted-foreground">{t("thinkingHint")}</p>
+    </div>
   );
 }

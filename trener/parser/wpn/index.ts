@@ -2,6 +2,7 @@ import type { ParseResult } from "../types";
 import { assignImportanceLevels, computePostflopAggressionFactor, diagnoseStyle } from "../ggpoker/classify";
 import { opponentTokenizer, assignOpponentTokens } from "../shared/opponent-tokens";
 import { assignShownCards, shownCardsByNick } from "../shared/shown-cards";
+import { assignCollected, collectedByNick } from "../shared/collected";
 import { parseHand } from "./hand";
 
 // WPN (Winning Poker Network): ACR / PokerKing. Один формат на всю сеть.
@@ -129,6 +130,7 @@ export function parseWpnMtt(buffer: Buffer): ParseResult {
     const namesBySeat = seatNamesOf(dealtHands[index]);
     assignOpponentTokens(snapshot.tableSnapshot.seats, namesBySeat, tokenFor);
     assignShownCards(snapshot.tableSnapshot.seats, namesBySeat, shownCardsByNick(dealtHands[index]));
+    assignCollected(snapshot.tableSnapshot.seats, namesBySeat, collectedByNick(dealtHands[index]));
   });
   const importanceLevels = assignImportanceLevels(snapshots);
   const hands = snapshots.map((snapshot, index) => ({

@@ -3,7 +3,7 @@ import { bigBlindFromSnapshot } from "./big-blind";
 import { nodeStateAt, checkBetAlternatives } from "./alternatives";
 import { heroActionShapes } from "./action-shape";
 import { detectHeroLuckyWin, equityVsHand } from "./lucky-win";
-import { heroMadeHand } from "./made-hand";
+import { heroMadeHand, cardSetValue, compareValues } from "./made-hand";
 import { readHeroDraw } from "./draws";
 import { handCode } from "@/config/poker/hand-codes";
 
@@ -169,6 +169,22 @@ export function decisionMarks(snapshot: TableSnapshot, chipResult: number): Deci
   for (const c of checkBetAlternatives(snapshot)) {
     if (c.reason !== "MISSED_VALUE") continue;
     if (c.street !== "TURN" && c.street !== "RIVER") continue;
+    // Недобор реален ТОЛЬКО если на прочеканной улице рука Hero была старше вскрытых рук
+    // соперников: тогда велью/защитная ставка забрала бы фишки — даже если соперник ПОТОМ доехал
+    // (это и есть урок «дал бесплатную карту»). Если Hero был позади/наравне вскрытой руки
+    // (66 против JJ на QQ432) — недобора не было. Судим по МОМЕНТУ решения, не по нетто-итогу
+    // (правило: не суди по результату). Вскрытия нет → по нетто: не забрал банк = рука не победила.
+    const shown = snapshot.seats.filter((s) => s.label !== "Hero" && s.shownCards?.length === 2);
+    if (shown.length > 0 && snapshot.heroCards.length === 2) {
+      const boardThen = snapshot.board.slice(0, STREET_BOARD_LEN[c.street]);
+      const heroVal = cardSetValue([...snapshot.heroCards, ...boardThen]);
+      const aheadOfAll = shown.every(
+        (s) => compareValues(heroVal, cardSetValue([...s.shownCards!, ...boardThen])) > 0,
+      );
+      if (!aheadOfAll) continue; // был позади/наравне вскрытой руки — не недобор
+    } else if (chipResult <= 0) {
+      continue; // без вскрытия и без нетто-выигрыша рука не победила — недобора нет
+    }
     const potBb = toBb(nodeStateAt(snapshot, c.actionIndex).pot);
     if (potBb < MISSED_VALUE_MIN_POT_BB) continue;
     add({ channel: "MISSED_VALUE", street: c.street, potBb, weightBb: potBb });

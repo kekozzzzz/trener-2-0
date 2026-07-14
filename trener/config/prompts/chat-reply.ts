@@ -12,7 +12,7 @@
 
 import type { ChatReplyRequest, ChatMessageSummary } from "@/infrastructure/adapters/llm/types";
 import type { Locale } from "@/i18n/config";
-import { coachFramework, renderTableSnapshot, renderOpponents, renderBountyFact } from "./hand-analysis";
+import { coachFramework, renderTableSnapshot, renderOpponents, renderBountyFact, resultInBb } from "./hand-analysis";
 import { renderPlayerCard } from "./player-card";
 import { renderShowdownFacts } from "@/parser/facts";
 
@@ -48,7 +48,7 @@ export function buildChatReplyPrompt(request: ChatReplyRequest): string {
 
   return `Контекст турнира: ${tournament.handsCount} раздач, VPIP ${tournament.vpipPercent}%, стиль игрока — ${tournament.styleDiagnosis}.${renderBountyFact(tournament) ? `\n${renderBountyFact(tournament)}` : ""}
 
-Результат Hero в этой раздаче — ${chipResult} фишек.
+Результат Hero в этой раздаче — ${chipResult} фишек${resultInBb(chipResult, request.tableSnapshot)}.
 
 ${cardBlock ? `${cardBlock}\n\n` : ""}${opponentsBlock ? `${opponentsBlock}\n\n` : ""}${renderTableSnapshot(request.tableSnapshot, locale)}${showdownBlock ? `\n\n${showdownBlock}` : ""}
 

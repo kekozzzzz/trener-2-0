@@ -7,6 +7,20 @@ import { pushPosition, pushRangeCodes } from "@/config/poker/push-fold-chart";
 import { callVsRestealRangeCodes } from "@/config/poker/call-vs-resteal-chart";
 import { rfiOpenRange, openChartPosition } from "@/config/poker/rfi-chart";
 import { combosOf, percentOf } from "@/config/poker/hand-grid";
+import { blockerCount } from "./blockers";
+
+// Блокеры Hero в диапазоне соперника: сколько его сильных комбо режут карты Hero (туз-блокер
+// AA/AK). Правило 1 — число комбо считает парсер, а не модель «прикидывает». Показываем ТОЛЬКО
+// премиумы, которые Hero реально режет (иначе строка пустая), — они и весомы для фолд-эквити.
+function renderBlockerLine(heroCards: string[], codes: Iterable<string>): string | null {
+  const set = new Set(codes);
+  const premium = ["AA", "KK", "QQ", "AKs", "AKo"].filter((c) => set.has(c));
+  if (premium.length === 0) return null;
+  const info = blockerCount(heroCards, premium).filter((b) => b.blocked > 0);
+  if (info.length === 0) return null;
+  const parts = info.map((b) => `${b.code} ${b.total}→${b.remaining}`);
+  return `Блокеры: твои карты режут его сильные комбо - ${parts.join(", ")} (чем больше премиумов режешь, тем реже он реально силён - плюс к фолд-эквити).`;
+}
 
 // Факты-v2, фазы 1-2: эквити руки Hero против ЧАРТОВОГО диапазона соперника (фаза 1)
 // и готовое ФОЛД-ЭКВИТИ рестила по чартам (фаза 2). Там, где диапазон соперника
@@ -56,6 +70,8 @@ export function renderChartEquityFacts(
         lines.push(
           `Эквити ${cvp.code} против пуш-диапазона опен-олл-ина ${posName} ${stack} (${eq.combosLive} комбо): ≈${eq.equityPct}%${vs}. Это эквити ${how} при вскрытии против ВСЕГО его пуша (велью + блокеры + мусор на тильте), а не против «топа» диапазона.`,
         );
+        const bl = renderBlockerLine(snapshot.heroCards, pushRangeCodes(cvp.pusherBand, pushPos));
+        if (bl) lines.push(bl);
       }
     }
   }
@@ -77,6 +93,8 @@ export function renderChartEquityFacts(
         `Эквити ${rs.code} ПРИ КОЛЛЕ твоего рестила (${stack}, опенер с ${opener} позиции продолжает по чарту, ${eq.combosLive} комбо): ≈${eq.equityPct}%. Это только половина оценки пуша — вторая половина ниже (как часто он сбрасывает); слабое эквити при колле само по себе рестил не хоронит, коллируют узко.`,
       );
     }
+    const bl = renderBlockerLine(snapshot.heroCards, continueCodes);
+    if (bl) lines.push(bl);
 
     // Половина «фолд-эквити» (фаза 2): доля ОПЕН-диапазона опенера (по его точной
     // позиции, RFI-чарт), которая сбрасывается на твой олл-ин. Продолжение = его

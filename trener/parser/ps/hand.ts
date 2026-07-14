@@ -41,6 +41,9 @@ function parseSeats(handText: string): { seatNum: number; name: string; stack: n
 // Разбор «хвоста» строки действия (после "<ник>: "). Возвращает действие снимка
 // либо null (для "shows"/"collected"/служебных строк — они тут не нужны).
 function parseVerb(rest: string): Pick<TableAction, "action" | "amount"> | null {
+  // Триммим хвост: в PS-раздачах строка «<ник>: folds » несёт trailing-пробел (регресс 2026-07-14:
+  // «folds » не совпадал с «folds» → FOLD терялся, liveAt считал сброшенных живыми — «на флоп 9»).
+  rest = rest.trim();
   if (rest === "folds") return { action: "FOLD" };
   if (rest === "checks") return { action: "CHECK" };
 

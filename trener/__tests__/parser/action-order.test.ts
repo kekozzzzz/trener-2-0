@@ -109,7 +109,7 @@ describe("renderActionOrder — фаза A: порядок хода относи
     expect(out).not.toContain("На тёрне до тебя: BB чек; за тобой ещё не действовали: BTN");
   });
 
-  it("префлоп-олл-ин без флопа → пусто", () => {
+  it("префлоп-олл-ин без флопа, Hero закрывает (за ним никого) → пусто", () => {
     const s = snap({
       seats: [
         { label: "Hero", position: "BB", positionName: "BB", startingStack: 200 },
@@ -121,5 +121,38 @@ describe("renderActionOrder — фаза A: порядок хода относи
       ],
     });
     expect(renderActionOrder(s)).toBe("");
+  });
+
+  // Свип: сквиз-риск — кто ещё сидит за спиной Hero на префлопе (мог зайти/сквизнуть).
+  // Блайнды-форсы НЕ должны попадать в порядок хода (иначе SB/BB ложно уедут в начало).
+  it("префлоп сквиз-риск: Hero открывает с MP, за ним три живых", () => {
+    const s = snap({
+      seats: [
+        { label: "Player 1", position: "SB", positionName: "SB", startingStack: 2000 },
+        { label: "Player 2", position: "BB", positionName: "BB", startingStack: 2000 },
+        { label: "Hero", position: "EARLY", positionName: "MP", startingStack: 2000 },
+        { label: "Player 5", position: "CO", positionName: "CO", startingStack: 2000 },
+        { label: "Player 6", position: "BTN", positionName: "BTN", startingStack: 2000 },
+      ],
+      board: ["Ah", "Kd", "Qs"],
+      actions: [
+        { street: "PREFLOP", actor: "Player 1", action: "POST_SB", amount: 10 },
+        { street: "PREFLOP", actor: "Player 2", action: "POST_BB", amount: 20 },
+        { street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 50 },
+        { street: "PREFLOP", actor: "Player 5", action: "FOLD" },
+        { street: "PREFLOP", actor: "Player 6", action: "CALL", amount: 50 },
+        { street: "PREFLOP", actor: "Player 1", action: "FOLD" },
+        { street: "PREFLOP", actor: "Player 2", action: "CALL", amount: 30 },
+        { street: "FLOP", actor: "Player 2", action: "CHECK" },
+        { street: "FLOP", actor: "Hero", action: "BET", amount: 60 },
+        { street: "FLOP", actor: "Player 6", action: "FOLD" },
+        { street: "FLOP", actor: "Player 2", action: "FOLD" },
+      ],
+    });
+    const out = renderActionOrder(s);
+    // Hero первый добровольный (блайнды-форсы отфильтрованы), за ним CO, BTN, SB, BB.
+    expect(out).toContain("На префлопе ты действуешь первым; за тобой оставались CO, BTN, SB, BB - 4 могли войти или сквизнуть.");
+    // Блайнды-форсы не увели SB/BB в начало «до тебя».
+    expect(out).not.toContain("до тебя: SB");
   });
 });

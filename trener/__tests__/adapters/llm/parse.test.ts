@@ -70,4 +70,61 @@ describe("cleanCoachText", () => {
     expect(() => cleanCoachText("Сサイズ-з точки зрения")).toThrow();
     expect(() => cleanCoachText("обычный русский текст с BTN и 3-бетом")).not.toThrow();
   });
+
+  it("латиница-галлюцинация в русском тексте — брак ответа (инцидент «HoFlush» 2026-07-12)", () => {
+    // Мусорные склейки и англицизмы, которых промпт-запрет не удержал, — бракуются (ретрай очереди).
+    expect(() => cleanCoachText("HoFlush на тёрне есть далеко не у каждого")).toThrow();
+    expect(() => cleanCoachText("у тебя weaker pair, чем у него")).toThrow();
+    expect(() => cleanCoachText("это чистый showdown value")).toThrow();
+  });
+
+  it("частая латиница «Hero»/«vs»/«Nash» — ЧИСТИТСЯ, а не бракуется (регресс 2026-07-14)", () => {
+    // Раньше метка «Hero» роняла весь разбор (теряли до 16%). Теперь чистим падежные формы.
+    expect(cleanCoachText("метка Hero просочилась в текст")).toContain("метка ты");
+    expect(cleanCoachText("это выгодно для Hero на этой доске")).toContain("для тебя");
+    expect(cleanCoachText("у Hero тут сильная рука")).toContain("у тебя");
+    expect(cleanCoachText("твоё AK vs его диапазон")).toContain("против");
+    expect(() => cleanCoachText("метка Hero просочилась")).not.toThrow();
+  });
+
+  it("выдуманная карта со значком масти — брак (регресс 2026-07-14: «9♥ 9♥»)", () => {
+    const allowed = new Set(["9s", "8d", "5c", "As", "Qs"]); // борд+рука снимка (ранг upper, масть lower)
+    // K♥ нет в снимке — выдумана.
+    expect(() => cleanCoachText("на борде K♥ добирает флеш", "ru", allowed)).toThrow(/вне снимка/);
+    // Реальные карты снимка проходят.
+    expect(() => cleanCoachText("у тебя A♠ Q♠ на 9♠ 8♦ 5♣", "ru", allowed)).not.toThrow();
+    // Гипотетика рангом без масти — не трогаем.
+    expect(() => cleanCoachText("любая семёрка даёт тебе трипс", "ru", allowed)).not.toThrow();
+  });
+
+  it("сырые токены-действия капсом бракуются (инцидент «_RAISE_» 2026-07-13)", () => {
+    // Служебные действия из снимка (RAISE/CHECK/BET) не аббревиатуры — не должны утечь игроку.
+    expect(() => cleanCoachText("перед тобой RAISE UTG, который не ответил")).toThrow();
+    expect(() => cleanCoachText("соперник сделал CHECK на флопе")).toThrow();
+    // А настоящие внутренние аббревиатуры (если проскочат) — пропускаем, они безобидны.
+    expect(() => cleanCoachText("SPR около 2, по ICM тут фолд")).not.toThrow();
+  });
+
+  it("«без риска» чинится на «без лишнего риска» (регресс 2026-07-13)", () => {
+    expect(cleanCoachText("это чистая прибыль без риска")).toBe("это чистая прибыль без лишнего риска");
+  });
+
+  it("латинский бэкстоп НЕ трогает английский ответ (locale en) — иначе падал бы весь EN-тренер", () => {
+    expect(() => cleanCoachText("You open too wide from UTG and get 3-bet", "en")).not.toThrow();
+    expect(() => cleanCoachText("your two pair loses to his set on the river", "en")).not.toThrow();
+  });
+
+  it("легитимная латиница в русском проходит: коды позиций, ранги, нотация, карты, стеки", () => {
+    expect(() => cleanCoachText("опен с CO, ты на BTN против SB и BB")).not.toThrow();
+    expect(() => cleanCoachText("у тебя A6s против его KQo, любая Kx бьёт")).not.toThrow();
+    expect(() => cleanCoachText("ранги A K Q J T, нотация T9s и 76o")).not.toThrow();
+    expect(() => cleanCoachText("стек 15.3 BB (383,304), банк 7.7 BB")).not.toThrow();
+    // Стек в блайндах слитно и коды карт из снимка — частые формы, не должны рубить ответ.
+    expect(() => cleanCoachText("пуш на 20bb, осталось 15sb")).not.toThrow();
+    expect(() => cleanCoachText("борд Kd 7c 4s, у тебя 6d")).not.toThrow();
+    // Одиночная латинская буква (C-бет) не должна ронять весь разбор.
+    expect(() => cleanCoachText("твой C-бет на флопе")).not.toThrow();
+    // Замена словаря создаёт латиницу «BTN» — она должна пройти, а не быть забракованной.
+    expect(cleanCoachText("ты на кнопке")).toBe("ты на BTN");
+  });
 });

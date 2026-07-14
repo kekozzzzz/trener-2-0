@@ -223,6 +223,43 @@ describe("decisionMarks — MISSED_VALUE", () => {
     );
     expect(decisionMarks(s, 250).find((m) => m.channel === "MISSED_VALUE")).toBeUndefined();
   });
+
+  // Инцидент 2026-07-12: недобор реален, только если рука Hero была СТАРШЕ вскрытой руки на
+  // прочеканной улице (судим по моменту, не по нетто-итогу). Скелет — как в выигрышном кейсе выше.
+  function checkedTwoPairSnap(): TableSnapshot {
+    const s = baseSnap();
+    s.heroCards = ["Kh", "Jd"]; // две пары K+J на ривере
+    s.board = ["Ad", "Kc", "2h", "7s", "Jh"];
+    s.actions.push(
+      { street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 220 },
+      { street: "PREFLOP", actor: "Player 2", action: "FOLD" },
+      { street: "PREFLOP", actor: "Player 1", action: "CALL", amount: 120 },
+      { street: "FLOP", actor: "Player 1", action: "BET", amount: 600 },
+      { street: "FLOP", actor: "Hero", action: "CALL", amount: 600 },
+      { street: "TURN", actor: "Player 1", action: "CHECK" },
+      { street: "TURN", actor: "Hero", action: "CHECK" },
+      { street: "RIVER", actor: "Player 1", action: "CHECK" },
+      { street: "RIVER", actor: "Hero", action: "CHECK" },
+    );
+    return s;
+  }
+
+  it("соперник вскрыл СТАРШУЮ руку (Hero был позади) → НЕ MISSED_VALUE", () => {
+    const s = checkedTwoPairSnap();
+    s.seats[0].shownCards = ["7c", "7d"]; // трипс семёрок — старше двух пар Hero
+    expect(decisionMarks(s, -1240).find((m) => m.channel === "MISSED_VALUE")).toBeUndefined();
+  });
+
+  it("соперник вскрыл СЛАБЕЕ (Hero был впереди) → MISSED_VALUE остаётся, недобор реален", () => {
+    const s = checkedTwoPairSnap();
+    s.seats[0].shownCards = ["3c", "3d"]; // пара троек — слабее двух пар Hero
+    expect(decisionMarks(s, 1240).find((m) => m.channel === "MISSED_VALUE")).toBeDefined();
+  });
+
+  it("без вскрытия и без нетто-выигрыша (chipResult<0) → НЕ MISSED_VALUE", () => {
+    const s = checkedTwoPairSnap(); // Player 1 карты не вскрыл
+    expect(decisionMarks(s, -1240).find((m) => m.channel === "MISSED_VALUE")).toBeUndefined();
+  });
 });
 
 describe("assignImportanceLevels — квоты решений в потолке", () => {

@@ -55,4 +55,69 @@ describe("renderShowdownFacts — фаза 4: вскрытые карты с к�
     });
     expect(renderShowdownFacts(s)).toBe("");
   });
+
+  // Инцидент 2026-07-12: детерминированный итог вскрытия против руки Hero (кто старше).
+  // Борд QQ432, Hero 66 (две пары дам+шестёрок) против вскрытых JJ (две пары дам+валетов).
+  it("итог вскрытия: рука Hero проиграла старшей руке соперника (66 против JJ на QQ432)", () => {
+    const s = snap({
+      seats: [
+        { label: "Hero", position: "EARLY", startingStack: 6000 },
+        { label: "Player 4", position: "BB", startingStack: 6000, shownCards: ["Jc", "Jd"] },
+      ],
+      heroCards: ["6c", "6d"],
+      board: ["Qh", "Qs", "4d", "3c", "2h"],
+    });
+    const out = renderShowdownFacts(s);
+    expect(out).toContain("Player 4 вскрыл Jc Jd");
+    expect(out).toContain("две пары (дам и валетов)");
+    expect(out).toContain("твоя рука (две пары (дам и шестёрок)) проиграла");
+  });
+
+  it("итог вскрытия: рука Hero старше (наоборот — JJ против 66)", () => {
+    const s = snap({
+      seats: [
+        { label: "Hero", position: "EARLY", startingStack: 6000 },
+        { label: "Player 4", position: "BB", startingStack: 6000, shownCards: ["6c", "6d"] },
+      ],
+      heroCards: ["Jc", "Jd"],
+      board: ["Qh", "Qs", "4d", "3c", "2h"],
+    });
+    expect(renderShowdownFacts(s)).toContain("старше этой - против неё ты выиграл вскрытие");
+  });
+
+  // Блокер из ревью: Hero сфолдил до вскрытия, соперники вскрылись. Руки Hero на шоудауне
+  // не было — строку «твоя рука выиграла/проиграла» давать НЕЛЬЗЯ (ложный факт), но саму
+  // комбинацию вскрывшегося показываем.
+  it("Hero сфолдил до вскрытия — комбинация соперника есть, ложного сравнения с Hero нет", () => {
+    const s = snap({
+      seats: [
+        { label: "Hero", position: "EARLY", startingStack: 6000 },
+        { label: "Player 4", position: "BB", startingStack: 6000, shownCards: ["Jc", "Jd"] },
+      ],
+      heroCards: ["6c", "6d"],
+      board: ["Qh", "Qs", "4d", "3c", "2h"],
+      actions: [{ street: "TURN", actor: "Hero", action: "FOLD" }],
+    });
+    const out = renderShowdownFacts(s);
+    expect(out).toContain("Player 4 вскрыл Jc Jd");
+    expect(out).toContain("две пары (дам и валетов)");
+    expect(out).not.toContain("твоя рука");
+  });
+});
+
+describe("renderShowdownFacts — кто забрал банк (collected)", () => {
+  it("победитель из collected — соперник забрал банк, в BB", () => {
+    const s = snap({
+      seats: [
+        { label: "Hero", position: "EARLY", positionName: "UTG", startingStack: 6000, collected: 0 },
+        { label: "Player 4", position: "BB", positionName: "BB", startingStack: 6000, collected: 3000 },
+      ],
+      heroCards: ["6c", "6d"],
+      board: ["Qh", "Qs", "4d", "3c", "2h"],
+      actions: [{ street: "PREFLOP", actor: "Player 4", action: "POST_BB", amount: 100 }],
+    });
+    const out = renderShowdownFacts(s);
+    expect(out).toContain("Банк по итогам забрал");
+    expect(out).toContain("BB - 30 BB");
+  });
 });

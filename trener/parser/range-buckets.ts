@@ -66,3 +66,72 @@ export function rangeBuckets(heroCards: string[], board: string[], codes: string
   if (total === 0) return null;
   return { total, beats, losesTo, ties, worsePays, worseAir };
 }
+
+// Категории бьющих рук по числу из cardSetValue[0] (для разбивки losesTo). Игроку тренер переводит
+// простыми словами; здесь — внутренний факт для модели, чтобы понимала СТРУКТУРУ угрозы.
+const CAT_RU: Record<number, string> = {
+  8: "каре",
+  7: "фулл-хаусы",
+  6: "флеши",
+  5: "стриты",
+  4: "тройки (сеты/трипсы)",
+  3: "две пары",
+  2: "старшие пары",
+};
+
+export type DeckOdds = {
+  total: number; // всех живых 2-карточных комбо соперника из колоды
+  beats: number; // Hero бьёт
+  losesTo: number; // бьют Hero
+  ties: number;
+  losesByCategory: { category: string; count: number }[]; // разбивка losesTo по силе бьющей руки
+  heroBeatsValue: boolean; // Hero бьёт хоть одну «не-воздух» руку соперника (пара+) — не чистый блеф-кэтчер
+};
+
+// Полнодечная перепись (свип + запрос Артёма): сколько ВООБЩЕ физически возможных рук соперника
+// бьют готовую руку Hero на этом борде, с разбивкой по силе. Это НЕ диапазон конкретного соперника
+// (он вошёл бы не со всем) и НЕ вскрытые карты — честный СТРУКТУРНЫЙ якорь «сколько способов тебя
+// обойти существует». Обобщает rangeBuckets с отмеченной сетки на всю живую колоду. Правило 1:
+// сравнение — тот же эвалюатор. ~C(47,2)≈1080 сравнений на улицу — дёшево (как drawEquity).
+export function fullDeckOdds(heroCards: string[], board: string[]): DeckOdds | null {
+  if (heroCards.length !== 2 || board.length < 3 || board.length > 5) return null;
+  const dead = new Set([...heroCards, ...board].map(norm));
+  if (dead.size !== heroCards.length + board.length) return null;
+
+  const RANKS = "23456789TJQKA";
+  const deck: string[] = [];
+  for (const r of RANKS) for (const s of SUITS) if (!dead.has(norm(r + s))) deck.push(r + s);
+
+  const heroVal = cardSetValue([...heroCards, ...board]);
+  let total = 0,
+    beats = 0,
+    losesTo = 0,
+    ties = 0,
+    heroBeatsValue = false;
+  const byCat = new Map<number, number>();
+
+  for (let i = 0; i < deck.length; i++) {
+    for (let j = i + 1; j < deck.length; j++) {
+      total++;
+      const oppVal = cardSetValue([deck[i], deck[j], ...board]);
+      const cmp = compareValues(heroVal, oppVal);
+      if (cmp > 0) {
+        beats++;
+        if (oppVal[0] >= 2) heroBeatsValue = true; // бьёт руку с парой+ = не чистый блеф-кэтчер
+      } else if (cmp < 0) {
+        losesTo++;
+        byCat.set(oppVal[0], (byCat.get(oppVal[0]) ?? 0) + 1);
+      } else {
+        ties++;
+      }
+    }
+  }
+  if (total === 0) return null;
+
+  const losesByCategory = [...byCat.entries()]
+    .filter(([cat]) => CAT_RU[cat])
+    .sort((a, b) => b[0] - a[0]) // от сильных к слабым
+    .map(([cat, count]) => ({ category: CAT_RU[cat], count }));
+
+  return { total, beats, losesTo, ties, losesByCategory, heroBeatsValue };
+}

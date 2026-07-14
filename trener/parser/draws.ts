@@ -1,4 +1,4 @@
-import { handCategory } from "./made-hand";
+import { handCategory, heroMadeHand, cardSetValue } from "./made-hand";
 
 // Дро Hero: ауты (чистые/грязные), бэкдоры и эквити — всё ТОЧНЫМ перебором колоды
 // (правило 1: числа считает парсер). Грязные ауты вычитаем ДЕТЕРМИНИРОВАННО по борду,
@@ -209,7 +209,32 @@ export function readHeroDraw(hero: string[], board: string[]): DrawRead | null {
   }
 
   const kinds: string[] = [];
-  if (flushSuit) kinds.push("флеш-дро");
+  if (flushSuit) {
+    // Нат-статус флеш-дро (свип): доезд МЛАДШЕГО флеша может проиграть старшему. Считаем по
+    // старшей карте Hero в масти дро, сколько живых старших карт масти осталось у соперников.
+    const suitSeen = new Set(
+      [...hero, ...board].filter((c) => c[1].toLowerCase() === flushSuit).map(parseRank),
+    );
+    const heroTopInSuit = Math.max(
+      ...hero.filter((c) => c[1].toLowerCase() === flushSuit).map((c) => parseRank(c) ?? 0),
+    );
+    let higherLive = 0;
+    for (let r = 14; r > heroTopInSuit; r--) if (!suitSeen.has(r)) higherLive++;
+    // Склонение «живая карта / живые карты / живых карт» по числу (иначе «1 живых карт масти»).
+    const m10 = higherLive % 10,
+      m100 = higherLive % 100;
+    const cardWord =
+      m10 === 1 && m100 !== 11
+        ? "живая карта"
+        : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)
+          ? "живые карты"
+          : "живых карт";
+    kinds.push(
+      higherLive === 0
+        ? "флеш-дро к НАТСАМ"
+        : `флеш-дро НЕ к натсам (выше твоей старшей ещё ${higherLive} ${cardWord} масти - доедешь, но можешь проиграть старшему флешу)`,
+    );
+  }
   if (straightOuts >= 8) kinds.push("двустороннее стрит-дро (ОЭСД)");
   else if (straightOuts > 0) kinds.push("гатшот");
 
@@ -224,6 +249,56 @@ export function readHeroDraw(hero: string[], board: string[]): DrawRead | null {
     taintReason: reasons.length > 0 ? reasons.join(", ") : null,
     backdoorOnly: false,
   };
+}
+
+// Оверкарты к паре Hero (свип «оверкарты на глаз»): сколько рангов СТАРШЕ пары Hero, которых
+// нет ни на борде, ни в руке Hero, могут прийти на следующей улице и дать СОПЕРНИКУ пару выше.
+// Свои карты (кикеры выше пары) исключаем — их приход пейрит кикер во ВТОРУЮ пару Hero, это его
+// улучшение, а не угроза (KQ на Q72: K-тёрн — друг, не враг). Только своя пара (не пара борда).
+export function overcardsToPair(hero: string[], board: string[]): { count: number } | null {
+  if (hero.length < 2 || board.length < 3 || board.length > 4) return null;
+  const mh = heroMadeHand(hero, board);
+  if (!mh || mh.category !== "PAIR" || mh.strength === "AIR") return null; // только своя пара
+  const pairRank = cardSetValue([...hero, ...board])[1];
+  const boardRanks = new Set(ranksOf(board));
+  const heroRanks = new Set(ranksOf(hero)); // свои карты — не угроза (дают Hero две пары)
+  let count = 0;
+  for (let r = 14; r > pairRank; r--) {
+    if (boardRanks.has(r) || heroRanks.has(r)) continue;
+    count++;
+  }
+  if (count === 0) return null;
+  return { count };
+}
+
+// Scare-карты следующей улицы (свип): сколько карт колоды СОЗДАЮТ новую угрозу против готовой
+// руки Hero — поднимают масть с 2 до 3 (новая флеш-угроза), впервые дают стрит-борд или впервые
+// спаривают борд (две пары/трипс на доске). Считаем УЖЕ существующие угрозы (борд монотонный,
+// уже спарен) НЕ считаем — их несёт текстура/опасность борда, а тут именно «что ДОБАВИТ карта».
+// Оверкарты сюда НЕ входят — для них отдельный факт overcardsToPair (иначе двойной учёт).
+// Гейт: рука Hero пара..сет/трипс (натсам scare не страшен, воздуху — не про силу).
+export function scareCards(hero: string[], board: string[]): { count: number; total: number } | null {
+  if (hero.length < 2 || board.length < 3 || board.length > 4) return null;
+  const heroCat = handCategory([...hero, ...board]);
+  if (heroCat < 2 || heroCat >= 5) return null; // только пара..сет/трипс
+  const boardStraightNow = hasStraightRanks(ranksOf(board));
+  const boardCatNow = handCategory(board);
+  const deck = unseenCards([...hero, ...board]);
+  let count = 0;
+  for (const c of deck) {
+    const nb = [...board, c];
+    const cSuit = c[1].toLowerCase();
+    const cSuitOnBoard = board.filter((bc) => bc[1].toLowerCase() === cSuit).length;
+    const heroSuitCount = hero.filter((hc) => hc[1].toLowerCase() === cSuit).length;
+    // Карта поднимает масть с 2 до 3 = флеш-угроза. НО если сам Hero держит 2 карты этой масти, эта
+    // же карта даёт флеш ЕМУ (это его аут, не угроза) — не считаем скэром (ревью согласованности).
+    const flushScare = cSuitOnBoard === 2 && heroSuitCount < 2;
+    const straightScare = !boardStraightNow && hasStraightRanks(ranksOf(nb)); // карта ВПЕРВЫЕ даёт стрит-борд
+    const pairScare = boardCatNow < 3 && handCategory(nb) >= 3; // карта ВПЕРВЫЕ делает борд две пары+
+    if (flushScare || straightScare || pairScare) count++;
+  }
+  if (count === 0) return null;
+  return { count, total: deck.length };
 }
 
 // Подпись «до чего» улучшает аут (родительный падеж, по категории handValue).
@@ -281,7 +356,7 @@ export function improvementOuts(hero: string[], board: string[]): ImprovementOut
     }
     if (threeOfASuit(finalBoard) && newHeroCat !== 6 && newHeroCat !== 9) {
       dirty = true;
-      reasons.add("на борде 3+ одной масти (возможен флеш у соперника)");
+      reasons.add("часть аутов достраивает 3+ одной масти на доске (возможен флеш у соперника)");
     }
 
     const g = groups.get(newHeroCat) ?? { count: 0, dirty: 0 };
@@ -298,4 +373,45 @@ export function improvementOuts(hero: string[], board: string[]): ImprovementOut
     .map(([cat, g]) => ({ toCategory: CATEGORY_GEN[cat] ?? "лучшей руки", count: g.count, dirty: g.dirty }));
 
   return { outsRaw: raw, outsClean: clean, byTarget, taintReasons: [...reasons] };
+}
+
+export type CardImpact = { kind: "boost" | "scare" | "busted" | "blank"; detail: string };
+
+// Ярлык фактически ВЫПАВШЕЙ карты тёрна/ривера относительно руки Hero (свип, кандидат 4): усилила
+// его (категория руки выросла и это не «играет борд»), скэр (создала угрозу сопернику - та же
+// логика, что scareCards, но для конкретной карты), «дро сгорело» (на ривере было дро, не доехало)
+// или блэнк. Раньше модель сама сверяла флоповые множества (improvementOuts/scareCards) с реальной
+// картой и срывалась - называла опасную карту блэнком или наоборот. boardBefore = борд ДО карты
+// (флоп для тёрн-карты, тёрн для ривер-карты). Правило 1: сверку считает парсер.
+export function fallenCardImpact(hero: string[], boardBefore: string[], newCard: string): CardImpact | null {
+  if (hero.length < 2 || boardBefore.length < 3 || boardBefore.length > 4) return null;
+  const after = [...boardBefore, newCard];
+  const catB = handCategory([...hero, ...boardBefore]);
+  const catA = handCategory([...hero, ...after]);
+  // усилила Hero — категория руки выросла И рука выше голого борда (иначе усиление играет борд).
+  if (catA > catB && catA > handCategory(after))
+    return { kind: "boost", detail: `подняла твою руку до ${CATEGORY_GEN[catA] ?? "лучшей руки"}` };
+  // скэр против Hero — логика scareCards, но для этой конкретной карты.
+  const boardStraightBefore = hasStraightRanks(ranksOf(boardBefore));
+  const boardCatBefore = handCategory(boardBefore);
+  const cSuitOnBoard = boardBefore.filter((bc) => bc[1].toLowerCase() === newCard[1].toLowerCase()).length;
+  const flushScare = cSuitOnBoard === 2; // масть 2→3 на борде
+  const straightScare = !boardStraightBefore && hasStraightRanks(ranksOf(after));
+  const pairScare = boardCatBefore < 3 && handCategory(after) >= 3; // впервые спарила борд
+  if (flushScare || straightScare || pairScare) {
+    const parts: string[] = [];
+    if (flushScare) parts.push("третья карта одной масти - флеш-угроза");
+    if (straightScare) parts.push("замкнула стрит-борд");
+    if (pairScare) parts.push("спарила борд - возможен фулл");
+    return { kind: "scare", detail: parts.join("; ") };
+  }
+  // дро сгорело — только на РИВЕРЕ (boardBefore = тёрн), И у Hero было ГОЛОЕ дро (на тёрне пары+ не
+  // было, catB≤1). Иначе комбо-рука (топ-пара + флеш-дро → ривер-блэнк) ложно звалась «блеф-кэтчер»,
+  // хотя готовая рука осталась (ревью доводок, HIGH). catA<5 = не собрал стрит/флеш.
+  if (boardBefore.length === 4 && catB <= 1) {
+    const drawBefore = readHeroDraw(hero, boardBefore);
+    if (drawBefore && catA < 5 && catA <= catB)
+      return { kind: "busted", detail: "твоё голое дро не доехало - шоудаун-силы нет, только блеф-кэтчер" };
+  }
+  return { kind: "blank", detail: "тебя не усилила и новой угрозы на борд не принесла (блэнк)" };
 }
