@@ -16,8 +16,25 @@ import type { Locale } from "@/i18n/config";
 
 // Claude/DeepSeek иногда оборачивают JSON в markdown-код-блок несмотря на инструкцию — снимаем его.
 export function extractJson(text: string): string {
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-  return (fenced ? fenced[1] : text).trim();
+  let s = text.trim();
+  // Снять парную markdown-обёртку ```json … ``` (модель иногда оборачивает ответ).
+  const fenced = s.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  if (fenced) {
+    s = fenced[1].trim();
+  } else {
+    // Незакрытый/оборванный фенс (видели у Gemini: ```json { … без закрывающих ```) —
+    // регулярка выше не матчится, поэтому срезаем ведущий и любой хвостовой ``` вручную.
+    s = s.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim();
+  }
+  // Фолбэк: вычленить сам объект от первой { до последней } — срезает преамбулы
+  // («Вот разбор:») и хвосты, которыми модель изредка обрамляет JSON. Чистый объект
+  // (начинается с { и кончается }) не трогаем.
+  const first = s.indexOf("{");
+  const last = s.lastIndexOf("}");
+  if (first >= 0 && last > first && (first > 0 || last < s.length - 1)) {
+    s = s.slice(first, last + 1);
+  }
+  return s.trim();
 }
 
 // Страховка словаря кодом (COACH_FRAMEWORK «## Язык»): типовые срывы, которые промпт
@@ -295,16 +312,25 @@ export function validateHandAnalysis(
   };
 }
 
-export function validateVerdict(result: Partial<VerdictResult>, locale: Locale = "ru"): VerdictResult {
+// allowedCards — набор карт снимка (борд+рука+вскрытия): вердикт/вопрос/чат тоже пересказывают
+// борд, и модель может переврать масть (Gemini #8: «K♠» при K♥ на борде). Раньше карт-валидатор
+// стоял только на разборе (validateHandAnalysis) — дыра во всех остальных ролях. Адаптер передаёт
+// allowedCardSet(request.tableSnapshot).
+export function validateVerdict(
+  result: Partial<VerdictResult>,
+  locale: Locale = "ru",
+  allowedCards?: Set<string>,
+): VerdictResult {
   if (typeof result.verdict !== "string") {
     throw new Error("LLM вернул вердикт без поля verdict");
   }
-  return { verdict: cleanCoachText(result.verdict, locale) };
+  return { verdict: cleanCoachText(result.verdict, locale, allowedCards) };
 }
 
 export function validateNextQuestion(
   result: Partial<NextQuestionResult>,
   locale: Locale = "ru",
+  allowedCards?: Set<string>,
 ): NextQuestionResult {
   const complete = result.complete === true;
   // При complete=true вопрос не нужен (диалог завершён) — поле может отсутствовать.
@@ -313,17 +339,21 @@ export function validateNextQuestion(
   }
   return {
     complete,
-    question: typeof result.question === "string" ? cleanCoachText(result.question, locale) : "",
+    question: typeof result.question === "string" ? cleanCoachText(result.question, locale, allowedCards) : "",
     answerMode: parseAnswerMode(result.answerMode),
     tableActionIndex: parseTableActionIndex(result.tableActionIndex),
   };
 }
 
-export function validateChatReply(result: Partial<ChatReplyResult>, locale: Locale = "ru"): ChatReplyResult {
+export function validateChatReply(
+  result: Partial<ChatReplyResult>,
+  locale: Locale = "ru",
+  allowedCards?: Set<string>,
+): ChatReplyResult {
   if (typeof result.reply !== "string") {
     throw new Error("LLM вернул ответ без поля reply");
   }
-  return { reply: cleanCoachText(result.reply, locale) };
+  return { reply: cleanCoachText(result.reply, locale, allowedCards) };
 }
 
 export function validateTournamentSummary(

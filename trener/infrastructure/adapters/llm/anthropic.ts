@@ -20,6 +20,7 @@ import { buildPlayerCharacteristicPrompt, buildPlayerCharacteristicSystemPrompt 
 import { buildCoachNotesPrompt, buildCoachNotesSystemPrompt } from "@/config/prompts/coach-notes";
 import { recordLlmUsage } from "@/features/usage/llm-usage";
 import { validateCoachNotes,
+  allowedCardSet,
   extractJson,
   validateChatReply,
   validateHandAnalysis,
@@ -169,7 +170,7 @@ export const anthropicLlmAdapter: LlmPort = {
       step: "DIALOGUE_QUESTION",
       playerId: meta?.playerId,
     });
-    return validateNextQuestion(parsed as Partial<NextQuestionResult>, request.locale);
+    return validateNextQuestion(parsed as Partial<NextQuestionResult>, request.locale, allowedCardSet(request.tableSnapshot));
   },
 
   async generateVerdict(request: VerdictRequest, meta?: LlmCallMeta): Promise<VerdictResult> {
@@ -177,7 +178,7 @@ export const anthropicLlmAdapter: LlmPort = {
       step: "VERDICT",
       playerId: meta?.playerId,
     });
-    return validateVerdict(parsed as Partial<VerdictResult>, request.locale);
+    return validateVerdict(parsed as Partial<VerdictResult>, request.locale, allowedCardSet(request.tableSnapshot));
   },
 
   async generateChatReply(request: ChatReplyRequest, meta?: LlmCallMeta): Promise<ChatReplyResult> {
@@ -185,7 +186,7 @@ export const anthropicLlmAdapter: LlmPort = {
       step: "CHAT_REPLY",
       playerId: meta?.playerId,
     });
-    return validateChatReply(parsed as Partial<ChatReplyResult>, request.locale);
+    return validateChatReply(parsed as Partial<ChatReplyResult>, request.locale, allowedCardSet(request.tableSnapshot));
   },
 
   async generateTournamentSummary(

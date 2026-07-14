@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { cleanCoachText } from "@/infrastructure/adapters/llm/parse";
+import {
+  cleanCoachText,
+  extractJson,
+  allowedCardSet,
+  validateVerdict,
+  validateNextQuestion,
+} from "@/infrastructure/adapters/llm/parse";
 
 // Страховка словаря кодом (правки Артёма 2026-07-05): возвратные формы «сбрасываться»,
 // «в хедз-ап» про раздачу и длинное тире промпт запрещает, но модель всё равно
@@ -126,5 +132,47 @@ describe("cleanCoachText", () => {
     expect(() => cleanCoachText("твой C-бет на флопе")).not.toThrow();
     // Замена словаря создаёт латиницу «BTN» — она должна пройти, а не быть забракованной.
     expect(cleanCoachText("ты на кнопке")).toBe("ты на BTN");
+  });
+});
+
+// Защита 1 (регресс 2026-07-14, инцидент Gemini): extractJson устойчив к обёрткам модели.
+describe("extractJson", () => {
+  it("чистый JSON-объект не трогается", () => {
+    expect(extractJson('{"verdict":"ок"}')).toBe('{"verdict":"ок"}');
+  });
+  it("парная markdown-обёртка ```json … ``` снимается", () => {
+    expect(extractJson('```json\n{"verdict":"ок"}\n```')).toBe('{"verdict":"ок"}');
+  });
+  it("НЕЗАКРЫТЫЙ ```json-фенс (падение Gemini #2) — всё равно вычленяет объект", () => {
+    // Именно это роняло раздачу: модель открыла фенс и не закрыла → старая регулярка не матчилась.
+    expect(extractJson('```json {"verdict":"ок"}')).toBe('{"verdict":"ок"}');
+    expect(() => JSON.parse(extractJson('```json {"verdict":"ок"}'))).not.toThrow();
+  });
+  it("преамбула и хвост вокруг объекта срезаются", () => {
+    expect(extractJson('Вот разбор: {"verdict":"ок"} — готово')).toBe('{"verdict":"ок"}');
+  });
+});
+
+// Защита 2 (регресс 2026-07-14): карт-валидатор теперь и в вердикте/вопросе, не только в разборе.
+describe("карт-валидатор в вердикте и вопросе диалога", () => {
+  const snap = { board: ["Kh", "Jd", "Td"], heroCards: ["Ac", "Ad"] };
+  const allowed = allowedCardSet(snap);
+
+  it("вердикт с выдуманной мастью карты борда (K♠ при K♥) — брак (throw → ретрай очереди)", () => {
+    // Gemini #8: борд K♥ J♦ T♦, а модель в вердикте написала «K♠» (пик на борде нет).
+    expect(() => validateVerdict({ verdict: "у тебя топ-пара на K♠ J♦ T♦" }, "ru", allowed)).toThrow();
+  });
+  it("вердикт с реальными картами снимка — проходит", () => {
+    expect(() => validateVerdict({ verdict: "у тебя топ-пара на K♥ J♦ T♦" }, "ru", allowed)).not.toThrow();
+  });
+  it("вопрос диалога с выдуманной картой — тоже брак", () => {
+    expect(() =>
+      validateNextQuestion({ complete: false, question: "а если бы пришла 9♠?" }, "ru", allowed),
+    ).toThrow();
+  });
+  it("гипотетика рангом без масти («любая девятка») — не трогаем", () => {
+    expect(() =>
+      validateNextQuestion({ complete: false, question: "а если бы пришла любая девятка?" }, "ru", allowed),
+    ).not.toThrow();
   });
 });
