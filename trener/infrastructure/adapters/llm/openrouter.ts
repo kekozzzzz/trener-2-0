@@ -140,11 +140,14 @@ async function callOpenRouter(
   throw new Error(`OpenRouter вернул невалидный JSON после повтора: ${(lastErr as Error)?.message ?? ""}`);
 }
 
-// Гибрид размышления (регресс 2026-07-14): reasoning low режет смысловые галлюцинации в 3-4×, но
-// +50% латентности. Включаем его ТОЛЬКО там, где качество важнее скорости: CRITICAL-разбор и весь
-// сократовский диалог/вердикт (они бывают лишь у CRITICAL-раздач). Обычные note-разборы и прочие
-// роли — по env-дефолту (off), ради скорости. Меняешь порог — правь reasoning ниже, не env глобально.
-const REASONING_LOW: Reasoning = { effort: "low" };
+// Гибрид размышления ОТКАЧЕН 2026-07-14 (инцидент карантина на проде). reasoning low режет
+// смысловые галлюцинации, НО на GLM-5.2 латентность CRITICAL-разбора (тяжёлый промпт фактов-v2 +
+// размышление) вылетала за 90с → RelayTimeoutError → карантин GENERATE_HAND_ANALYSIS. Ждать 90-120с
+// живому игроку недопустимо (скорость — приоритет продукта). Все роли вернулись на env-дефолт (off,
+// ~8-9с). Галлюцинации теперь гасит детерминизация Правила 1 v2: парсер сам считает то, на чём модель
+// раньше ошибалась, — размышление во многом дублирует эту работу. ВЕРНУТЬ гибрид можно, когда в
+// мониторинге моделей (plans/2026-07-14-мониторинг-моделей.md) найдётся БЫСТРАЯ думающая модель:
+// восстановить const REASONING_LOW = { effort: "low" } и передать его 4-м аргументом в нужные роли.
 
 export const openRouterLlmAdapter: LlmPort = {
   async generateHandAnalysis(request: HandAnalysisRequest, meta?: LlmCallMeta): Promise<HandAnalysisResult> {
@@ -152,29 +155,24 @@ export const openRouterLlmAdapter: LlmPort = {
       buildHandAnalysisSystemPrompt(request.locale),
       buildHandAnalysisPrompt(request),
       { step: "HAND_ANALYSIS", playerId: meta?.playerId },
-      request.importanceLevel === "CRITICAL" ? REASONING_LOW : undefined,
     );
     return validateHandAnalysis(parsed as Partial<HandAnalysisResult>, request);
   },
 
   async generateNextQuestion(request: NextQuestionRequest, meta?: LlmCallMeta): Promise<NextQuestionResult> {
-    // Диалог бывает только у CRITICAL-раздач → всегда low.
     const parsed = await callOpenRouter(
       buildDialogueQuestionSystemPrompt(request.locale),
       buildDialogueQuestionPrompt(request),
       { step: "DIALOGUE_QUESTION", playerId: meta?.playerId },
-      REASONING_LOW,
     );
     return validateNextQuestion(parsed as Partial<NextQuestionResult>, request.locale);
   },
 
   async generateVerdict(request: VerdictRequest, meta?: LlmCallMeta): Promise<VerdictResult> {
-    // Вердикт завершает диалог CRITICAL-раздачи → всегда low.
     const parsed = await callOpenRouter(
       buildVerdictSystemPrompt(request.locale),
       buildVerdictPrompt(request),
       { step: "VERDICT", playerId: meta?.playerId },
-      REASONING_LOW,
     );
     return validateVerdict(parsed as Partial<VerdictResult>, request.locale);
   },
