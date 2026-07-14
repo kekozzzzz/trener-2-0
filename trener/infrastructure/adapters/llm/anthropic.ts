@@ -113,6 +113,7 @@ async function callClaude(
   system: string,
   prompt: string,
   ctx: { step: string; playerId?: string },
+  temperature?: number,
 ): Promise<unknown> {
   const client = getClient();
 
@@ -124,6 +125,9 @@ async function callClaude(
   const message = await client.messages.create({
     model: getAnthropicModel(),
     max_tokens: getAnthropicMaxTokens(),
+    // Низкая температура числочувствительным ролям — чтобы модель копировала факты парсера, а не
+    // досэмпливала числа (см. openrouter.ts TEMP_PRECISE/TEMP_DIALOGUE). undefined = дефолт SDK.
+    ...(temperature !== undefined ? { temperature } : {}),
     system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
     messages: [{ role: "user", content: prompt }],
   });
@@ -156,12 +160,16 @@ async function callClaude(
   }
 }
 
+// Температура по ролям (как в openrouter.ts): числочувствительным — низкая, диалогу/чату — повыше.
+const TEMP_PRECISE = 0.3;
+const TEMP_DIALOGUE = 0.6;
+
 export const anthropicLlmAdapter: LlmPort = {
   async generateHandAnalysis(request: HandAnalysisRequest, meta?: LlmCallMeta): Promise<HandAnalysisResult> {
     const parsed = await callClaude(buildHandAnalysisSystemPrompt(request.locale), buildHandAnalysisPrompt(request), {
       step: "HAND_ANALYSIS",
       playerId: meta?.playerId,
-    });
+    }, TEMP_PRECISE);
     return validateHandAnalysis(parsed as Partial<HandAnalysisResult>, request);
   },
 
@@ -169,7 +177,7 @@ export const anthropicLlmAdapter: LlmPort = {
     const parsed = await callClaude(buildDialogueQuestionSystemPrompt(request.locale), buildDialogueQuestionPrompt(request), {
       step: "DIALOGUE_QUESTION",
       playerId: meta?.playerId,
-    });
+    }, TEMP_DIALOGUE);
     return validateNextQuestion(parsed as Partial<NextQuestionResult>, request.locale, allowedCardSet(request.tableSnapshot));
   },
 
@@ -177,7 +185,7 @@ export const anthropicLlmAdapter: LlmPort = {
     const parsed = await callClaude(buildVerdictSystemPrompt(request.locale), buildVerdictPrompt(request), {
       step: "VERDICT",
       playerId: meta?.playerId,
-    });
+    }, TEMP_PRECISE);
     return validateVerdict(parsed as Partial<VerdictResult>, request.locale, allowedCardSet(request.tableSnapshot));
   },
 
@@ -185,7 +193,7 @@ export const anthropicLlmAdapter: LlmPort = {
     const parsed = await callClaude(buildChatReplySystemPrompt(request.locale), buildChatReplyPrompt(request), {
       step: "CHAT_REPLY",
       playerId: meta?.playerId,
-    });
+    }, TEMP_DIALOGUE);
     return validateChatReply(parsed as Partial<ChatReplyResult>, request.locale, allowedCardSet(request.tableSnapshot));
   },
 
@@ -196,7 +204,7 @@ export const anthropicLlmAdapter: LlmPort = {
     const parsed = await callClaude(buildTournamentSummarySystemPrompt(request.locale), buildTournamentSummaryPrompt(request), {
       step: "TOURNAMENT_SUMMARY",
       playerId: meta?.playerId,
-    });
+    }, TEMP_PRECISE);
     return validateTournamentSummary(parsed as Partial<TournamentSummaryResult>, request.locale);
   },
 
@@ -204,7 +212,7 @@ export const anthropicLlmAdapter: LlmPort = {
     const parsed = await callClaude(buildCoachNotesSystemPrompt(request.maxNotes), buildCoachNotesPrompt(request), {
       step: "COACH_NOTES",
       playerId: meta?.playerId,
-    });
+    }, TEMP_PRECISE);
     return validateCoachNotes(parsed as { notes?: unknown });
   },
 
@@ -215,7 +223,7 @@ export const anthropicLlmAdapter: LlmPort = {
     const parsed = await callClaude(buildPlayerCharacteristicSystemPrompt(request.locale), buildPlayerCharacteristicPrompt(request), {
       step: "PLAYER_CHARACTERISTIC",
       playerId: meta?.playerId,
-    });
+    }, TEMP_PRECISE);
     return validatePlayerCharacteristic(parsed as Partial<PlayerCharacteristicResult>, request.locale);
   },
 

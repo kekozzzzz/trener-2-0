@@ -1,12 +1,17 @@
 import { describe, it, expect } from "vitest";
-import type { HandImportance, ParsedHand } from "@/parser/types";
+import type { HandImportance, ParsedHand, TableAction } from "@/parser/types";
 import { selectHandsForCard } from "@/features/card/select-hands";
 
-function makeHand(importanceLevel: HandImportance, chipResult: number): ParsedHand {
+// heroPlayed — по умолчанию false (пустые действия = тривиальная раздача). Для проверки
+// подстраховки от пустой карточки задаём Hero добровольное действие.
+function makeHand(importanceLevel: HandImportance, chipResult: number, heroPlayed = false): ParsedHand {
+  const actions: TableAction[] = heroPlayed
+    ? [{ actor: "Hero", action: "RAISE", street: "PREFLOP" } as TableAction]
+    : [];
   return {
     importanceLevel,
     chipResult,
-    tableSnapshot: { seats: [], heroCards: [], board: [], actions: [], potTotal: 0 },
+    tableSnapshot: { seats: [], heroCards: [], board: [], actions, potTotal: 0 },
   };
 }
 
@@ -15,110 +20,53 @@ function repeat(importanceLevel: HandImportance, chipResults: number[]): ParsedH
 }
 
 describe("selectHandsForCard", () => {
-  it("отличная сессия: все спорные (1 крит + 7 сильных) + средними до нижней планки = 10", () => {
+  it("показывает ТОЛЬКО спорные (1 крит + 7 сильных = 8); средние-мусор не добираются", () => {
     const hands = [
       ...repeat("CRITICAL", [-500]),
-      ...repeat("STRONG", [100, 200, 300, 400, 500, 600, 700]), // 7 спорных побед — берём ВСЕ
-      ...repeat("MEDIUM", [-50, -100, -150, -200, -250, -300]), // добиваем до 10: топ-2 по |chipResult|
+      ...repeat("STRONG", [100, 200, 300, 400, 500, 600, 700]),
+      ...repeat("MEDIUM", [-50, -100, -150, -200, -250, -300]), // сброс мусора — НЕ показываем
     ];
 
     const selected = selectHandsForCard(hands);
 
-    expect(selected).toHaveLength(10);
+    expect(selected).toHaveLength(8);
     expect(selected.filter((h) => h.importanceLevel === "CRITICAL")).toHaveLength(1);
     expect(selected.filter((h) => h.importanceLevel === "STRONG")).toHaveLength(7);
-    expect(selected.filter((h) => h.importanceLevel === "MEDIUM")).toHaveLength(2);
-
-    // сильные больше не режутся — присутствуют все 7
-    expect(selected.filter((h) => h.importanceLevel === "STRONG").map((h) => h.chipResult).sort((a, b) => a - b)).toEqual([
-      100, 200, 300, 400, 500, 600, 700,
-    ]);
-
-    // топ-2 MEDIUM по |chipResult| (добивка до нижней планки)
-    expect(selected.filter((h) => h.importanceLevel === "MEDIUM").map((h) => h.chipResult).sort((a, b) => a - b)).toEqual([
-      -300, -250,
-    ]);
+    expect(selected.filter((h) => h.importanceLevel === "MEDIUM")).toHaveLength(0);
   });
 
-  it("много спорных: масштаб до потолка 20, средние не добавляются", () => {
+  it("много спорных: масштаб до потолка 20", () => {
     const hands = [
-      ...repeat("CRITICAL", [-900, -800, -700, -600, -500]), // 5 критических
-      ...repeat("STRONG", Array.from({ length: 20 }, (_, i) => (i + 1) * 100)), // 20 сильных
+      ...repeat("CRITICAL", [-900, -800, -700, -600, -500]), // 5
+      ...repeat("STRONG", Array.from({ length: 20 }, (_, i) => (i + 1) * 100)), // 20
       ...repeat("MEDIUM", [-10, -20, -30]),
     ];
 
     const selected = selectHandsForCard(hands);
 
-    // 25 спорных → берём 20 (5 крит + топ-15 сильных), средние не нужны
     expect(selected).toHaveLength(20);
     expect(selected.filter((h) => h.importanceLevel === "CRITICAL")).toHaveLength(5);
     expect(selected.filter((h) => h.importanceLevel === "STRONG")).toHaveLength(15);
     expect(selected.filter((h) => h.importanceLevel === "MEDIUM")).toHaveLength(0);
-
-    // топ-15 сильных по chipResult — самые крупные (от 600 до 2000)
-    const minStrong = Math.min(
-      ...selected.filter((h) => h.importanceLevel === "STRONG").map((h) => h.chipResult),
-    );
+    // топ-15 сильных по chipResult (от 600 до 2000)
+    const minStrong = Math.min(...selected.filter((h) => h.importanceLevel === "STRONG").map((h) => h.chipResult));
     expect(minStrong).toBe(600);
   });
 
-  it("спорных между планками (12): размер тянется за ними, средние не добавляются", () => {
-    const hands = [
-      ...repeat("CRITICAL", [-500, -400, -300]), // 3
-      ...repeat("STRONG", [100, 200, 300, 400, 500, 600, 700, 800, 900]), // 9
-      ...repeat("MEDIUM", [-10, -20, -30, -40, -50]),
-    ];
-
-    const selected = selectHandsForCard(hands);
-
-    // 12 спорных в коридоре [10, 20] → ровно 12, средние не нужны
-    expect(selected).toHaveLength(12);
-    expect(selected.filter((h) => h.importanceLevel === "MEDIUM")).toHaveLength(0);
-  });
-
-  it("обычная сессия: 3 критических + 2 сильных + 5 средних = 10", () => {
+  it("маленький турнир: мало спорных = мало раздач (3 крит + 2 сильных = 5, не добиваем до 10)", () => {
     const hands = [
       ...repeat("CRITICAL", [-900, -800, -700]),
       ...repeat("STRONG", [100, 200]),
-      ...repeat("MEDIUM", [-10, -20, -30, -40, -50, -60, -70]), // 7 кандидатов, берём топ-5
-    ];
-
-    const selected = selectHandsForCard(hands);
-
-    expect(selected).toHaveLength(10);
-    expect(selected.filter((h) => h.importanceLevel === "CRITICAL")).toHaveLength(3);
-    expect(selected.filter((h) => h.importanceLevel === "STRONG")).toHaveLength(2);
-    expect(selected.filter((h) => h.importanceLevel === "MEDIUM")).toHaveLength(5);
-  });
-
-  it("провальная сессия: 3 критических + 1 сильная + 6 средних = 10", () => {
-    const hands = [
-      ...repeat("CRITICAL", [-900, -800, -700]),
-      ...repeat("STRONG", [100]),
-      ...repeat("MEDIUM", [-10, -20, -30, -40, -50, -60, -70]), // 7 кандидатов, берём топ-6
-    ];
-
-    const selected = selectHandsForCard(hands);
-
-    expect(selected).toHaveLength(10);
-    expect(selected.filter((h) => h.importanceLevel === "CRITICAL")).toHaveLength(3);
-    expect(selected.filter((h) => h.importanceLevel === "STRONG")).toHaveLength(1);
-    expect(selected.filter((h) => h.importanceLevel === "MEDIUM")).toHaveLength(6);
-  });
-
-  it("раздач меньше 10 — возвращает все", () => {
-    const hands = [
-      ...repeat("CRITICAL", [-500, -400]),
-      ...repeat("STRONG", [100]),
-      ...repeat("MEDIUM", [-10, -20]),
+      ...repeat("MEDIUM", [-10, -20, -30, -40, -50, -60, -70]), // мусор — не показываем
     ];
 
     const selected = selectHandsForCard(hands);
 
     expect(selected).toHaveLength(5);
+    expect(selected.filter((h) => h.importanceLevel === "MEDIUM")).toHaveLength(0);
   });
 
-  it("сильных раздач нет совсем — слоты честно уходят в средние, ничего не подменяется", () => {
+  it("совсем маленький турнир: 1 спорная раздача — показываем ровно её, а не десяток пустышек", () => {
     const hands = [
       ...repeat("CRITICAL", [-500]),
       ...repeat("MEDIUM", Array.from({ length: 15 }, (_, i) => -(i + 1) * 10)),
@@ -126,22 +74,44 @@ describe("selectHandsForCard", () => {
 
     const selected = selectHandsForCard(hands);
 
-    expect(selected).toHaveLength(10);
-    expect(selected.filter((h) => h.importanceLevel === "STRONG")).toHaveLength(0);
-    expect(selected.filter((h) => h.importanceLevel === "CRITICAL")).toHaveLength(1);
-    expect(selected.filter((h) => h.importanceLevel === "MEDIUM")).toHaveLength(9);
+    expect(selected).toHaveLength(1);
+    expect(selected[0].importanceLevel).toBe("CRITICAL");
   });
 
-  it("итоговый порядок — хронологический, по позиции в исходном hands[]", () => {
-    const hands: ParsedHand[] = [
-      makeHand("MEDIUM", -10), // 0
-      makeHand("CRITICAL", -500), // 1
-      makeHand("STRONG", 200), // 2
-      makeHand("MEDIUM", -20), // 3
+  it("подстраховка: спорных нет, но Hero играл руки → до 3 самых весомых сыгранных", () => {
+    const hands = [
+      makeHand("MEDIUM", -30, true), // играл
+      makeHand("MEDIUM", -100, true), // играл, самая весомая
+      makeHand("MEDIUM", -10, false), // сброс мусора — не в счёт
+      makeHand("MEDIUM", -70, true), // играл
+      makeHand("MEDIUM", -5, false), // сброс мусора
     ];
 
     const selected = selectHandsForCard(hands);
 
-    expect(selected).toEqual([hands[0], hands[1], hands[2], hands[3]]);
+    // 3 сыгранные (не сброшенные), в хронологическом порядке
+    expect(selected).toHaveLength(3);
+    expect(selected.map((h) => h.chipResult)).toEqual([-30, -100, -70]);
+  });
+
+  it("турнир без единой сыгранной руки (сплошной фолд) → пустая карточка, честно", () => {
+    const hands = repeat("MEDIUM", [-10, -20, -30]); // все сброшены на префлопе (heroPlayed=false)
+
+    const selected = selectHandsForCard(hands);
+
+    expect(selected).toHaveLength(0);
+  });
+
+  it("итоговый порядок — хронологический, по позиции в исходном hands[]", () => {
+    const hands: ParsedHand[] = [
+      makeHand("MEDIUM", -10), // 0 — не спорная, не показываем
+      makeHand("CRITICAL", -500), // 1
+      makeHand("STRONG", 200), // 2
+      makeHand("MEDIUM", -20), // 3 — не показываем
+    ];
+
+    const selected = selectHandsForCard(hands);
+
+    expect(selected).toEqual([hands[1], hands[2]]);
   });
 });

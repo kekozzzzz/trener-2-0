@@ -107,20 +107,21 @@ describe("PARSE_TOURNAMENT — основной путь", () => {
     expect(hands).toHaveLength(12);
   });
 
-  it("отмечает selectHandsForCard-результат (10 из 12) и ставит по задаче на каждую", async () => {
+  it("отмечает selectHandsForCard-результат (8 из 12: только спорные) и ставит по задаче на каждую", async () => {
     const tournamentId = await createTournament();
 
     await parseTournamentStep(makeRawTask({ tournamentId, parsed: PARSED }), db);
 
     const hands = await db.hand.findMany({ where: { tournamentId } });
     const selected = hands.filter((h) => h.selectedForCard);
-    expect(selected).toHaveLength(10);
+    // Новая логика (2026-07-14): только спорные (2 CRITICAL + 6 STRONG), средние-мусор НЕ добираются.
+    expect(selected).toHaveLength(8);
     expect(selected.filter((h) => h.importanceLevel === "CRITICAL")).toHaveLength(2);
     expect(selected.filter((h) => h.importanceLevel === "STRONG")).toHaveLength(6);
-    expect(selected.filter((h) => h.importanceLevel === "MEDIUM")).toHaveLength(2);
+    expect(selected.filter((h) => h.importanceLevel === "MEDIUM")).toHaveLength(0);
 
     const tasks = await db.task.findMany({ where: { type: "GENERATE_HAND_ANALYSIS" } });
-    expect(tasks).toHaveLength(10);
+    expect(tasks).toHaveLength(8);
     expect(new Set(tasks.map((t) => (t.payload as { handId: string }).handId))).toEqual(
       new Set(selected.map((h) => h.id))
     );
@@ -161,7 +162,7 @@ describe("PARSE_TOURNAMENT — основной путь", () => {
     expect(hands).toHaveLength(12);
 
     const tasks = await db.task.findMany({ where: { type: "GENERATE_HAND_ANALYSIS" } });
-    expect(tasks).toHaveLength(10);
+    expect(tasks).toHaveLength(8); // только спорные (см. выше)
   });
 });
 
@@ -186,7 +187,7 @@ describe("PARSE_TOURNAMENT — авто только у первого (прав
     expect(t!.analysisUnlocked).toBe(true);
 
     const tasks = await db.task.findMany({ where: { type: "GENERATE_HAND_ANALYSIS" } });
-    expect(tasks).toHaveLength(10);
+    expect(tasks).toHaveLength(8); // только спорные (2 CRITICAL + 6 STRONG)
   });
 
   it("второй турнир без подписки: заперт — метрики есть, платных задач НЕТ", async () => {

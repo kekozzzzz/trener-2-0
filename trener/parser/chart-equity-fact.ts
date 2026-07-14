@@ -45,6 +45,17 @@ function vsThresholdWord(equity: number, threshold: number): string {
   return ` — ниже цены колла ≈${threshold}% (пот-оддс)`;
 }
 
+// Словесный бакет АБСОЛЮТНОЙ силы эквити против диапазона (P1 против галлюцинаций 2026-07-14):
+// готовый ярлык поверх числа, чтобы модель не «прикидывала» словами сама («сильная рука» на 30%).
+// Пороги грубые, отражают силу против ВСЕГО диапазона соперника.
+export function equityBucketWord(equity: number): string {
+  if (equity >= 85) return "почти неубиваемо против этого диапазона";
+  if (equity >= 60) return "уверенно впереди диапазона";
+  if (equity >= 45) return "примерно поровну с диапазоном";
+  if (equity >= 30) return "заметно позади диапазона (маргинально)";
+  return "почти воздух против этого диапазона";
+}
+
 // preflopCallThresholdPct — цена колла (пот-оддс) префлоп-олл-ина из computeHandFacts;
 // null, когда в раздаче нет префлоп-решения Hero перед олл-ином (спот не колл-vs-пуш).
 export function renderChartEquityFacts(
@@ -68,7 +79,7 @@ export function renderChartEquityFacts(
         const vs = preflopCallThresholdPct !== null ? vsThresholdWord(eq.equityPct, preflopCallThresholdPct) : "";
         const how = cvp.heroJammed ? "ре-пуша поверх" : "колла";
         lines.push(
-          `Эквити ${cvp.code} против пуш-диапазона опен-олл-ина ${posName} ${stack} (${eq.combosLive} комбо): ≈${eq.equityPct}%${vs}. Это эквити ${how} при вскрытии против ВСЕГО его пуша (велью + блокеры + мусор на тильте), а не против «топа» диапазона.`,
+          `Эквити ${cvp.code} против пуш-диапазона опен-олл-ина ${posName} ${stack} (${eq.combosLive} комбо): ≈${eq.equityPct}% (${equityBucketWord(eq.equityPct)})${vs}. Это эквити ${how} при вскрытии против ВСЕГО его пуша (велью + блокеры + мусор на тильте), а не против «топа» диапазона.`,
         );
         const bl = renderBlockerLine(snapshot.heroCards, pushRangeCodes(cvp.pusherBand, pushPos));
         if (bl) lines.push(bl);
@@ -90,7 +101,7 @@ export function renderChartEquityFacts(
     const eq = preflopEquityVsRangeFast(snapshot.heroCards, continueCodes);
     if (eq) {
       lines.push(
-        `Эквити ${rs.code} ПРИ КОЛЛЕ твоего рестила (${stack}, опенер с ${opener} позиции продолжает по чарту, ${eq.combosLive} комбо): ≈${eq.equityPct}%. Это только половина оценки пуша — вторая половина ниже (как часто он сбрасывает); слабое эквити при колле само по себе рестил не хоронит, коллируют узко.`,
+        `Эквити ${rs.code} ПРИ КОЛЛЕ твоего рестила (${stack}, опенер с ${opener} позиции продолжает по чарту, ${eq.combosLive} комбо): ≈${eq.equityPct}% (${equityBucketWord(eq.equityPct)}). Это только половина оценки пуша — вторая половина ниже (как часто он сбрасывает); слабое эквити при колле само по себе рестил не хоронит, коллируют узко.`,
       );
     }
     const bl = renderBlockerLine(snapshot.heroCards, continueCodes);
@@ -127,7 +138,7 @@ export function renderChartEquityFacts(
     const eq = preflopEquityVsRangeFast(snapshot.heroCards, [...rfiOpenRange(bb.openerPosition)]);
     if (eq) {
       lines.push(
-        `Эквити ${bb.code} против всего опен-диапазона ${bb.openerPosition} (RFI-чарт, ${eq.combosLive} комбо): ≈${eq.equityPct}% при вскрытии. Это ориентир «впереди/позади его диапазона в целом», а НЕ цена защиты: из BB рука реализует эквити хуже (вне позиции, доплата — не гарантия дойти до вскрытия).`,
+        `Эквити ${bb.code} против всего опен-диапазона ${bb.openerPosition} (RFI-чарт, ${eq.combosLive} комбо): ≈${eq.equityPct}% (${equityBucketWord(eq.equityPct)}) при вскрытии. Это ориентир «впереди/позади его диапазона в целом», а НЕ цена защиты: из BB рука реализует эквити хуже (вне позиции, доплата — не гарантия дойти до вскрытия).`,
       );
     }
   }

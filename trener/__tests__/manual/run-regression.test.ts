@@ -59,6 +59,7 @@ async function llm(
   user: string,
   reasoning: Record<string, unknown> = REASONING,
   attempts = 3,
+  temperature?: number,
 ): Promise<string> {
   for (let i = 0; i < attempts; i++) {
     try {
@@ -69,6 +70,8 @@ async function llm(
           model: modelId,
           max_tokens: 12000,
           reasoning,
+          // Как в проде (openrouter.ts): числочувствительным ролям низкая температура.
+          ...(temperature !== undefined ? { temperature } : {}),
           messages: [{ role: "system", content: system }, { role: "user", content: user }],
         }),
       });
@@ -92,11 +95,12 @@ async function llmJson<T>(
   user: string,
   validate: (raw: unknown) => T,
   reasoning: Record<string, unknown> = REASONING,
+  temperature = 0.3, // числочувствительные роли разбора — как TEMP_PRECISE в проде
 ): Promise<T> {
   let lastErr: unknown;
   for (let i = 0; i < 3; i++) {
     try {
-      return validate(JSON.parse(extractJson(await llm(key, modelId, system, user, reasoning))));
+      return validate(JSON.parse(extractJson(await llm(key, modelId, system, user, reasoning, 3, temperature))));
     } catch (e) {
       lastErr = e;
     }
