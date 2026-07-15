@@ -13,6 +13,7 @@ import type {
   VerdictResult,
 } from "./types";
 import type { Locale } from "@/i18n/config";
+import { heroFirstPostflop } from "@/parser/action-order";
 
 // Claude/DeepSeek иногда оборачивают JSON в markdown-код-блок несмотря на инструкцию — снимаем его.
 export function extractJson(text: string): string {
@@ -255,11 +256,32 @@ function strayCard(text: string, allowed: Set<string>): string | null {
   return null;
 }
 
+// Сторож порядка хода (Правило 1, 2026-07-15). Быстрая модель переворачивает очередь: пишет,
+// что соперники сходили ДО Hero, хотя парсер знает — Hero ходил ПЕРВЫМ на постфлопе
+// (heroFirstPostflop=true). Классический баг (раздача 5♦4♦, SB): «после того как CO и BTN
+// чекнули, ты тоже чекнул» / «оба чекнули перед тобой» — а Hero (SB) чекал ПЕРВЫМ. Автофиксить
+// нельзя (надо переписать фразу) → бракуем как выдуманную карту, очередь ретраит. Паттерн УЗКИЙ,
+// вокруг ЧЕКА: постфлоп-маркер (префлоп добровольно чекает лишь закрывающий BB), поэтому
+// чек-инверсия почти всегда про постфлоп — цена ложного брака (3 ретрая → карантин) у нуля.
+// Редкие непойманные формы («ты чекнул за ними») добьём по жалобам, как остальные заплатки.
+// Без \w/\b: в JS они ASCII-only, на кириллице не работают («\bты\b» никогда не матчится). «перед
+// тобой» однозначно позиционно; «до тебя» берём ТОЛЬКО когда сразу примыкает к чеку (иначе «до тебя
+// не дойдёт ставка» — ложный брак). Окна узкие. Все три ловят реальные вранья с прод-раздачи 5♦4♦.
+const CHECK_INVERSION_RES: RegExp[] = [
+  /чекну[^.!?]{0,40}?перед тобой/i, // «…чекнули перед тобой»
+  /(?:перед тобой|до тебя)[^.!?]{0,25}?чекну/i, // «перед тобой чекнули…», «до тебя чекнул»
+  /после\s+того[,\s]+как[^.!?]{0,90}?чекну[^.!?]{0,40}?[\s,]ты[\s,.]/i, // «после того как … чекнули, ты …»
+];
+function violatesActionOrder(text: string): boolean {
+  return CHECK_INVERSION_RES.some((re) => re.test(text));
+}
+
 export function cleanCoachText(
   text: string,
   locale: Locale = "ru",
   allowedCards?: Set<string>,
   heroFix?: Map<string, string>,
+  heroFirstPostflop?: boolean,
 ): string {
   if (CJK_RE.test(text)) {
     throw new Error("LLM вернул CJK-иероглифы в тексте для игрока");
@@ -308,6 +330,12 @@ export function cleanCoachText(
       throw new Error(`LLM назвал карту вне снимка: «${bad}»`);
     }
   }
+  // Перевранный порядок хода (соперники поставлены до Hero, хотя Hero ходит первым постфлоп) —
+  // брак, очередь ретраит (Правило 1: порядок считает парсер). Флаг включает адаптер/валидатор
+  // только когда парсер уверен, что Hero первый (heroFirstPostflop) — иначе «перед тобой» законно.
+  if (heroFirstPostflop && violatesActionOrder(out)) {
+    throw new Error("LLM переврал порядок хода: соперники поставлены до Hero, хотя Hero ходит первым постфлоп");
+  }
   return out;
 }
 
@@ -336,16 +364,18 @@ export function validateHandAnalysis(
   const cards = allowedCardSet(request.tableSnapshot);
   // Автофикс масти однозначной карманной карты Hero (см. heroSuitFixMap) — до браковки.
   const fix = heroSuitFixMap(request.tableSnapshot);
+  // Сторож порядка хода: включаем, только если парсер уверен, что Hero ходит первым постфлоп.
+  const heroFirst = heroFirstPostflop(request.tableSnapshot);
 
   if (request.importanceLevel === "CRITICAL") {
     if (typeof result.question !== "string" || typeof result.draftVerdict !== "string") {
       throw new Error("LLM вернул CRITICAL-разбор без question/draftVerdict");
     }
     return {
-      played: cleanCoachText(result.played, request.locale, cards, fix),
-      optimal: cleanCoachText(result.optimal, request.locale, cards, fix),
-      question: cleanCoachText(result.question, request.locale, cards, fix),
-      draftVerdict: cleanCoachText(result.draftVerdict, request.locale, cards, fix),
+      played: cleanCoachText(result.played, request.locale, cards, fix, heroFirst),
+      optimal: cleanCoachText(result.optimal, request.locale, cards, fix, heroFirst),
+      question: cleanCoachText(result.question, request.locale, cards, fix, heroFirst),
+      draftVerdict: cleanCoachText(result.draftVerdict, request.locale, cards, fix, heroFirst),
       answerMode: parseAnswerMode(result.answerMode),
       tableActionIndex: parseTableActionIndex(result.tableActionIndex),
     };
@@ -355,9 +385,9 @@ export function validateHandAnalysis(
     throw new Error(`LLM вернул ${request.importanceLevel}-разбор без note`);
   }
   return {
-    played: cleanCoachText(result.played, request.locale, cards, fix),
-    optimal: cleanCoachText(result.optimal, request.locale, cards, fix),
-    note: cleanCoachText(result.note, request.locale, cards, fix),
+    played: cleanCoachText(result.played, request.locale, cards, fix, heroFirst),
+    optimal: cleanCoachText(result.optimal, request.locale, cards, fix, heroFirst),
+    note: cleanCoachText(result.note, request.locale, cards, fix, heroFirst),
   };
 }
 
@@ -370,11 +400,12 @@ export function validateVerdict(
   locale: Locale = "ru",
   allowedCards?: Set<string>,
   heroFix?: Map<string, string>,
+  heroFirstPostflop?: boolean,
 ): VerdictResult {
   if (typeof result.verdict !== "string") {
     throw new Error("LLM вернул вердикт без поля verdict");
   }
-  return { verdict: cleanCoachText(result.verdict, locale, allowedCards, heroFix) };
+  return { verdict: cleanCoachText(result.verdict, locale, allowedCards, heroFix, heroFirstPostflop) };
 }
 
 export function validateNextQuestion(
@@ -382,6 +413,7 @@ export function validateNextQuestion(
   locale: Locale = "ru",
   allowedCards?: Set<string>,
   heroFix?: Map<string, string>,
+  heroFirstPostflop?: boolean,
 ): NextQuestionResult {
   const complete = result.complete === true;
   // При complete=true вопрос не нужен (диалог завершён) — поле может отсутствовать.
@@ -389,7 +421,9 @@ export function validateNextQuestion(
     throw new Error("LLM вернул ответ без поля question");
   }
   const cleaned =
-    typeof result.question === "string" ? cleanCoachText(result.question, locale, allowedCards, heroFix) : "";
+    typeof result.question === "string"
+      ? cleanCoachText(result.question, locale, allowedCards, heroFix, heroFirstPostflop)
+      : "";
   // Вопрос выветрился в пустоту (санитайзер вычистил весь текст, либо модель прислала «»)
   // при НЕзавершённом диалоге. Раньше это создавало вопрос-пустышку «{{table:N}}» без текста:
   // ответить не на что, вердикт не наступал — диалог зависал (инцидент 2026-07-15, раздача AJo).
@@ -415,11 +449,12 @@ export function validateChatReply(
   locale: Locale = "ru",
   allowedCards?: Set<string>,
   heroFix?: Map<string, string>,
+  heroFirstPostflop?: boolean,
 ): ChatReplyResult {
   if (typeof result.reply !== "string") {
     throw new Error("LLM вернул ответ без поля reply");
   }
-  return { reply: cleanCoachText(result.reply, locale, allowedCards, heroFix) };
+  return { reply: cleanCoachText(result.reply, locale, allowedCards, heroFix, heroFirstPostflop) };
 }
 
 export function validateTournamentSummary(

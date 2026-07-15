@@ -19,6 +19,7 @@ import { buildTournamentSummaryPrompt, buildTournamentSummarySystemPrompt } from
 import { buildPlayerCharacteristicPrompt, buildPlayerCharacteristicSystemPrompt } from "@/config/prompts/player-characteristic";
 import { buildCoachNotesPrompt, buildCoachNotesSystemPrompt } from "@/config/prompts/coach-notes";
 import { recordLlmUsage } from "@/features/usage/llm-usage";
+import { heroFirstPostflop } from "@/parser/action-order";
 import { validateCoachNotes,
   allowedCardSet,
   heroSuitFixMap,
@@ -179,7 +180,7 @@ export const anthropicLlmAdapter: LlmPort = {
       step: "DIALOGUE_QUESTION",
       playerId: meta?.playerId,
     }, TEMP_DIALOGUE);
-    return validateNextQuestion(parsed as Partial<NextQuestionResult>, request.locale, allowedCardSet(request.tableSnapshot), heroSuitFixMap(request.tableSnapshot));
+    return validateNextQuestion(parsed as Partial<NextQuestionResult>, request.locale, allowedCardSet(request.tableSnapshot), heroSuitFixMap(request.tableSnapshot), heroFirstPostflop(request.tableSnapshot));
   },
 
   async generateVerdict(request: VerdictRequest, meta?: LlmCallMeta): Promise<VerdictResult> {
@@ -187,7 +188,7 @@ export const anthropicLlmAdapter: LlmPort = {
       step: "VERDICT",
       playerId: meta?.playerId,
     }, TEMP_PRECISE);
-    return validateVerdict(parsed as Partial<VerdictResult>, request.locale, allowedCardSet(request.tableSnapshot), heroSuitFixMap(request.tableSnapshot));
+    return validateVerdict(parsed as Partial<VerdictResult>, request.locale, allowedCardSet(request.tableSnapshot), heroSuitFixMap(request.tableSnapshot), heroFirstPostflop(request.tableSnapshot));
   },
 
   async generateChatReply(request: ChatReplyRequest, meta?: LlmCallMeta): Promise<ChatReplyResult> {
@@ -195,7 +196,7 @@ export const anthropicLlmAdapter: LlmPort = {
       step: "CHAT_REPLY",
       playerId: meta?.playerId,
     }, TEMP_DIALOGUE);
-    return validateChatReply(parsed as Partial<ChatReplyResult>, request.locale, allowedCardSet(request.tableSnapshot), heroSuitFixMap(request.tableSnapshot));
+    return validateChatReply(parsed as Partial<ChatReplyResult>, request.locale, allowedCardSet(request.tableSnapshot), heroSuitFixMap(request.tableSnapshot), heroFirstPostflop(request.tableSnapshot));
   },
 
   async generateTournamentSummary(

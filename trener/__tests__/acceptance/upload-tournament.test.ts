@@ -230,7 +230,11 @@ describe("карточка после полного цикла — PARSE_TOURNA
 describe("многораундовый диалог — N раундов до вердикта", () => {
   it("каждый ответ < N открывает новый раунд, вердикт появляется только после ответа на раунд N", async () => {
     const original = process.env.DIALOGUE_ROUNDS_PER_HAND;
+    const originalThin = process.env.DIALOGUE_ROUNDS_THIN_SPOT;
     process.env.DIALOGUE_ROUNDS_PER_HAND = "3";
+    // Тест про механику длины диалога, а не про тонкий кап: поднимаем и тонкий потолок, иначе
+    // (1) он форсит вердикт на раунде 1, если разобранная раздача окажется тонким спотом.
+    process.env.DIALOGUE_ROUNDS_THIN_SPOT = "3";
 
     try {
       const result = await uploadTournament({
@@ -290,6 +294,7 @@ describe("многораундовый диалог — N раундов до в
       }
     } finally {
       process.env.DIALOGUE_ROUNDS_PER_HAND = original;
+      process.env.DIALOGUE_ROUNDS_THIN_SPOT = originalThin;
     }
   });
 });

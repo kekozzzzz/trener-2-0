@@ -13,6 +13,7 @@
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import { PrismaClient } from "@prisma/client";
 import { enqueue, runWorkerOnce, registerStep } from "@/infrastructure/queue";
+import { RelayTimeoutError } from "@/infrastructure/adapters/http/resilient-fetch";
 
 const db = new PrismaClient({
   datasources: {
@@ -108,6 +109,54 @@ describe("хендлер бросает ошибку", () => {
     // run_after должна быть в будущем (задержка)
     expect(task.runAfter.getTime()).toBeGreaterThan(Date.now());
     expect(task.attempt).toBe(1);
+  });
+});
+
+// ── 5b. Умный backoff: сбой релея повторяется быстро ─────────────────────────
+
+describe("backoff зависит от типа ошибки (2026-07-15, боль «3 минуты над двумя раздачами»)", () => {
+  it("временный сбой релея (RelayTimeoutError) → короткая задержка (~3с), а не 30с", async () => {
+    registerStep("FAIL_RELAY_TIMEOUT", async () => {
+      throw new RelayTimeoutError("OpenRouter: таймаут вызова (90000 мс) — релей не ответил");
+    });
+    await enqueue(db, { type: "FAIL_RELAY_TIMEOUT", payload: {} });
+
+    const before = Date.now();
+    await runWorkerOnce(db);
+
+    const [task] = await db.task.findMany({ where: { type: "FAIL_RELAY_TIMEOUT" } });
+    expect(task.status).toBe("PENDING");
+    const delay = task.runAfter.getTime() - before;
+    // attempt 1 → 3с (транзиентный), заведомо меньше штатных 30с.
+    expect(delay).toBeLessThan(15_000);
+    expect(delay).toBeGreaterThan(1_000);
+  });
+
+  it("обрыв сети (fetch failed) тоже даёт короткую задержку", async () => {
+    registerStep("FAIL_NETWORK", async () => {
+      throw new Error("TypeError: fetch failed (ECONNRESET)");
+    });
+    await enqueue(db, { type: "FAIL_NETWORK", payload: {} });
+
+    const before = Date.now();
+    await runWorkerOnce(db);
+
+    const [task] = await db.task.findMany({ where: { type: "FAIL_NETWORK" } });
+    expect(task.runAfter.getTime() - before).toBeLessThan(15_000);
+  });
+
+  it("прочая ошибка (кривой ответ/брак) остаётся на штатных 30с", async () => {
+    registerStep("FAIL_CONTENT", async () => {
+      throw new Error("LLM переврал порядок хода");
+    });
+    await enqueue(db, { type: "FAIL_CONTENT", payload: {} });
+
+    const before = Date.now();
+    await runWorkerOnce(db);
+
+    const [task] = await db.task.findMany({ where: { type: "FAIL_CONTENT" } });
+    // attempt 1 → 30с штатного backoff; заведомо больше транзиентных 3с.
+    expect(task.runAfter.getTime() - before).toBeGreaterThan(20_000);
   });
 });
 

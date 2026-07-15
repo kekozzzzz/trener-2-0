@@ -88,7 +88,9 @@ describe.each(CASES)("блок оппонентов в промпте: $name", (
     const snapshotAt = prompt.indexOf("Размер стола:");
     expect(blockAt).toBeGreaterThan(-1);
     expect(snapshotAt).toBeGreaterThan(blockAt);
-    expect(prompt).toContain("Player 3: предположительно рыба");
+    // Тип оппонента подаётся ПОВЕДЕНИЕМ, а не ярлыком (дожим языка 2026-07-15, коммит ad6d41d):
+    // «рыба» → «входит в банки широко, коллирует…». Тест обновлён под текущий формат.
+    expect(prompt).toContain("Player 3: предположительно входит в банки широко");
   });
 
   it("без оппонентов — промпт без блока ридсов", () => {

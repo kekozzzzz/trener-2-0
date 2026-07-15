@@ -9,6 +9,7 @@ import {
   getOpenRouterReasoning,
 } from "@/config/llm";
 import { resilientFetch } from "@/infrastructure/adapters/http/resilient-fetch";
+import { heroFirstPostflop } from "@/parser/action-order";
 import { getHealthCheckTimeoutMs } from "@/config/health";
 import { buildHandAnalysisPrompt, buildHandAnalysisSystemPrompt } from "@/config/prompts/hand-analysis";
 import { buildDialogueQuestionPrompt, buildDialogueQuestionSystemPrompt } from "@/config/prompts/dialogue-question";
@@ -184,7 +185,7 @@ export const openRouterLlmAdapter: LlmPort = {
       undefined,
       TEMP_DIALOGUE,
     );
-    return validateNextQuestion(parsed as Partial<NextQuestionResult>, request.locale, allowedCardSet(request.tableSnapshot), heroSuitFixMap(request.tableSnapshot));
+    return validateNextQuestion(parsed as Partial<NextQuestionResult>, request.locale, allowedCardSet(request.tableSnapshot), heroSuitFixMap(request.tableSnapshot), heroFirstPostflop(request.tableSnapshot));
   },
 
   async generateVerdict(request: VerdictRequest, meta?: LlmCallMeta): Promise<VerdictResult> {
@@ -195,7 +196,7 @@ export const openRouterLlmAdapter: LlmPort = {
       undefined,
       TEMP_PRECISE,
     );
-    return validateVerdict(parsed as Partial<VerdictResult>, request.locale, allowedCardSet(request.tableSnapshot), heroSuitFixMap(request.tableSnapshot));
+    return validateVerdict(parsed as Partial<VerdictResult>, request.locale, allowedCardSet(request.tableSnapshot), heroSuitFixMap(request.tableSnapshot), heroFirstPostflop(request.tableSnapshot));
   },
 
   async generateChatReply(request: ChatReplyRequest, meta?: LlmCallMeta): Promise<ChatReplyResult> {
@@ -206,7 +207,7 @@ export const openRouterLlmAdapter: LlmPort = {
       undefined,
       TEMP_DIALOGUE,
     );
-    return validateChatReply(parsed as Partial<ChatReplyResult>, request.locale, allowedCardSet(request.tableSnapshot), heroSuitFixMap(request.tableSnapshot));
+    return validateChatReply(parsed as Partial<ChatReplyResult>, request.locale, allowedCardSet(request.tableSnapshot), heroSuitFixMap(request.tableSnapshot), heroFirstPostflop(request.tableSnapshot));
   },
 
   async generateTournamentSummary(

@@ -1,7 +1,9 @@
 import type { DialogueState } from "@prisma/client";
+import type { TableSnapshot } from "@/parser/types";
 import { prisma } from "@/infrastructure/db/client";
 import { enqueue, kickWorker } from "@/infrastructure/queue";
-import { getDialogueMaxRounds, getDialogueAnswerMaxLength } from "@/config/dialogue";
+import { getDialogueMaxRounds, getDialogueMaxRoundsThin, getDialogueAnswerMaxLength } from "@/config/dialogue";
+import { topDecisionMark } from "@/parser/decision-weight";
 import { assessAiAccess } from "@/features/usage/budget";
 import { isSubscriptionGateEnabled } from "@/config/plans";
 
@@ -56,7 +58,15 @@ export async function submitAnswer(input: SubmitAnswerInput): Promise<SubmitAnsw
   // Иначе ставим шаг вопроса: он прочитает ответ и сам решит — продолжать или
   // завершать (флаг complete). Длину диалога задаёт ИИ, потолок — лишь страховка
   // (config/dialogue.ts, решение 2026-06-27).
-  const reachedCap = currentRound.roundNumber >= getDialogueMaxRounds();
+  //
+  // Потолок зависит от «толщины» спота (2026-07-15): если у раздачи нет тяжёлого решения
+  // (topDecisionMark = null — пассивный чек-даун и т.п.), копать нечего → низкий потолок, чтобы
+  // тренер не занудствовал. Спот с решением (крупный фолд/блеф/колл) → полный потолок. Метку
+  // считает парсер, не модель (Правило 1). Снимок и chipResult уже загружены с hand.
+  const snapshot = dialogue.hand.tableData as unknown as TableSnapshot;
+  const hasHeavyDecision = topDecisionMark(snapshot, dialogue.hand.chipResult ?? 0) !== null;
+  const maxRounds = hasHeavyDecision ? getDialogueMaxRounds() : getDialogueMaxRoundsThin();
+  const reachedCap = currentRound.roundNumber >= maxRounds;
 
   const enqueued = await prisma.$transaction(async (tx) => {
     const updated = await tx.dialogue.updateMany({

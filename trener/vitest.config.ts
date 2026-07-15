@@ -17,6 +17,9 @@ export default defineConfig({
       // По умолчанию 1 раунд — тесты без явного интереса к многораундовому
       // диалогу остаются написаны "как для одного раунда" (round 1 = последний).
       DIALOGUE_ROUNDS_PER_HAND: "1",
+      // Кап тонкого спота тоже 1 в тестах: фикстуры используют пустой снимок (= тонкий
+      // спот, topDecisionMark null), и без этого их потолок стал бы дефолтным (3).
+      DIALOGUE_ROUNDS_THIN_SPOT: "1",
       SESSION_SECRET: "test-session-secret-for-tests-only",
     },
   },

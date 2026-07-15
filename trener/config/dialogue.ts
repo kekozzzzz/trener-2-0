@@ -16,6 +16,20 @@ export function getDialogueMaxRounds(): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_MAX_ROUNDS;
 }
 
+// Низкий потолок для «тонкого» спота — раздачи без тяжёлого решения (пассивный чек-даун,
+// крупный фолд/блеф/колл НЕ случились: topDecisionMark = null). Там копать особо нечего, и
+// 4+ вопроса подряд превращают диалог в занудство (жалоба 2026-07-15, раздача 5♦4♦). Это
+// ДЕТЕРМИНИРОВАННАЯ страховка ПОВЕРХ флага complete: даже если модель сама не остановилась,
+// вердикт наступит принудительно. Споты С решением сохраняют полный потолок — там есть что
+// разбирать вглубь. Решать «тонкий ли спот» — коду по метке парсера, не модели (Правило 1).
+const DEFAULT_MAX_ROUNDS_THIN = 3;
+
+export function getDialogueMaxRoundsThin(): number {
+  const raw = process.env.DIALOGUE_ROUNDS_THIN_SPOT;
+  const parsed = raw ? parseInt(raw, 10) : NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_MAX_ROUNDS_THIN;
+}
+
 // Защитный потолок длины свободного ответа на сократовский вопрос — этот текст
 // тоже уходит в Claude (GENERATE_DIALOGUE_QUESTION/GENERATE_VERDICT), поэтому
 // нужен тормоз для расходов и злоупотреблений (architecture/07-безопасность.md,

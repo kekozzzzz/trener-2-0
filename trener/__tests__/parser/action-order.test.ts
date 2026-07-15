@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { renderActionOrder } from "@/parser/action-order";
+import { renderActionOrder, heroFirstPostflop } from "@/parser/action-order";
 import type { TableSnapshot } from "@/parser/types";
 
 function snap(partial: Partial<TableSnapshot>): TableSnapshot {
@@ -154,5 +154,76 @@ describe("renderActionOrder — фаза A: порядок хода относи
     expect(out).toContain("На префлопе ты действуешь первым; за тобой оставались CO, BTN, SB, BB - 4 могли войти или сквизнуть.");
     // Блайнды-форсы не увели SB/BB в начало «до тебя».
     expect(out).not.toContain("до тебя: SB");
+  });
+});
+
+// heroFirstPostflop — включатель сторожа порядка хода в cleanCoachText. true ТОЛЬКО если Hero
+// ходит первым на каждой постфлоп-улице с экшном (тогда «соперники до тебя» = ложь). Если Hero
+// хоть где-то в позиции — false (там «перед тобой» законно, сторож выключаем).
+describe("heroFirstPostflop — включатель сторожа порядка", () => {
+  it("Hero на SB, чек первым на флопе (реальная раздача 5♦4♦) → true", () => {
+    const s = snap({
+      seats: [
+        { label: "Hero", position: "SB", positionName: "SB", startingStack: 2000 },
+        { label: "Player 5", position: "CO", positionName: "CO", startingStack: 2000 },
+        { label: "Player 6", position: "BTN", positionName: "BTN", startingStack: 2000 },
+      ],
+      board: ["Kd", "5h", "Jh"],
+      actions: [
+        { street: "PREFLOP", actor: "Hero", action: "POST_SB", amount: 10 },
+        { street: "PREFLOP", actor: "Player 5", action: "CALL", amount: 20 },
+        { street: "PREFLOP", actor: "Player 6", action: "CALL", amount: 20 },
+        { street: "FLOP", actor: "Hero", action: "CHECK" },
+        { street: "FLOP", actor: "Player 5", action: "CHECK" },
+        { street: "FLOP", actor: "Player 6", action: "CHECK" },
+      ],
+    });
+    expect(heroFirstPostflop(s)).toBe(true);
+  });
+
+  it("Hero на CO, до него ходил BB на флопе → false (сторож не включаем)", () => {
+    const s = snap({
+      seats: [
+        { label: "Player 2", position: "BB", positionName: "BB", startingStack: 2000 },
+        { label: "Hero", position: "CO", positionName: "CO", startingStack: 2000 },
+        { label: "Player 6", position: "BTN", positionName: "BTN", startingStack: 2000 },
+      ],
+      board: ["Ah", "Kd", "Qs"],
+      actions: [
+        { street: "FLOP", actor: "Player 2", action: "CHECK" },
+        { street: "FLOP", actor: "Hero", action: "CHECK" },
+        { street: "FLOP", actor: "Player 6", action: "CHECK" },
+      ],
+    });
+    expect(heroFirstPostflop(s)).toBe(false);
+  });
+
+  it("Hero закрывает флоп (BTN, все до него) → false", () => {
+    const s = snap({
+      seats: [
+        { label: "Player 1", position: "SB", positionName: "SB", startingStack: 2000 },
+        { label: "Hero", position: "BTN", positionName: "BTN", startingStack: 2000 },
+      ],
+      board: ["Ah", "Kd", "Qs"],
+      actions: [
+        { street: "FLOP", actor: "Player 1", action: "CHECK" },
+        { street: "FLOP", actor: "Hero", action: "CHECK" },
+      ],
+    });
+    expect(heroFirstPostflop(s)).toBe(false);
+  });
+
+  it("без постфлоп-экшна (префлоп-олл-ин) → false — судить не о чем", () => {
+    const s = snap({
+      seats: [
+        { label: "Hero", position: "SB", positionName: "SB", startingStack: 200 },
+        { label: "Player 1", position: "BTN", positionName: "BTN", startingStack: 200 },
+      ],
+      actions: [
+        { street: "PREFLOP", actor: "Player 1", action: "RAISE", amount: 200 },
+        { street: "PREFLOP", actor: "Hero", action: "CALL", amount: 190 },
+      ],
+    });
+    expect(heroFirstPostflop(s)).toBe(false);
   });
 });

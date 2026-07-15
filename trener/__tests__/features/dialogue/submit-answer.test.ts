@@ -171,7 +171,11 @@ describe("submitAnswer", () => {
 
   it("раунд < DIALOGUE_ROUNDS_PER_HAND ставит GENERATE_DIALOGUE_QUESTION, а не GENERATE_VERDICT", async () => {
     const original = process.env.DIALOGUE_ROUNDS_PER_HAND;
+    const originalThin = process.env.DIALOGUE_ROUNDS_THIN_SPOT;
     process.env.DIALOGUE_ROUNDS_PER_HAND = "3";
+    // Фикстура — пустой снимок (тонкий спот), поэтому поднимаем и тонкий потолок, иначе он (1)
+    // форсит вердикт на раунде 1 и тест про многораундовый путь теряет смысл.
+    process.env.DIALOGUE_ROUNDS_THIN_SPOT = "3";
     try {
       const tournamentId = await createTournament();
       const handId = await createHand(tournamentId);
@@ -193,6 +197,32 @@ describe("submitAnswer", () => {
       expect((questionTasks[0].payload as { roundNumber?: number }).roundNumber).toBe(1);
     } finally {
       process.env.DIALOGUE_ROUNDS_PER_HAND = original;
+      process.env.DIALOGUE_ROUNDS_THIN_SPOT = originalThin;
+    }
+  });
+
+  // Кап тонкого спота (2026-07-15): раздача без тяжёлого решения (пустой снимок → topDecisionMark
+  // null) упирается в НИЗКИЙ потолок раньше полного — тренер не занудствует. Полный потолок 5 ещё
+  // не достигнут (раунд 2), но тонкий (2) — да → вердикт, а не следующий вопрос.
+  it("тонкий спот (нет тяжёлого решения) упирается в низкий потолок раньше полного", async () => {
+    const origFull = process.env.DIALOGUE_ROUNDS_PER_HAND;
+    const origThin = process.env.DIALOGUE_ROUNDS_THIN_SPOT;
+    process.env.DIALOGUE_ROUNDS_PER_HAND = "5";
+    process.env.DIALOGUE_ROUNDS_THIN_SPOT = "2";
+    try {
+      const tournamentId = await createTournament();
+      const handId = await createHand(tournamentId); // EMPTY_SNAPSHOT → тонкий спот
+      await createDialogue(handId, { roundNumber: 2 });
+
+      const result = await submitAnswer({ handId, answer: "Хотел добрать чек." });
+      expect(result).toEqual({ ok: true, state: "ANSWER_RECEIVED" });
+
+      // Тонкий потолок 2 достигнут → вердикт принудительно, хотя полный (5) далеко.
+      expect(await findVerdictTasks(handId)).toHaveLength(1);
+      expect(await findDialogueQuestionTasks(handId)).toHaveLength(0);
+    } finally {
+      process.env.DIALOGUE_ROUNDS_PER_HAND = origFull;
+      process.env.DIALOGUE_ROUNDS_THIN_SPOT = origThin;
     }
   });
 });

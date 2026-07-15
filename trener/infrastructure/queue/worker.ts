@@ -6,8 +6,24 @@ import { safeNotifyAdmin } from "@/infrastructure/adapters/notify";
 
 // После MAX_ATTEMPTS неудач задача уходит в карантин (POISONED).
 const MAX_ATTEMPTS = 3;
-// Базовая задержка для retry: умножается на номер попытки.
+// Базовая задержка для retry: умножается на номер попытки (30с, 60с).
 const RETRY_DELAY_BASE_MS = 30_000;
+// Короткая задержка для ВРЕМЕННОГО сбоя релея (молчание/обрыв сети): такой сбой проходит за
+// секунды, и держать игрока по 30-60с зря — та самая боль «3 минуты над двумя раздачами»
+// (2026-07-15). Релей моргнул → повторяем почти сразу (3с, 6с). Настоящая перегрузка сервиса
+// (5xx) и брак контента модели остаются на штатном нарастающем backoff — там спешить незачем.
+const RETRY_DELAY_TRANSIENT_MS = 3_000;
+
+// Временный сбой релея, а не залёгший сервис/кривой ответ. RelayTimeoutError — релей молчал весь
+// таймаут; сетевые обрывы undici (fetch failed / ECONNRESET / ConnectTimeout / socket hang up)
+// resilient-fetch уже быстро переповторил и сдался — значит сеть шатается. И то, и другое чаще
+// всего разовая икота КЗ-релея (через него весь LLM-трафик) — ей место в быстром повторе.
+function isTransientRelayError(err: unknown): boolean {
+  if ((err as { name?: string })?.name === "RelayTimeoutError") return true;
+  return /RelayTimeoutError|таймаут вызова|fetch failed|ECONNRESET|ETIMEDOUT|ECONNREFUSED|ConnectTimeout|socket hang up|UND_ERR/i.test(
+    String(err),
+  );
+}
 // Порог «зависшей» PROCESSING-задачи вынесен в общий конфиг (config/queue.ts) — тем же
 // значением пользуется health-проверка воркера, чтобы «зависло» трактовалось одинаково.
 
@@ -55,6 +71,10 @@ export async function runWorkerOnce(db: PrismaClient): Promise<WorkerResult> {
     });
   } catch (err) {
     const poison = task.attempt >= MAX_ATTEMPTS;
+    // Временный сбой релея повторяем быстро (3с, 6с), прочее — штатный backoff (30с, 60с).
+    const delayMs = isTransientRelayError(err)
+      ? RETRY_DELAY_TRANSIENT_MS * task.attempt
+      : RETRY_DELAY_BASE_MS * task.attempt;
     await db.task.update({
       where: { id: task.id },
       data: poison
@@ -62,7 +82,7 @@ export async function runWorkerOnce(db: PrismaClient): Promise<WorkerResult> {
         : {
             status: "PENDING",
             error: String(err),
-            runAfter: new Date(Date.now() + RETRY_DELAY_BASE_MS * task.attempt),
+            runAfter: new Date(Date.now() + delayMs),
           },
     });
 
