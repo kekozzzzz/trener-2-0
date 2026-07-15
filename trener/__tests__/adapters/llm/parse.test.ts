@@ -186,3 +186,18 @@ describe("метка «Player N» чистится, а не бракуется",
     expect(cleanCoachText("Player 6 поставил олл-ин")).toBe("соперник поставил олл-ин");
   });
 });
+
+// P3 2026-07-15: термины статистики соперника (VPIP/PFR/…) убраны из белого списка аббревиатур —
+// промпт велит их прятать, в тексте игроку они = баг, латинский бэкстоп бракует (throw→ретрай).
+describe("статистические термины соперника бракуются, структурные — нет", () => {
+  it("«VPIP»/«PFR»/«WTSD» в русском ответе → брак", () => {
+    expect(() => cleanCoachText("у соперника VPIP высокий")).toThrow();
+    expect(() => cleanCoachText("его PFR около 20")).toThrow();
+    expect(() => cleanCoachText("WTSD у него большой")).toThrow();
+  });
+  it("SPR/ICM/RFI (структурные, про игру/свою руку) остаются", () => {
+    expect(() => cleanCoachText("SPR около 2 на флопе")).not.toThrow();
+    expect(() => cleanCoachText("тут важен ICM, стек короткий")).not.toThrow();
+    expect(() => cleanCoachText("по RFI-чарту это опен")).not.toThrow();
+  });
+});
