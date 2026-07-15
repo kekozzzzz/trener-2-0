@@ -221,6 +221,26 @@ export function allowedCardSet(snapshot: {
   for (const s of snapshot.seats ?? []) if (s.shownCards) cards.push(...s.shownCards);
   return new Set(cards.filter((c) => c && c.length >= 2).map((c) => c[0].toUpperCase() + c[1].toLowerCase()));
 }
+// Ранг → правильный значок масти для карт Hero, чей ранг УНИКАЛЕН у Hero И отсутствует на борде.
+// Такую карту модель изредка пишет с ВЫДУМАННОЙ мастью (регресс #41: KQo, пиковая карта — дама, а
+// модель написала «K♠»); раз в раздаче ровно один король и он у Hero, масть однозначна — ИСПРАВЛЯЕМ,
+// а не бракуем (срезает лишний карантин). Карты БОРДА и неоднозначные ранги (есть и у Hero, и на
+// борде) сюда НЕ попадают — их выдумку по-прежнему ловит strayCard.
+const SYM_BY_LETTER: Record<string, string> = { s: "♠", h: "♥", d: "♦", c: "♣" };
+export function heroSuitFixMap(snapshot: { heroCards?: string[]; board?: string[] }): Map<string, string> {
+  const board = new Set((snapshot.board ?? []).filter((c) => c && c.length >= 1).map((c) => c[0].toUpperCase()));
+  const hero = (snapshot.heroCards ?? []).filter((c) => c && c.length >= 2);
+  const rankCount = new Map<string, number>();
+  for (const c of hero) rankCount.set(c[0].toUpperCase(), (rankCount.get(c[0].toUpperCase()) ?? 0) + 1);
+  const fix = new Map<string, string>();
+  for (const c of hero) {
+    const r = c[0].toUpperCase();
+    const sym = SYM_BY_LETTER[c[1].toLowerCase()];
+    if (rankCount.get(r) === 1 && !board.has(r) && sym) fix.set(r, sym);
+  }
+  return fix;
+}
+
 // Первая карта-со-значком-масти в тексте, которой НЕТ в снимке (выдуманная), или null.
 function strayCard(text: string, allowed: Set<string>): string | null {
   const re = /([AKQJT2-9])\s*([♠♥♦♣])/g;
@@ -232,7 +252,12 @@ function strayCard(text: string, allowed: Set<string>): string | null {
   return null;
 }
 
-export function cleanCoachText(text: string, locale: Locale = "ru", allowedCards?: Set<string>): string {
+export function cleanCoachText(
+  text: string,
+  locale: Locale = "ru",
+  allowedCards?: Set<string>,
+  heroFix?: Map<string, string>,
+): string {
   if (CJK_RE.test(text)) {
     throw new Error("LLM вернул CJK-иероглифы в тексте для игрока");
   }
@@ -263,6 +288,15 @@ export function cleanCoachText(text: string, locale: Locale = "ru", allowedCards
     if (stray !== null) {
       throw new Error(`LLM вернул латиницу в тексте для игрока: «${stray}»`);
     }
+  }
+  // Автофикс масти карманной карты Hero ДО браковки: выдуманную масть однозначной карты Hero
+  // (ранг уникален у Hero и не на борде) исправляем на настоящую, а не отправляем в карантин
+  // (регресс #41). Карты борда и неоднозначные ранги это не затрагивает — их выдумку ловит strayCard.
+  if (heroFix && heroFix.size > 0) {
+    out = out.replace(/([AKQJT2-9])([♠♥♦♣])/g, (m, rank: string, suit: string) => {
+      const correct = heroFix.get(rank.toUpperCase());
+      return correct && correct !== suit ? `${rank}${correct}` : m;
+    });
   }
   // Выдуманные карты (со значком масти вне снимка) — брак, очередь ретраит (Правило 1: борд священен).
   if (allowedCards) {
@@ -297,16 +331,18 @@ export function validateHandAnalysis(
 
   // Допустимые карты раздачи — чтобы поймать выдуманные масти/карты в тексте (Правило 1).
   const cards = allowedCardSet(request.tableSnapshot);
+  // Автофикс масти однозначной карманной карты Hero (см. heroSuitFixMap) — до браковки.
+  const fix = heroSuitFixMap(request.tableSnapshot);
 
   if (request.importanceLevel === "CRITICAL") {
     if (typeof result.question !== "string" || typeof result.draftVerdict !== "string") {
       throw new Error("LLM вернул CRITICAL-разбор без question/draftVerdict");
     }
     return {
-      played: cleanCoachText(result.played, request.locale, cards),
-      optimal: cleanCoachText(result.optimal, request.locale, cards),
-      question: cleanCoachText(result.question, request.locale, cards),
-      draftVerdict: cleanCoachText(result.draftVerdict, request.locale, cards),
+      played: cleanCoachText(result.played, request.locale, cards, fix),
+      optimal: cleanCoachText(result.optimal, request.locale, cards, fix),
+      question: cleanCoachText(result.question, request.locale, cards, fix),
+      draftVerdict: cleanCoachText(result.draftVerdict, request.locale, cards, fix),
       answerMode: parseAnswerMode(result.answerMode),
       tableActionIndex: parseTableActionIndex(result.tableActionIndex),
     };
@@ -316,9 +352,9 @@ export function validateHandAnalysis(
     throw new Error(`LLM вернул ${request.importanceLevel}-разбор без note`);
   }
   return {
-    played: cleanCoachText(result.played, request.locale, cards),
-    optimal: cleanCoachText(result.optimal, request.locale, cards),
-    note: cleanCoachText(result.note, request.locale, cards),
+    played: cleanCoachText(result.played, request.locale, cards, fix),
+    optimal: cleanCoachText(result.optimal, request.locale, cards, fix),
+    note: cleanCoachText(result.note, request.locale, cards, fix),
   };
 }
 
@@ -330,17 +366,19 @@ export function validateVerdict(
   result: Partial<VerdictResult>,
   locale: Locale = "ru",
   allowedCards?: Set<string>,
+  heroFix?: Map<string, string>,
 ): VerdictResult {
   if (typeof result.verdict !== "string") {
     throw new Error("LLM вернул вердикт без поля verdict");
   }
-  return { verdict: cleanCoachText(result.verdict, locale, allowedCards) };
+  return { verdict: cleanCoachText(result.verdict, locale, allowedCards, heroFix) };
 }
 
 export function validateNextQuestion(
   result: Partial<NextQuestionResult>,
   locale: Locale = "ru",
   allowedCards?: Set<string>,
+  heroFix?: Map<string, string>,
 ): NextQuestionResult {
   const complete = result.complete === true;
   // При complete=true вопрос не нужен (диалог завершён) — поле может отсутствовать.
@@ -349,7 +387,7 @@ export function validateNextQuestion(
   }
   return {
     complete,
-    question: typeof result.question === "string" ? cleanCoachText(result.question, locale, allowedCards) : "",
+    question: typeof result.question === "string" ? cleanCoachText(result.question, locale, allowedCards, heroFix) : "",
     answerMode: parseAnswerMode(result.answerMode),
     tableActionIndex: parseTableActionIndex(result.tableActionIndex),
   };
@@ -359,11 +397,12 @@ export function validateChatReply(
   result: Partial<ChatReplyResult>,
   locale: Locale = "ru",
   allowedCards?: Set<string>,
+  heroFix?: Map<string, string>,
 ): ChatReplyResult {
   if (typeof result.reply !== "string") {
     throw new Error("LLM вернул ответ без поля reply");
   }
-  return { reply: cleanCoachText(result.reply, locale, allowedCards) };
+  return { reply: cleanCoachText(result.reply, locale, allowedCards, heroFix) };
 }
 
 export function validateTournamentSummary(

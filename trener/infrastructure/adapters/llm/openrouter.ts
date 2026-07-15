@@ -20,6 +20,7 @@ import { buildCoachNotesPrompt, buildCoachNotesSystemPrompt } from "@/config/pro
 import { recordLlmUsage } from "@/features/usage/llm-usage";
 import { validateCoachNotes,
   allowedCardSet,
+  heroSuitFixMap,
   extractJson,
   validateChatReply,
   validateHandAnalysis,
@@ -183,7 +184,7 @@ export const openRouterLlmAdapter: LlmPort = {
       undefined,
       TEMP_DIALOGUE,
     );
-    return validateNextQuestion(parsed as Partial<NextQuestionResult>, request.locale, allowedCardSet(request.tableSnapshot));
+    return validateNextQuestion(parsed as Partial<NextQuestionResult>, request.locale, allowedCardSet(request.tableSnapshot), heroSuitFixMap(request.tableSnapshot));
   },
 
   async generateVerdict(request: VerdictRequest, meta?: LlmCallMeta): Promise<VerdictResult> {
@@ -194,7 +195,7 @@ export const openRouterLlmAdapter: LlmPort = {
       undefined,
       TEMP_PRECISE,
     );
-    return validateVerdict(parsed as Partial<VerdictResult>, request.locale, allowedCardSet(request.tableSnapshot));
+    return validateVerdict(parsed as Partial<VerdictResult>, request.locale, allowedCardSet(request.tableSnapshot), heroSuitFixMap(request.tableSnapshot));
   },
 
   async generateChatReply(request: ChatReplyRequest, meta?: LlmCallMeta): Promise<ChatReplyResult> {
@@ -205,7 +206,7 @@ export const openRouterLlmAdapter: LlmPort = {
       undefined,
       TEMP_DIALOGUE,
     );
-    return validateChatReply(parsed as Partial<ChatReplyResult>, request.locale, allowedCardSet(request.tableSnapshot));
+    return validateChatReply(parsed as Partial<ChatReplyResult>, request.locale, allowedCardSet(request.tableSnapshot), heroSuitFixMap(request.tableSnapshot));
   },
 
   async generateTournamentSummary(
