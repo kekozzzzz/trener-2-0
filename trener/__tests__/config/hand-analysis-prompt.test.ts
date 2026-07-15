@@ -63,7 +63,9 @@ describe("renderOpponents", () => {
 
   it("КОРОТКАЯ выборка (tentative): тип словами БЕЗ точных процентов (гейт 2026-07-14)", () => {
     const block = renderOpponents([FISH], "ru");
-    expect(block).toContain("Player 3: предположительно рыба");
+    // манера — ПОВЕДЕНИЕМ, не ярлыком «рыба» (2026-07-15: ярлык модель копировала игроку)
+    expect(block).toContain("Player 3: предположительно входит в банки широко");
+    expect(block).not.toContain("рыба");
     // точный процент на 14 руках — шум, его быть не должно
     expect(block).not.toContain("42.9%");
     expect(block).toContain("точные VPIP/частоты НЕ называй");
@@ -72,7 +74,8 @@ describe("renderOpponents", () => {
 
   it("solid-выборка: тип + точные числа парсера как есть (Правило 1)", () => {
     const block = renderOpponents([REG], "ru");
-    expect(block).toContain("Player 6: предположительно рег");
+    expect(block).toContain("Player 6: предположительно играет крепко и по позиции");
+    expect(block).not.toContain("рег");
     expect(block).toContain("в 21% раздач");
     expect(block).toContain("выборка 30 раздач — тип надёжный");
   });
@@ -80,15 +83,15 @@ describe("renderOpponents", () => {
   it("инструкция: приоритет ридса игрока и запрет показывать тип игроку", () => {
     const block = renderOpponents([FISH], "ru");
     expect(block).toContain("живой ридс игрока из его ответа важнее этого приора");
-    expect(block).toContain("Игроку этих данных не показывай");
+    expect(block).toContain("Игроку это НЕ подавай ярлыком-типом");
   });
 
   it("при locale=en тип по-английски, короткая выборка — без точных процентов", () => {
     const block = renderOpponents([FISH], "en");
-    expect(block).toContain("Player 3: likely fish");
+    expect(block).toContain("Player 3: likely enters pots wide");
     expect(block).not.toContain("42.9%");
     expect(block).toContain("do NOT cite exact VPIP");
-    expect(block).toContain("Don't show this data to the player");
+    expect(block).toContain("Don't hand this to the player as a type label");
     // русских подписей в английском блоке быть не должно
     expect(block).not.toContain("предположительно");
   });
@@ -101,8 +104,8 @@ describe("buildHandAnalysisPrompt", () => {
     const snapshotAt = prompt.indexOf("Размер стола:");
     expect(blockAt).toBeGreaterThan(-1);
     expect(snapshotAt).toBeGreaterThan(blockAt);
-    expect(prompt).toContain("Player 3: предположительно рыба");
-    expect(prompt).toContain("Player 6: предположительно рег");
+    expect(prompt).toContain("Player 3: предположительно входит в банки широко");
+    expect(prompt).toContain("Player 6: предположительно играет крепко и по позиции");
   });
 
   it("без оппонентов — промпт без блока ридсов, как раньше", () => {
@@ -116,7 +119,7 @@ describe("buildHandAnalysisPrompt", () => {
     expect(prompt).toContain("Table size:");
     expect(prompt).toContain("Hero's cards:");
     expect(prompt).toContain("Board:");
-    expect(prompt).toContain("Player 3: likely fish");
+    expect(prompt).toContain("Player 3: likely enters pots wide");
     expect(prompt).not.toContain("Размер стола:");
   });
 });

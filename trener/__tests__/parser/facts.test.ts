@@ -340,7 +340,9 @@ describe("renderHandFacts — контекст-факты (свип 2026-07-12)"
     const out = renderHandFacts(s);
     expect(out).toContain("Уровень блайндов турнира: 12");
     expect(out).toContain("Форсы (анте+блайнды) в банке на старте");
-    expect(out).toContain("M-фактор Hero: 12.5");
+    // слово-термин «M-фактор» игроку не показываем — запас в кругах человеческими словами (2026-07-15)
+    expect(out).toContain("Запас стека Hero: хватает на 12.5 кругов");
+    expect(out).not.toContain("M-фактор Hero:");
     expect(out).toContain("на тёрн осталось");
   });
 });
