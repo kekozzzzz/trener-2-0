@@ -152,6 +152,7 @@ const RU_LATIN_FIXES: Array<[string, string]> = [
   [" vs ", " против "],
   ["Nash", "равновесие"],
   ["effectively", "по сути"],
+  [" bet ", " ставка "], // «bet» отдельным словом → «ставка» (регресс: чистим, а не бракуем)
   // Латинские покерные аббревиатуры-жаргон (регресс 2026-07-14) → русскими словами. Короткие
   // (IP) не чистим — рискуют задеть слова; их редкие вхождения добьёт бэкстоп (брак+ретрай).
   ["OOP", "вне позиции"],
@@ -183,6 +184,7 @@ const POSITION_CODES = new Set(["UTG", "MP", "HJ", "CO", "LJ", "EP", "BTN", "SB"
 const ABBREV = new Set(["SPR", "ICM", "GTO", "MTT", "PKO", "EV", "BI", "RFI"]);
 const HAS_LATIN = /[A-Za-z]/;
 const HAND_NOTATION = /^[AKQJT2-9]{1,2}[sox]?$/i; // A, K, AKs, QJo, T9s, Kx
+const RANK_SEQ = /^[AKQJT2-9]{2,5}$/i; // последовательность рангов (стрит-нотация: QJT, T9, AKQ) — не мусор
 const CARD_CODE = /^[AKQJT2-9][cdhs]$/i; // код карты из снимка: Kd, 7c, Ts (модель порой эхнёт)
 const BLIND_TOKEN = /^\d*(bb|sb)$/i; // стек/ставка в блайндах: 20bb, 15sb, bb
 
@@ -200,6 +202,7 @@ function firstStrayLatin(text: string): string | null {
     if (POSITION_CODES.has(t.toUpperCase())) continue; // код позиции регистронезависимо
     if (ABBREV.has(t.toUpperCase())) continue; // разрешённая аббревиатура (SPR, ICM…)
     if (HAND_NOTATION.test(t)) continue; // нотация руки
+    if (RANK_SEQ.test(t)) continue; // последовательность рангов (стрит QJT/T9) — не англ. слово
     if (CARD_CODE.test(t)) continue; // код карты
     if (BLIND_TOKEN.test(t)) continue; // стек в блайндах
     return t; // латинское слово вне разрешённого — мусор/англицизм

@@ -57,6 +57,12 @@ describe("heroMadeHand", () => {
     expect(heroMadeHand(["7c", "Ad"], ["7h", "7s", "Kc"])?.ru).toContain("трипс");
   });
 
+  it("каре: карман 7 + три семёрки на борде = каре, НЕ фулл (проверка бага #3)", () => {
+    // A7o на 2h 7h 7s 6c 7c: у Hero четвёртая семёрка → каре семёрок, кикер туз (не «фулл + пара тузов»).
+    const r = heroMadeHand(["Ah", "7d"], ["2h", "7h", "7s", "6c", "7c"]);
+    expect(r?.category).toBe("QUADS");
+  });
+
   it("флеш и стрит", () => {
     expect(heroMadeHand(["Ac", "2c"], ["7c", "9c", "Kc"])?.category).toBe("FLUSH");
     expect(heroMadeHand(["8c", "9d"], ["Th", "Js", "Qc"])?.category).toBe("STRAIGHT");

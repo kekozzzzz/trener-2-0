@@ -191,8 +191,12 @@ describe("карточка после полного цикла — PARSE_TOURNA
 
     const hands = await prisma.hand.findMany({ where: { tournamentId: result.tournamentId } });
     expect(hands).toHaveLength(6);
-    expect(hands.every((h) => h.selectedForCard)).toBe(true);
-    expect(hands.every((h) => h.analysis !== null)).toBe(true);
+    // Фикс отбора 2026-07-14: в карточку идут только СПОРНЫЕ раздачи (CRITICAL/STRONG), тривиальные —
+    // нет. Разбор (analysis) генерится ровно для отобранных, у остальных остаётся null.
+    const selected = hands.filter((h) => h.selectedForCard);
+    expect(selected.length).toBeGreaterThanOrEqual(2); // минимум 2 CRITICAL (см. ниже)
+    expect(selected.every((h) => h.analysis !== null)).toBe(true);
+    expect(hands.filter((h) => !h.selectedForCard).every((h) => h.analysis === null)).toBe(true);
 
     // 2 раздачи CRITICAL в фикстуре ggpoker_mtt_rich.txt — каждой соответствует Dialogue
     const dialogues = await prisma.dialogue.findMany({

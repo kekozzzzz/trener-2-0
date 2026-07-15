@@ -716,6 +716,37 @@ export function renderShowdownFacts(snapshot: TableSnapshot): string {
   return out.join("\n");
 }
 
+// Сводка флеш-угрозы (регресс #85/#53): детерминированно — сколько карт ОДНОЙ масти на борде и у
+// Hero, чтобы модель не выдумывала «натсовый флеш»/«флеш-дро» на масти, которой нет (#85: «натсовый
+// флеш» на борде с двумя бубнами; #53: «флеш-дро» без своих карт масти). Считаем по финальному борду.
+const SUIT_RU_GEN: Record<string, string> = { s: "пик", h: "червей", d: "бубён", c: "треф" };
+export function renderFlushSummary(hero: string[], board: string[]): string | null {
+  if (board.length < 3) return null;
+  const suits = ["s", "h", "d", "c"];
+  const boardN = (s: string) => board.filter((c) => c.length >= 2 && c[1].toLowerCase() === s).length;
+  const heroN = (s: string) => hero.filter((c) => c.length >= 2 && c[1].toLowerCase() === s).length;
+  // Флеш/дро У HERO — по масти с максимумом карт (борд+рука). Дро = 4 карты одной масти.
+  let bestSuit = "s";
+  for (const s of suits) if (boardN(s) + heroN(s) > boardN(bestSuit) + heroN(bestSuit)) bestSuit = s;
+  const bestTotal = boardN(bestSuit) + heroN(bestSuit);
+  const bestRu = SUIT_RU_GEN[bestSuit] ?? bestSuit;
+  if (bestTotal >= 5) return `Флеш-угроза: у тебя СОБРАН флеш ${bestRu} (${heroN(bestSuit)} в руке + ${boardN(bestSuit)} на борде).`;
+  // Дро считаем только пока есть будущая карта: на ривере (борд=5) 4 карты масти — это уже НЕ дро,
+  // флеша нет (регресс #85: A7 бубны на ривере, 4 бубны без пятой — «натсового флеша» нет).
+  if (bestTotal === 4 && board.length < 5)
+    return `Флеш-угроза: у тебя ФЛЕШ-ДРО ${bestRu} (${heroN(bestSuit)} в руке + ${boardN(bestSuit)} на борде, не хватает одной карты) - но это ещё НЕ флеш.`;
+  if (bestTotal === 4 && board.length === 5)
+    return `Флеш-угроза: до ривера у тебя было флеш-дро ${bestRu} (4 карты масти), но пятая не пришла - флеша НЕТ, не пиши, что собрал флеш.`;
+  // Своего флеша/дро нет. Угроза соперника — по масти с максимумом НА БОРДЕ (3+ = флеш возможен у него).
+  let maxBoardSuit = "s";
+  for (const s of suits) if (boardN(s) > boardN(maxBoardSuit)) maxBoardSuit = s;
+  const maxBoardN = boardN(maxBoardSuit);
+  if (maxBoardN < 3) {
+    return `Флеш-угроза: на борде максимум ${maxBoardN} карты одной масти, у тебя тоже нет 4 одной масти - флеша и флеш-дро НЕТ ни у тебя, ни у соперника, не выдумывай флеш.`;
+  }
+  return `Флеш-угроза: на борде ${maxBoardN} карт(ы) масти ${SUIT_RU_GEN[maxBoardSuit] ?? maxBoardSuit}, а у тебя этой масти нет - СВОЕГО флеша и флеш-дро у тебя НЕТ (флеш возможен только у соперника), не приписывай флеш или флеш-дро себе.`;
+}
+
 export function renderHandFacts(snapshot: TableSnapshot): string {
   const f = computeHandFacts(snapshot);
   const lines: string[] = [];
@@ -726,6 +757,10 @@ export function renderHandFacts(snapshot: TableSnapshot): string {
     const gloss = code.length === 2 ? "карманная пара" : code.endsWith("s") ? "одномастные" : "разномастные";
     lines.push(`Карманные карты Hero: ${code} (${gloss}).`);
   }
+
+  // Сводка флеш-угрозы — детерминированно, чтобы модель не выдумывала флеш/флеш-дро (регресс #85/#53).
+  const flushLine = renderFlushSummary(snapshot.heroCards, snapshot.board);
+  if (flushLine) lines.push(flushLine);
 
   // Состав стола и позиция Hero — голые факты из снимка, чтобы модель не прикидывала «на глаз».
   const heroSeat = snapshot.seats.find((s) => s.label === "Hero");
