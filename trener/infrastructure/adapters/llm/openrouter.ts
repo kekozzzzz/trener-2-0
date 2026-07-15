@@ -20,6 +20,7 @@ import { buildCoachNotesPrompt, buildCoachNotesSystemPrompt } from "@/config/pro
 import { recordLlmUsage } from "@/features/usage/llm-usage";
 import { validateCoachNotes,
   allowedCardSet,
+  heroSuitFixMap,
   extractJson,
   validateChatReply,
   validateHandAnalysis,
@@ -56,6 +57,7 @@ async function rawCall(
   system: string,
   prompt: string,
   reasoning?: Reasoning,
+  temperature?: number,
 ): Promise<{ text: string; usage: Record<string, unknown> }> {
   const headers: Record<string, string> = {
     Authorization: `Bearer ${getOpenRouterApiKey()}`,
@@ -77,6 +79,10 @@ async function rawCall(
       body: JSON.stringify({
         model: getOpenRouterModel(),
         max_tokens: getAnthropicMaxTokens(),
+        // Температура сэмплинга: числочувствительным ролям (разбор/вердикт/сводка) даём НИЗКУЮ —
+        // тогда самый вероятный токен обычно «скопировать факт парсера», а не досэмплить выдуманный
+        // процент; диалогу/чату оставляем повыше ради живости формулировок. undefined = дефолт модели.
+        ...(temperature !== undefined ? { temperature } : {}),
         // Думающие модели (GLM-5.2) без явного режима тратят бюджет токенов на
         // рассуждения и возвращают обрезанный/пустой content. Режим — из env
         // (OPENROUTER_REASONING, дефолт off: латентность как у v3.2 по замеру
@@ -113,10 +119,11 @@ async function callOpenRouter(
   prompt: string,
   ctx: { step: string; playerId?: string },
   reasoning?: Reasoning,
+  temperature?: number,
 ): Promise<unknown> {
   let lastErr: unknown;
   for (let attempt = 0; attempt < 2; attempt++) {
-    const { text, usage } = await rawCall(system, prompt, reasoning);
+    const { text, usage } = await rawCall(system, prompt, reasoning, temperature);
     if (ctx.playerId) {
       const cached = Number((usage.prompt_tokens_details as { cached_tokens?: number } | undefined)?.cached_tokens ?? 0);
       const promptTokens = Number(usage.prompt_tokens ?? 0);
@@ -150,12 +157,21 @@ async function callOpenRouter(
 // мониторинге моделей (plans/2026-07-14-мониторинг-моделей.md) найдётся БЫСТРАЯ думающая модель:
 // восстановить const REASONING_LOW = { effort: "low" } и передать его 4-м аргументом в нужные роли.
 
+// Температура сэмплинга по ролям (P0 против галлюцинаций 2026-07-14): числочувствительным ролям
+// (разбор/вердикт/сводка/заметки/характеристика) — НИЗКАЯ, тогда самый вероятный токен обычно
+// «скопировать факт парсера», а не досэмплить выдуманный процент; диалогу и чату — повыше ради
+// живости вопросов. Значения стабильны, env-переопределения не заводим.
+const TEMP_PRECISE = 0.3;
+const TEMP_DIALOGUE = 0.6;
+
 export const openRouterLlmAdapter: LlmPort = {
   async generateHandAnalysis(request: HandAnalysisRequest, meta?: LlmCallMeta): Promise<HandAnalysisResult> {
     const parsed = await callOpenRouter(
       buildHandAnalysisSystemPrompt(request.locale),
       buildHandAnalysisPrompt(request),
       { step: "HAND_ANALYSIS", playerId: meta?.playerId },
+      undefined,
+      TEMP_PRECISE,
     );
     return validateHandAnalysis(parsed as Partial<HandAnalysisResult>, request);
   },
@@ -165,8 +181,10 @@ export const openRouterLlmAdapter: LlmPort = {
       buildDialogueQuestionSystemPrompt(request.locale),
       buildDialogueQuestionPrompt(request),
       { step: "DIALOGUE_QUESTION", playerId: meta?.playerId },
+      undefined,
+      TEMP_DIALOGUE,
     );
-    return validateNextQuestion(parsed as Partial<NextQuestionResult>, request.locale, allowedCardSet(request.tableSnapshot));
+    return validateNextQuestion(parsed as Partial<NextQuestionResult>, request.locale, allowedCardSet(request.tableSnapshot), heroSuitFixMap(request.tableSnapshot));
   },
 
   async generateVerdict(request: VerdictRequest, meta?: LlmCallMeta): Promise<VerdictResult> {
@@ -174,34 +192,45 @@ export const openRouterLlmAdapter: LlmPort = {
       buildVerdictSystemPrompt(request.locale),
       buildVerdictPrompt(request),
       { step: "VERDICT", playerId: meta?.playerId },
+      undefined,
+      TEMP_PRECISE,
     );
-    return validateVerdict(parsed as Partial<VerdictResult>, request.locale, allowedCardSet(request.tableSnapshot));
+    return validateVerdict(parsed as Partial<VerdictResult>, request.locale, allowedCardSet(request.tableSnapshot), heroSuitFixMap(request.tableSnapshot));
   },
 
   async generateChatReply(request: ChatReplyRequest, meta?: LlmCallMeta): Promise<ChatReplyResult> {
-    const parsed = await callOpenRouter(buildChatReplySystemPrompt(request.locale), buildChatReplyPrompt(request), {
-      step: "CHAT_REPLY",
-      playerId: meta?.playerId,
-    });
-    return validateChatReply(parsed as Partial<ChatReplyResult>, request.locale, allowedCardSet(request.tableSnapshot));
+    const parsed = await callOpenRouter(
+      buildChatReplySystemPrompt(request.locale),
+      buildChatReplyPrompt(request),
+      { step: "CHAT_REPLY", playerId: meta?.playerId },
+      undefined,
+      TEMP_DIALOGUE,
+    );
+    return validateChatReply(parsed as Partial<ChatReplyResult>, request.locale, allowedCardSet(request.tableSnapshot), heroSuitFixMap(request.tableSnapshot));
   },
 
   async generateTournamentSummary(
     request: TournamentSummaryRequest,
     meta?: LlmCallMeta,
   ): Promise<TournamentSummaryResult> {
-    const parsed = await callOpenRouter(buildTournamentSummarySystemPrompt(request.locale), buildTournamentSummaryPrompt(request), {
-      step: "TOURNAMENT_SUMMARY",
-      playerId: meta?.playerId,
-    });
+    const parsed = await callOpenRouter(
+      buildTournamentSummarySystemPrompt(request.locale),
+      buildTournamentSummaryPrompt(request),
+      { step: "TOURNAMENT_SUMMARY", playerId: meta?.playerId },
+      undefined,
+      TEMP_PRECISE,
+    );
     return validateTournamentSummary(parsed as Partial<TournamentSummaryResult>, request.locale);
   },
 
   async generateCoachNotes(request: CoachNotesRequest, meta?: LlmCallMeta): Promise<CoachNotesResult> {
-    const parsed = await callOpenRouter(buildCoachNotesSystemPrompt(request.maxNotes), buildCoachNotesPrompt(request), {
-      step: "COACH_NOTES",
-      playerId: meta?.playerId,
-    });
+    const parsed = await callOpenRouter(
+      buildCoachNotesSystemPrompt(request.maxNotes),
+      buildCoachNotesPrompt(request),
+      { step: "COACH_NOTES", playerId: meta?.playerId },
+      undefined,
+      TEMP_PRECISE,
+    );
     return validateCoachNotes(parsed as { notes?: unknown });
   },
 
@@ -209,10 +238,13 @@ export const openRouterLlmAdapter: LlmPort = {
     request: PlayerCharacteristicRequest,
     meta?: LlmCallMeta,
   ): Promise<PlayerCharacteristicResult> {
-    const parsed = await callOpenRouter(buildPlayerCharacteristicSystemPrompt(request.locale), buildPlayerCharacteristicPrompt(request), {
-      step: "PLAYER_CHARACTERISTIC",
-      playerId: meta?.playerId,
-    });
+    const parsed = await callOpenRouter(
+      buildPlayerCharacteristicSystemPrompt(request.locale),
+      buildPlayerCharacteristicPrompt(request),
+      { step: "PLAYER_CHARACTERISTIC", playerId: meta?.playerId },
+      undefined,
+      TEMP_PRECISE,
+    );
     return validatePlayerCharacteristic(parsed as Partial<PlayerCharacteristicResult>, request.locale);
   },
 

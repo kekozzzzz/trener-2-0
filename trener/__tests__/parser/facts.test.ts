@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { boardTexture, computeHandFacts, renderHandFacts } from "@/parser/facts";
+import { boardTexture, computeHandFacts, renderHandFacts, renderFlushSummary } from "@/parser/facts";
 import type { TableSnapshot } from "@/parser/types";
 
 function snap(partial: Partial<TableSnapshot>): TableSnapshot {
@@ -601,5 +601,33 @@ describe("computeHandFacts — геометрия второго барреля 
     });
     const riverBet = computeHandFacts(s).heroBets.find((b) => b.street === "RIVER");
     expect(riverBet?.nextStreetSpr).toBeUndefined();
+  });
+});
+
+// Сводка флеш-угрозы (регресс #85/#53): детерминированный факт против выдуманного флеша/дро.
+describe("renderFlushSummary", () => {
+  it("#85: на РИВЕРЕ 4 карты масти без пятой → флеша НЕТ (дро не доехало)", () => {
+    // A♦7♦ на 4♦8♦4♣4♠Q♥: 2 бубны на борде + 2 у Hero = 4, но ривер закрыт — флеша нет.
+    const line = renderFlushSummary(["Ad", "7d"], ["4d", "8d", "4c", "4s", "Qh"]);
+    expect(line).toContain("флеша НЕТ, не пиши, что собрал флеш");
+  });
+  it("#53: 3 карты масти на борде, у Hero НЕТ этой масти → своего флеша/дро нет", () => {
+    const line = renderFlushSummary(["Kh", "9h"], ["Ac", "3c", "7c"]);
+    expect(line).toContain("СВОЕГО флеша и флеш-дро у тебя НЕТ");
+  });
+  it("тёрн, у Hero 2 карты масти + 2 на борде = 4 → флеш-дро (ещё есть карта)", () => {
+    const line = renderFlushSummary(["Kc", "9c"], ["Ac", "3c", "7h", "2s"]);
+    expect(line).toContain("ФЛЕШ-ДРО");
+  });
+  it("5 карт масти (2 в руке + 3 на борде) → собран флеш", () => {
+    const line = renderFlushSummary(["Kc", "9c"], ["Ac", "3c", "7c"]);
+    expect(line).toContain("СОБРАН флеш");
+  });
+  it("на борде максимум 2 масти, у Hero мало → флеша нет ни у кого", () => {
+    const line = renderFlushSummary(["Ad", "7s"], ["4d", "8d", "4c", "2h", "Qs"]);
+    expect(line).toContain("флеша и флеш-дро НЕТ ни у тебя, ни у соперника");
+  });
+  it("флоп ещё не открыт (борд < 3) → строки нет", () => {
+    expect(renderFlushSummary(["Kc", "9c"], [])).toBeNull();
   });
 });

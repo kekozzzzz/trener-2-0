@@ -16,7 +16,7 @@ import {
 } from "@/config/prompts/hand-analysis";
 import { buildDialogueQuestionSystemPrompt, buildDialogueQuestionPrompt } from "@/config/prompts/dialogue-question";
 import { buildVerdictSystemPrompt, buildVerdictPrompt } from "@/config/prompts/verdict";
-import { allowedCardSet, extractJson, validateHandAnalysis, validateNextQuestion, validateVerdict } from "@/infrastructure/adapters/llm/parse";
+import { allowedCardSet, heroSuitFixMap, extractJson, validateHandAnalysis, validateNextQuestion, validateVerdict } from "@/infrastructure/adapters/llm/parse";
 import type { HandAnalysisRequest, NextQuestionRequest, VerdictRequest, DialogueRoundSummary } from "@/infrastructure/adapters/llm/types";
 import type { OpponentFact } from "@/parser/opponent-profile";
 
@@ -59,6 +59,7 @@ async function llm(
   user: string,
   reasoning: Record<string, unknown> = REASONING,
   attempts = 3,
+  temperature?: number,
 ): Promise<string> {
   for (let i = 0; i < attempts; i++) {
     try {
@@ -69,6 +70,8 @@ async function llm(
           model: modelId,
           max_tokens: 12000,
           reasoning,
+          // Как в проде (openrouter.ts): числочувствительным ролям низкая температура.
+          ...(temperature !== undefined ? { temperature } : {}),
           messages: [{ role: "system", content: system }, { role: "user", content: user }],
         }),
       });
@@ -92,11 +95,12 @@ async function llmJson<T>(
   user: string,
   validate: (raw: unknown) => T,
   reasoning: Record<string, unknown> = REASONING,
+  temperature = 0.3, // числочувствительные роли разбора — как TEMP_PRECISE в проде
 ): Promise<T> {
   let lastErr: unknown;
   for (let i = 0; i < 3; i++) {
     try {
-      return validate(JSON.parse(extractJson(await llm(key, modelId, system, user, reasoning))));
+      return validate(JSON.parse(extractJson(await llm(key, modelId, system, user, reasoning, 3, temperature))));
     } catch (e) {
       lastErr = e;
     }
@@ -198,7 +202,7 @@ type Pick = { file: string; idx: number; code: string; board: string; tags: stri
             MODEL,
             buildDialogueQuestionSystemPrompt("ru"),
             buildDialogueQuestionPrompt(nq),
-            (raw) => validateNextQuestion(raw as Parameters<typeof validateNextQuestion>[0], "ru", allowedCardSet(snapshot)),
+            (raw) => validateNextQuestion(raw as Parameters<typeof validateNextQuestion>[0], "ru", allowedCardSet(snapshot), heroSuitFixMap(snapshot)),
             HYBRID ? LOW : REASONING, // диалог только у CRITICAL → low
           );
           if (next.complete || !next.question) break;
@@ -211,7 +215,7 @@ type Pick = { file: string; idx: number; code: string; board: string; tags: stri
           MODEL,
           buildVerdictSystemPrompt("ru"),
           buildVerdictPrompt(vq),
-          (raw) => validateVerdict(raw as Parameters<typeof validateVerdict>[0], "ru", allowedCardSet(snapshot)),
+          (raw) => validateVerdict(raw as Parameters<typeof validateVerdict>[0], "ru", allowedCardSet(snapshot), heroSuitFixMap(snapshot)),
           HYBRID ? LOW : REASONING, // вердикт завершает CRITICAL-диалог → low
         );
         out.push(`\n**ВЕРДИКТ:** ${verdict.verdict}`);

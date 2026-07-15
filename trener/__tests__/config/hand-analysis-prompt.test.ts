@@ -55,22 +55,25 @@ const request: HandAnalysisRequest = {
 };
 
 describe("renderOpponents", () => {
-  it("пустой список и undefined → пустая строка (блока в промпте нет)", () => {
-    expect(renderOpponents(undefined, "ru")).toBe("");
-    expect(renderOpponents([], "ru")).toBe("");
+  it("пустой список и undefined → позитивный запрет «ридов нет», а не пустота", () => {
+    // Гейт 2026-07-14: в тишине модель домысливает тип/VPIP — даём явный запрет вместо "".
+    expect(renderOpponents(undefined, "ru")).toContain("надёжных ридов нет");
+    expect(renderOpponents([], "ru")).toContain("НЕ выдумывай");
   });
 
-  it("тип словами + числа парсера как есть (Правило 1 — ничего не пересчитываем)", () => {
+  it("КОРОТКАЯ выборка (tentative): тип словами БЕЗ точных процентов (гейт 2026-07-14)", () => {
     const block = renderOpponents([FISH], "ru");
     expect(block).toContain("Player 3: предположительно рыба");
-    expect(block).toContain("в 42.9% раздач");
-    expect(block).toContain("в 7.1%");
+    // точный процент на 14 руках — шум, его быть не должно
+    expect(block).not.toContain("42.9%");
+    expect(block).toContain("точные VPIP/частоты НЕ называй");
     expect(block).toContain("выборка всего 14 раздач — тип предварительный");
   });
 
-  it("solid-выборка помечена как надёжная", () => {
+  it("solid-выборка: тип + точные числа парсера как есть (Правило 1)", () => {
     const block = renderOpponents([REG], "ru");
     expect(block).toContain("Player 6: предположительно рег");
+    expect(block).toContain("в 21% раздач");
     expect(block).toContain("выборка 30 раздач — тип надёжный");
   });
 
@@ -80,11 +83,11 @@ describe("renderOpponents", () => {
     expect(block).toContain("Игроку этих данных не показывай");
   });
 
-  it("при locale=en тип оппонента и тексты блока идут по-английски (числа парсера как есть)", () => {
+  it("при locale=en тип по-английски, короткая выборка — без точных процентов", () => {
     const block = renderOpponents([FISH], "en");
     expect(block).toContain("Player 3: likely fish");
-    expect(block).toContain("in 42.9% of hands");
-    expect(block).toContain("sample only 14 hands — read is tentative");
+    expect(block).not.toContain("42.9%");
+    expect(block).toContain("do NOT cite exact VPIP");
     expect(block).toContain("Don't show this data to the player");
     // русских подписей в английском блоке быть не должно
     expect(block).not.toContain("предположительно");

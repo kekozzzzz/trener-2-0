@@ -105,8 +105,14 @@ ${locale === "en" ? TOURNAMENT_LANGUAGE_EN : TOURNAMENT_LANGUAGE_RU}
 
 Формат:
 - "overview" — связный текст 3–6 предложений: общий стиль игры и итог; если есть — фраза про открывашки шире нормы; на чём в основном терял или выигрывал, со ссылками-токенами {{h:N}} на самые показательные раздачи. Без отдельного списка, всё единым текстом.
+  КОРОТКИЙ ТУРНИР (в метриках сказано «стиль не обобщай»): НЕ вешай стилевой ярлык («сыграл тайтово/лузово», «дисциплинированно») — на 20-30 раздачах это пустой шум, а не вывод. Вместо этого разбери КОНКРЕТИКУ вылета: за счёт каких 1-2 раздач турнир и закончился ({{h:N}}), было ли то решение оправданным или ты слил стек на ровном месте. Прямо и по делу, без общих слов про стиль.
 - Ответ — ТОЛЬКО валидный JSON вида {"overview": "..."}, без пояснений вокруг и без markdown-код-блоков.`;
 }
+
+// Ниже стольких раздач стилевой диагноз (VPIP/тайт-лузо) — статистический шум: за 20-30 рук
+// «сыграл тайтово» ничего не значит (правка Артёма 2026-07-14). На таком турнире сводка не вешает
+// ярлык, а разбирает конкретику вылета.
+const SHORT_TOURNAMENT_HANDS = 40;
 
 const LIMP_KIND_RU: Record<string, string> = {
   OPEN: "открыл лимпом",
@@ -200,7 +206,12 @@ export function buildTournamentSummaryPrompt(request: TournamentSummaryRequest):
           .join("\n")}`
       : "4-бетов шире нормы нет — про 4-бет не пиши.";
 
-  return `Метрики турнира: ${tournament.handsCount} раздач, VPIP ${tournament.vpipPercent}%, стиль игрока — ${tournament.styleDiagnosis}.
+  // Короткий турнир — стилевой ярлык не подаём (см. SHORT_TOURNAMENT_HANDS): на такой выборке шум.
+  const shortTournament = tournament.handsCount < SHORT_TOURNAMENT_HANDS;
+  const styleField = shortTournament
+    ? `выборка короткая (${tournament.handsCount} раздач) — стиль по ней НЕ обобщай, VPIP/тайт-лузо тут статистический шум, ярлык не вешай`
+    : `стиль игрока — ${tournament.styleDiagnosis}`;
+  return `Метрики турнира: ${tournament.handsCount} раздач, VPIP ${tournament.vpipPercent}%, ${styleField}.
 
 ${openLeakBlock}
 

@@ -3,6 +3,7 @@ import {
   cleanCoachText,
   extractJson,
   allowedCardSet,
+  heroSuitFixMap,
   validateVerdict,
   validateNextQuestion,
 } from "@/infrastructure/adapters/llm/parse";
@@ -184,5 +185,39 @@ describe("метка «Player N» чистится, а не бракуется",
     expect(cleanCoachText("против Player 4 ты был впереди")).toBe("против соперник ты был впереди");
     expect(() => cleanCoachText("Player 6 поставил олл-ин, Player 2 сбросил")).not.toThrow();
     expect(cleanCoachText("Player 6 поставил олл-ин")).toBe("соперник поставил олл-ин");
+  });
+});
+
+// P3 2026-07-15: термины статистики соперника (VPIP/PFR/…) убраны из белого списка аббревиатур —
+// промпт велит их прятать, в тексте игроку они = баг, латинский бэкстоп бракует (throw→ретрай).
+describe("статистические термины соперника бракуются, структурные — нет", () => {
+  it("«VPIP»/«PFR»/«WTSD» в русском ответе → брак", () => {
+    expect(() => cleanCoachText("у соперника VPIP высокий")).toThrow();
+    expect(() => cleanCoachText("его PFR около 20")).toThrow();
+    expect(() => cleanCoachText("WTSD у него большой")).toThrow();
+  });
+  it("SPR/ICM/RFI (структурные, про игру/свою руку) остаются", () => {
+    expect(() => cleanCoachText("SPR около 2 на флопе")).not.toThrow();
+    expect(() => cleanCoachText("тут важен ICM, стек короткий")).not.toThrow();
+    expect(() => cleanCoachText("по RFI-чарту это опен")).not.toThrow();
+  });
+});
+
+// P3 2026-07-15 (регресс #41): выдуманную масть ОДНОЗНАЧНОЙ карманной карты Hero исправляем, а не
+// бракуем; масть карты борда / неоднозначного ранга по-прежнему бракуется.
+describe("автофикс масти карманной карты Hero", () => {
+  const snap = { heroCards: ["Kd", "Qs"], board: ["Ts", "9s", "2s", "2c"] };
+  const fix = heroSuitFixMap(snap);
+  const allowed = allowedCardSet(snap);
+
+  it("выдуманная масть уникальной карты Hero (K♠ при реальном K♦) → исправляется, не карантин", () => {
+    expect(cleanCoachText("у тебя K♠ Q♠", "ru", allowed, fix)).toBe("у тебя K♦ Q♠");
+    expect(() => cleanCoachText("твой K♠ бьёт его", "ru", allowed, fix)).not.toThrow();
+  });
+  it("правильная масть карты Hero не трогается", () => {
+    expect(cleanCoachText("у тебя K♦ Q♠", "ru", allowed, fix)).toBe("у тебя K♦ Q♠");
+  });
+  it("выдуманная масть карты БОРДА (ранг не у Hero) НЕ автофиксится → брак", () => {
+    expect(() => cleanCoachText("на доске появилась 4♥", "ru", allowed, fix)).toThrow();
   });
 });
