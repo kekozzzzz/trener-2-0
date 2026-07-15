@@ -388,9 +388,23 @@ export function validateNextQuestion(
   if (!complete && typeof result.question !== "string") {
     throw new Error("LLM вернул ответ без поля question");
   }
+  const cleaned =
+    typeof result.question === "string" ? cleanCoachText(result.question, locale, allowedCards, heroFix) : "";
+  // Вопрос выветрился в пустоту (санитайзер вычистил весь текст, либо модель прислала «»)
+  // при НЕзавершённом диалоге. Раньше это создавало вопрос-пустышку «{{table:N}}» без текста:
+  // ответить не на что, вердикт не наступал — диалог зависал (инцидент 2026-07-15, раздача AJo).
+  // Трактуем как «спрашивать больше нечего» → complete: диалог грациозно уходит в вердикт.
+  if (!complete && cleaned.trim() === "") {
+    return {
+      complete: true,
+      question: "",
+      answerMode: parseAnswerMode(result.answerMode),
+      tableActionIndex: parseTableActionIndex(result.tableActionIndex),
+    };
+  }
   return {
     complete,
-    question: typeof result.question === "string" ? cleanCoachText(result.question, locale, allowedCards, heroFix) : "",
+    question: cleaned,
     answerMode: parseAnswerMode(result.answerMode),
     tableActionIndex: parseTableActionIndex(result.tableActionIndex),
   };

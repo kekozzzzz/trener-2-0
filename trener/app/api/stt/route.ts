@@ -16,7 +16,7 @@ export const runtime = "nodejs";
 // (правка Артёма 2026-07-04). Ловим типовые формулы отказа и отвечаем ошибкой:
 // кнопка покажет «не удалось распознать», а поле останется чистым.
 const REFUSAL_RE =
-  /не могу (распознать|обработать|прослушать|помочь)|предоставь(?:те)? текст|аудиозапись (пуста|не содержит)|задайте другой вопрос|cannot (transcribe|process)|unable to (transcribe|process)|i'?m sorry/i;
+  /не могу (распознать|обработать|прослушать|помочь|выполнить)|не имею (доступа|возможности)|нет доступа к (аудио|аудиозапис|записям)|доступа к аудиозап|предоставь(?:те)? (текст|его|аудио)|аудиозапись (пуста|не содержит)|задайте другой вопрос|cannot (transcribe|process|fulfill)|unable to (transcribe|process|access)|(no|don'?t have) access to (audio|the audio)|i'?m sorry/i;
 
 function looksLikeRefusal(text: string): boolean {
   return REFUSAL_RE.test(text);

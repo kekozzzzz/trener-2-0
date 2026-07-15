@@ -176,6 +176,20 @@ describe("карт-валидатор в вердикте и вопросе ди
       validateNextQuestion({ complete: false, question: "а если бы пришла любая девятка?" }, "ru", allowed),
     ).not.toThrow();
   });
+  // Инцидент 2026-07-15: пустой вопрос при complete=false рождал раунд-пустышку «{{table:N}}»
+  // → диалог зависал. Теперь пустота → complete: уходим в вердикт, а не в вопрос-пустышку.
+  it("пустой вопрос («») при complete=false → трактуется как complete (в вердикт, без зависания)", () => {
+    const r1 = validateNextQuestion({ complete: false, question: "" }, "ru", allowed);
+    expect(r1.complete).toBe(true);
+    expect(r1.question).toBe("");
+    const r2 = validateNextQuestion({ complete: false, question: "   " }, "ru", allowed);
+    expect(r2.complete).toBe(true);
+  });
+  it("нормальный вопрос при complete=false — остаётся вопросом (не форсим complete)", () => {
+    const r = validateNextQuestion({ complete: false, question: "почему ты решил заколлировать?" }, "ru", allowed);
+    expect(r.complete).toBe(false);
+    expect(r.question).toContain("почему");
+  });
 });
 
 // Регресс 2026-07-14 (переход на Gemini): служебную метку «Player N» модель тащит в текст —
