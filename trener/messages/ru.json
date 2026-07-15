@@ -1036,6 +1036,7 @@
     "statusParsing": "разбираем",
     "statusReady": "готов",
     "statusFailed": "ошибка",
+    "processingHint": "Обрабатываем турниры",
     "tournament": "Турнир",
     "passed": "Пройден",
     "inProgress": "В разборе {done}/{total}",

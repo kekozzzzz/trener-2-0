@@ -1036,6 +1036,7 @@
     "statusParsing": "parsing",
     "statusReady": "ready",
     "statusFailed": "error",
+    "processingHint": "Processing tournaments",
     "tournament": "Tournament",
     "passed": "Passed",
     "inProgress": "In review {done}/{total}",

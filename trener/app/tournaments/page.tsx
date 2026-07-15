@@ -15,6 +15,7 @@ import { getPlayerCharacteristic } from "@/features/profile/queries";
 import { CHARACTERISTIC_RELIABLE_FROM } from "@/config/profile";
 import { PageHeader } from "@/components/page-header";
 import { TournamentRow } from "@/components/tournaments/tournament-row";
+import { TournamentsAutoRefresh } from "@/components/tournaments/auto-refresh";
 import { PlayerCharts } from "@/components/profile/player-charts";
 import { ProfileLeakTrend } from "./leak-trend";
 import { SessionGoalSection } from "./session-goal";
@@ -61,6 +62,10 @@ export default async function TournamentsPage({
   const failed = toInt(sp.failed);
   const capped = sp.capped ? toInt(sp.capped) : null;
   const showSummary = uploaded > 0 || dup > 0 || failed > 0;
+  // Есть незавершённый парсинг — держим список живым (сам обновляется до «готов»).
+  const hasProcessing = tournaments.some(
+    (tr) => tr.status === "UPLOADED" || tr.status === "PARSING",
+  );
 
   return (
     <main>
@@ -108,6 +113,8 @@ export default async function TournamentsPage({
         {showSummary && (
           <UploadSummary uploaded={uploaded} dup={dup} failed={failed} capped={capped} t={t} />
         )}
+
+        <TournamentsAutoRefresh active={hasProcessing} />
 
         {tournaments.length === 0 ? (
           <div className="mt-8 border border-border bg-card p-8">
