@@ -8,6 +8,7 @@
 
 import type { TournamentSummaryRequest } from "@/infrastructure/adapters/llm/types";
 import type { Locale } from "@/i18n/config";
+import type { PlayerStyle } from "@/parser/types";
 
 // Подписи данных (позиция, стек-бэнд, вид лимпа) — переводятся по locale; выбор
 // словаря в билдере по request.locale. Инструкции про утечки остаются русскими.
@@ -114,6 +115,15 @@ ${locale === "en" ? TOURNAMENT_LANGUAGE_EN : TOURNAMENT_LANGUAGE_RU}
 // ярлык, а разбирает конкретику вылета.
 const SHORT_TOURNAMENT_HANDS = 40;
 
+// Стиль игрока словами, а не английским ярлыком из PlayerStyle (см. STYLE_RU в hand-analysis.ts).
+// Здесь свой словарь: сводка говорит про весь турнир («в целом по турниру — …»), а не про раздачу.
+const STYLE_SUMMARY_RU: Record<PlayerStyle, string> = {
+  LOOSE: "заходил широко",
+  TIGHT: "заходил узко, выбирал руки",
+  PASSIVE: "чаще коллировал, чем атаковал сам",
+  AGGRESSIVE: "часто ставил и повышал",
+};
+
 const LIMP_KIND_RU: Record<string, string> = {
   OPEN: "открыл лимпом",
   OVER: "долимпил поверх лимперов",
@@ -207,11 +217,14 @@ export function buildTournamentSummaryPrompt(request: TournamentSummaryRequest):
       : "4-бетов шире нормы нет — про 4-бет не пиши.";
 
   // Короткий турнир — стилевой ярлык не подаём (см. SHORT_TOURNAMENT_HANDS): на такой выборке шум.
+  // Формулировки без «VPIP» и без английского ярлыка стиля (правка 2026-07-17, см.
+  // renderTournamentContext в hand-analysis.ts): служебные слова из промпта модель копирует
+  // игроку, и латинский сторож бракует разбор целиком.
   const shortTournament = tournament.handsCount < SHORT_TOURNAMENT_HANDS;
   const styleField = shortTournament
-    ? `выборка короткая (${tournament.handsCount} раздач) — стиль по ней НЕ обобщай, VPIP/тайт-лузо тут статистический шум, ярлык не вешай`
-    : `стиль игрока — ${tournament.styleDiagnosis}`;
-  return `Метрики турнира: ${tournament.handsCount} раздач, VPIP ${tournament.vpipPercent}%, ${styleField}.
+    ? `выборка короткая (${tournament.handsCount} раздач) — стиль по ней НЕ обобщай, доля входов в банк и «широко/узко» тут статистический шум, ярлык не вешай`
+    : `в целом по турниру — ${STYLE_SUMMARY_RU[tournament.styleDiagnosis]}`;
+  return `Метрики турнира: ${tournament.handsCount} раздач; игрок заходил в банк в ${tournament.vpipPercent}% из них, ${styleField}.
 
 ${openLeakBlock}
 
