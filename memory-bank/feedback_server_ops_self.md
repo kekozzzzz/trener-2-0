@@ -17,6 +17,6 @@ cp ~/.ssh/id_ed25519 /tmp/vmkey && chmod 600 /tmp/vmkey
 PJ='ssh -i /tmp/vmkey -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -W %h:%p root@92.60.75.87'
 ssh -i /tmp/vmkey -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ProxyCommand="$PJ" trener-vm@81.26.186.177 '<команда на VM>'
 ```
-Каталог приложения `~/trener-2-0` (Next под pm2 `trener`); деплой = `bash ~/deploy.sh` (cron сам тянет master, но миграции НЕ применяет — их добивать руками, см. [[project-deploy-status]]).
+Каталог приложения `~/trener-2-0` (Next под pm2 `trener`); деплой = `bash ~/deploy.sh` (cron сам тянет master, но миграции НЕ применяет — их добивать руками, см. [[project_deploy_status]]).
 
-**Границы:** изменения прод-БД — с явного «ок» Артёма (правило проекта); значение из `.env`/`.env.production` в чат не печатать (грузить в env без вывода). Полная схема инфры, серт, NODE_EXTRA_CA_CERTS и заход на релей — в [[project-deploy-status]].
+**Границы:** изменения прод-БД — с явного «ок» Артёма (правило проекта); значение из `.env`/`.env.production` в чат не печатать (грузить в env без вывода). Полная схема инфры, серт, NODE_EXTRA_CA_CERTS и заход на релей — в [[project_deploy_status]].

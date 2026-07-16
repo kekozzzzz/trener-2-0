@@ -29,4 +29,4 @@ XFF); (2) миграция применится сама (instrumentation.ts →
 Prisma DSL их не умеет) — файл миграции ЧИСТИТЬ руками перед применением. Локальные
 журналы миграций trener_dev/trener_test были в рассинхроне (колонки мимо миграций,
 failed-запись с 17.06) — выровнены 2026-07-02 через migrate resolve без потери данных;
-migrate reset запрещён deny-листом. [[project-deploy-procedure]] [[project-i18n-english]]
+migrate reset запрещён deny-листом. [[project_deploy_procedure]] [[project_i18n_english]]

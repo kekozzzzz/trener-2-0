@@ -7,9 +7,9 @@ metadata:
   originSessionId: ff0cddbe-f1e2-4abf-bf64-5554ba4667c8
 ---
 
-Боевой движок голосового ввода (микрофон в поле ответа) собран 2026-06-27. Заменяет прежний макет на Web Speech API. Заменил и прежнее решение «Yandex SpeechKit» из плана [[project_voice_input]].
+Боевой движок голосового ввода (микрофон в поле ответа) собран 2026-06-27. Заменяет прежний макет на Web Speech API. Заменил и прежнее решение «Yandex SpeechKit» из первоначального плана (отменено реальностью).
 
-**Архитектура:** браузер пишет звук → перекодирует в WAV 16кГц **на клиенте** (`lib/encode-wav.ts`, Web Audio — движок принимает только wav/mp3, а MediaRecorder отдаёт webm) → POST на `/api/stt` (вход по сессии + часовая квота `consumeQuota` + лимит размера) → адаптер `infrastructure/adapters/stt/openrouter.ts` (OpenAI-формат) → **КЗ-релей `https://92.60.75.87/openrouter`** → OpenRouter → модель. Прямой выход с Yandex Cloud к OpenRouter/Alibaba флаки (рвётся пачками, 7/20), поэтому релей обязателен (тот же, что у Claude/DeepSeek [[deepseek-migration]]).
+**Архитектура:** браузер пишет звук → перекодирует в WAV 16кГц **на клиенте** (`lib/encode-wav.ts`, Web Audio — движок принимает только wav/mp3, а MediaRecorder отдаёт webm) → POST на `/api/stt` (вход по сессии + часовая квота `consumeQuota` + лимит размера) → адаптер `infrastructure/adapters/stt/openrouter.ts` (OpenAI-формат) → **КЗ-релей `https://92.60.75.87/openrouter`** → OpenRouter → модель. Прямой выход с Yandex Cloud к OpenRouter/Alibaba флаки (рвётся пачками, 7/20), поэтому релей обязателен (тот же, что у Claude/DeepSeek [[project_deepseek_migration]]).
 
 **Движок: `mistralai/voxtral-small-24b-2507`** (через OpenRouter). Выбран смоук-тестом из аудио-моделей OpenRouter — лучший по русскому покерному жаргону (взял олл-ин, оверпара, ICM, SPR, сквиз, пот-оддсы) и самый дешёвый по входу. **Qwen3-ASR на OpenRouter НЕТ** (нет в списке моделей аккаунта), хотя изначально целились в неё. DashScope-адаптер `qwen.ts` оставлен запасным.
 
