@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeHandMoments, primaryMoment, type HandMoment } from "@/features/card/hand-moments";
+import { computeHandMoments, primaryMoment, displayMoment, type HandMoment } from "@/features/card/hand-moments";
 import type { TableSnapshot } from "@/parser/types";
 
 function snap(partial: Partial<TableSnapshot>): TableSnapshot {
@@ -46,5 +46,27 @@ describe("primaryMoment — приоритет группы для главно�
   it("утечка впереди инициативы и кулера", () => {
     const moments = [M("COOLER", "COOLER", "note"), M("ISO", "INITIATIVE", "note"), M("LIMP", "LEAK", "mention")];
     expect(primaryMoment(moments)!.group).toBe("LEAK");
+  });
+});
+
+// Разворот Артёма 2026-07-16: про отклонения от чарта молчим в каждой раздаче и копим их для
+// сводки по дистанции. Метка игроку — только «интересное».
+describe("displayMoment — частотные отклонения игроку не показываем", () => {
+  it("раздача только с отклонением от чарта → метки нет", () => {
+    const moments = [M("OPEN_WIDE", "LEAK", "mention"), M("LIMP", "LEAK", "mention")];
+    expect(displayMoment(moments)).toBeNull();
+  });
+
+  it("флэт премиума вместо 3-бета тоже молчит (копится в сводку)", () => {
+    expect(displayMoment([M("MISSED_3BET_VALUE", "LEAK", "mention")])).toBeNull();
+  });
+
+  it("интересное показываем, отклонение рядом не мешает", () => {
+    const moments = [M("OPEN_WIDE", "LEAK", "mention"), M("BIG_FOLD", "CONTESTED", "dialogue")];
+    expect(displayMoment(moments)!.kind).toBe("BIG_FOLD");
+  });
+
+  it("недобор велью — не отклонение от чарта, метку оставляем", () => {
+    expect(displayMoment([M("MISSED_VALUE", "LEAK", "note")])!.kind).toBe("MISSED_VALUE");
   });
 });

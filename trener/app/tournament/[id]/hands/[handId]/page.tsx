@@ -7,7 +7,7 @@ import { getChat } from "@/features/chat/queries";
 import { bigBlindFromSnapshot } from "@/parser/big-blind";
 import type { TableSnapshot } from "@/parser/types";
 import { Badge } from "@/components/ui/badge";
-import { computeHandMoments, primaryMoment, momentLabelKey } from "@/features/card/hand-moments";
+import { computeHandMoments, displayMoment, momentLabelKey } from "@/features/card/hand-moments";
 import { requireSession } from "@/features/auth/session";
 import { personalizeHero } from "@/lib/hero-name";
 import { AuthNav } from "@/components/auth-nav";
@@ -140,8 +140,9 @@ export default async function HandDialoguePage({
   const snapshot = hand.tableData as unknown as TableSnapshot;
   const bigBlind = bigBlindFromSnapshot(snapshot);
   // Тип-момент раздачи (каталог 2026-07-16) — метки в неймспейсе Tournament (второй экземпляр).
+  // displayMoment: частотные отклонения от чарта в метку не идут — молча копятся для сводки.
   const tMoment = await getTranslations("Tournament");
-  const primary = primaryMoment(computeHandMoments(snapshot, chipResult));
+  const primary = displayMoment(computeHandMoments(snapshot, chipResult));
   const momentLabel = primary ? tMoment(momentLabelKey(primary.kind)) : null;
   const bbResult = bigBlind ? chipResult / bigBlind : null;
 

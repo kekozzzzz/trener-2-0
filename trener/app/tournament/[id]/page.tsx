@@ -10,15 +10,7 @@ import { assessAiAccess } from "@/features/usage/budget";
 import { isSubscriptionGateEnabled } from "@/config/plans";
 import { bigBlindFromSnapshot } from "@/parser/big-blind";
 import { heroDecisionLabel } from "@/parser/hand-summary";
-import {
-  computeHandMoments,
-  primaryMoment,
-  momentLabelKey,
-  GROUPED_DEVIATION_KINDS,
-  type HandMomentKind,
-} from "@/features/card/hand-moments";
-import { handCode } from "@/config/poker/hand-codes";
-import type { StoredSpot } from "@/features/memory/spot-marks";
+import { computeHandMoments, displayMoment, momentLabelKey } from "@/features/card/hand-moments";
 import { detectHeroCooler } from "@/parser/cooler";
 import type { TableSnapshot } from "@/parser/types";
 import { HoleCards } from "@/components/poker/hole-cards";
@@ -194,8 +186,10 @@ export default async function TournamentPage({
     state === "VERDICT_SHOWN" ? t("dialogueDone") : t("dialogueInProgress");
   // Каталог типов раздач (2026-07-16): конкретный тип момента игроку — хук, чтобы хотелось
   // заглянуть. Считаем на лету из снимка (покрывает и старые раздачи). null — значимого типа нет.
+  // displayMoment (а не primaryMoment): частотные отклонения от чарта в бейдж НЕ попадают — они
+  // копятся молча для сводки по дистанции (разворот Артёма 2026-07-16).
   const typeLabel = (snap: TableSnapshot, chipResult: number): string | null => {
-    const primary = primaryMoment(computeHandMoments(snap, chipResult));
+    const primary = displayMoment(computeHandMoments(snap, chipResult));
     return primary ? t(momentLabelKey(primary.kind)) : null;
   };
   const session = await requireSession();
@@ -436,46 +430,6 @@ export default async function TournamentPage({
     orderBy: { createdAt: "asc" },
     select: { id: true, tableData: true },
   });
-
-  // Мелкие утечки турнира — СГРУППИРОВАНЫ по типу (решение Артёма 2026-07-16): не засоряем
-  // карточку отдельными раздачами, а даём одну строку на тип («Широко открылся · 7») с
-  // раскрытием в список конкретных рук. Считает ПАРСЕР (Правило 1): берём готовые метки
-  // hand.spot.marks (пишутся при парсинге с 2026-07-05 — покрывают и старые турниры), без ИИ.
-  const handsWithSpot = await prisma.hand.findMany({
-    where: { tournamentId: id },
-    orderBy: { createdAt: "asc" },
-    select: { id: true, spot: true },
-  });
-  const leakByKind = new Map<HandMomentKind, string[]>();
-  for (const h of handsWithSpot) {
-    const marks = (h.spot as unknown as StoredSpot | null)?.marks ?? [];
-    for (const m of marks) {
-      const kind = m.kind as HandMomentKind;
-      if (!GROUPED_DEVIATION_KINDS.includes(kind)) continue; // LUCKY_WIN и пр. — не частотные
-      const list = leakByKind.get(kind) ?? [];
-      if (!list.includes(h.id)) list.push(h.id);
-      leakByKind.set(kind, list);
-    }
-  }
-  // Снимки только тех раздач, где утечка реально есть — для подписи «J5o с UTG».
-  const leakHandIds = [...new Set([...leakByKind.values()].flat())];
-  const leakSnaps = leakHandIds.length
-    ? await prisma.hand.findMany({ where: { id: { in: leakHandIds } }, select: { id: true, tableData: true } })
-    : [];
-  const snapById = new Map(leakSnaps.map((h) => [h.id, h.tableData as unknown as TableSnapshot]));
-  const leakHandCaption = (handId: string): string => {
-    const snap = snapById.get(handId);
-    if (!snap) return "";
-    const code = handCode(snap.heroCards ?? []);
-    const hero = snap.seats?.find((s) => s.label === "Hero");
-    const pos = hero?.positionName && hero.positionName !== "OTHER" ? hero.positionName : null;
-    if (!code) return "";
-    return pos ? t("leakHandCaption", { code, position: pos }) : code;
-  };
-  // Самые частые утечки сверху — сигнал «вот что повторяется».
-  const leakGroups = [...leakByKind.entries()]
-    .map(([kind, ids]) => ({ kind, ids }))
-    .sort((a, b) => b.ids.length - a.ids.length);
 
   // Обзор турнира (GENERATE_TOURNAMENT_SUMMARY) — может быть ещё не готов (null).
   // overview содержит инлайн-токены ссылок {{h:handId|карты}} (см. renderOverview).
@@ -732,36 +686,6 @@ export default async function TournamentPage({
               })}
             </div>
           </details>
-        )}
-
-        {/* Мелкие утечки — одной строкой на тип, с раскрытием в список рук (решение Артёма
-            2026-07-16). Не отдельные разборы: тут разбирать нечего, важна ЧАСТОТА. Всё
-            детерминированно (метки парсера), без ИИ. */}
-        {leakGroups.length > 0 && (
-          <div className="mt-16">
-            <h2 className="text-h2">{t("leaksTitle")}</h2>
-            <p className="mt-2 text-small text-muted-foreground">{t("leaksNote")}</p>
-            <div className="mt-8 space-y-4">
-              {leakGroups.map((group) => (
-                <details key={group.kind} className="group border border-border bg-card">
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-6 transition-colors duration-150 ease-out hover:border-primary [&::-webkit-details-marker]:hidden">
-                    <span className="min-w-0 truncate text-body">{t(momentLabelKey(group.kind))}</span>
-                    <div className="flex shrink-0 items-center gap-4">
-                      <span className="font-mono text-body text-muted-foreground">{group.ids.length}</span>
-                      <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform duration-150 ease-out group-open:rotate-180" />
-                    </div>
-                  </summary>
-                  <ul className="space-y-2 px-6 pb-6">
-                    {group.ids.map((handId) => (
-                      <li key={handId} className="font-mono text-small text-muted-foreground">
-                        {leakHandCaption(handId)}
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              ))}
-            </div>
-          </div>
         )}
 
         <CoolersSection coolers={coolerHands} t={t} />
