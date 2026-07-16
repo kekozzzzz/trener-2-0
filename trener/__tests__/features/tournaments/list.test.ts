@@ -18,7 +18,11 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
 import { PrismaClient, type Prisma } from "@prisma/client";
 import { prisma } from "@/infrastructure/db/client";
-import { listMyTournaments, recentTournaments } from "@/features/tournaments/queries";
+import {
+  listMyTournaments,
+  listMyTournamentsPage,
+  recentTournaments,
+} from "@/features/tournaments/queries";
 
 const PLAYER_ID = "11111111-0000-0000-0000-000000000003";
 const OTHER_PLAYER_ID = "11111111-0000-0000-0000-000000000004";
@@ -211,6 +215,80 @@ describe("reviewProgress (бейдж «В разборе»)", () => {
     const [row] = await listMyTournaments(PLAYER_ID);
 
     expect(row.reviewProgress).toEqual({ done: 1, total: 2 });
+  });
+});
+
+describe("listMyTournamentsPage", () => {
+  // 12 турниров: 12-й день — самый свежий, значит он первый в списке.
+  async function seedTwelve(): Promise<void> {
+    for (let day = 1; day <= 12; day++) {
+      await createTournament({ playedAt: new Date(`2026-06-${String(day).padStart(2, "0")}`) });
+    }
+  }
+
+  it("режет список на страницы и держит порядок сквозь границу страниц", async () => {
+    await seedTwelve();
+
+    const first = await listMyTournamentsPage(PLAYER_ID, { page: 1, perPage: 5 });
+    const second = await listMyTournamentsPage(PLAYER_ID, { page: 2, perPage: 5 });
+
+    expect(first.items).toHaveLength(5);
+    expect(first.total).toBe(12);
+    expect(first.totalPages).toBe(3);
+    // Свежие сверху: первая страница кончается 8-м июня, вторая начинается с 7-го.
+    expect(first.items[0].playedAt).toEqual(new Date("2026-06-12"));
+    expect(first.items[4].playedAt).toEqual(new Date("2026-06-08"));
+    expect(second.items[0].playedAt).toEqual(new Date("2026-06-07"));
+    // Ни один турнир не потерян и не задвоен на стыке.
+    const ids = new Set([...first.items, ...second.items].map((t) => t.id));
+    expect(ids.size).toBe(10);
+  });
+
+  it("последняя страница — остаток, а не полный размер", async () => {
+    await seedTwelve();
+
+    const last = await listMyTournamentsPage(PLAYER_ID, { page: 3, perPage: 5 });
+
+    expect(last.items).toHaveLength(2);
+    expect(last.page).toBe(3);
+  });
+
+  it("страница за пределами диапазона прижимается к последней", async () => {
+    await seedTwelve();
+
+    const beyond = await listMyTournamentsPage(PLAYER_ID, { page: 99, perPage: 5 });
+
+    expect(beyond.page).toBe(3);
+    expect(beyond.items).toHaveLength(2);
+  });
+
+  it("нулевая и отрицательная страница → первая", async () => {
+    await seedTwelve();
+
+    const zero = await listMyTournamentsPage(PLAYER_ID, { page: 0, perPage: 5 });
+
+    expect(zero.page).toBe(1);
+    expect(zero.items[0].playedAt).toEqual(new Date("2026-06-12"));
+  });
+
+  it("пустой список → страница 1 из 1, без падения", async () => {
+    const empty = await listMyTournamentsPage(PLAYER_ID, { page: 1, perPage: 25 });
+
+    expect(empty.items).toEqual([]);
+    expect(empty.total).toBe(0);
+    expect(empty.totalPages).toBe(1);
+    expect(empty.page).toBe(1);
+  });
+
+  it("total считает только свои и неудалённые (чужие и soft-deleted не раздувают счётчик)", async () => {
+    await createTournament({ playedAt: new Date("2026-06-10") });
+    await createTournament({ playedAt: new Date("2026-06-11"), deletedAt: new Date() });
+    await createTournament({ playerId: OTHER_PLAYER_ID, playedAt: new Date("2026-06-12") });
+
+    const result = await listMyTournamentsPage(PLAYER_ID, { page: 1, perPage: 25 });
+
+    expect(result.total).toBe(1);
+    expect(result.items).toHaveLength(1);
   });
 });
 

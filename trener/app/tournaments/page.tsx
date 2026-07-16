@@ -10,11 +10,17 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { requireSession } from "@/features/auth/session";
-import { listMyTournaments } from "@/features/tournaments/queries";
+import { listMyTournamentsPage } from "@/features/tournaments/queries";
 import { getPlayerCharacteristic } from "@/features/profile/queries";
 import { CHARACTERISTIC_RELIABLE_FROM } from "@/config/profile";
+import {
+  normalizePerPage,
+  TOURNAMENTS_PER_PAGE_DEFAULT,
+  TOURNAMENTS_PER_PAGE_OPTIONS,
+} from "@/config/tournaments";
 import { PageHeader } from "@/components/page-header";
 import { TournamentRow } from "@/components/tournaments/tournament-row";
+import { TournamentsPagination } from "@/components/tournaments/pagination";
 import { TournamentsAutoRefresh } from "@/components/tournaments/auto-refresh";
 import { PlayerCharts } from "@/components/profile/player-charts";
 import { ProfileLeakTrend } from "./leak-trend";
@@ -50,18 +56,33 @@ function toInt(value: string | undefined): number {
 export default async function TournamentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ uploaded?: string; dup?: string; failed?: string; capped?: string }>;
+  searchParams: Promise<{
+    uploaded?: string;
+    dup?: string;
+    failed?: string;
+    capped?: string;
+    page?: string;
+    per?: string;
+  }>;
 }) {
   const t = await getTranslations("Tournaments");
   const { playerId } = await requireSession();
-  const tournaments = await listMyTournaments(playerId);
-  const characteristic = await getPlayerCharacteristic(playerId);
   const sp = await searchParams;
+  // Из адреса приходит что угодно (руками правят, ссылки живут дольше данных):
+  // мусор превращаем в дефолт, а не в ошибку. Страницу за пределами диапазона
+  // прижимает к последней сам listMyTournamentsPage.
+  const perPage = normalizePerPage(toInt(sp.per) || TOURNAMENTS_PER_PAGE_DEFAULT);
+  const { items: tournaments, total, page, totalPages } = await listMyTournamentsPage(playerId, {
+    page: toInt(sp.page) || 1,
+    perPage,
+  });
+  const characteristic = await getPlayerCharacteristic(playerId);
   const uploaded = toInt(sp.uploaded);
   const dup = toInt(sp.dup);
   const failed = toInt(sp.failed);
   const capped = sp.capped ? toInt(sp.capped) : null;
   const showSummary = uploaded > 0 || dup > 0 || failed > 0;
+  const showPagination = total > TOURNAMENTS_PER_PAGE_OPTIONS[0];
   // Есть незавершённый парсинг — держим список живым (сам обновляется до «готов»).
   const hasProcessing = tournaments.some(
     (tr) => tr.status === "UPLOADED" || tr.status === "PARSING",
@@ -123,11 +144,23 @@ export default async function TournamentsPage({
             </p>
           </div>
         ) : (
-          <div className="mt-8 space-y-4">
-            {tournaments.map((tournament) => (
-              <TournamentRow key={tournament.id} tournament={tournament} />
-            ))}
-          </div>
+          <>
+            <div className="mt-8 space-y-4">
+              {tournaments.map((tournament) => (
+                <TournamentRow key={tournament.id} tournament={tournament} />
+              ))}
+            </div>
+            {/* Пока турниров меньше самого мелкого шага — листать и выбирать нечего,
+                строка была бы шумом. */}
+            {showPagination && (
+              <TournamentsPagination
+                page={page}
+                perPage={perPage}
+                total={total}
+                totalPages={totalPages}
+              />
+            )}
+          </>
         )}
       </section>
     </main>

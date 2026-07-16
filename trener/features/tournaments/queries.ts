@@ -27,11 +27,15 @@ export type TournamentListItem = {
 // (architecture/03-база-данных.md, индекс idx_tournaments_player_timeline).
 // Вторичный ключ — дата загрузки (createdAt desc): при одинаковой дате игры
 // порядок стабилен, а позже добавленный турнир оказывается выше.
-async function queryTournaments(playerId: string, limit?: number): Promise<TournamentListItem[]> {
+async function queryTournaments(
+  playerId: string,
+  window?: { take?: number; skip?: number },
+): Promise<TournamentListItem[]> {
   const rows = await prisma.tournament.findMany({
     where: { playerId, deletedAt: null },
     orderBy: [{ playedAt: "desc" }, { createdAt: "desc" }],
-    ...(limit != null ? { take: limit } : {}),
+    ...(window?.take != null ? { take: window.take } : {}),
+    ...(window?.skip ? { skip: window.skip } : {}),
     select: {
       id: true,
       name: true,
@@ -112,12 +116,36 @@ async function queryTournaments(playerId: string, limit?: number): Promise<Tourn
   });
 }
 
-// Все турниры игрока — для страницы «Мои турниры».
+// Все турниры игрока — целиком, без окна.
 export function listMyTournaments(playerId: string): Promise<TournamentListItem[]> {
   return queryTournaments(playerId);
 }
 
 // Последние N турниров — для секции на дашборде (главная для залогиненного).
 export function recentTournaments(playerId: string, limit = 5): Promise<TournamentListItem[]> {
-  return queryTournaments(playerId, limit);
+  return queryTournaments(playerId, { take: limit });
+}
+
+export type TournamentsPage = {
+  items: TournamentListItem[];
+  total: number; // всего турниров у игрока (не на странице) — для «1–25 из 137»
+  page: number; // фактическая страница: если запросили за пределами — последняя
+  perPage: number;
+  totalPages: number; // минимум 1, чтобы пустой список не давал «страница 1 из 0»
+};
+
+// Одна страница списка «Мои турниры». Страница за пределами диапазона (удалил
+// турниры, а ссылка на ?page=9 осталась) не отдаёт пустоту — прижимается к
+// последней существующей. Считаем total отдельным count: без него не сказать,
+// сколько всего страниц, а тянуть всю таблицу ради этого — то, от чего уходим.
+export async function listMyTournamentsPage(
+  playerId: string,
+  opts: { page: number; perPage: number },
+): Promise<TournamentsPage> {
+  const perPage = opts.perPage;
+  const total = await prisma.tournament.count({ where: { playerId, deletedAt: null } });
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
+  const page = Math.min(Math.max(1, opts.page), totalPages);
+  const items = await queryTournaments(playerId, { take: perPage, skip: (page - 1) * perPage });
+  return { items, total, page, perPage, totalPages };
 }

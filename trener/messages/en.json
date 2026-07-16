@@ -412,7 +412,14 @@
     "summaryDup": "{count, plural, one {# file was already uploaded before - skipped} other {# files were already uploaded before - skipped}}",
     "summaryFailed": "{count, plural, one {# file could not be parsed} other {# files could not be parsed}} - contact support and we will sort it out",
     "summaryCapped": "Up to {count} files at once - the rest didn't fit, upload them in the next batch.",
-    "emptyList": "Uploaded tournaments will show up here. None yet - upload your first."
+    "emptyList": "Uploaded tournaments will show up here. None yet - upload your first.",
+    "processingHint": "Processing tournaments",
+    "paginationLabel": "Tournament list pages",
+    "perPage": "Per page",
+    "rangeOf": "{from}-{to} of {total}",
+    "prevPage": "Previous page",
+    "nextPage": "Next page",
+    "pageNumber": "Page {n}"
   },
   "Analyze": {
     "title": "Upload tournaments",
@@ -1036,7 +1043,6 @@
     "statusParsing": "parsing",
     "statusReady": "ready",
     "statusFailed": "error",
-    "processingHint": "Processing tournaments",
     "tournament": "Tournament",
     "passed": "Passed",
     "inProgress": "In review {done}/{total}",
