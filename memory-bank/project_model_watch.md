@@ -39,6 +39,10 @@ OpenRouter прибавилось 31 модель — вручную это не
 пересобирала бы прод, а деплой во время разбора вешает диалог
 ([[feedback_no_deploy_during_analysis]]). Логика проверена на 4 наборах файлов.
 
-**СТАТУС: код готов и проверен (все ветки + прогон с релея), НЕ УСТАНОВЛЕН** — ждёт команды
-Артёма на пуш в master. После пуша: поставить юниты, `systemctl enable --now model-watch.timer`,
-первый прогон (пришлёт «запомнил 344 модели»). [[project_remote_workspace]] [[project_glm_latency_incident]]
+**СТАТУС: LIVE с 2026-07-16** (коммит `006d2cf`). Юниты установлены, таймер включён, первый
+прогон прошёл (снимок из 344 моделей, сообщение о запуске доставлено). Следующая проверка —
+19.07 06:25 UTC. [[project_remote_workspace]] [[project_glm_latency_incident]]
+
+**Проверить/починить:** `systemctl list-timers model-watch` (когда следующая),
+`journalctl -u model-watch -n 30` (что было), `node /root/trener/ops/model-watch/watch.mjs --dry-run`
+(показать отчёт, ничего не отправляя). Выключить: `systemctl disable --now model-watch.timer`.

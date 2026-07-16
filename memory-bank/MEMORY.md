@@ -55,7 +55,8 @@
 - [LLM connectivity block](project_llm_connectivity_block.md) — РЕШЕНО: LLM из РФ через релей-nginx (Казахстан)
 - [Deploy pipeline hang](project_deploy_pipeline_hang.md) — git fetch без таймаута вешал деплой; фикс timeout 120
 - [Watchdog bot](project_watchdog_bot.md) — тревога при карантине задачи в Telegram (@kekoz_bot); дайджест впереди
-- [Model watch](project_model_watch.md) — слежка за новыми моделями OpenRouter: systemd-таймер на релее раз в 3 дня → Telegram; молчит, если новостей нет; следит и за пропажей/подорожанием боевой модели; код в ops/model-watch (правка фильтра = коммит); ГОТОВА, ждёт пуша [[feedback_notification_not_task]]
+- [Model watch](project_model_watch.md) — слежка за новыми моделями OpenRouter: systemd-таймер на релее раз в 3 дня → Telegram; молчит, если новостей нет; следит и за пропажей/подорожанием боевой модели; код в ops/model-watch (правка фильтра = коммит); LIVE 2026-07-16 (006d2cf) [[feedback_notification_not_task]]
+- [🔴 Feedback: смотреть незапушенное ПЕРЕД пушем](feedback_check_unpushed_before_push.md) — push тащит ВСЮ ветку, не мой коммит: перед пушем `git log origin/master..master` и показать Артёму; инцидент 16.07 — «выкатывай» про сторожа утащило на прод чужой WIP-каталог «НЕ деплоить», откатывали
 - [Feedback: уведомление ≠ задача](feedback_notification_not_task.md) — сторожа сообщают ФАКТ и останавливаются: без команд в тексте, без пробных прогонов «на всякий»; решение принимаем вместе за компом (иначе жжём аудит по ненужным моделям) [[project_model_watch]]
 - [Posting bot](project_posting_bot.md) — @whygrid_bot автопостинг; ждёт перевыпуск токена + админство в канале
 - [Telegram bridge](project_telegram_bridge.md) — управление с телефона @kekoz_bot, chat_id 440359604; с 2026-07-05 основной мост живёт на релее 24/7 [[project_remote_workspace]]
