@@ -10,7 +10,6 @@ import { assessAiAccess } from "@/features/usage/budget";
 import { isSubscriptionGateEnabled } from "@/config/plans";
 import { bigBlindFromSnapshot } from "@/parser/big-blind";
 import { heroDecisionLabel } from "@/parser/hand-summary";
-import { computeHandMoments, displayMoment, momentLabelKey } from "@/features/card/hand-moments";
 import { detectHeroCooler } from "@/parser/cooler";
 import type { TableSnapshot } from "@/parser/types";
 import { HoleCards } from "@/components/poker/hole-cards";
@@ -184,14 +183,6 @@ export default async function TournamentPage({
   // Состояние диалога → подпись бейджа. QUESTION_ASKED/ANSWER_RECEIVED — «в работе».
   const dialogueLabel = (state: string) =>
     state === "VERDICT_SHOWN" ? t("dialogueDone") : t("dialogueInProgress");
-  // Каталог типов раздач (2026-07-16): конкретный тип момента игроку — хук, чтобы хотелось
-  // заглянуть. Считаем на лету из снимка (покрывает и старые раздачи). null — значимого типа нет.
-  // displayMoment (а не primaryMoment): частотные отклонения от чарта в бейдж НЕ попадают — они
-  // копятся молча для сводки по дистанции (разворот Артёма 2026-07-16).
-  const typeLabel = (snap: TableSnapshot, chipResult: number): string | null => {
-    const primary = displayMoment(computeHandMoments(snap, chipResult));
-    return primary ? t(momentLabelKey(primary.kind)) : null;
-  };
   const session = await requireSession();
   const tournament = await prisma.tournament.findUnique({ where: { id } });
 
@@ -337,20 +328,16 @@ export default async function TournamentPage({
               <div className="mt-8 space-y-4">
                 {lockedHands.map((hand) => {
                   const sign = hand.chipResult >= 0 ? "+" : "";
-                  const snap = hand.tableData as unknown as TableSnapshot;
-                  const moment = typeLabel(snap, hand.chipResult);
-                  const bb = bigBlindFromSnapshot(snap);
+                  const bb = bigBlindFromSnapshot(hand.tableData as unknown as TableSnapshot);
                   const bbResult = bb ? hand.chipResult / bb : null;
                   return (
                     <div
                       key={hand.id}
                       className="flex items-center justify-between gap-4 border border-border bg-card p-6"
                     >
-                      {moment ? (
-                        <Badge>{moment}</Badge>
-                      ) : (
-                        <Badge variant="outline">{importanceLabel(hand.importanceLevel)}</Badge>
-                      )}
+                      <Badge variant="outline">
+                        {importanceLabel(hand.importanceLevel)}
+                      </Badge>
                       <div className="flex flex-col items-end">
                         <span
                           className={cn(
@@ -577,7 +564,6 @@ export default async function TournamentPage({
                 const dialogue = hand.dialogue!;
                 const snap = hand.tableData as unknown as TableSnapshot;
                 const label = heroDecisionLabel(snap);
-                const moment = typeLabel(snap, hand.chipResult);
                 // Разбор завершён (вердикт показан) → лаймовая обводка, как у просмотренных.
                 const done = dialogue.state === "VERDICT_SHOWN";
                 return (
@@ -596,7 +582,6 @@ export default async function TournamentPage({
                           <span className="font-mono text-label uppercase tracking-label text-muted-foreground">
                             {t("handLabel", { index: index + 1 })}
                           </span>
-                          {moment && <Badge>{moment}</Badge>}
                           <Badge variant={dialogue.state === "VERDICT_SHOWN" ? "done" : "outline"}>
                             {dialogueLabel(dialogue.state)}
                           </Badge>
@@ -630,7 +615,6 @@ export default async function TournamentPage({
                 const sign = hand.chipResult >= 0 ? "+" : "";
                 const snap = hand.tableData as unknown as TableSnapshot;
                 const label = heroDecisionLabel(snap);
-                const moment = typeLabel(snap, hand.chipResult);
                 const bb = bigBlindFromSnapshot(snap);
                 const bbResult = bb ? hand.chipResult / bb : null;
                 // Просмотрена → лаймовая обводка + бейдж «Просмотрено» (быстро видно, что уже разобрал).
@@ -645,13 +629,9 @@ export default async function TournamentPage({
                     )}
                   >
                     <div className="flex min-w-0 items-center gap-4">
-                      {moment ? (
-                        <Badge className="shrink-0">{moment}</Badge>
-                      ) : (
-                        <Badge variant="outline" className="shrink-0">
-                          {importanceLabel(hand.importanceLevel)}
-                        </Badge>
-                      )}
+                      <Badge variant="outline" className="shrink-0">
+                        {importanceLabel(hand.importanceLevel)}
+                      </Badge>
                       {viewed && (
                         <Badge variant="done" className="shrink-0">
                           {t("viewed")}

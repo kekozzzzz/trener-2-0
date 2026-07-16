@@ -3,7 +3,6 @@ import type { Prisma } from "@prisma/client";
 import type { StepHandler } from "../types";
 import type { ParsedTournament } from "@/parser/types";
 import { selectHandsForCard } from "@/features/card/select-hands";
-import { computeHandMoments } from "@/features/card/hand-moments";
 import { computeSpotFingerprint, spotKey } from "@/parser/spot-fingerprint";
 import { computeSpotMarks, type StoredSpot } from "@/features/memory/spot-marks";
 import { enqueue, CRITICAL_ANALYSIS_PRIORITY } from "../enqueue";
@@ -64,12 +63,7 @@ export const parseTournamentStep: StepHandler = async (task, db) => {
       // Отпечаток спота + метки ошибок — детерминированно из снимка (Правило 1:
       // похожесть и ошибки считает парсер). Лежат в одном JSON: hand.spot.
       const fingerprint = computeSpotFingerprint(hand.tableSnapshot);
-      const stored: StoredSpot = {
-        ...fingerprint,
-        marks: computeSpotMarks(hand.tableSnapshot),
-        // Типы-моменты каталога (2026-07-16): показываем игроку конкретный тип раздачи.
-        moments: computeHandMoments(hand.tableSnapshot, hand.chipResult).map((m) => m.kind),
-      };
+      const stored: StoredSpot = { ...fingerprint, marks: computeSpotMarks(hand.tableSnapshot) };
       return {
         id: randomUUID(),
         tournamentId,
