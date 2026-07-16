@@ -6,6 +6,8 @@ import { getDialogue } from "@/features/dialogue/queries";
 import { getChat } from "@/features/chat/queries";
 import { bigBlindFromSnapshot } from "@/parser/big-blind";
 import type { TableSnapshot } from "@/parser/types";
+import { Badge } from "@/components/ui/badge";
+import { computeHandMoments, primaryMoment, momentLabelKey } from "@/features/card/hand-moments";
 import { requireSession } from "@/features/auth/session";
 import { personalizeHero } from "@/lib/hero-name";
 import { AuthNav } from "@/components/auth-nav";
@@ -137,6 +139,10 @@ export default async function HandDialoguePage({
   const chipSign = chipResult >= 0 ? "+" : "";
   const snapshot = hand.tableData as unknown as TableSnapshot;
   const bigBlind = bigBlindFromSnapshot(snapshot);
+  // Тип-момент раздачи (каталог 2026-07-16) — метки в неймспейсе Tournament (второй экземпляр).
+  const tMoment = await getTranslations("Tournament");
+  const primary = primaryMoment(computeHandMoments(snapshot, chipResult));
+  const momentLabel = primary ? tMoment(momentLabelKey(primary.kind)) : null;
   const bbResult = bigBlind ? chipResult / bigBlind : null;
 
   // Стол перед каждым вопросом: новые диалоги несут метку действия {{table:N}} в
@@ -181,7 +187,10 @@ export default async function HandDialoguePage({
       <section className="mx-auto max-w-5xl px-8 py-16">
         {/* Фоновая отметка «просмотрено» при открытии разбора (см. mark-viewed.tsx). */}
         <MarkViewed handId={handId} />
-        <h1 className="text-h1">{t("title")}</h1>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-h1">{t("title")}</h1>
+          {momentLabel && <Badge>{momentLabel}</Badge>}
+        </div>
 
         <div className="mt-8 border border-border bg-card p-6">
           {played && <p className="text-body text-muted-foreground">{played}</p>}

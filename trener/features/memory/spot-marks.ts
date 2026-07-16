@@ -8,10 +8,14 @@
 
 import type { Street, TableSnapshot } from "@/parser/types";
 import { detectHeroLuckyWin } from "@/parser/lucky-win";
+import { detectHeroMissedValue3bet } from "@/parser/missed-3bet";
 import type { SpotFingerprint } from "@/parser/spot-fingerprint";
 import { countLeaks, LEAK_KINDS, type LeakKind } from "@/features/profile/leak-trend";
+import type { HandMomentKind } from "@/features/card/hand-moments";
 
-export type SpotMarkKind = LeakKind | "LUCKY_WIN";
+// «Пропущенный 3-бет на велью» (2026-07-16) — вторая сторона чарта: не «шире нормы», а
+// «не сделал того, что чарт велит». Самый ясный из пропусков (флэт премиума ≈ всегда зевок).
+export type SpotMarkKind = LeakKind | "LUCKY_WIN" | "MISSED_3BET_VALUE";
 
 export type SpotMark = {
   kind: SpotMarkKind;
@@ -19,9 +23,11 @@ export type SpotMark = {
   equityPct?: number; // только LUCKY_WIN: эквити Hero в момент вложения
 };
 
-// Что реально лежит в JSON-колонке hand.spot после 2026-07-05: отпечаток + метки.
-// Читатели отпечатка (spotMatchScore/spotKey) смотрят только свои 6 полей.
-export type StoredSpot = SpotFingerprint & { marks?: SpotMark[] };
+// Что реально лежит в JSON-колонке hand.spot после 2026-07-05: отпечаток + метки ошибок (marks,
+// для канала памяти «та же ошибка») + типы-моменты каталога (moments, 2026-07-16 — для показа
+// игроку). Читатели отпечатка (spotMatchScore/spotKey) смотрят только свои 6 полей; marks и
+// moments — независимые списки (moments шире: включает позитив/инициативу, marks — только ошибки).
+export type StoredSpot = SpotFingerprint & { marks?: SpotMark[]; moments?: HandMomentKind[] };
 
 // Метки ошибок одной раздачи. Никогда не бросает — вызывается в парс-шаге.
 export function computeSpotMarks(snapshot: TableSnapshot): SpotMark[] {
@@ -35,6 +41,9 @@ export function computeSpotMarks(snapshot: TableSnapshot): SpotMark[] {
 
     const lucky = detectHeroLuckyWin(snapshot);
     if (lucky) marks.push({ kind: "LUCKY_WIN", street: lucky.street, equityPct: lucky.equityPct });
+
+    // Вторая сторона чарта (2026-07-16): не «шире нормы», а «не сделал того, что чарт велит».
+    if (detectHeroMissedValue3bet(snapshot)) marks.push({ kind: "MISSED_3BET_VALUE" });
 
     return marks;
   } catch {
@@ -68,6 +77,8 @@ export function mistakeLabel(mark: SpotMark): string {
       return "сквиз шире нормы";
     case "FOURBET_WIDE":
       return "4-бет шире нормы";
+    case "MISSED_3BET_VALUE":
+      return "флэт премиума против опена вместо 3-бета на велью";
     case "LUCKY_WIN": {
       const street = mark.street ? ` ${STREET_RU[mark.street]}` : "";
       const equity = mark.equityPct != null ? ` с эквити ${mark.equityPct}%` : "";
