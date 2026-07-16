@@ -59,7 +59,7 @@ async function rawCall(
   prompt: string,
   reasoning?: Reasoning,
   temperature?: number,
-): Promise<{ text: string; usage: Record<string, unknown> }> {
+): Promise<{ text: string; usage: Record<string, unknown>; finishReason: string; providerError: string }> {
   const headers: Record<string, string> = {
     Authorization: `Bearer ${getOpenRouterApiKey()}`,
     "Content-Type": "application/json",
@@ -105,12 +105,20 @@ async function rawCall(
   }
 
   const json = (await res.json()) as {
-    choices?: { message?: { content?: string } }[];
+    choices?: { message?: { content?: string }; finish_reason?: string; error?: { message?: string } }[];
     usage?: Record<string, unknown>;
   };
-  const text = json.choices?.[0]?.message?.content ?? "";
-  if (!text) throw new Error("OpenRouter вернул пустой ответ");
-  return { text, usage: json.usage ?? {} };
+  const choice = json.choices?.[0];
+  // finish_reason обязателен для диагноза: провайдер отдаёт HTTP 200 и ЧАСТИЧНЫЙ текст, когда
+  // апстрим (Gemini) рвёт SSE-стрим на середине («JSON error injected into SSE stream») или
+  // ответ упёрся в max_tokens. Без этой проверки обрезок уходил в JSON.parse и падал с враньём
+  // «модель вернула невалидный JSON» — на деле модель отвечала нормально, её оборвали.
+  return {
+    text: choice?.message?.content ?? "",
+    usage: json.usage ?? {},
+    finishReason: choice?.finish_reason ?? "",
+    providerError: choice?.error?.message ?? "",
+  };
 }
 
 // Вызов с разбором JSON и ОДНИМ повтором при кривом JSON — дешёвые модели изредка
@@ -124,7 +132,7 @@ async function callOpenRouter(
 ): Promise<unknown> {
   let lastErr: unknown;
   for (let attempt = 0; attempt < 2; attempt++) {
-    const { text, usage } = await rawCall(system, prompt, reasoning, temperature);
+    const { text, usage, finishReason, providerError } = await rawCall(system, prompt, reasoning, temperature);
     if (ctx.playerId) {
       const cached = Number((usage.prompt_tokens_details as { cached_tokens?: number } | undefined)?.cached_tokens ?? 0);
       const promptTokens = Number(usage.prompt_tokens ?? 0);
@@ -140,13 +148,22 @@ async function callOpenRouter(
         },
       });
     }
+    // Ответ оборван — парсить обрезок бессмысленно, сразу вторая попытка (текст в лог честный:
+    // это НЕ «модель не умеет JSON», а обрыв генерации; "length" = упёрлись в max_tokens и
+    // лечится ANTHROPIC_MAX_TOKENS без передеплоя, "error" = сбой апстрима, лечится повтором).
+    if (finishReason === "error" || finishReason === "length" || !text) {
+      lastErr = new Error(
+        `ответ оборван (finish_reason=${finishReason || "пусто"}${providerError ? `, провайдер: ${providerError}` : ""})`,
+      );
+      continue;
+    }
     try {
       return JSON.parse(extractJson(text));
     } catch (e) {
       lastErr = e; // кривой JSON — пробуем ещё раз (вторая попытка)
     }
   }
-  throw new Error(`OpenRouter вернул невалидный JSON после повтора: ${(lastErr as Error)?.message ?? ""}`);
+  throw new Error(`OpenRouter не дал валидный ответ после повтора: ${(lastErr as Error)?.message ?? ""}`);
 }
 
 // Гибрид размышления ОТКАЧЕН 2026-07-14 (инцидент карантина на проде). reasoning low режет

@@ -111,3 +111,84 @@ describe("openRouterLlmAdapter — таймаут вызова", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
+
+/**
+ * Обрыв ответа на середине (проба 2026-07-16): провайдер отдаёт HTTP 200, но
+ * finish_reason="error" и ЧАСТИЧНЫЙ content — апстрим Gemini рвёт SSE-стрим
+ * («JSON error injected into SSE stream»). Раньше обрезок уходил в JSON.parse и
+ * падал с враньём «модель вернула невалидный JSON»; теперь распознаём и повторяем.
+ */
+describe("openRouterLlmAdapter — оборванный ответ провайдера", () => {
+  const partial = { message: { content: '{"characteristic":"лузово-пас' }, finish_reason: "error" };
+
+  it("обрыв апстрима (finish_reason=error) → повтор, человек не замечает", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ choices: [partial] }) } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ choices: [{ message: { content: '{"characteristic":"ок"}' }, finish_reason: "stop" }] }),
+      } as Response);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await openRouterLlmAdapter.generatePlayerCharacteristic(REQ);
+    expect(result.characteristic).toBe("ок");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("обрыв дважды подряд → честный диагноз («оборван»), а не «невалидный JSON»", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ choices: [{ ...partial, error: { message: "JSON error injected into SSE stream" } }] }),
+    } as Response);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const err: unknown = await openRouterLlmAdapter
+      .generatePlayerCharacteristic(REQ)
+      .then(() => null)
+      .catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(Error); // не «успешно разобрали обрезок», а честная ошибка
+    const msg = (err as Error).message;
+    expect(msg).toMatch(/оборван/);
+    expect(msg).toMatch(/finish_reason=error/);
+    expect(msg).toMatch(/SSE stream/); // текст провайдера виден в логе — диагноз не гадательный
+    expect(msg).not.toMatch(/невалидный JSON/);
+  });
+
+  it("упор в max_tokens (finish_reason=length) → тоже повтор, а не парсинг обрезка", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ choices: [{ message: { content: '{"characteristic":"луз' }, finish_reason: "length" }] }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ choices: [{ message: { content: '{"characteristic":"ок"}' }, finish_reason: "stop" }] }),
+      } as Response);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await openRouterLlmAdapter.generatePlayerCharacteristic(REQ);
+    expect(result.characteristic).toBe("ок");
+  });
+
+  it("пустой ответ → повтор (раньше падал сразу, без второй попытки)", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ choices: [] }) } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ choices: [{ message: { content: '{"characteristic":"ок"}' }, finish_reason: "stop" }] }),
+      } as Response);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await openRouterLlmAdapter.generatePlayerCharacteristic(REQ);
+    expect(result.characteristic).toBe("ок");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
