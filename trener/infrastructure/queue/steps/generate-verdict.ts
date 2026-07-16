@@ -61,7 +61,10 @@ export const generateVerdictStep: StepHandler = async (task, db) => {
     );
   }
 
-  const analysis = hand.analysis as { draftVerdict?: string } | null;
+  // optimalAction кладёт сюда GENERATE_HAND_ANALYSIS (hand.analysis — JSON целиком), поэтому
+  // канал «что советовал разбор» доезжает до вердикта без изменения схемы БД. У раздач, разобранных
+  // до 2026-07-17, поля нет — вердикт просто отработает как раньше.
+  const analysis = hand.analysis as { draftVerdict?: string; optimalAction?: string } | null;
   if (!analysis?.draftVerdict) {
     throw new Error(
       "В analysis раздачи нет draftVerdict — GENERATE_HAND_ANALYSIS должен выполниться раньше GENERATE_VERDICT"
@@ -84,6 +87,7 @@ export const generateVerdictStep: StepHandler = async (task, db) => {
     // ANSWER_RECEIVED гарантирует, что answer записан на каждом раунде (submitAnswer).
     history,
     draftVerdict: analysis.draftVerdict,
+    optimalAction: analysis.optimalAction,
     chipResult: hand.chipResult,
     tableSnapshot,
     tournament: {

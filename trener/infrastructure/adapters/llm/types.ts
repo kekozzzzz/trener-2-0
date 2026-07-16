@@ -90,6 +90,12 @@ export type HandAnalysisRequest = {
 export type HandAnalysisResult = {
   played: string;
   optimal: string;
+  // Действие из optimal ОДНИМ РУССКИМ СЛОВОМ (сброс/чек/колл/ставка/рейз/олл-ин). Кладётся в
+  // hand.analysis и читается ролью вердикта после диалога: раньше вердикт не видел optimal вообще,
+  // а чек-лист требовал «optimal и итог зовут одно действие» — правило было невыполнимым, и аудит
+  // 2026-07-16 намерил противоречия в 5 раздачах из 23 («коллируй» → «фолд верно»).
+  // ⚠️Русским, не RAISE/CALL: английские слова мы сами бракуем латинским сторожем.
+  optimalAction?: string;
   note?: string;
   question?: string;
   draftVerdict?: string;
@@ -179,6 +185,11 @@ export type VerdictRequest = {
   locale: Locale; // язык ответа тренера (см. HandAnalysisRequest.locale)
   history: DialogueRoundSummary[];
   draftVerdict: string;
+  // Действие, которое разбор ДО диалога назвал лучшим (одно русское слово из HandAnalysisResult).
+  // Вердикт пишется отдельным вызовом и поля optimal НЕ видит — без этого канала он физически не
+  // мог соблюсти правило «optimal и итог зовут одно действие». undefined — модель не заполнила
+  // поле или ответила мусором: тогда вердикт работает как раньше, без строки-факта.
+  optimalAction?: string;
   chipResult: number;
   tableSnapshot: TableSnapshot;
   tournament: TournamentContext;

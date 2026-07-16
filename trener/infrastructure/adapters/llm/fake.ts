@@ -30,6 +30,9 @@ export const fakeLlmAdapter: LlmPort = {
       return {
         played,
         optimal,
+        // Канал к вердикту (см. HandAnalysisResult.optimalAction) — в деве отдаём валидное слово,
+        // чтобы путь «разбор → hand.analysis → вердикт» был виден без обращения к платной модели.
+        optimalAction: "колл",
         // Диапазонный вопрос — в деве показывает сетку 13×13 (answerMode "range"),
         // чтобы видеть фичу без обращения к Claude.
         question: "(фейк) Какие руки ты даёшь оппоненту в этом споте? Отметь их на сетке.",

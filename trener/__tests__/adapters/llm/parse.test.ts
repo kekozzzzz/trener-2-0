@@ -6,6 +6,7 @@ import {
   heroSuitFixMap,
   validateVerdict,
   validateNextQuestion,
+  parseOptimalAction,
 } from "@/infrastructure/adapters/llm/parse";
 
 // Страховка словаря кодом (правки Артёма 2026-07-05): возвратные формы «сбрасываться»,
@@ -282,5 +283,43 @@ describe("автофикс масти карманной карты Hero", () =>
   });
   it("выдуманная масть карты БОРДА (ранг не у Hero) НЕ автофиксится → брак", () => {
     expect(() => cleanCoachText("на доске появилась 4♥", "ru", allowed, fix)).toThrow();
+  });
+});
+
+/**
+ * Канал «что советовал разбор» → вердикт (правка 2026-07-17).
+ * Вердикт пишется ОТДЕЛЬНЫМ вызовом и поля optimal не видит, а чек-лист требовал «optimal и итог
+ * зовут одно действие». Правило было невыполнимым: аудит 16.07 намерил противоречия в 5 раздачах
+ * из 23 («коллируй» в разборе → «фолд был верным» в вердикте на одном экране).
+ * Поле необязательное: мусор → undefined, и вердикт работает как раньше. Браковать разбор из-за
+ * него нельзя — ложный брак = 3 ретрая = карантин у живого игрока.
+ */
+describe("parseOptimalAction — канал разбор → вердикт", () => {
+  it("принимает слова из списка", () => {
+    for (const a of ["сброс", "чек", "колл", "ставка", "рейз", "олл-ин"]) {
+      expect(parseOptimalAction(a)).toBe(a);
+    }
+  });
+
+  it("чистит регистр, пробелы и хвостовую пунктуацию", () => {
+    expect(parseOptimalAction(" Колл. ")).toBe("колл");
+    expect(parseOptimalAction("РЕЙЗ")).toBe("рейз");
+  });
+
+  it("английские слова НЕ принимает — их бракует латинский сторож", () => {
+    expect(parseOptimalAction("CALL")).toBeUndefined();
+    expect(parseOptimalAction("raise")).toBeUndefined();
+  });
+
+  it("развёрнутый ответ вместо одного слова → undefined (вердикт отработает без строки-факта)", () => {
+    expect(parseOptimalAction("колл, но осторожно")).toBeUndefined();
+    expect(parseOptimalAction("надо было сбросить")).toBeUndefined();
+  });
+
+  it("пусто/не строка → undefined, а не падение", () => {
+    expect(parseOptimalAction(undefined)).toBeUndefined();
+    expect(parseOptimalAction(null)).toBeUndefined();
+    expect(parseOptimalAction(42)).toBeUndefined();
+    expect(parseOptimalAction("")).toBeUndefined();
   });
 });

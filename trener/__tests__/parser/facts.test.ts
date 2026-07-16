@@ -633,3 +633,42 @@ describe("renderFlushSummary", () => {
     expect(renderFlushSummary(["Kc", "9c"], [])).toBeNull();
   });
 });
+
+/**
+ * Готовая рука на КАЖДОЙ улице + категория (правки 2026-07-16).
+ * Зачем: раньше строка печаталась только когда рука МЕНЯЛАСЬ — собрал две пары на флопе, и на
+ * тёрне/ривере факта не было вовсе, модель переносила его сама и путала («две пары» → «трипс»,
+ * каре → «фулл»). Аудит 16.07 намерил на этом 15-16 грубых ошибок на модель.
+ */
+describe("готовая рука по улицам (антидедуп)", () => {
+  it("рука не изменилась между улицами — строка всё равно есть на каждой", () => {
+    // Две пары (валетов и восьмёрок) собраны на флопе и не меняются до ривера.
+    const s = snap({ heroCards: ["Jh", "8c"], board: ["8s", "2d", "Jd", "5c", "3h"] });
+    const made = renderHandFacts(s).split("\n").filter((l) => l.includes("Готовая рука Hero"));
+    expect(made).toHaveLength(3); // флоп + тёрн + ривер, а не одна строка
+    expect(made[0]).toContain("на флопе");
+    expect(made[1]).toContain("на тёрне");
+    expect(made[2]).toContain("на ривере");
+  });
+
+  it("категория комбинации названа по-русски, с местом в иерархии", () => {
+    const s = snap({ heroCards: ["Jh", "8c"], board: ["8s", "2d", "Jd", "5c", "3h"] });
+    const river = renderHandFacts(s).split("\n").filter((l) => l.includes("Готовая рука Hero")).at(-1)!;
+    expect(river).toContain("две пары");
+    expect(river).toContain("7-я сверху из 9");
+    expect(river).toContain("другой комбинацией её не называй");
+  });
+
+  it("каре: категория и место — чтобы не назвали фуллом", () => {
+    const s = snap({ heroCards: ["Th", "Td"], board: ["Ts", "Tc", "7h", "2d", "9s"] });
+    const river = renderHandFacts(s).split("\n").filter((l) => l.includes("Готовая рука Hero")).at(-1)!;
+    expect(river).toContain("каре");
+    expect(river).toContain("2-я сверху из 9");
+  });
+
+  it("английский ключ категории в текст не утекает (его забракует латинский сторож)", () => {
+    const s = snap({ heroCards: ["Jh", "8c"], board: ["8s", "2d", "Jd", "5c", "3h"] });
+    const made = renderHandFacts(s).split("\n").filter((l) => l.includes("Готовая рука Hero")).join(" ");
+    expect(made).not.toMatch(/TWO_PAIR|QUADS|FULL_HOUSE|TRIPS|STRAIGHT|FLUSH|HIGH|PAIR/);
+  });
+});

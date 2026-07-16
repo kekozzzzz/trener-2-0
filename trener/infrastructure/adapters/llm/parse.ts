@@ -345,6 +345,17 @@ export function parseAnswerMode(value: unknown): "range" | undefined {
   return value === "range" ? "range" : undefined;
 }
 
+// Действие из optimal одним русским словом — канал к вердикту (см. HandAnalysisResult.optimalAction).
+// Принимаем ТОЛЬКО слова из списка: мусор («колл, но осторожно», «RAISE») отбрасываем в undefined —
+// тогда вердикт просто не получит строку-факт и сработает как раньше. Браковать разбор из-за этого
+// поля нельзя: ложный брак = 3 ретрая = карантин у живого игрока.
+const OPTIMAL_ACTIONS = ["сброс", "чек", "колл", "ставка", "рейз", "олл-ин"] as const;
+export function parseOptimalAction(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const v = value.trim().toLowerCase().replace(/[.,;!]+$/, "");
+  return (OPTIMAL_ACTIONS as readonly string[]).includes(v) ? v : undefined;
+}
+
 // Номер действия для схемы стола: неотрицательное целое (число или строка из цифр).
 export function parseTableActionIndex(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isInteger(value) && value >= 0) return value;
@@ -374,6 +385,7 @@ export function validateHandAnalysis(
     return {
       played: cleanCoachText(result.played, request.locale, cards, fix, heroFirst),
       optimal: cleanCoachText(result.optimal, request.locale, cards, fix, heroFirst),
+      optimalAction: parseOptimalAction(result.optimalAction),
       question: cleanCoachText(result.question, request.locale, cards, fix, heroFirst),
       draftVerdict: cleanCoachText(result.draftVerdict, request.locale, cards, fix, heroFirst),
       answerMode: parseAnswerMode(result.answerMode),

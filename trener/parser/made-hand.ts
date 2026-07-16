@@ -113,8 +113,31 @@ export function compareValues(a: number[], b: number[]): number {
   return cmp(a, b);
 }
 
+// Категория комбинации ПО-РУССКИ + её место в иерархии — готовый факт для промпта (правило 1).
+// Зачем: аудит 2026-07-16 показал, что модели путают САМУ КАТЕГОРИЮ («каре» называют фуллом, «две
+// пары» — трипсом), хотя состав руки лежит в фактах. Ярлык + место в иерархии убирают у модели
+// работу «сообразить, что сильнее», а именно на ней она и валится.
+// ⚠️Английский ключ (QUADS/TWO_PAIR) в текст игроку попадать НЕ должен — модель повторит его эхом,
+// и латинский сторож забракует весь разбор. Поэтому наружу отдаём только русское.
+const CATEGORY_RU: Record<string, { ru: string; place: number }> = {
+  STRAIGHT_FLUSH: { ru: "стрит-флеш", place: 1 },
+  QUADS: { ru: "каре", place: 2 },
+  FULL_HOUSE: { ru: "фулл-хаус", place: 3 },
+  FLUSH: { ru: "флеш", place: 4 },
+  STRAIGHT: { ru: "стрит", place: 5 },
+  TRIPS: { ru: "тройка (сет или трипс)", place: 6 },
+  TWO_PAIR: { ru: "две пары", place: 7 },
+  PAIR: { ru: "пара", place: 8 },
+  HIGH: { ru: "старшая карта", place: 9 },
+};
+
+// Русское имя категории и её место сверху (1 = стрит-флеш, 9 = старшая карта). null — ключ неизвестен.
+export function madeHandCategoryRu(category: string): { ru: string; place: number } | null {
+  return CATEGORY_RU[category] ?? null;
+}
+
 export type MadeHand = {
-  category: string; // ключ категории (HIGH/PAIR/TWO_PAIR/…)
+  category: string; // ключ категории (HIGH/PAIR/TWO_PAIR/…) — ВНУТРЕННИЙ, в текст игроку не отдавать
   ru: string; // человеческое описание для промпта
   improves: boolean; // улучшают ли карты Hero категорию борда (иначе «играет борд»)
   // Грубый бакет силы руки для классификации функции ставки (велью/защита/блеф) — единый
