@@ -1,6 +1,6 @@
 ---
 name: project_model_watch
-description: "Слежка за новыми моделями OpenRouter: systemd-таймер на релее раз в 3 дня → Telegram; ГОТОВА, ждёт пуша в master"
+description: "Слежка за новыми моделями OpenRouter — systemd-таймер на КЗ-релее раз в 3 дня, пишет в Telegram только когда есть новости; код в ops/model-watch"
 metadata:
   node_type: memory
   type: project
