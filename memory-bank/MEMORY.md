@@ -55,6 +55,8 @@
 - [LLM connectivity block](project_llm_connectivity_block.md) — РЕШЕНО: LLM из РФ через релей-nginx (Казахстан)
 - [Deploy pipeline hang](project_deploy_pipeline_hang.md) — git fetch без таймаута вешал деплой; фикс timeout 120
 - [Watchdog bot](project_watchdog_bot.md) — тревога при карантине задачи в Telegram (@kekoz_bot); дайджест впереди
+- [Model watch](project_model_watch.md) — слежка за новыми моделями OpenRouter: systemd-таймер на релее раз в 3 дня → Telegram; молчит, если новостей нет; следит и за пропажей/подорожанием боевой модели; код в ops/model-watch (правка фильтра = коммит); ГОТОВА, ждёт пуша [[feedback_notification_not_task]]
+- [Feedback: уведомление ≠ задача](feedback_notification_not_task.md) — сторожа сообщают ФАКТ и останавливаются: без команд в тексте, без пробных прогонов «на всякий»; решение принимаем вместе за компом (иначе жжём аудит по ненужным моделям) [[project_model_watch]]
 - [Posting bot](project_posting_bot.md) — @whygrid_bot автопостинг; ждёт перевыпуск токена + админство в канале
 - [Telegram bridge](project_telegram_bridge.md) — управление с телефона @kekoz_bot, chat_id 440359604; с 2026-07-05 основной мост живёт на релее 24/7 [[project_remote_workspace]]
 - [Remote workspace](project_remote_workspace.md) — работа с планшета БЕЗ компа: главное окно — вкладка «Код» (память выгружена в memory-bank/ репо), пуш в master = АВТОДЕПЛОЙ сторожем на КЗ-релее (отчёт в Telegram); Termius/Telegram-мост на релее — запасные; настроено 2026-07-05

@@ -1,0 +1,16 @@
+[Unit]
+Description=Check the OpenRouter catalog every 3 days
+
+[Timer]
+# Раз в трое суток, 06:17 UTC (~11:17 по Артёму, +5) — днём, чтобы новость не падала ночью.
+# Календарём, а не OnUnitActiveSec: только с OnCalendar работает Persistent=true, то есть
+# догон пропущенной проверки, если релей был выключен. Оговорка: на стыке месяцев отсчёт
+# начинается заново с 1-го числа, поэтому после 31-го интервал разок будет в сутки — на
+# слежку за моделями это не влияет.
+OnCalendar=*-*-01/3 06:17:00
+Persistent=true
+# Разброс, чтобы не долбить openrouter.ai ровно в одну и ту же секунду.
+RandomizedDelaySec=20min
+
+[Install]
+WantedBy=timers.target

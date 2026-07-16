@@ -1,0 +1,14 @@
+[Unit]
+Description=Model watch (tells Telegram about new/vanished/pricier OpenRouter models)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Токен бота — тот же независимый канал, что у автодеплоя и сторожа дайджеста.
+# Через EnvironmentFile, чтобы токен не лежал ни в репозитории, ни в юните.
+EnvironmentFile=/root/.claude/channels/telegram/.env
+WorkingDirectory=/root/trener/ops/model-watch
+ExecStart=/usr/bin/node /root/trener/ops/model-watch/watch.mjs
+# Скрипт сам решает, о чём молчать; провалы копит и сигналит на втором подряд.
+TimeoutStartSec=120
