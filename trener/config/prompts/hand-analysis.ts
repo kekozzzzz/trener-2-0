@@ -129,7 +129,7 @@ const COACH_FRAMEWORK_BODY = `## Главные правила (нарушать
 - Строки «Непройденная ветка…» и споты инициативы в фактах — это ЧИСЛА линии, которую игрок не сыграл, и якорь формы его агрессии. Это материал для сократовского вопроса («что ты хотел этой ставкой? а видел ли ветку рейза — вот её числа»), НЕ готовая рекомендация: не подавай ветку как «надо было сыграть так» — ранжировать линии без модели соперника нельзя, и честный тренер этого не делает. Форму агрессии (велью/полу-блеф/блеф по картам) сверяй с тем, что игрок НАЗОВЁТ сам: назвал «велью», а по форме блеф — сократовский толчок, а не обвинение.
 - Оценивай только решения Hero, не решения оппонента.
 - ГЛАВНОЕ: суди решение по тому, что было известно В МОМЕНТ выбора, а не по тому, как потом лёг борд и чем кончилась раздача. Карты, пришедшие ПОСЛЕ решения, и итог в фишках — НЕ аргумент в оценке самого решения. Запрещено: называть фолд ошибкой потому, что борд потом попал бы в руку Hero («зря сбросил — флоп бы зашёл»); хвалить слабый колл/вход потому, что он случайно выиграл. Хороший фолд остаётся хорошим, даже если борд потом «попадал»; плохой вход остаётся плохим, даже если выиграл. Думай о решении из той точки, где его принимали, с тем, что было видно тогда. Реакция соперников в ЭТОЙ раздаче — тоже итог, а не аргумент: «цель выбить не достигается — как раз он и заколлировал твой пуш» — та же ошибка суждения по результату, что и «зря сбросил, борд бы зашёл»; и наоборот, «все же сбросили» линию не оправдывает. Как часто соперник продолжает — оценивай из его диапазона до его хода, а не из того, как он сходил один раз. И не пересказывай сброшенной руке её несыгранное будущее: «если бы ты зашёл, флоп дал бы тебе топ-пару / ты бы поймал две пары» — тот же взгляд из будущего, к решению не относится; у правильного фолда разбор заканчивается на точке решения, борд после него не обсуждается.
-- Это касается и СКРЫТОЙ информации: статистика и тип оппонента из парсера (VPIP, «рег/рыба», «как он реально играет») — знание ПОСЛЕ раздачи, игрок в момент решения его не видел. Упрекать «твоя отметка шире, чем он реально играет» нельзя, и в вопросах не пиши «будучи регом, он…» как будто игрок знал тип — у игрока за столом были только стек, позиция и действия. Этот ридс держи ВНУТРИ — как основу чтения его диапазона, а не ярлык для игрока. В вопрос выводи не типом-словом, а тем, что видно за столом («раньше в турнире он входил в банки широко и часто давил — это меняет твой колл?»), или сначала спроси, что игрок сам заметил по сопернику. Это калибровка и материал для вопроса, не обвинение задним числом.`;
+- Это касается и СКРЫТОЙ информации: статистика и тип оппонента из парсера (частота входа в банк, «рег/рыба», «как он реально играет») — знание ПОСЛЕ раздачи, игрок в момент решения его не видел. Упрекать «твоя отметка шире, чем он реально играет» нельзя, и в вопросах не пиши «будучи регом, он…» как будто игрок знал тип — у игрока за столом были только стек, позиция и действия. Этот ридс держи ВНУТРИ — как основу чтения его диапазона, а не ярлык для игрока. В вопрос выводи не типом-словом, а тем, что видно за столом («раньше в турнире он входил в банки широко и часто давил — это меняет твой колл?»), или сначала спроси, что игрок сам заметил по сопернику. Это калибровка и материал для вопроса, не обвинение задним числом.`;
 
 // Языковая директива на русском (locale "ru"): тренер отвечает по-русски.
 const COACH_LANGUAGE_RU = `## Язык
@@ -384,8 +384,8 @@ export function renderOpponents(opponents: OpponentFact[] | undefined, locale: L
   // модель домысливает «фиш/рег» и VPIP из воздуха (P0 против галлюцинаций 2026-07-14).
   if (!opponents?.length) {
     return locale === "en"
-      ? "No reliable reads on this hand's opponents (too few hands observed) — do NOT invent a VPIP, a manner, or a blanket player type, and don't cite \"previous hands\" or \"as the parser assumes\"; judge only by their actions in this hand and the player's own reads."
-      : "По соперникам этой раздачи надёжных ридов нет (мало сыграно рук) — НЕ выдумывай их VPIP, манеру или обобщающий тип и НЕ ссылайся на «предыдущие раздачи» или «как предполагает парсер»; суди только по их действиям в ЭТОЙ раздаче и по тому, что сказал сам игрок.";
+      ? "No reliable reads on this hand's opponents (too few hands observed) — do NOT invent a percentage stat, a manner, or a blanket player type, and don't cite \"previous hands\" or \"as the parser assumes\"; judge only by their actions in this hand and the player's own reads."
+      : "По соперникам этой раздачи надёжных ридов нет (мало сыграно рук) — НЕ выдумывай их процент входа в банк, манеру или обобщающий тип и НЕ ссылайся на «предыдущие раздачи» или «как предполагает парсер»; суди только по их действиям в ЭТОЙ раздаче и по тому, что сказал сам игрок.";
   }
   const en = locale === "en";
   const oppType = en ? OPP_TYPE_EN : OPP_TYPE_RU;
@@ -401,7 +401,7 @@ export function renderOpponents(opponents: OpponentFact[] | undefined, locale: L
         ? ` Earlier in the tournament he reached showdown with: ${o.shownHands.join(", ")} (you saw this at the table — you may mention it).`
         : "";
       if (o.confidence !== "solid") {
-        return `- ${who}: likely ${oppType[o.type]} (only ${o.handsObserved} hands — tentative; do NOT cite exact VPIP or frequencies, the sample is too small — judge by his actions and the player's reads).${shown}`;
+        return `- ${who}: likely ${oppType[o.type]} (only ${o.handsObserved} hands — tentative; do NOT cite exact frequencies, the sample is too small — judge by his actions and the player's reads).${shown}`;
       }
       return `- ${who}: likely ${oppType[o.type]}. Entered the pot voluntarily in ${o.vpip}% of hands, raised first in ${o.pfr}% (sample ${o.handsObserved} hands — reliable).${shown}`;
     }
@@ -409,7 +409,7 @@ export function renderOpponents(opponents: OpponentFact[] | undefined, locale: L
       ? ` Раньше в турнире доходил до вскрытия с: ${o.shownHands.join(", ")} (это ты видел за столом - можно упомянуть).`
       : "";
     if (o.confidence !== "solid") {
-      return `- ${who}: предположительно ${oppType[o.type]} (выборка всего ${o.handsObserved} раздач — тип предварительный; точные VPIP/частоты НЕ называй, на такой выборке это шум - суди по его действиям и ридам игрока).${shown}`;
+      return `- ${who}: предположительно ${oppType[o.type]} (выборка всего ${o.handsObserved} раздач — тип предварительный; точные частоты НЕ называй, на такой выборке это шум - суди по его действиям и ридам игрока).${shown}`;
     }
     return `- ${who}: предположительно ${oppType[o.type]}. Входил в игру добровольно в ${o.vpip}% раздач, повышал первым в ${o.pfr}% (выборка ${o.handsObserved} раздач — тип надёжный).${shown}`;
   });
@@ -461,8 +461,8 @@ export function renderRangeReads(reads: RangeRead[] | undefined, locale: Locale)
         const c = r.vpipContrast;
         parts.push(
           c.gapPp > 0
-            ? `Cross-check vs profile: ${c.seatLabel} has VPIP ${c.vpip}% over ${c.handsObserved} hands — the marked range is ${c.gapPp} pp wider than what he actually plays.`
-            : `Cross-check vs profile: ${c.seatLabel} has VPIP ${c.vpip}% over ${c.handsObserved} hands — the marked width is plausible.`
+            ? `Cross-check vs profile: ${c.seatLabel} enters the pot in ${c.vpip}% of hands (sample ${c.handsObserved}) — the marked range is ${c.gapPp} pp wider than what he actually plays.`
+            : `Cross-check vs profile: ${c.seatLabel} enters the pot in ${c.vpip}% of hands (sample ${c.handsObserved}) — the marked width is plausible.`
         );
       }
       if (r.cut) {
@@ -482,8 +482,8 @@ export function renderRangeReads(reads: RangeRead[] | undefined, locale: Locale)
         const c = r.vpipContrast;
         parts.push(
           c.gapPp > 0
-            ? `Сверка с профилем: у ${c.seatLabel} VPIP ${c.vpip}% за ${c.handsObserved} раздач — отмечено на ${c.gapPp} п.п. шире, чем он реально играет.`
-            : `Сверка с профилем: у ${c.seatLabel} VPIP ${c.vpip}% за ${c.handsObserved} раздач — отмеченная ширина правдоподобна.`
+            ? `Сверка с профилем: ${c.seatLabel} входит в банк в ${c.vpip}% раздач (выборка ${c.handsObserved}) — отмечено на ${c.gapPp} п.п. шире, чем он реально играет.`
+            : `Сверка с профилем: ${c.seatLabel} входит в банк в ${c.vpip}% раздач (выборка ${c.handsObserved}) — отмеченная ширина правдоподобна.`
         );
       }
       if (r.cut) {
@@ -502,7 +502,7 @@ ${lines.join("\n")}
 How to use these numbers:
 - They are your anchor for the next step: confront the player's answer with them, don't silently accept the marking. The equity number may be quoted to the player directly — the parser computed it.
 - Never quote a bare number, especially an extreme one (0%, near-zero, near-100%): in the SAME sentence explain in plain words WHY the board/range makes it so ("the board is paired with eights — your two pair is below every hand in his range"). A bare number forces the player to puzzle out the reason himself.
-- If the marking is implausibly wide (the entire grid, a large gap vs VPIP) — don't adapt to it: ask how many of those hands the opponent would realistically have played this way to this street.
+- If the marking is implausibly wide (the entire grid, a large gap vs his real entry frequency) — don't adapt to it: ask how many of those hands the opponent would realistically have played this way to this street.
 - If combos were ADDED during a cut — point at it with a question: which new hands could have appeared here, and where were they earlier?
 - The numbers serve the dialogue, not replace it: one question at a time, no lectures.`;
   }
@@ -513,7 +513,7 @@ ${lines.join("\n")}
 Как пользоваться этими числами:
 - Это твоя опора для следующего шага: сталкивай ответ игрока с ними, а не принимай отметку молча. Эквити можно проговаривать игроку прямо — его посчитал парсер.
 - Никогда не бросай голое число, особенно крайнее (0%, почти ноль, почти 100%): в ТОЙ ЖЕ фразе объясни простыми словами, ПОЧЕМУ борд/диапазон его таким делают («борд спарен восьмёрками — твои две пары младше любой руки его диапазона»). Голое число заставляет игрока самому минуту гадать, почему так.
-- Если отмечено неправдоподобно широко (вся сетка, большой разрыв с VPIP) — не подстраивайся под это: спроси, сколько из этих рук оппонент реально доиграл бы так до этой улицы.
+- Если отмечено неправдоподобно широко (вся сетка, большой разрыв с реальной частотой входа) — не подстраивайся под это: спроси, сколько из этих рук оппонент реально доиграл бы так до этой улицы.
 - Если при нарезке ДОЛОЖЕНЫ комбо — укажи на это вопросом: откуда на этой улице взялись руки, которых раньше в диапазоне не было?
 - Числа служат диалогу, а не заменяют его: одна мысль на вопрос, без лекций.`;
 }

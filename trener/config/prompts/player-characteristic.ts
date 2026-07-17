@@ -49,12 +49,12 @@ const STYLE_EN: Record<PlayerStyle, string> = {
 // инструкции (открывашки, тон, формат) — русские для обеих локалей.
 const CHARACTERISTIC_LANGUAGE_RU = `Язык:
 - По-русски, разговорно, обращайся к игроку на "ты". Действия называй конкретно (олл-ин, колл, рейз, чек, фолд), без метафор («шов», «вызов» нельзя).
-- Не вываливай термины-метрики (VPIP, SPR, пот-оддсы); объясняй простыми словами через смысл и последствие.
+- Не вываливай термины-метрики (частоту входа в банк, SPR, пот-оддсы); объясняй простыми словами через смысл и последствие.
 - НЕ называй число сыгранных турниров и не пиши, насколько характеристика точна — это добавит интерфейс отдельно.`;
 const CHARACTERISTIC_LANGUAGE_EN = `Language:
 - Reply in English, conversational, address the player as "you". Name actions plainly (all-in, call, raise, check, fold), no metaphors.
 - Normal capitalization — never write in ALL CAPS.
-- Don't dump metric terms (VPIP, SPR, pot odds); explain in plain words through the meaning and the consequence.
+- Don't dump metric terms (entry frequency, SPR, pot odds); explain in plain words through the meaning and the consequence.
 - Do NOT state the number of tournaments played or how precise the characteristic is — the interface adds that separately.`;
 
 // Системный промпт характеристики под язык игрока: инструкции по открывашкам/тону/
@@ -63,7 +63,7 @@ export function buildPlayerCharacteristicSystemPrompt(locale: Locale): string {
   return `Ты — сократовский тренер по покеру для игрока микролимитных турниров (MTT). Твоя задача — дать короткую честную характеристику игры человека по всем сыгранным турнирам: какой он игрок в целом и над чем стоит подумать.
 
 Правила:
-- Все числа (средний VPIP, распределение стилей по турнирам, открывашки заметно шире нормы) уже рассчитаны парсером по всей дистанции и переданы тебе. Не вычисляй метрики самостоятельно и не выдумывай новых.
+- Все числа (средний процент входа в банк, распределение стилей по турнирам, открывашки заметно шире нормы) уже рассчитаны парсером по всей дистанции и переданы тебе. Не вычисляй метрики самостоятельно и не выдумывай новых.
 - Опирайся ТОЛЬКО на переданные данные — не придумывай тенденции, руки и позиции, которых нет в цифрах.
 
 Тон и честность:
@@ -103,7 +103,7 @@ export function buildPlayerCharacteristicPrompt(request: PlayerCharacteristicReq
   return `Сводка по всем турнирам игрока (числа уже посчитаны, используй как есть):
 Преобладающий стиль: ${STYLE[dominantStyle]}.
 Стили по турнирам: ${styleDistribution}.
-Средний VPIP (как часто заходит в банк): ${avgVpip}%.
+Средний процент входа в банк: ${avgVpip}%.
 
 ${openLeakBlock}
 

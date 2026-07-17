@@ -68,7 +68,7 @@ describe("renderOpponents", () => {
     expect(block).not.toContain("рыба");
     // точный процент на 14 руках — шум, его быть не должно
     expect(block).not.toContain("42.9%");
-    expect(block).toContain("точные VPIP/частоты НЕ называй");
+    expect(block).toContain("точные частоты НЕ называй");
     expect(block).toContain("выборка всего 14 раздач — тип предварительный");
   });
 
@@ -90,7 +90,7 @@ describe("renderOpponents", () => {
     const block = renderOpponents([FISH], "en");
     expect(block).toContain("Player 3: likely enters pots wide");
     expect(block).not.toContain("42.9%");
-    expect(block).toContain("do NOT cite exact VPIP");
+    expect(block).toContain("do NOT cite exact frequencies");
     expect(block).toContain("Don't hand this to the player as a type label");
     // русских подписей в английском блоке быть не должно
     expect(block).not.toContain("предположительно");
