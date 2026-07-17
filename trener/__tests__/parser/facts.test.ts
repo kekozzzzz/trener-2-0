@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { boardTexture, computeHandFacts, renderHandFacts, renderFlushSummary } from "@/parser/facts";
-import type { TableAction, TableSnapshot } from "@/parser/types";
+import type { Seat, TableAction, TableSnapshot } from "@/parser/types";
 
 function snap(partial: Partial<TableSnapshot>): TableSnapshot {
   return { seats: [], heroCards: [], board: [], actions: [], potTotal: 0, ...partial };
@@ -732,5 +732,44 @@ describe("факты не рассказывают несыгранное буд
     });
     const made = renderHandFacts(s).split("\n").filter((l) => l.includes("Готовая рука Hero"));
     expect(made).toHaveLength(3); // флоп + тёрн + ривер
+  });
+});
+
+// Регресс #43 (2026-07-17): после своего олл-ина Hero из раздачи ВЫШЕЛ — решений больше нет.
+// Тренер советовал «фолд, сохраняющий стек» игроку, чей стек уже целиком в банке.
+describe("renderHandFacts — олл-ин Hero закрывает его решения", () => {
+  const seats: Seat[] = [
+    { label: "Hero", position: "BTN", startingStack: 2360 },
+    { label: "opp1", position: "SB", startingStack: 2880 },
+  ];
+
+  it("Hero пошёл олл-ином — факт «решений больше нет» напечатан", () => {
+    const r = renderHandFacts(
+      snap({
+        seats,
+        heroCards: ["Ad", "Tc"],
+        actions: [
+          { street: "PREFLOP", actor: "opp1", action: "ALL_IN", amount: 540 } as TableAction,
+          { street: "PREFLOP", actor: "Hero", action: "ALL_IN", amount: 2340 } as TableAction,
+        ],
+      }),
+    );
+    expect(r).toContain("весь твой стек уже в банке");
+    expect(r).toContain("решений у тебя НЕТ");
+    expect(r).toContain("не советуй сбросить или заколлировать после него");
+  });
+
+  it("Hero НЕ шёл олл-ином — факта нет (не шумим лишней строкой)", () => {
+    const r = renderHandFacts(
+      snap({
+        seats,
+        heroCards: ["Ad", "Tc"],
+        actions: [
+          { street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 200 } as TableAction,
+          { street: "PREFLOP", actor: "opp1", action: "CALL", amount: 200 } as TableAction,
+        ],
+      }),
+    );
+    expect(r).not.toContain("весь твой стек уже в банке");
   });
 });

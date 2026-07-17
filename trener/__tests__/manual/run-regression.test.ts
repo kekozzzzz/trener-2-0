@@ -16,7 +16,8 @@ import {
 } from "@/config/prompts/hand-analysis";
 import { buildDialogueQuestionSystemPrompt, buildDialogueQuestionPrompt } from "@/config/prompts/dialogue-question";
 import { buildVerdictSystemPrompt, buildVerdictPrompt } from "@/config/prompts/verdict";
-import { allowedCardSet, heroSuitFixMap, extractJson, validateHandAnalysis, validateNextQuestion, validateVerdict } from "@/infrastructure/adapters/llm/parse";
+import { allowedCardSet, heroSuitFixMap, extractJson, validateHandAnalysis, validateNextQuestion, validateVerdict, noShowdownInHand } from "@/infrastructure/adapters/llm/parse";
+import { heroFirstPostflop } from "@/parser/action-order";
 import type { HandAnalysisRequest, NextQuestionRequest, VerdictRequest, DialogueRoundSummary } from "@/infrastructure/adapters/llm/types";
 import type { OpponentFact } from "@/parser/opponent-profile";
 
@@ -214,7 +215,7 @@ type Pick = { file: string; idx: number; code: string; board: string; tags: stri
             MODEL,
             buildDialogueQuestionSystemPrompt("ru"),
             buildDialogueQuestionPrompt(nq),
-            (raw) => validateNextQuestion(raw as Parameters<typeof validateNextQuestion>[0], "ru", allowedCardSet(snapshot), heroSuitFixMap(snapshot)),
+            (raw) => validateNextQuestion(raw as Parameters<typeof validateNextQuestion>[0], "ru", allowedCardSet(snapshot), heroSuitFixMap(snapshot), heroFirstPostflop(snapshot)),
             HYBRID ? LOW : REASONING, // диалог только у CRITICAL → low
           );
           if (next.complete || !next.question) break;
@@ -227,7 +228,7 @@ type Pick = { file: string; idx: number; code: string; board: string; tags: stri
           MODEL,
           buildVerdictSystemPrompt("ru"),
           buildVerdictPrompt(vq),
-          (raw) => validateVerdict(raw as Parameters<typeof validateVerdict>[0], "ru", allowedCardSet(snapshot), heroSuitFixMap(snapshot)),
+          (raw) => validateVerdict(raw as Parameters<typeof validateVerdict>[0], "ru", allowedCardSet(snapshot), heroSuitFixMap(snapshot), heroFirstPostflop(snapshot), noShowdownInHand(snapshot)),
           HYBRID ? LOW : REASONING, // вердикт завершает CRITICAL-диалог → low
         );
         out.push(`\n**ВЕРДИКТ:** ${verdict.verdict}`);
