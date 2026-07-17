@@ -761,6 +761,29 @@ describe("renderHandFacts — олл-ин Hero закрывает его реш�
     expect(r).toContain("не советуй сбросить или заколлировать после него");
   });
 
+  // Регресс K5 (Артём 18.07): Hero прочекал тёрн, BTN пошёл олл-ин, Hero ДОЛОЖИЛ меньше — это КОЛЛ
+  // чужого шова, а не пуш. Тренер спрашивал «кто ответит на твой пуш» — но на колл никто не отвечает.
+  it("Hero заколлировал олл-ин (доложил меньше facing) — это КОЛЛ, не пуш", () => {
+    const r = renderHandFacts(
+      snap({
+        seats: [
+          { label: "Hero", position: "BB", startingStack: 9090 },
+          { label: "opp1", position: "BTN", startingStack: 20920 },
+        ] as Seat[],
+        heroCards: ["Kh", "5s"],
+        board: ["2d", "Ac", "7c", "5h"],
+        actions: [
+          { street: "TURN", actor: "Hero", action: "CHECK" } as TableAction,
+          { street: "TURN", actor: "opp1", action: "ALL_IN", amount: 20920 } as TableAction,
+          { street: "TURN", actor: "Hero", action: "ALL_IN", amount: 9090 } as TableAction,
+        ],
+      }),
+    );
+    expect(r).toContain("был КОЛЛОМ");
+    expect(r).toContain("никто не «отвечает» на твой олл-ин");
+    expect(r).not.toContain("Ты пошёл олл-ином"); // не путаем колл с пушем
+  });
+
   // Регресс #121/#114/#89 (Артём, 17.07): для префлоп-олл-инов парсер эквити не считал → тренер
   // сочинял «хорошее эквити», хваля даже доминацию. Теперь точное эквити против ВСКРЫТЫХ рук.
   const eqLine = (r: string) => r.split("\n").find((l) => l.includes("ТОЧНОЕ ЭКВИТИ")) ?? "";
