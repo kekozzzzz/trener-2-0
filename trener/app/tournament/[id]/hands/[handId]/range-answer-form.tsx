@@ -40,16 +40,27 @@ export function RangeAnswerForm({ tournamentId, handId }: { tournamentId: string
   const [state, formAction, pending] = useActionState(action, initialState);
   const [codes, setCodes] = useState<string[]>([]);
   const [note, setNote] = useState("");
+  // Сетка диапазона по умолчанию СПРЯТАНА (правка Артёма 18.07: «опять везде диапазон» — грид
+  // навязывает мышление диапазонами на каждом вопросе). Отвечаешь словами; хочешь отметить руки
+  // соперника на сетке — жмёшь кнопку. Данные не страдают: composeAnswer при пустой сетке отдаёт
+  // просто текст, при отмеченной — «Думаю, у оппонента диапазон: …» + заметку.
+  const [showGrid, setShowGrid] = useState(false);
 
   return (
     <form action={formAction} onSubmit={() => markScrollToLatest(handId)} className="mt-4 space-y-4">
-      <RangeGrid onChange={setCodes} />
       <Textarea
-        rows={2}
+        rows={3}
         value={note}
         onChange={(e) => setNote(e.target.value)}
-        placeholder={t("rangeNotePlaceholder")}
+        placeholder={t("answerPlaceholder")}
       />
+      {showGrid ? (
+        <RangeGrid onChange={setCodes} />
+      ) : (
+        <Button type="button" variant="outline" size="sm" onClick={() => setShowGrid(true)}>
+          {t("markRangeButton")}
+        </Button>
+      )}
       <input
         type="hidden"
         name="answer"
