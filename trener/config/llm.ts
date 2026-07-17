@@ -32,8 +32,18 @@ export function getLlmProvider(): LlmProvider {
   return process.env.LLM_PROVIDER === "openrouter" ? "openrouter" : "anthropic";
 }
 
-// ───────────────────────── OpenRouter (шлюз к DeepSeek) ──────────────────────
-const DEFAULT_OPENROUTER_MODEL = "deepseek/deepseek-v3.2";
+// ───────────────────────── OpenRouter (шлюз к боевой модели) ─────────────────
+// Боевая модель (выбор 2026-07-17, замер на 50 фиксированных раздачах регресса, все три
+// кандидата на одних и тех же данных и починенных промптах):
+//   gemini-3.1-flash-lite — факт-вранья 4% раздач, разбор 4.7с, ~$0.099/турнир  ← выбрана
+//   gemini-2.5-flash      — 10%, 11.0с, $0.119 (была в бою до 17.07)
+//   glm-4.7-flash         — 8%, 19.5с, $0.019 (аварийный запас: втрое дешевле, но 20с ожидания)
+// 3.1 выигрывает по всем трём осям сразу, поэтому она и дефолт. Аварийный откат — флагом
+// OPENROUTER_MODEL=z-ai/glm-4.7-flash без передеплоя (Правило 3).
+// ⚠️Скорость мерить ПОЛНЫМ разбором (~800-1200 выходных токенов): на коротком вызове разрыв
+// между моделями втрое меньше и картина врёт. Релей на скорость не влияет (надбавка ~0.13с).
+// ⚠️Новую модель сначала завести в config/llm-pricing.ts — иначе учёт затрат её не увидит.
+const DEFAULT_OPENROUTER_MODEL = "google/gemini-3.1-flash-lite";
 
 export function getOpenRouterApiKey(): string {
   return process.env.OPENROUTER_API_KEY ?? "";
