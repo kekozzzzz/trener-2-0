@@ -13,10 +13,12 @@ import { requireSession } from "@/features/auth/session";
 import { listMyTournamentsPage } from "@/features/tournaments/queries";
 import { getPlayerCharacteristic } from "@/features/profile/queries";
 import { CHARACTERISTIC_RELIABLE_FROM } from "@/config/profile";
+import { cookies } from "next/headers";
 import {
   normalizePerPage,
   TOURNAMENTS_PER_PAGE_DEFAULT,
   TOURNAMENTS_PER_PAGE_OPTIONS,
+  TOURNAMENTS_PER_PAGE_COOKIE,
 } from "@/config/tournaments";
 import { PageHeader } from "@/components/page-header";
 import { TournamentRow } from "@/components/tournaments/tournament-row";
@@ -71,7 +73,10 @@ export default async function TournamentsPage({
   // Из адреса приходит что угодно (руками правят, ссылки живут дольше данных):
   // мусор превращаем в дефолт, а не в ошибку. Страницу за пределами диапазона
   // прижимает к последней сам listMyTournamentsPage.
-  const perPage = normalizePerPage(toInt(sp.per) || TOURNAMENTS_PER_PAGE_DEFAULT);
+  // Размер страницы помним в cookie (адрес его терял). Явный ?per в адресе (шаринг ссылки) имеет
+  // приоритет, иначе берём запомненный выбор, иначе дефолт.
+  const perCookie = toInt((await cookies()).get(TOURNAMENTS_PER_PAGE_COOKIE)?.value);
+  const perPage = normalizePerPage(toInt(sp.per) || perCookie || TOURNAMENTS_PER_PAGE_DEFAULT);
   const { items: tournaments, total, page, totalPages } = await listMyTournamentsPage(playerId, {
     page: toInt(sp.page) || 1,
     perPage,

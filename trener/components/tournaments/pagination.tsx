@@ -1,20 +1,16 @@
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { getTranslations } from "next-intl/server";
-import { TOURNAMENTS_PER_PAGE_OPTIONS, TOURNAMENTS_PER_PAGE_DEFAULT } from "@/config/tournaments";
+import { TOURNAMENTS_PER_PAGE_OPTIONS } from "@/config/tournaments";
+import { setTournamentsPerPage } from "@/app/tournaments/actions";
 import { pageItems } from "@/lib/pagination";
 import { cn } from "@/lib/utils";
 
-// Ссылка на страницу списка. Дефолты из адреса убираем — «Мои турниры» должны
-// оставаться /tournaments, а не /tournaments?page=1&per=25. Параметры сводки после
-// загрузки (uploaded/dup/failed) сюда намеренно не переносим: она про только что
-// залитую пачку, а не про страницу, на которую игрок ушёл листать.
-function pageHref(page: number, perPage: number): string {
-  const params = new URLSearchParams();
-  if (page > 1) params.set("page", String(page));
-  if (perPage !== TOURNAMENTS_PER_PAGE_DEFAULT) params.set("per", String(perPage));
-  const query = params.toString();
-  return query ? `/tournaments?${query}` : "/tournaments";
+// Ссылка на страницу списка. Размер (perPage) теперь живёт в cookie, а не в адресе, поэтому в URL
+// остаётся только ?page — «Мои турниры» так и остаются /tournaments. Параметры сводки после
+// загрузки (uploaded/dup/failed) сюда намеренно не переносим: она про только что залитую пачку.
+function pageHref(page: number): string {
+  return page > 1 ? `/tournaments?page=${page}` : "/tournaments";
 }
 
 const cellClass =
@@ -22,13 +18,11 @@ const cellClass =
 
 function Arrow({
   to,
-  perPage,
   label,
   disabled,
   children,
 }: {
   to: number;
-  perPage: number;
   label: string;
   disabled: boolean;
   children: React.ReactNode;
@@ -43,7 +37,7 @@ function Arrow({
   }
   return (
     <Link
-      href={pageHref(to, perPage)}
+      href={pageHref(to)}
       aria-label={label}
       className={cn(cellClass, "border-border text-foreground hover:border-primary hover:text-primary")}
     >
@@ -81,20 +75,25 @@ export async function TournamentsPagination({
         <div className="flex items-center gap-1">
           {TOURNAMENTS_PER_PAGE_OPTIONS.map((option) => {
             const active = option === perPage;
+            // Форма + server action: выбор пишется в cookie (помнится между заходами) и даёт
+            // свежий серверный рендер. className="contents" — форма не создаёт свой бокс, кнопка
+            // остаётся в том же flex-ряду, что и раньше были ссылки.
             return (
-              <Link
-                key={option}
-                href={pageHref(1, option)}
-                aria-current={active ? "true" : undefined}
-                className={cn(
-                  cellClass,
-                  active
-                    ? "border-primary text-primary"
-                    : "border-border text-muted-foreground hover:border-primary hover:text-foreground",
-                )}
-              >
-                {option}
-              </Link>
+              <form key={option} action={setTournamentsPerPage} className="contents">
+                <input type="hidden" name="per" value={option} />
+                <button
+                  type="submit"
+                  aria-current={active ? "true" : undefined}
+                  className={cn(
+                    cellClass,
+                    active
+                      ? "border-primary text-primary"
+                      : "border-border text-muted-foreground hover:border-primary hover:text-foreground",
+                  )}
+                >
+                  {option}
+                </button>
+              </form>
             );
           })}
         </div>
@@ -105,7 +104,7 @@ export async function TournamentsPagination({
       </p>
 
       <div className="flex items-center gap-1">
-        <Arrow to={page - 1} perPage={perPage} label={t("prevPage")} disabled={page <= 1}>
+        <Arrow to={page - 1} label={t("prevPage")} disabled={page <= 1}>
           <ChevronLeft className="size-4" />
         </Arrow>
 
@@ -121,7 +120,7 @@ export async function TournamentsPagination({
           ) : (
             <Link
               key={item}
-              href={pageHref(item, perPage)}
+              href={pageHref(item)}
               aria-label={t("pageNumber", { n: item })}
               aria-current={item === page ? "page" : undefined}
               className={cn(
@@ -136,7 +135,7 @@ export async function TournamentsPagination({
           ),
         )}
 
-        <Arrow to={page + 1} perPage={perPage} label={t("nextPage")} disabled={page >= totalPages}>
+        <Arrow to={page + 1} label={t("nextPage")} disabled={page >= totalPages}>
           <ChevronRight className="size-4" />
         </Arrow>
       </div>
