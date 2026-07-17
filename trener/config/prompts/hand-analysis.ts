@@ -12,7 +12,7 @@ import { renderAltFacts } from "@/parser/alt-facts";
 import { renderOpponentLines } from "@/parser/opponent-line";
 import { renderActionOrder } from "@/parser/action-order";
 import { renderInitiative, renderTacticalMarks } from "@/parser/initiative";
-import { renderCriticalReason } from "@/parser/decision-weight";
+import { renderCriticalReason, questionTopicHint } from "@/parser/decision-weight";
 import { bigBlindFromSnapshot } from "@/parser/big-blind";
 import type { HandAnalysisRequest, RangeRead, TournamentContext } from "@/infrastructure/adapters/llm/types";
 import type { Locale } from "@/i18n/config";
@@ -566,9 +566,12 @@ export function buildHandAnalysisPrompt(request: HandAnalysisRequest): string {
   // Правило вопроса (план 2026-07-16, «диалог душный»): держим ТЕКСТОМ промпта, а не внутри
   // описания поля в JSON-схеме — раздутая схема топит Flash (обрывы JSON, служебные слова в
   // тексте игроку). Только для CRITICAL: поле question есть лишь в этой схеме.
+  const topicHint =
+    importanceLevel === "CRITICAL" ? questionTopicHint(request.tableSnapshot, chipResult) : null;
   const questionRuleBlock =
     importanceLevel === "CRITICAL"
       ? `Правило вопроса (поле question). Спрашивай ТОЛЬКО то, чего ты знать не можешь. Карты, борд, ставки, позиции, чужие ходы ты уже видишь в данных парсера — про них не спрашивай: это не разговор, а проверка, и звучит она так, будто игрока держат за дурака («а почему ты чекнул?» — ты и сам видишь, что у него слабая пара вне позиции).
+${topicHint ? `\nТЕМА ЭТОГО вопроса (парсер определил по решению раздачи, следуй ей): ${topicHint}\nПокер — про РЕШЕНИЕ и мышление игрока, а не про перечисление диапазонов. «С каким диапазоном…» — лишь один из инструментов, и если каждый твой первый вопрос начинается так, игрок быстро устанет: он пришёл понять СВОЙ покер, а не зубрить чужие руки. Замысел («что ты хотел этим ходом?») у решения есть всегда — начинай с него, к диапазону перейдёшь позже в диалоге, если он реально решает.\n` : ""}
 
 Тем ровно три, и они РАВНОПРАВНЫ:
   • ЗАМЫСЕЛ — чего он хотел этим ходом, что планировал дальше: «что ты хотел получить этой ставкой?», «а если бы он поднял — что тогда?», «какой был план на тёрн?»;

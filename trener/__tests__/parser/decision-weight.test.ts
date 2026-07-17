@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { TableSnapshot } from "@/parser/types";
-import { decisionMarks, topDecisionMark } from "@/parser/decision-weight";
+import { decisionMarks, topDecisionMark, questionTopicHint } from "@/parser/decision-weight";
 import { assignImportanceLevels } from "@/parser/ggpoker/classify";
 
 // Критические по решению (план 2026-07-11): каналы тяжёлых решений без денежного следа.
@@ -320,5 +320,39 @@ describe("assignImportanceLevels — квоты решений в потолке
     // Оба фолда существенные, но слотов решений 2 — оба и войдут; проверяем порядок весов
     // косвенно: сильный фолд точно критический.
     expect(levels[10]).toBe("CRITICAL");
+  });
+});
+
+/**
+ * Тема первого вопроса по каналу решения (правка 2026-07-17, Артём: «покер про решение, а не про
+ * диапазоны»). Первый вопрос был «с каким диапазоном…» в 100% раздач; тема от канала снизила до 73%.
+ */
+describe("questionTopicHint — тема первого вопроса от решения", () => {
+  function bigFoldSnap(): TableSnapshot {
+    const s = baseSnap();
+    s.board = ["Kd", "2s", "6s", "2c", "Td"];
+    s.actions.push(
+      { street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 220 },
+      { street: "PREFLOP", actor: "Player 1", action: "CALL", amount: 120 },
+      { street: "FLOP", actor: "Player 1", action: "BET", amount: 300 },
+      { street: "FLOP", actor: "Hero", action: "CALL", amount: 300 },
+      { street: "TURN", actor: "Player 1", action: "CHECK" },
+      { street: "TURN", actor: "Hero", action: "CHECK" },
+      { street: "RIVER", actor: "Player 1", action: "BET", amount: 900 },
+      { street: "RIVER", actor: "Hero", action: "FOLD" },
+    );
+    s.potTotal = 1090;
+    return s;
+  }
+
+  it("крупный фолд → тема про страх/чтение, НЕ про перечисление диапазона", () => {
+    const hint = questionTopicHint(bigFoldSnap(), -520);
+    expect(hint).toBeTruthy();
+    expect(hint).toContain("КРУПНЫЙ ФОЛД");
+    expect(hint).toContain("НЕ начинай с «с каким диапазоном»");
+  });
+
+  it("нет тяжёлого решения (пустой снимок) → тема свободная (null)", () => {
+    expect(questionTopicHint(baseSnap(), -100)).toBeNull();
   });
 });
