@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { boardTexture, computeHandFacts, renderHandFacts, renderFlushSummary } from "@/parser/facts";
-import type { TableSnapshot } from "@/parser/types";
+import type { TableAction, TableSnapshot } from "@/parser/types";
 
 function snap(partial: Partial<TableSnapshot>): TableSnapshot {
   return { seats: [], heroCards: [], board: [], actions: [], potTotal: 0, ...partial };
@@ -670,5 +670,67 @@ describe("готовая рука по улицам (антидедуп)", () =>
     const s = snap({ heroCards: ["Jh", "8c"], board: ["8s", "2d", "Jd", "5c", "3h"] });
     const made = renderHandFacts(s).split("\n").filter((l) => l.includes("Готовая рука Hero")).join(" ");
     expect(made).not.toMatch(/TWO_PAIR|QUADS|FULL_HOUSE|TRIPS|STRAIGHT|FLUSH|HIGH|PAIR/);
+  });
+});
+
+/**
+ * Призрачные факты после фолда Hero (разбор 2026-07-17 — корень целого класса вранья).
+ * Hero сбросил на префлопе, а факты изъявительным наклонением рассказывали, что было БЫ дальше:
+ * «Готовая рука Hero на флопе: трипс троек», «на ривере: каре троек», «Расклады… ты впереди 1060».
+ * Модель фактам ВЕРИТ и достраивает назад: «трипс троек? значит была карманная пара» → советует
+ * сет-майнинг рукой T3o (регресс #25). Так же родились «на тёрне ты усилился до фулл-хауса» (#9)
+ * и «борд в итоге дал тебе каре» (#34): 19 из 29 префлоп-фолдов, у ВСЕХ моделей.
+ * Промпт запрещал это ОДНОЙ строкой и проигрывал дюжине строк-фактов. Режем у источника.
+ */
+describe("факты не рассказывают несыгранное будущее (heroSawStreet)", () => {
+  const folded = (foldStreet: "PREFLOP" | "FLOP"): TableSnapshot =>
+    snap({
+      seats: [
+        { label: "Hero", position: "BB", startingStack: 1000 },
+        { label: "Player 3", position: "BTN", startingStack: 1000 },
+      ],
+      heroCards: ["Th", "3d"], // T3o — НЕ карманная пара
+      board: ["3s", "3h", "Jd", "5h", "3c"], // борд доехал до каре троек
+      actions: [
+        { actor: "Player 3", action: "RAISE", amount: 60, street: "PREFLOP" },
+        ...(foldStreet === "FLOP"
+          ? [
+              { actor: "Hero", action: "CALL", amount: 60, street: "PREFLOP" },
+              { actor: "Hero", action: "FOLD", street: "FLOP" },
+            ]
+          : [{ actor: "Hero", action: "FOLD", street: "PREFLOP" }]),
+      ] as TableAction[],
+    });
+
+  const heroLines = (s: TableSnapshot) =>
+    renderHandFacts(s)
+      .split("\n")
+      .filter((l) => /Готовая рука Hero|Расклады против твоей руки|Ауты Hero|Дро Hero|Угрозы на/.test(l));
+
+  it("фолд на префлопе → НИ ОДНОГО факта про руку на флопе/тёрне/ривере", () => {
+    expect(heroLines(folded("PREFLOP"))).toHaveLength(0);
+  });
+
+  it("фолд на префлопе → нет «трипс/каре троек», из которых модель достраивала карманную пару", () => {
+    const facts = renderHandFacts(folded("PREFLOP"));
+    expect(facts).not.toContain("трипс троек");
+    expect(facts).not.toContain("каре троек");
+  });
+
+  it("фолд на ФЛОПЕ → рука на флопе ЕСТЬ (решение принималось, видя его), а тёрна/ривера нет", () => {
+    const lines = heroLines(folded("FLOP"));
+    expect(lines.some((l) => l.includes("на флопе"))).toBe(true);
+    expect(lines.some((l) => l.includes("на тёрне") || l.includes("на ривере"))).toBe(false);
+  });
+
+  it("Hero не фолдил → факты по всем улицам на месте (ничего не сломали)", () => {
+    const s = snap({
+      seats: [{ label: "Hero", position: "BB", startingStack: 1000 }],
+      heroCards: ["Jh", "8c"],
+      board: ["8s", "2d", "Jd", "5c", "3h"],
+      actions: [{ actor: "Hero", action: "CALL", amount: 10, street: "PREFLOP" }],
+    });
+    const made = renderHandFacts(s).split("\n").filter((l) => l.includes("Готовая рука Hero"));
+    expect(made).toHaveLength(3); // флоп + тёрн + ривер
   });
 });

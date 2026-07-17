@@ -607,6 +607,31 @@ const STREET_RU: Record<Street, string> = {
   RIVER: "ривере",
 };
 
+const STREET_ORDER: Street[] = ["PREFLOP", "FLOP", "TURN", "RIVER"];
+
+// ── Улицы, которые Hero реально ПРОЖИЛ ──────────────────────────────────────────────────────
+// Разбор 2026-07-17 нашёл корень целого класса вранья: Hero сбросил на префлопе, а факты всё
+// равно рассказывают ему изъявительным наклонением, что было бы дальше — «Готовая рука Hero на
+// флопе: трипс троек», «на ривере: каре троек», «Расклады… ты впереди 1060», ауты, угрозы.
+// Модель фактам ВЕРИТ и достраивает назад: «трипс троек? значит была карманная пара» → советует
+// сет-майнинг рукой T3o (регресс #25). Так же родились «на тёрне ты усилился до фулл-хауса» (#9)
+// и «борд в итоге дал тебе каре» (#34): 19 из 29 префлоп-фолдов, у ВСЕХ моделей.
+// Промпт запрещает это одной строкой («не пересказывай сброшенной руке её несыгранное будущее») —
+// и проигрывает дюжине строк-фактов, которые говорят обратное. Поэтому режем у источника.
+//
+// Улица, на которой Hero СБРОСИЛ, считается прожитой: решение он принимал, видя её борд.
+// Всё, что после, — призрак. Не фолдил → прожил всё (борд ограничит сам).
+export function heroLastStreet(snapshot: TableSnapshot): Street | null {
+  const fold = snapshot.actions.find((a) => a.actor === "Hero" && a.action === "FOLD");
+  return fold ? fold.street : null;
+}
+
+export function heroSawStreet(snapshot: TableSnapshot, street: Street): boolean {
+  const last = heroLastStreet(snapshot);
+  if (!last) return true;
+  return STREET_ORDER.indexOf(street) <= STREET_ORDER.indexOf(last);
+}
+
 // Факты-v2 фаза 4: маркеры опасности борда для ГОТОВОЙ руки — считает парсер (правило 1),
 // чтобы модель не «прикидывала на глаз», что на спаренном/тройном борде фулл-хаус уже в
 // игре, и не звала слабую готовую руку натсами. Спаренный борд → фулл-хаус возможен; борд
@@ -918,6 +943,8 @@ export function renderHandFacts(snapshot: TableSnapshot): string {
   let drawSeen = false;
   let prevDraw = "";
   for (const street of ["FLOP", "TURN"] as const) {
+    // Улицы после фолда Hero — призрак (см. heroSawStreet): дро у руки, которой он не играл.
+    if (!heroSawStreet(snapshot, street)) continue;
     const b = boardUpToStreet(snapshot.board, street);
     if (b.length < 3) continue;
     const d = readHeroDraw(snapshot.heroCards, b);
@@ -947,6 +974,8 @@ export function renderHandFacts(snapshot: TableSnapshot): string {
   // Отдельно всего/чистых: грязные ауты усиливают номинально, но обычно оставляют позади.
   let prevOuts = "";
   for (const street of ["FLOP", "TURN"] as const) {
+    // Улицы после фолда Hero — призрак (см. heroSawStreet): факт про руку, которой он не играл.
+    if (!heroSawStreet(snapshot, street)) continue;
     const b = boardUpToStreet(snapshot.board, street);
     if (b.length < 3) continue;
     const io = improvementOuts(snapshot.heroCards, b);
@@ -979,6 +1008,9 @@ export function renderHandFacts(snapshot: TableSnapshot): string {
   let prevOdds = "";
   let prevBlocker = "";
   for (const street of ["FLOP", "TURN", "RIVER"] as const) {
+    // Улицы после фолда Hero — призрак: он их не играл (см. heroSawStreet). Раньше здесь
+    // рождалось «трипс троек на флопе» у сброшенной T3o → модель достраивала «карманную пару».
+    if (!heroSawStreet(snapshot, street)) continue;
     const b = boardUpToStreet(snapshot.board, street);
     if (b.length < 3) continue;
     const mh = heroMadeHand(snapshot.heroCards, b);
@@ -1050,6 +1082,8 @@ export function renderHandFacts(snapshot: TableSnapshot): string {
   // на глаз. Только флоп/тёрн (на ривере следующей карты нет). По улицам, без повторов.
   let prevThreat = "";
   for (const street of ["FLOP", "TURN"] as const) {
+    // Улицы после фолда Hero — призрак (см. heroSawStreet): факт про руку, которой он не играл.
+    if (!heroSawStreet(snapshot, street)) continue;
     const b = boardUpToStreet(snapshot.board, street);
     if (b.length < 3) continue;
     const parts: string[] = [];
