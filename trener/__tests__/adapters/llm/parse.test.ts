@@ -7,6 +7,8 @@ import {
   validateVerdict,
   validateNextQuestion,
   parseOptimalAction,
+  inventsShowdown,
+  noShowdownInHand,
 } from "@/infrastructure/adapters/llm/parse";
 
 // Страховка словаря кодом (правки Артёма 2026-07-05): возвратные формы «сбрасываться»,
@@ -321,5 +323,78 @@ describe("parseOptimalAction — канал разбор → вердикт", ()
     expect(parseOptimalAction(null)).toBeUndefined();
     expect(parseOptimalAction(42)).toBeUndefined();
     expect(parseOptimalAction("")).toBeUndefined();
+  });
+});
+
+/**
+ * Сторож выдуманного вскрытия (регресс 2026-07-17, 50 раздач на 3.1-flash-lite).
+ * Тренер УТВЕРЖДАЛ руку соперника, хотя никто не вскрывался: «у соперника на SB оказался старший
+ * фулл-хаус», «с руками вроде AA, которые он в итоге показал». Факт «никто не вскрылся, не пиши
+ * „у него оказался"» в промпте УЖЕ есть — модель его игнорирует, поэтому ловим на выходе.
+ * Класс самый опасный: игрок сам играл раздачу и помнит, что там было (критическая поломка №2).
+ * ⚠️Сторож НАМЕРЕННО узкий: гипотезы («мог быть фулл») — законный язык тренера. Ложный брак =
+ * 3 ретрая = карантин у живого игрока. Теневой прогон на 50 раздачах: поймано 2, ложных 0.
+ */
+describe("inventsShowdown — сторож выдуманного вскрытия", () => {
+  it("ловит «у соперника на SB оказался старший фулл-хаус» (реальный брак регресса #37)", () => {
+    expect(
+      inventsShowdown("Твой фулл-хаус на ривере проиграл, так как у соперника на SB оказался старший фулл-хаус с восьмерками."),
+    ).toBe(true);
+  });
+
+  it("ловит «с руками вроде AA, которые он в итоге показал» (реальный брак регресса #42)", () => {
+    expect(inventsShowdown("Он сбрасывает больше половины диапазона, но с руками вроде AA, которые он в итоге показал, он никогда не выбросит.")).toBe(true);
+  });
+
+  it("НЕ трогает гипотезу «у него мог быть фулл» — это законный язык тренера", () => {
+    expect(inventsShowdown("У него мог быть фулл-хаус, поэтому колл здесь рискованный.")).toBe(false);
+  });
+
+  it("НЕ трогает «возможно, он показал бы сет»", () => {
+    expect(inventsShowdown("Возможно, он показал бы сет, но проверить это мы не можем.")).toBe(false);
+  });
+
+  it("НЕ трогает разговор о диапазоне (так говорить МОЖНО и нужно)", () => {
+    expect(inventsShowdown("С такой линией сюда заходят с двумя парами и сетами, а блефов тут мало.")).toBe(false);
+  });
+
+  it("гипотеза в СОСЕДНЕЙ фразе не оправдывает утверждение в этой", () => {
+    expect(
+      inventsShowdown("Он мог блефовать на тёрне. Но у соперника оказался фулл-хаус, и твой колл проиграл."),
+    ).toBe(true);
+  });
+
+  it("noShowdownInHand: есть вскрывшийся соперник → сторож выключен", () => {
+    const snap = {
+      seats: [
+        { label: "Hero", position: "BTN" as const, startingStack: 100 },
+        { label: "Player 3", position: "SB" as const, startingStack: 100, shownCards: ["Ah", "Kd"] },
+      ],
+      heroCards: ["9d", "5d"],
+      board: ["8d", "5s", "8c", "4h", "5c"],
+      actions: [],
+      potTotal: 10,
+    };
+    expect(noShowdownInHand(snap)).toBe(false);
+  });
+
+  it("noShowdownInHand: никто не вскрылся → сторож включён", () => {
+    const snap = {
+      seats: [
+        { label: "Hero", position: "BTN" as const, startingStack: 100 },
+        { label: "Player 3", position: "SB" as const, startingStack: 100 },
+      ],
+      heroCards: ["9d", "5d"],
+      board: ["8d", "5s", "8c", "4h", "5c"],
+      actions: [],
+      potTotal: 10,
+    };
+    expect(noShowdownInHand(snap)).toBe(true);
+  });
+
+  it("cleanCoachText бракует выдуманное вскрытие только при флаге noShowdown", () => {
+    const text = "Твой фулл проиграл: у соперника оказался старший фулл-хаус.";
+    expect(() => cleanCoachText(text, "ru", undefined, undefined, undefined, true)).toThrow(/выдумал вскрытие/);
+    expect(() => cleanCoachText(text, "ru", undefined, undefined, undefined, false)).not.toThrow();
   });
 });

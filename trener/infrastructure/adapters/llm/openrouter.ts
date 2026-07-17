@@ -29,6 +29,7 @@ import { validateCoachNotes,
   validatePlayerCharacteristic,
   validateTournamentSummary,
   validateVerdict,
+  noShowdownInHand,
 } from "./parse";
 import type {
   CoachNotesRequest,
@@ -213,7 +214,7 @@ export const openRouterLlmAdapter: LlmPort = {
       undefined,
       TEMP_PRECISE,
     );
-    return validateVerdict(parsed as Partial<VerdictResult>, request.locale, allowedCardSet(request.tableSnapshot), heroSuitFixMap(request.tableSnapshot), heroFirstPostflop(request.tableSnapshot));
+    return validateVerdict(parsed as Partial<VerdictResult>, request.locale, allowedCardSet(request.tableSnapshot), heroSuitFixMap(request.tableSnapshot), heroFirstPostflop(request.tableSnapshot), noShowdownInHand(request.tableSnapshot));
   },
 
   async generateChatReply(request: ChatReplyRequest, meta?: LlmCallMeta): Promise<ChatReplyResult> {
@@ -224,7 +225,7 @@ export const openRouterLlmAdapter: LlmPort = {
       undefined,
       TEMP_DIALOGUE,
     );
-    return validateChatReply(parsed as Partial<ChatReplyResult>, request.locale, allowedCardSet(request.tableSnapshot), heroSuitFixMap(request.tableSnapshot), heroFirstPostflop(request.tableSnapshot));
+    return validateChatReply(parsed as Partial<ChatReplyResult>, request.locale, allowedCardSet(request.tableSnapshot), heroSuitFixMap(request.tableSnapshot), heroFirstPostflop(request.tableSnapshot), noShowdownInHand(request.tableSnapshot));
   },
 
   async generateTournamentSummary(

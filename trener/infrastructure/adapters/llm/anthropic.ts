@@ -30,6 +30,7 @@ import { validateCoachNotes,
   validatePlayerCharacteristic,
   validateTournamentSummary,
   validateVerdict,
+  noShowdownInHand,
 } from "./parse";
 import type {
   CoachNotesRequest,
@@ -188,7 +189,7 @@ export const anthropicLlmAdapter: LlmPort = {
       step: "VERDICT",
       playerId: meta?.playerId,
     }, TEMP_PRECISE);
-    return validateVerdict(parsed as Partial<VerdictResult>, request.locale, allowedCardSet(request.tableSnapshot), heroSuitFixMap(request.tableSnapshot), heroFirstPostflop(request.tableSnapshot));
+    return validateVerdict(parsed as Partial<VerdictResult>, request.locale, allowedCardSet(request.tableSnapshot), heroSuitFixMap(request.tableSnapshot), heroFirstPostflop(request.tableSnapshot), noShowdownInHand(request.tableSnapshot));
   },
 
   async generateChatReply(request: ChatReplyRequest, meta?: LlmCallMeta): Promise<ChatReplyResult> {
@@ -196,7 +197,7 @@ export const anthropicLlmAdapter: LlmPort = {
       step: "CHAT_REPLY",
       playerId: meta?.playerId,
     }, TEMP_DIALOGUE);
-    return validateChatReply(parsed as Partial<ChatReplyResult>, request.locale, allowedCardSet(request.tableSnapshot), heroSuitFixMap(request.tableSnapshot), heroFirstPostflop(request.tableSnapshot));
+    return validateChatReply(parsed as Partial<ChatReplyResult>, request.locale, allowedCardSet(request.tableSnapshot), heroSuitFixMap(request.tableSnapshot), heroFirstPostflop(request.tableSnapshot), noShowdownInHand(request.tableSnapshot));
   },
 
   async generateTournamentSummary(

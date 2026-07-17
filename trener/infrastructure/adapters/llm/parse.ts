@@ -13,6 +13,7 @@ import type {
   VerdictResult,
 } from "./types";
 import type { Locale } from "@/i18n/config";
+import type { TableSnapshot } from "@/parser/types";
 import { heroFirstPostflop } from "@/parser/action-order";
 
 // Claude/DeepSeek иногда оборачивают JSON в markdown-код-блок несмотря на инструкцию — снимаем его.
@@ -276,12 +277,65 @@ function violatesActionOrder(text: string): boolean {
   return CHECK_INVERSION_RES.some((re) => re.test(text));
 }
 
+// ── Сторож выдуманного вскрытия ─────────────────────────────────────────────────────────────
+// Регресс 2026-07-17 (50 раздач, 3.1-flash-lite): тренер УТВЕРЖДАЕТ, какая рука была у соперника,
+// хотя никто не вскрывался: «у соперника на SB оказался старший фулл-хаус с восьмерками», «с
+// руками вроде AA, которые он в итоге показал». Самый опасный класс: игрок САМ играл эту раздачу
+// и помнит, что там было, — враньё ловится за секунду и убивает доверие (критическая поломка №2).
+// Факт «никто не вскрылся, не пиши „у него оказался“» в промпте УЖЕ есть (parser/facts.ts,
+// renderShowdownFacts) — и модель его игнорирует. Значит ловим на выходе, как порядок хода.
+//
+// Включается ТОЛЬКО когда вскрытых карт в снимке нет вовсе (иначе про вскрывшихся говорить можно).
+// Намеренно УЗКИЙ, как сторож порядка хода: ловим лишь ИЗЪЯВИТЕЛЬНОЕ утверждение о конкретной
+// комбинации/руке. Гипотезы («у него МОГ быть фулл», «возможно, показал бы») — законный язык
+// тренера, их не трогаем: ложный брак = 3 ретрая = карантин у живого игрока.
+// Теневой прогон на 50 раздачах: поймано 2 (оба — настоящее враньё), ложных 0.
+// ⚠️В JS `\w` и `\b` НЕ работают с кириллицей (тот же грабль, что у сторожа порядка хода выше) —
+// поэтому везде явные классы [а-яё] и пробельные границы, а не \w/\b.
+const RU = "[а-яё]";
+const SHOWDOWN_COMBO =
+  `(?:фулл[-\\s]?хаус${RU}*|каре|сет${RU}*|трипс${RU}*|флеш${RU}*|стрит${RU}*|две\\s+пары|оверпар${RU}+|топ[-\\s]пар${RU}+|[AKQJT98765432]{2}[so]?(?![A-Za-zА-Яа-я]))`;
+const INVENTED_SHOWDOWN_RES: RegExp[] = [
+  // «у соперника (на SB) оказался фулл», «он в итоге показал сет»
+  new RegExp(
+    `(?:у\\s+(?:него|соперника|оппонента|BB|SB|BTN|CO|HJ|LJ|UTG)(?![а-яё])[^.!?]{0,25}?(?:оказал${RU}+|был[аи]?(?![а-яё]))` +
+      `|(?:он|соперник|оппонент)(?![а-яё])[^.!?]{0,20}?(?:в\\s+итоге\\s+)?(?:показал|вскрыл|оказал${RU}+))` +
+      `[^.!?]{0,50}?${SHOWDOWN_COMBO}`,
+    "i",
+  ),
+  // «с руками вроде AA, которые он в итоге показал» — комбинация стоит ПЕРЕД глаголом
+  new RegExp(
+    `${SHOWDOWN_COMBO}[^.!?]{0,40}?(?:котор${RU}+|что)\\s+(?:он|соперник|оппонент)(?![а-яё])[^.!?]{0,20}?` +
+      `(?:в\\s+итоге\\s+)?(?:показал|вскрыл|имел|держал)`,
+    "i",
+  ),
+];
+// Сослагательное/предположительное рядом — это гипотеза, а не утверждение факта.
+const SHOWDOWN_HYPOTHESIS_RE = new RegExp(
+  `(?:^|[^а-яё])(?:мог${RU}*|бы|если|возможно|вероятно|наверн${RU}+|предполож${RU}+|допустим)(?![а-яё])`,
+  "i",
+);
+
+// true — текст УТВЕРЖДАЕТ конкретную руку соперника (не гипотеза). Проверяем по предложениям:
+// «мог» в соседней фразе не должен оправдывать утверждение в этой.
+export function inventsShowdown(text: string): boolean {
+  return text
+    .split(/(?<=[.!?])\s+/)
+    .some((sentence) => !SHOWDOWN_HYPOTHESIS_RE.test(sentence) && INVENTED_SHOWDOWN_RES.some((re) => re.test(sentence)));
+}
+
+// Есть ли в снимке хоть одно вскрытие. Нет — включаем сторож выдуманного вскрытия.
+export function noShowdownInHand(snapshot: TableSnapshot): boolean {
+  return !snapshot.seats.some((s) => s.label !== "Hero" && (s.shownCards?.length ?? 0) === 2);
+}
+
 export function cleanCoachText(
   text: string,
   locale: Locale = "ru",
   allowedCards?: Set<string>,
   heroFix?: Map<string, string>,
   heroFirstPostflop?: boolean,
+  noShowdown?: boolean,
 ): string {
   if (CJK_RE.test(text)) {
     throw new Error("LLM вернул CJK-иероглифы в тексте для игрока");
@@ -335,6 +389,11 @@ export function cleanCoachText(
   // только когда парсер уверен, что Hero первый (heroFirstPostflop) — иначе «перед тобой» законно.
   if (heroFirstPostflop && violatesActionOrder(out)) {
     throw new Error("LLM переврал порядок хода: соперники поставлены до Hero, хотя Hero ходит первым постфлоп");
+  }
+  // Выдуманное вскрытие: тренер утверждает конкретную руку соперника, хотя никто не вскрывался.
+  // Флаг ставит вызывающий (валидатор/адаптер) по снимку — noShowdownInHand.
+  if (noShowdown && inventsShowdown(out)) {
+    throw new Error("LLM выдумал вскрытие: утверждает руку соперника, хотя карт никто не показал");
   }
   return out;
 }
@@ -413,11 +472,15 @@ export function validateVerdict(
   allowedCards?: Set<string>,
   heroFix?: Map<string, string>,
   heroFirstPostflop?: boolean,
+  // Никто не вскрылся → включаем сторож выдуманного вскрытия (регресс 17.07: «у соперника на SB
+  // оказался старший фулл» при пустом shownCards). Только вердикт и чат: там вскрытие уместно
+  // обсуждать, а на стадии вопросов карты соперников прячутся намеренно.
+  noShowdown?: boolean,
 ): VerdictResult {
   if (typeof result.verdict !== "string") {
     throw new Error("LLM вернул вердикт без поля verdict");
   }
-  return { verdict: cleanCoachText(result.verdict, locale, allowedCards, heroFix, heroFirstPostflop) };
+  return { verdict: cleanCoachText(result.verdict, locale, allowedCards, heroFix, heroFirstPostflop, noShowdown) };
 }
 
 export function validateNextQuestion(
@@ -462,11 +525,12 @@ export function validateChatReply(
   allowedCards?: Set<string>,
   heroFix?: Map<string, string>,
   heroFirstPostflop?: boolean,
+  noShowdown?: boolean, // см. validateVerdict
 ): ChatReplyResult {
   if (typeof result.reply !== "string") {
     throw new Error("LLM вернул ответ без поля reply");
   }
-  return { reply: cleanCoachText(result.reply, locale, allowedCards, heroFix, heroFirstPostflop) };
+  return { reply: cleanCoachText(result.reply, locale, allowedCards, heroFix, heroFirstPostflop, noShowdown) };
 }
 
 export function validateTournamentSummary(
