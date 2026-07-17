@@ -183,11 +183,28 @@ export type DonkLeadRead = {
   rationale: string;
 };
 
+// Свежая ли инициатива соперника, входя в улицу `street`: было ли его агрессивное действие на
+// НЕПОСРЕДСТВЕННО предыдущей улице. Правка 2026-07-17 (поймал Артём): currentAggressor отдаёт
+// агрессора ЛЮБОЙ прошлой улицы, поэтому «агрессором» ривера числился тот, кто ставил на флопе,
+// но ПРОЧЕКАЛ тёрн. А чек агрессора — это отказ от инициативы: ставка Hero первым на ривере тут
+// уже НЕ донк, а обычный лид. Тренер писал «ты донкнул в агрессора на ривере после того, как он
+// прочекал тёрн» — фраза сама себе противоречит и путает игрока в термине.
+function initiativeIsFresh(snapshot: TableSnapshot, street: Street, agg: string): boolean {
+  const prev: Record<string, Street | null> = { FLOP: "PREFLOP", TURN: "FLOP", RIVER: "TURN" };
+  const p = prev[street];
+  if (!p) return false;
+  return snapshot.actions.some(
+    (a) => a.street === p && a.actor === agg && (a.action === "BET" || a.action === "RAISE" || a.action === "ALL_IN"),
+  );
+}
+
 export function donkLeads(snapshot: TableSnapshot): DonkLeadRead[] {
   const out: DonkLeadRead[] = [];
   for (const street of ["FLOP", "TURN", "RIVER"] as const) {
     const agg = currentAggressor(snapshot, street);
     if (!agg || agg === "Hero") continue; // Hero сам агрессор - его бет это не донк
+    // Агрессор прочекал предыдущую улицу → инициативу отдал → ставка Hero первым это ЛИД, не донк.
+    if (!initiativeIsFresh(snapshot, street, agg)) continue;
     const first = snapshot.actions.map((a, i) => ({ a, i })).find((x) => x.a.street === street);
     if (!first || first.a.actor !== "Hero" || first.a.action !== "BET") continue; // Hero не лидил первым
 
@@ -222,6 +239,9 @@ export function facingDonk(snapshot: TableSnapshot): FacingDonkRead[] {
   const out: FacingDonkRead[] = [];
   for (const street of ["FLOP", "TURN", "RIVER"] as const) {
     if (currentAggressor(snapshot, street) !== "Hero") continue; // инициатива не у Hero → это не донк В него
+    // Hero прочекал предыдущую улицу → инициативу отдал сам → ставка соперника первым это ЛИД,
+    // а не донк в тебя (симметрично donkLeads, см. initiativeIsFresh).
+    if (!initiativeIsFresh(snapshot, street, "Hero")) continue;
     const first = snapshot.actions.map((a, i) => ({ a, i })).find((x) => x.a.street === street);
     if (!first || first.a.actor === "Hero" || first.a.action !== "BET") continue; // соперник не лидил первым
 

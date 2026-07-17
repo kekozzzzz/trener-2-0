@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { Position, Street, TableAction, TableSnapshot } from "@/parser/types";
-import { currentAggressor, gaveBackInitiative, renderInitiative, renderTacticalMarks } from "@/parser/initiative";
+import { currentAggressor, gaveBackInitiative, renderInitiative, renderTacticalMarks, donkLeads, facingDonk } from "@/parser/initiative";
 
 const A = (street: Street, actor: string, action: TableAction["action"], amount?: number): TableAction =>
   ({ street, actor, action, amount });
@@ -146,5 +146,65 @@ describe("renderTacticalMarks — c-bet и чек-рейз метки", () => {
       A("FLOP", "Hero", "CHECK"),
     ]);
     expect(renderTacticalMarks(s)).toBe("");
+  });
+});
+
+/**
+ * Донк = ставка БЕЗ инициативы (первым в агрессора). Поймал Артём 2026-07-17:
+ * тренер писал «ты донкнул в агрессора на ривере после того, как он прочекал тёрн» — фраза сама
+ * себе противоречит. Прочекал = инициативу ОТДАЛ, и ставка первым на ривере это уже обычный лид.
+ * Причина: currentAggressor отдаёт агрессора ЛЮБОЙ прошлой улицы, а не непосредственно предыдущей.
+ */
+describe("донк только при СВЕЖЕЙ инициативе соперника", () => {
+  it("агрессор флопа ПРОЧЕКАЛ тёрн → ставка Hero на ривере это НЕ донк", () => {
+    const s = snap("BB", ["2c", "7h", "Kd", "3s", "9h"], [
+      A("PREFLOP", "Player 1", "RAISE", 60),
+      A("PREFLOP", "Hero", "CALL", 40),
+      A("FLOP", "Hero", "CHECK"),
+      A("FLOP", "Player 1", "BET", 60),   // агрессор флопа — соперник
+      A("FLOP", "Hero", "CALL", 60),
+      A("TURN", "Hero", "CHECK"),
+      A("TURN", "Player 1", "CHECK"),      // ОТДАЛ инициативу
+      A("RIVER", "Hero", "BET", 100),      // это ЛИД, не донк
+    ]);
+    expect(donkLeads(s).some((d) => d.street === "RIVER")).toBe(false);
+  });
+
+  it("агрессор тёрна поставил тёрн → ставка Hero первым на ривере это ДОНК", () => {
+    const s = snap("BB", ["2c", "7h", "Kd", "3s", "9h"], [
+      A("PREFLOP", "Player 1", "RAISE", 60),
+      A("PREFLOP", "Hero", "CALL", 40),
+      A("FLOP", "Hero", "CHECK"),
+      A("FLOP", "Player 1", "BET", 60),
+      A("FLOP", "Hero", "CALL", 60),
+      A("TURN", "Hero", "CHECK"),
+      A("TURN", "Player 1", "BET", 120),   // инициатива СВЕЖАЯ
+      A("TURN", "Hero", "CALL", 120),
+      A("RIVER", "Hero", "BET", 200),      // донк
+    ]);
+    expect(donkLeads(s).some((d) => d.street === "RIVER")).toBe(true);
+  });
+
+  it("донк в Hero: Hero прочекал тёрн → ставка соперника на ривере НЕ донк в него", () => {
+    const s = snap("BTN", ["2c", "7h", "Kd", "3s", "9h"], [
+      A("PREFLOP", "Hero", "RAISE", 60),
+      A("PREFLOP", "Player 1", "CALL", 40),
+      A("FLOP", "Player 1", "CHECK"),
+      A("FLOP", "Hero", "BET", 60),        // агрессор — Hero
+      A("FLOP", "Player 1", "CALL", 60),
+      A("TURN", "Player 1", "CHECK"),
+      A("TURN", "Hero", "CHECK"),          // Hero ОТДАЛ инициативу
+      A("RIVER", "Player 1", "BET", 100),  // лид, не донк в Hero
+    ]);
+    expect(facingDonk(s).some((d) => d.street === "RIVER")).toBe(false);
+  });
+
+  it("классический донк на флопе (префлоп-агрессор — соперник) остаётся донком", () => {
+    const s = snap("BB", ["2c", "7h", "Kd"], [
+      A("PREFLOP", "Player 1", "RAISE", 60),
+      A("PREFLOP", "Hero", "CALL", 40),
+      A("FLOP", "Hero", "BET", 60),        // донк в префлоп-агрессора
+    ]);
+    expect(donkLeads(s).some((d) => d.street === "FLOP")).toBe(true);
   });
 });
