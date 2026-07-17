@@ -329,6 +329,66 @@ export function noShowdownInHand(snapshot: TableSnapshot): boolean {
   return !snapshot.seats.some((s) => s.label !== "Hero" && (s.shownCards?.length ?? 0) === 2);
 }
 
+// ── Сторож выдуманной карманной пары ────────────────────────────────────────────────────────
+// Регресс 2026-07-17 (#25, T3o на 3s3hJd5h3c): «колл 3-бета С КАРМАННОЙ ПАРОЙ … стандартный
+// СЕТ-МАЙНИНГ» — при разномастных T3o. Двойная цена: игрок видит, что тренер не смотрит в его
+// карты, И получает вредный совет (коллировать 3-бет мусором).
+//
+// Ловим НЕ слово «сет»: промпт проекта прямо РАЗРЕШАЕТ звать трипс сетом («игрок поймёт любое
+// одинаково»), и сторож на «сет» бракова́л бы 14% раздач за выполнение промпта. Ловим утверждение
+// о СТАРТОВОЙ руке — его промпт не разрешает нигде.
+// Гейт неоспорим: карты Hero разного ранга. Теневой прогон по 262 раздачам / 597 текстам:
+// 1 брак (#25, настоящее враньё), ложных 0.
+// ⚠️Кириллица: никаких \w и \b — только [а-яё] и (?![а-яё]).
+const POCKET_PAIR_RES: RegExp[] = [
+  new RegExp(`карманн${RU}+\\s+пар${RU}+`, "i"),
+  new RegExp(`пар${RU}*\\s+в\\s+кармане`, "i"),
+  new RegExp(`сет[-\\s]?майн${RU}*`, "i"),
+];
+// Якорь «речь про Hero». «тебя/тебе» БЕЗ «у» намеренно НЕ маркер: «руки, которые тебя обносят, —
+// это J9 и карманные пары выше десятки» — там Hero дополнение, а пары чужие (единственный ложный
+// брак на корпусе, снят этим).
+const HERO_MARK_RE = new RegExp(`(?:^|[^а-яё])(?:ты|у\\s+теб[яе]|тобой|тво${RU}+|сво${RU}+)(?![а-яё])`, "gi");
+const OPP_MARK_RE = new RegExp(
+  `(?:^|[^а-яё])(?:соперник${RU}*|оппонент${RU}*|он|его|ему|им|него|нём|ним|диапазон${RU}*|люб${RU}+|пол[ея]|микролимит${RU}*)(?![а-яё])`,
+  "gi",
+);
+const COUNTERFACT_RE = /(?:если\s+бы|будь\s|представь|вообрази|допустим)/i;
+const POCKET_NEG_RE = new RegExp(`(?:^|[^а-яё])(?:не|нет|никак${RU}*|вместо)(?![а-яё])`, "i");
+
+function lastMarkIndex(s: string, re: RegExp): number {
+  re.lastIndex = 0;
+  let last = -1;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(s)) !== null) last = m.index;
+  return last;
+}
+
+// true — текст приписывает КАРМАННУЮ ПАРУ игроку (не сопернику, не гипотетически).
+export function claimsPocketPair(text: string): boolean {
+  for (const sentence of text.split(/(?<=[.!?])\s+/)) {
+    if (COUNTERFACT_RE.test(sentence)) continue; // «будь у тебя пара…» — законная гипотеза
+    for (const re of POCKET_PAIR_RES) {
+      const m = re.exec(sentence);
+      if (!m) continue;
+      const before = sentence.slice(0, m.index);
+      if (POCKET_NEG_RE.test(before.slice(-30))) continue; // «у тебя НЕ карманная пара» — законно
+      const hero = lastMarkIndex(before, HERO_MARK_RE);
+      if (hero < 0) continue; // нет якоря на Hero — молчим
+      if (lastMarkIndex(before, OPP_MARK_RE) > hero) continue; // ближе соперник — пара чужая
+      return true;
+    }
+  }
+  return false;
+}
+
+// У Hero заведомо НЕТ карманной пары (карты разного ранга). Снимок кривой → false: не уверены — молчим.
+export function heroNoPocketPair(snapshot: TableSnapshot): boolean {
+  const c = (snapshot.heroCards ?? []).filter((x) => x && x.length >= 2);
+  if (c.length !== 2) return false;
+  return c[0][0].toUpperCase() !== c[1][0].toUpperCase();
+}
+
 export function cleanCoachText(
   text: string,
   locale: Locale = "ru",
@@ -336,6 +396,7 @@ export function cleanCoachText(
   heroFix?: Map<string, string>,
   heroFirstPostflop?: boolean,
   noShowdown?: boolean,
+  noPocketPair?: boolean,
 ): string {
   if (CJK_RE.test(text)) {
     throw new Error("LLM вернул CJK-иероглифы в тексте для игрока");
@@ -395,6 +456,10 @@ export function cleanCoachText(
   if (noShowdown && inventsShowdown(out)) {
     throw new Error("LLM выдумал вскрытие: утверждает руку соперника, хотя карт никто не показал");
   }
+  // Выдуманная карманная пара: тренер приписывает Hero пару/сет-майнинг при разномастных картах.
+  if (noPocketPair && claimsPocketPair(out)) {
+    throw new Error("LLM выдумал карманную пару: приписал Hero пару или сет-майнинг, хотя карты разного ранга");
+  }
   return out;
 }
 
@@ -436,17 +501,21 @@ export function validateHandAnalysis(
   const fix = heroSuitFixMap(request.tableSnapshot);
   // Сторож порядка хода: включаем, только если парсер уверен, что Hero ходит первым постфлоп.
   const heroFirst = heroFirstPostflop(request.tableSnapshot);
+  // Сторож выдуманной карманной пары — только в РАЗБОРЕ: именно тут родился совет «сет-майнинг»
+  // рукой T3o (#25). В чат и вердикт не тащим: там игрок сам может спросить «а будь у меня пара?»,
+  // и база ложных срабатываний не измерена.
+  const noPair = heroNoPocketPair(request.tableSnapshot);
 
   if (request.importanceLevel === "CRITICAL") {
     if (typeof result.question !== "string" || typeof result.draftVerdict !== "string") {
       throw new Error("LLM вернул CRITICAL-разбор без question/draftVerdict");
     }
     return {
-      played: cleanCoachText(result.played, request.locale, cards, fix, heroFirst),
-      optimal: cleanCoachText(result.optimal, request.locale, cards, fix, heroFirst),
+      played: cleanCoachText(result.played, request.locale, cards, fix, heroFirst, undefined, noPair),
+      optimal: cleanCoachText(result.optimal, request.locale, cards, fix, heroFirst, undefined, noPair),
       optimalAction: parseOptimalAction(result.optimalAction),
-      question: cleanCoachText(result.question, request.locale, cards, fix, heroFirst),
-      draftVerdict: cleanCoachText(result.draftVerdict, request.locale, cards, fix, heroFirst),
+      question: cleanCoachText(result.question, request.locale, cards, fix, heroFirst, undefined, noPair),
+      draftVerdict: cleanCoachText(result.draftVerdict, request.locale, cards, fix, heroFirst, undefined, noPair),
       answerMode: parseAnswerMode(result.answerMode),
       tableActionIndex: parseTableActionIndex(result.tableActionIndex),
     };
@@ -456,9 +525,9 @@ export function validateHandAnalysis(
     throw new Error(`LLM вернул ${request.importanceLevel}-разбор без note`);
   }
   return {
-    played: cleanCoachText(result.played, request.locale, cards, fix, heroFirst),
-    optimal: cleanCoachText(result.optimal, request.locale, cards, fix, heroFirst),
-    note: cleanCoachText(result.note, request.locale, cards, fix, heroFirst),
+    played: cleanCoachText(result.played, request.locale, cards, fix, heroFirst, undefined, noPair),
+    optimal: cleanCoachText(result.optimal, request.locale, cards, fix, heroFirst, undefined, noPair),
+    note: cleanCoachText(result.note, request.locale, cards, fix, heroFirst, undefined, noPair),
   };
 }
 

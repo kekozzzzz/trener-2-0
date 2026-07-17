@@ -9,6 +9,8 @@ import {
   parseOptimalAction,
   inventsShowdown,
   noShowdownInHand,
+  claimsPocketPair,
+  heroNoPocketPair,
 } from "@/infrastructure/adapters/llm/parse";
 
 // Страховка словаря кодом (правки Артёма 2026-07-05): возвратные формы «сбрасываться»,
@@ -396,5 +398,66 @@ describe("inventsShowdown — сторож выдуманного вскрыти
     const text = "Твой фулл проиграл: у соперника оказался старший фулл-хаус.";
     expect(() => cleanCoachText(text, "ru", undefined, undefined, undefined, true)).toThrow(/выдумал вскрытие/);
     expect(() => cleanCoachText(text, "ru", undefined, undefined, undefined, false)).not.toThrow();
+  });
+});
+
+/**
+ * Сторож выдуманной карманной пары (регресс 2026-07-17, #25).
+ * «Колл 3-бета С КАРМАННОЙ ПАРОЙ … стандартный СЕТ-МАЙНИНГ» — при разномастных T3o. Двойная цена:
+ * игрок видит, что тренер не смотрит в его карты, и получает вредный совет.
+ * ⚠️Ловим НЕ слово «сет»: промпт проекта РАЗРЕШАЕТ звать трипс сетом («игрок поймёт одинаково»),
+ * такой сторож бракова́л бы 14% раздач за выполнение промпта. Ловим утверждение о СТАРТОВОЙ руке.
+ * Теневой прогон по 262 раздачам / 597 текстам: 1 брак (настоящее враньё), ложных 0.
+ */
+describe("claimsPocketPair — сторож выдуманной карманной пары", () => {
+  it("ловит реальный брак #25: «колл 3-бета с карманной парой… сет-майнинг»", () => {
+    expect(
+      claimsPocketPair("Твой колл 3-бета с карманной парой (даже такой мелкой) в позиции - это стандартный сет-майнинг."),
+    ).toBe(true);
+  });
+
+  it("ловит «реализовать потенциал карманной пары» про игрока", () => {
+    expect(claimsPocketPair("Не стоит сбрасывать такие руки, если цена входа позволяет реализовать потенциал твоей карманной пары.")).toBe(true);
+  });
+
+  it("НЕ трогает карманную пару У СОПЕРНИКА — это законно и постоянно", () => {
+    expect(claimsPocketPair("У соперника тут карманная пара или туз с хорошим кикером.")).toBe(false);
+  });
+
+  it("НЕ трогает разговор про диапазон соперника", () => {
+    expect(claimsPocketPair("В его диапазоне много карманных пар и бродвеев.")).toBe(false);
+  });
+
+  it("НЕ трогает контрфактику «если бы у тебя была карманная пара»", () => {
+    expect(claimsPocketPair("Если бы у тебя была карманная пара, сет-майнинг был бы оправдан.")).toBe(false);
+  });
+
+  it("НЕ трогает отрицание «у тебя не карманная пара»", () => {
+    expect(claimsPocketPair("У тебя не карманная пара, поэтому сет-майнинга тут нет.")).toBe(false);
+  });
+
+  it("НЕ трогает фразу, где Hero — дополнение, а пары чужие (реальный текст glm #32)", () => {
+    expect(claimsPocketPair("Руки, которые тебя обносят, - это J9 и карманные пары выше десятки.")).toBe(false);
+  });
+
+  it("heroNoPocketPair: T3o → сторож включён", () => {
+    const s = { seats: [], heroCards: ["Th", "3d"], board: [], actions: [], potTotal: 0 };
+    expect(heroNoPocketPair(s)).toBe(true);
+  });
+
+  it("heroNoPocketPair: 33 (карманная пара) → сторож выключен", () => {
+    const s = { seats: [], heroCards: ["3h", "3d"], board: [], actions: [], potTotal: 0 };
+    expect(heroNoPocketPair(s)).toBe(false);
+  });
+
+  it("heroNoPocketPair: карт нет → не уверены, молчим", () => {
+    const s = { seats: [], heroCards: [], board: [], actions: [], potTotal: 0 };
+    expect(heroNoPocketPair(s)).toBe(false);
+  });
+
+  it("cleanCoachText бракует только при флаге noPocketPair", () => {
+    const t = "Твой колл 3-бета с карманной парой - стандартный сет-майнинг.";
+    expect(() => cleanCoachText(t, "ru", undefined, undefined, undefined, undefined, true)).toThrow(/выдумал карманную пару/);
+    expect(() => cleanCoachText(t, "ru", undefined, undefined, undefined, undefined, false)).not.toThrow();
   });
 });
