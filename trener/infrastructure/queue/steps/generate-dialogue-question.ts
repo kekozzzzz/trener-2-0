@@ -2,6 +2,7 @@ import type { StepHandler } from "../types";
 import type { TableSnapshot } from "@/parser/types";
 import type { NextQuestionRequest } from "@/infrastructure/adapters/llm/types";
 import type { Locale } from "@/i18n/config";
+import { playerIsStuck, alreadyHelped } from "@/config/prompts/dialogue-question";
 import { getLlmAdapter } from "@/infrastructure/adapters/llm";
 import { applyRangeMarker, applyTableMarker } from "@/config/dialogue";
 import { findPriorSimilarSpots } from "@/features/memory/similar-spots";
@@ -117,13 +118,30 @@ export const generateDialogueQuestionStep: StepHandler = async (task, db) => {
     repeatedLeak: repeatedLeakFor(currentFp, playerCard),
   };
 
-  const result = await getLlmAdapter().generateNextQuestion(request, { playerId: tournament.playerId });
+  let result = await getLlmAdapter().generateNextQuestion(request, { playerId: tournament.playerId });
+
+  // ── Новичку нельзя отвечать вердиктом на «не знаю» ──────────────────────────────────────────
+  // Прогон 2026-07-17 с симулятором-новичком: 15 диалогов из 15 — игрок ответил «я же новичок,
+  // что такое диапазон?», и тренер СРАЗУ выкатил вердикт. Помощи ноль. Для новичка продукт
+  // превращался в методичку, хотя обещает обучение (вопрос Артёма: «он такой — я не знаю, я
+  // тупой. Ты же не будешь сразу вердикт говорить?»).
+  // Промпт это уже запрещал ДВАЖДЫ (правило «дай опору» + факт «complete нельзя») — модель
+  // проигнорировала оба раза: после правки стало 14/15 вместо 15/15. Значит просьбами не лечится;
+  // тот же вывод, что по фактам парсера — опасное держим детерминированно (правило проекта).
+  // Здесь код НЕ бракует ответ (это карантин и зависший разбор), а ПЕРЕСПРАШИВАЕТ модель один раз,
+  // явно закрыв ей выход в complete. Не помогло — принимаем как есть: вердикт всё равно объяснит.
+  if (result.complete && playerIsStuck(history) && !alreadyHelped(history)) {
+    result = await getLlmAdapter().generateNextQuestion(
+      { ...request, forceHelp: true },
+      { playerId: tournament.playerId },
+    );
+  }
 
   // ИИ прочитал ответ игрока и решил, что диалог исчерпан (игрок дошёл до сути либо
   // копать дальше бессмысленно). Раунд не создаём — ставим вердикт. Состояние
   // остаётся ANSWER_RECEIVED: правило 2 соблюдено (вердикт идёт после ответа игрока),
   // GENERATE_VERDICT идемпотентен по dialogue.verdict. Решение 2026-06-27.
-  if (result.complete) {
+  if (result.complete || !result.question) {
     await enqueue(db, { type: "GENERATE_VERDICT", payload: { handId } });
     return;
   }
