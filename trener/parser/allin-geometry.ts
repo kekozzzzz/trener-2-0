@@ -44,44 +44,56 @@ export function detectAllInGeometry(snapshot: TableSnapshot): AllInGeometry | nu
     const prev = committed.get(a.actor) ?? 0;
 
     if (a.actor === "Hero") {
-      // Первое добровольное действие Hero. Ре-пуш = олл-ин поверх чужого олл-ина.
       if (a.action === "POST_ANTE" || a.action === "POST_SB" || a.action === "POST_BB") {
         if (a.action !== "POST_ANTE") currentBet = Math.max(currentBet, prev + (a.amount ?? 0));
         add("Hero", a.amount ?? 0);
         continue;
       }
-      if (a.action !== "ALL_IN") return null; // Hero не ре-пушит — не наш спот
-      if (allInAhead.size === 0) return null; // впереди никто не в олл-ине — не ре-пуш
 
-      const heroStack = heroSeat.startingStack;
-      const potBefore = pot; // банк ДО добавления шова Hero
-      const aheadStacks = [...allInAhead.keys()].map((l) => stackOf.get(l) ?? 0);
-      const maxAhead = Math.max(...aheadStacks); // самый крупный уже-в-олл-ине впереди
-      const shortAhead = Math.min(...aheadStacks); // самый короткий (его точно не выбить)
-      const matched = Math.min(heroStack, maxAhead); // сколько реально матчится уже вошедшими
-      const aheadCommitted = [...allInAhead.values()].reduce((s, v) => s + v, 0);
+      if (a.action === "ALL_IN") {
+        if (allInAhead.size === 0) return null; // впереди никто не в олл-ине — опен-шов, не ре-пуш
 
-      const liveBehind = snapshot.seats
-        .filter(
-          (s) =>
-            s.label !== "Hero" &&
-            !folded.has(s.label) &&
-            !allInAhead.has(s.label),
-        )
-        .map((s) => ({
-          label: s.positionName ?? s.position,
-          stackBb: round1(s.startingStack, bb),
-          covers: s.startingStack >= heroStack,
-        }));
+        const heroStack = heroSeat.startingStack;
+        const potBefore = pot; // банк ДО добавления шова Hero
+        // Вклад самого Hero до шова (блайнды + возможный ранний рейз-открытие). Вычитаем из мёртвых
+        // денег: свои фишки Hero не «забирает» — иначе на линии «открыл рейзом → ре-пуш» рейз Hero
+        // ложно раздул бы мёртвые деньги (регресс ATs/AJs-vs-AKs, где Hero сначала открыл).
+        const heroCommittedBefore = committed.get("Hero") ?? 0;
+        const aheadStacks = [...allInAhead.keys()].map((l) => stackOf.get(l) ?? 0);
+        const maxAhead = Math.max(...aheadStacks); // самый крупный уже-в-олл-ине впереди
+        const shortAhead = Math.min(...aheadStacks); // самый короткий (его точно не выбить)
+        const matched = Math.min(heroStack, maxAhead); // сколько реально матчится уже вошедшими
+        const aheadCommitted = [...allInAhead.values()].reduce((s, v) => s + v, 0);
 
-      return {
-        heroRiskBb: round1(heroStack, bb),
-        effectiveRiskBb: round1(matched, bb),
-        excessBb: round1(Math.max(heroStack - maxAhead, 0), bb),
-        shortAllInBb: round1(shortAhead, bb),
-        liveBehind,
-        deadMoneyBb: round1(Math.max(potBefore - aheadCommitted, 0), bb),
-      };
+        const liveBehind = snapshot.seats
+          .filter(
+            (s) =>
+              s.label !== "Hero" &&
+              !folded.has(s.label) &&
+              !allInAhead.has(s.label),
+          )
+          .map((s) => ({
+            label: s.positionName ?? s.position,
+            stackBb: round1(s.startingStack, bb),
+            covers: s.startingStack >= heroStack,
+          }));
+
+        return {
+          heroRiskBb: round1(heroStack, bb),
+          effectiveRiskBb: round1(matched, bb),
+          excessBb: round1(Math.max(heroStack - maxAhead, 0), bb),
+          shortAllInBb: round1(shortAhead, bb),
+          liveBehind,
+          deadMoneyBb: round1(Math.max(potBefore - aheadCommitted - heroCommittedBefore, 0), bb),
+        };
+      }
+
+      // Hero сделал ДОБРОВОЛЬНЫЙ не-олл-ин ход (открыл рейзом / коллом / чек) — раньше тут стоял
+      // `return null`, из-за чего терялась частая линия «Hero открыл → в него олл-ин → Hero ре-пуш»
+      // (регресс: раздачи ATs и AJs-vs-AKs — тренер писал «забрать банк сразу» без факта геометрии).
+      // НЕ выходим: ход учитывается общим switch ниже (он один для соперников и таких ходов Hero),
+      // и цикл идёт дальше до реального ре-пуша. Плоский колл олл-ина ре-пуша не создаёт (Hero так и
+      // не сделает ALL_IN → в конце вернём null), опен-шов тоже (allInAhead пуст).
     }
 
     // Соперник.

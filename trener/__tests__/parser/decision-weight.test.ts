@@ -352,7 +352,11 @@ describe("questionTopicHint — тема первого вопроса от ре
     expect(hint).toContain("НЕ начинай с «с каким диапазоном»");
   });
 
-  it("нет тяжёлого решения (пустой снимок) → тема свободная (null)", () => {
-    expect(questionTopicHint(baseSnap(), -100)).toBeNull();
+  it("нет явного канала → дефолтная тема ЗАМЫСЛА, а НЕ диапазон (регресс Артём 17.07)", () => {
+    // Раньше возвращали null → тема не вставлялась → модель по умолчанию шла в «с каким диапазоном».
+    const hint = questionTopicHint(baseSnap(), -100);
+    expect(hint).toBeTruthy();
+    expect(hint).toContain("ЗАМЫСЕЛ");
+    expect(hint).toContain("НЕ начинай с «с каким диапазоном");
   });
 });

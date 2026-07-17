@@ -1,5 +1,6 @@
 import type { Street, TableAction, TableSnapshot } from "./types";
 import { bigBlindFromSnapshot } from "./big-blind";
+import { equityVsHandPreflop } from "./cooler";
 import { boardUpToStreet, tableStateUpTo } from "./table-state";
 import {
   heroMadeHand,
@@ -678,6 +679,49 @@ export function boardDangerFacts(heroCards: string[], board: string[]): string[]
 // состав руки считает парсер). ТОЛЬКО для вердикта — на этапе диалога карты соперника
 // раскрывать нельзя (это спойлер к «прочти его диапазон»). Снимок уже хранит shownCards
 // (parser/shared/shown-cards); модель не должна писать «вероятно, сет», когда карты видны.
+// Точное эквити Hero против ВСКРЫТЫХ рук на момент ПРЕФЛОП-олл-ина (Артём, 17.07): дорогие
+// раздачи — почти всегда префлоп-олл-ины, а для них парсер эквити против диапазона не считает
+// (перебор бордов неподъёмен), поэтому тренер сочинял «хорошее эквити»/«с запасом», хваля даже
+// доминацию (AJs в олл-ине против вскрытого AKs — реально 26%). Здесь карты соперника ВСКРЫТЫ,
+// значит эквити считается ТОЧНО и дёшево — детерминированным Монте-Карло (equityVsHandPreflop,
+// то же зерно-из-карт, что у детектора кулеров; воспроизводимо, Правило 1). Это эквити РЕШЕНИЯ
+// (до флопа, борд ещё неизвестен), поэтому судит заход, а не итог. Только для вердикта/чата
+// (спойлер вскрытия), поэтому живёт внутри renderShowdownFacts.
+function preflopAllInEquityLine(snapshot: TableSnapshot): string | null {
+  const hero = snapshot.heroCards;
+  const heroSeat = snapshot.seats.find((s) => s.label === "Hero");
+  const bb = bigBlindFromSnapshot(snapshot);
+  if (!hero || hero.length !== 2 || !heroSeat || !bb) return null;
+  if (snapshot.actions.some((a) => a.actor === "Hero" && a.action === "FOLD")) return null; // Hero сбросил — своей руки не было
+  // Гейт: ПОСЛЕДНЕЕ крупное добровольное вложение Hero было на ПРЕФЛОПЕ (олл-ин до флопа). Постфлоп
+  // эквити уже даёт equityVsHand/range-equity — этот факт закрывает именно префлоп, где их нет.
+  const minAmount = Math.max(5 * bb, heroSeat.startingStack * 0.1);
+  let lastBigStreet: Street | null = null;
+  for (const a of snapshot.actions) {
+    if (a.actor !== "Hero") continue;
+    if (a.action !== "CALL" && a.action !== "RAISE" && a.action !== "ALL_IN" && a.action !== "BET") continue;
+    if ((a.amount ?? 0) < minAmount) continue;
+    lastBigStreet = a.street;
+  }
+  if (lastBigStreet !== "PREFLOP") return null;
+
+  const shown = snapshot.seats.filter((s) => s.label !== "Hero" && s.shownCards?.length === 2);
+  if (shown.length === 0) return null;
+  const parts: string[] = [];
+  for (const s of shown) {
+    const eq = equityVsHandPreflop(hero, s.shownCards!);
+    if (eq === null) continue;
+    const pos =
+      s.positionName && s.positionName !== "OTHER" ? s.positionName : s.position !== "OTHER" ? s.position : "соперник";
+    const code = handCode(s.shownCards!);
+    const tag =
+      eq < 35 ? " — ты был ПОЗАДИ (доминация/андердог)" : eq >= 62 ? " — ты был впереди" : " — по сути флип";
+    parts.push(`против ${pos} (${s.shownCards!.join(" ")}${code ? ` ${code}` : ""}) ≈${eq}%${tag}`);
+  }
+  if (parts.length === 0) return null;
+  return `ТВОЁ ТОЧНОЕ ЭКВИТИ на момент олл-ина (ДО флопа, честный перебор — это то, что ты реально имел, когда РЕШАЛ, а не итог по борду): ${parts.join("; ")}. Суди СВОЁ решение по этим числам, а НЕ по результату: проиграл, будучи впереди или во флипе, — это дисперсия, а не ошибка; закинул стек, будучи далеко позади, — вопрос к самому заходу. «Хорошее эквити» тут выдумывать нельзя — вот оно, точное.`;
+}
+
 export function renderShowdownFacts(snapshot: TableSnapshot): string {
   const board = snapshot.board;
   const heroCards = snapshot.heroCards;
@@ -734,6 +778,8 @@ export function renderShowdownFacts(snapshot: TableSnapshot): string {
 
   const out: string[] = [];
   if (winnerLine) out.push(winnerLine);
+  const eqLine = preflopAllInEquityLine(snapshot);
+  if (eqLine) out.push(eqLine);
   if (lines.length > 0)
     out.push(
       "Вскрытые карты соперников на шоудауне и их готовая комбинация (посчитал парсер - НЕ гадай «вероятно, сет/флеш», состав руки уже дан). Кто из рук старше на вскрытии - тоже посчитал парсер, не переопределяй это сам:",
@@ -1193,8 +1239,12 @@ export function renderHandFacts(snapshot: TableSnapshot): string {
   // была сама — и не сообразила, как и с «натсом» (см. made-hand.ts).
   const heroShove = snapshot.actions.find((a) => a.actor === "Hero" && a.action === "ALL_IN");
   if (heroShove) {
+    // ⚠️НЕ писать «весь стек в банке»: при покрытии коротышей излишек возвращается непокрытым
+    // (это точно считает renderAllInGeometry — «17.7 BB возвращается»). Прежняя формулировка
+    // ПРОТИВОРЕЧИЛА геометрии и врала (Артём поймал: осталось ~18 BB рабочих). Оставляем только
+    // истинное: после олл-ина решений в этой раздаче больше нет.
     lines.push(
-      `Ты пошёл олл-ином на ${STREET_RU[heroShove.street]} - весь твой стек уже в банке. После этого решений у тебя НЕТ: ни фолда, ни колла, ни «сохранить стек» больше не существует, что бы соперники ни делали дальше. Разбирай только те решения, которые были ДО твоего олл-ина; не советуй сбросить или заколлировать после него.`,
+      `Ты пошёл олл-ином на ${STREET_RU[heroShove.street]} - после этого решений у тебя в ЭТОЙ раздаче больше нет: ни фолда, ни колла, ни «сохранить стек» после олл-ина не существует, что бы соперники ни делали дальше. Разбирай только те решения, которые были ДО твоего олл-ина; не советуй сбросить или заколлировать после него. (Сколько стека реально под риском и что возвращается — в строке про геометрию ре-пуша, если она есть.)`,
     );
   }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { boardTexture, computeHandFacts, renderHandFacts, renderFlushSummary } from "@/parser/facts";
+import { boardTexture, computeHandFacts, renderHandFacts, renderFlushSummary, renderShowdownFacts } from "@/parser/facts";
 import type { Seat, TableAction, TableSnapshot } from "@/parser/types";
 
 function snap(partial: Partial<TableSnapshot>): TableSnapshot {
@@ -754,9 +754,59 @@ describe("renderHandFacts — олл-ин Hero закрывает его реш�
         ],
       }),
     );
-    expect(r).toContain("весь твой стек уже в банке");
-    expect(r).toContain("решений у тебя НЕТ");
+    // ⚠️Регресс (Артём поймал): при покрытии коротышей стек НЕ теряется весь, излишек
+    // возвращается — «весь стек в банке» противоречило геометрии. Теперь этой фразы быть НЕ должно.
+    expect(r).not.toContain("весь твой стек уже в банке");
+    expect(r).toContain("решений у тебя в ЭТОЙ раздаче больше нет");
     expect(r).toContain("не советуй сбросить или заколлировать после него");
+  });
+
+  // Регресс #121/#114/#89 (Артём, 17.07): для префлоп-олл-инов парсер эквити не считал → тренер
+  // сочинял «хорошее эквити», хваля даже доминацию. Теперь точное эквити против ВСКРЫТЫХ рук.
+  const eqLine = (r: string) => r.split("\n").find((l) => l.includes("ТОЧНОЕ ЭКВИТИ")) ?? "";
+
+  it("префлоп-олл-ин: эквити против вскрытых рук — доминацию называет позади, не «хорошим»", () => {
+    // AJs 4-бет-олл-ин против вскрытых AKs (SB) и A9o (UTG). AJs раздавлен AKs, но бьёт A9.
+    const s = snap({
+      seats: [
+        { label: "opp1", position: "SB", positionName: "SB", startingStack: 17400, shownCards: ["Ah", "Kh"] },
+        { label: "opp2", position: "EARLY", positionName: "UTG", startingStack: 71928, shownCards: ["9h", "Ad"] },
+        { label: "Hero", position: "BB", positionName: "BB", startingStack: 31667 },
+      ] as Seat[],
+      heroCards: ["Jc", "Ac"],
+      board: ["2c", "4d", "Kd", "3d", "3c"],
+      actions: [
+        { street: "PREFLOP", actor: "opp1", action: "POST_SB", amount: 1000 } as TableAction,
+        { street: "PREFLOP", actor: "Hero", action: "POST_BB", amount: 2000 } as TableAction,
+        { street: "PREFLOP", actor: "opp2", action: "RAISE", amount: 4000 } as TableAction,
+        { street: "PREFLOP", actor: "opp1", action: "RAISE", amount: 17000 } as TableAction,
+        { street: "PREFLOP", actor: "Hero", action: "ALL_IN", amount: 30000 } as TableAction,
+      ],
+    });
+    const line = eqLine(renderShowdownFacts(s));
+    expect(line).toContain("AKs");
+    expect(line).toMatch(/AKs\)\s*≈\d/); // конкретное число против AKs
+    expect(line).toContain("ПОЗАДИ"); // раздавлен, а не «хорошее эквити»
+    expect(line).toContain("A9o");
+    expect(line).toContain("по результату");
+  });
+
+  it("Hero сбросил префлоп — эквити-строки нет (своей руки на вскрытии не было)", () => {
+    const s = snap({
+      seats: [
+        { label: "opp1", position: "SB", positionName: "SB", startingStack: 17400, shownCards: ["Ah", "Kh"] },
+        { label: "Hero", position: "BB", positionName: "BB", startingStack: 31667 },
+      ] as Seat[],
+      heroCards: ["Jc", "Ac"],
+      board: ["2c", "4d", "Kd", "3d", "3c"],
+      actions: [
+        { street: "PREFLOP", actor: "opp1", action: "POST_SB", amount: 1000 } as TableAction,
+        { street: "PREFLOP", actor: "Hero", action: "POST_BB", amount: 2000 } as TableAction,
+        { street: "PREFLOP", actor: "opp1", action: "ALL_IN", amount: 17000 } as TableAction,
+        { street: "PREFLOP", actor: "Hero", action: "FOLD" } as TableAction,
+      ],
+    });
+    expect(eqLine(renderShowdownFacts(s))).toBe("");
   });
 
   it("Hero НЕ шёл олл-ином — факта нет (не шумим лишней строкой)", () => {

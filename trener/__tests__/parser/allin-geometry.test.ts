@@ -39,11 +39,13 @@ describe("allin-geometry — фаза 3: геометрия ре-пуша", () =
     expect(g.excessBb).toBe(16.6);
   });
 
-  it("мёртвые деньги = банк до шова минус вклад уже вошедшего короткого", () => {
+  it("мёртвые деньги = банк до шова минус вклад короткого И минус вклад самого Hero", () => {
     const g = detectAllInGeometry(rejam)!;
     // pot до шова = анте 400 + SB 500 + BB 1000 + CO-рейз 12500 = 14400; минус вклад CO 12600
-    // (его анте 100 входит в его же 12600, не в мёртвые деньги) = 1800 → 1.8 BB.
-    expect(g.deadMoneyBb).toBe(1.8);
+    // (его анте 100 входит в его же 12600), минус вклад самого Hero (анте 100 — свои фишки не
+    // «забирает») = 1700 → 1.7 BB. (Раньше вклад Hero не вычитался и было 1.8 — на линии
+    // «Hero открыл рейзом → ре-пуш» это ложно раздувало мёртвые деньги.)
+    expect(g.deadMoneyBb).toBe(1.7);
   });
 
   it("живые позади: SB покрывает почти весь стек, BB покрывает целиком", () => {
@@ -76,6 +78,34 @@ describe("allin-geometry — фаза 3: геометрия ре-пуша", () =
       ],
     });
     expect(detectAllInGeometry(s)).toBeNull();
+  });
+
+  // Регресс (Артём, раздачи ATs и AJs-vs-AKs): Hero СНАЧАЛА открыл рейзом, потом в него олл-ин,
+  // потом Hero ре-пушнул. Раньше гейт возвращал null (ловил только «холодный» шов первым ходом),
+  // и тренер писал «забрать банк сразу» без факта, что короткого не выбить.
+  it("открыл рейзом → в него олл-ин → Hero ре-пуш: геометрия срабатывает", () => {
+    const s = snap({
+      seats: [
+        { label: "Hero", position: "BTN", positionName: "BTN", startingStack: 30000 },
+        { label: "Player S", position: "SB", positionName: "SB", startingStack: 12000 },
+        { label: "Player B", position: "BB", positionName: "BB", startingStack: 40000 },
+      ],
+      actions: [
+        { street: "PREFLOP", actor: "Player S", action: "POST_SB", amount: 500 },
+        { street: "PREFLOP", actor: "Player B", action: "POST_BB", amount: BB },
+        { street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 2000 }, // открыл
+        { street: "PREFLOP", actor: "Player S", action: "ALL_IN", amount: 12000 }, // в него олл-ин
+        { street: "PREFLOP", actor: "Hero", action: "ALL_IN", amount: 30000 }, // ре-пуш
+      ],
+    });
+    const g = detectAllInGeometry(s)!;
+    expect(g).toBeTruthy();
+    expect(g.heroRiskBb).toBe(30);
+    expect(g.effectiveRiskBb).toBe(12); // против короткого матчится только его 12 BB
+    expect(g.excessBb).toBe(18); // излишек возвращается
+    expect(g.shortAllInBb).toBe(12);
+    expect(g.deadMoneyBb).toBe(1); // только BB 1000; рейз Hero 2000 НЕ в мёртвых деньгах
+    expect(g.liveBehind.find((p) => p.label === "BB")!.covers).toBe(true);
   });
 
   it("опен-шов первым в банк (никого в олл-ине впереди) → null", () => {

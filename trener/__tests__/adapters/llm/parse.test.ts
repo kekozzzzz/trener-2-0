@@ -11,6 +11,7 @@ import {
   noShowdownInHand,
   claimsPocketPair,
   heroNoPocketPair,
+  stripSycophanticOpener,
 } from "@/infrastructure/adapters/llm/parse";
 
 // Страховка словаря кодом (правки Артёма 2026-07-05): возвратные формы «сбрасываться»,
@@ -191,6 +192,51 @@ describe("cleanCoachText — сторож порядка хода", () => {
 });
 
 // Защита 1 (регресс 2026-07-14, инцидент Gemini): extractJson устойчив к обёрткам модели.
+describe("cleanCoachText — вырез пересказа постановки блайндов (Артём 17.07)", () => {
+  it("убирает «вносишь анте и малый блайнд», контекст позиции/стека остаётся", () => {
+    expect(
+      cleanCoachText("На префлопе ты на SB (29.4 BB) вносишь анте и малый блайнд. Игрок на LJ идёт олл-ин.", "ru"),
+    ).toBe("На префлопе ты на SB (29.4 BB). Игрок на LJ идёт олл-ин.");
+    expect(cleanCoachText("Ты на BB (0 bb) вносишь большой блайнд и анте, после чего смотришь флоп.", "ru")).toBe(
+      "Ты на BB (0 bb), после чего смотришь флоп.",
+    );
+  });
+  it("НЕ трогает содержательные ставки и открытия", () => {
+    const a = "На флопе ты ставишь треть банка (5 BB) в опасную доску.";
+    const b = "Ты открываешься с HJ до 2.2 BB.";
+    expect(cleanCoachText(a, "ru")).toBe(a);
+    expect(cleanCoachText(b, "ru")).toBe(b);
+  });
+});
+
+describe("stripSycophanticOpener — ритуальный зачин «Ты прав» (Артём 17.07)", () => {
+  it("убирает зачин, суть остаётся с большой буквы", () => {
+    expect(stripSycophanticOpener("Ты прав: твой пуш был верным решением. Дальше...")).toBe(
+      "Твой пуш был верным решением. Дальше...",
+    );
+    expect(stripSycophanticOpener("Ты прав, диапазон оценил верно, и колл был ошибкой.")).toBe(
+      "Диапазон оценил верно, и колл был ошибкой.",
+    );
+    expect(stripSycophanticOpener("Да, ты прав — выставление стандартное здесь.")).toBe(
+      "Выставление стандартное здесь.",
+    );
+    expect(stripSycophanticOpener("Ты прав в том, что донк это сила, однако фолд слабый.")).toBe(
+      "Донк это сила, однако фолд слабый.",
+    );
+  });
+  it("НЕ трогает «правильно/правда» (кириллическая граница) и текст без зачина", () => {
+    const a = "Ты правильно оценил диапазон соперника здесь.";
+    const b = "Ты правда мог сыграть иначе на этой улице.";
+    const c = "Твой олл-ин верный, но эквити против AKs всего 26%.";
+    expect(stripSycophanticOpener(a)).toBe(a);
+    expect(stripSycophanticOpener(b)).toBe(b);
+    expect(stripSycophanticOpener(c)).toBe(c);
+  });
+  it("почти пустой остаток («Ты прав.») не курочит", () => {
+    expect(stripSycophanticOpener("Ты прав.")).toBe("Ты прав.");
+  });
+});
+
 describe("extractJson", () => {
   it("чистый JSON-объект не трогается", () => {
     expect(extractJson('{"verdict":"ок"}')).toBe('{"verdict":"ок"}');

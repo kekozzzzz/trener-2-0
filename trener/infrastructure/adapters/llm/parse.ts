@@ -389,6 +389,15 @@ export function heroNoPocketPair(snapshot: TableSnapshot): boolean {
   return c[0][0].toUpperCase() !== c[1][0].toUpperCase();
 }
 
+// Пересказ ПОСТАНОВКИ анте/блайндов как «действия» игрока (Артём 17.07: «вносишь анте и малый
+// блайнд» — не нужная информация). Промпт запрещает это ТРИЖДЫ (hand-analysis.ts: «никогда не
+// пересказывай их как действие», «начинай с первого добровольного действия», «без зачинов») и НЕ
+// помогает. Режем оборот детерминированно: глагол постановки + только служебные слова про
+// анте/блайнды после него. ⚠️Требуем ≥1 слово из набора СРАЗУ после глагола — «ставишь треть
+// банка» (треть не в наборе) НЕ трогаем; «ставишь малый блайнд» — трогаем (это и есть пересказ).
+const BLIND_POSTING_RE =
+  /\s*(?:,\s*)?(?:вносишь|ставишь|выставляешь|платишь|постишь|отдаёшь|кладёшь|вкладываешь)(?:\s+(?:анте|блайнд[а-яё]*|малый|большой|обязательн[а-яё]*|и))+/giu;
+
 export function cleanCoachText(
   text: string,
   locale: Locale = "ru",
@@ -403,6 +412,12 @@ export function cleanCoachText(
   }
   // длинное тире запрещено словарём — всегда короткое с пробелами
   let out = text.replace(/\s*—\s*/g, " - ");
+  // Пересказ постановки блайндов/анте вырезаем (см. BLIND_POSTING_RE) и подчищаем осиротевшие
+  // пробелы/знаки: «ты на SB (29 BB) вносишь анте и малый блайнд. Игрок…» → «ты на SB (29 BB). Игрок…».
+  const withoutBlinds = out.replace(BLIND_POSTING_RE, "");
+  if (withoutBlinds !== out) {
+    out = withoutBlinds.replace(/\s+([.,;:!?)])/g, "$1").replace(/\s{2,}/g, " ");
+  }
   for (const [from, to] of CASE_FIXES) {
     const capFrom = from[0].toUpperCase() + from.slice(1);
     const capTo = to[0].toUpperCase() + to.slice(1);
@@ -461,6 +476,23 @@ export function cleanCoachText(
     throw new Error("LLM выдумал карманную пару: приписал Hero пару или сет-майнинг, хотя карты разного ранга");
   }
   return out;
+}
+
+// Детерминированный вырез ритуального зачина «Ты прав» из НАЧАЛА вердикта (Артём, 17.07: «5 раздач
+// подряд каждый раз Ты прав, меня бесит»). Промпт запрещает это тремя абзацами (verdict.ts:25-28) и
+// НЕ помогает — 5/5 вердиктов открывались «Ты прав». Режем как чистку (не брак → без карантина):
+// сам вердикт остаётся, уходит только реверанс, дальше — сразу суть. Правду про «стандартно/
+// хорошее эквити» чинит отдельно эквити-факт против вскрытых рук (facts.ts).
+// ⚠️`(?![а-яё])` — кириллическая граница: без неё «ты правда»/«ты правильно» ложно матчились бы
+// («прав»+«да»/«ильно»), а \b с кириллицей в JS не работает.
+const SYCOPHANT_OPENER =
+  /^\s*(?:да[,!\s—–-]+)?ты\s+прав(?![а-яё])(?:\s+в\s+том,?\s+что)?\s*[:,.—–\-]*\s*/iu;
+export function stripSycophanticOpener(text: string): string {
+  const m = text.match(SYCOPHANT_OPENER);
+  if (!m) return text;
+  const rest = text.slice(m[0].length).trimStart();
+  if (rest.length < 10) return text; // почти пустой остаток («Ты прав.») — не курочим
+  return rest.charAt(0).toUpperCase() + rest.slice(1);
 }
 
 // Строго: режим ответа сеткой включается ТОЛЬКО литералом "range". Любое другое
@@ -549,7 +581,10 @@ export function validateVerdict(
   if (typeof result.verdict !== "string") {
     throw new Error("LLM вернул вердикт без поля verdict");
   }
-  return { verdict: cleanCoachText(result.verdict, locale, allowedCards, heroFix, heroFirstPostflop, noShowdown) };
+  const cleaned = cleanCoachText(result.verdict, locale, allowedCards, heroFix, heroFirstPostflop, noShowdown);
+  // Вырезаем ритуальный зачин «Ты прав» ПОСЛЕ общей чистки (иначе тире/латиница внутри зачина
+  // могли бы сбить матч). Только для вердикта — в played/вопросе такого зачина не бывает.
+  return { verdict: stripSycophanticOpener(cleaned) };
 }
 
 export function validateNextQuestion(
