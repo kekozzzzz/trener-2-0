@@ -37,10 +37,11 @@ describe("parseWpnMtt — формат ACR / PokerKing (WPN)", () => {
     expect(result.data.hands[2].chipResult).toBe(-1005); // анте 5 + олл-ин колл 1000, проигрыш
   });
 
-  it("спорный проигрыш олл-ина помечается CRITICAL", () => {
+  // hand[2] — премиум-рука в префлоп-олл-ине: форс, постфлоп-решений нет → COOLER (Артём 18.07).
+  it("форс-олл-ин премиум-рукой на префлопе → COOLER", () => {
     const result = parseWpnMtt(wpnBuffer);
     if (!result.ok) return;
-    expect(result.data.hands[2].importanceLevel).toBe("CRITICAL");
+    expect(result.data.hands[2].importanceLevel).toBe("COOLER");
   });
 
   it("определяет позицию героя на баттоне", () => {

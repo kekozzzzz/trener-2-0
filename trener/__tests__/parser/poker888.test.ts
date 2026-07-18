@@ -34,10 +34,11 @@ describe("parse888Mtt — формат 888poker", () => {
     expect(r.data.hands[2].chipResult).toBe(-1005); // анте 5 + BB 30 + колл 970
   });
 
-  it("спорный проигрыш против олл-ина (по вкладу==стек) помечается CRITICAL", () => {
+  // hand[2] — премиум-рука в префлоп-олл-ине: форс, постфлоп-решений нет → COOLER (Артём 18.07).
+  it("форс-олл-ин премиум-рукой на префлопе → COOLER", () => {
     const r = parse888Mtt(buffer);
     if (!r.ok) return;
-    expect(r.data.hands[2].importanceLevel).toBe("CRITICAL");
+    expect(r.data.hands[2].importanceLevel).toBe("COOLER");
   });
 
   it("позиция героя на баттоне; борд из ** Dealing **; карты через запятую", () => {

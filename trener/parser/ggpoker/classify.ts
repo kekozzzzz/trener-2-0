@@ -1,6 +1,7 @@
 import type { HandImportance, ParsedHandSnapshot, PlayerStyle, TableAction } from "../types";
 import { detectHeroLuckyWin } from "../lucky-win";
 import { detectHeroCooler } from "../cooler";
+import { isForcedPreflopAllIn } from "../forced-preflop-allin";
 import { topDecisionMark } from "../decision-weight";
 
 // Потолок критических раздач (каждая ведёт сократовский диалог «почему»). Число адаптивное:
@@ -69,6 +70,16 @@ export function assignImportanceLevels(hands: ParsedHandSnapshot[]): HandImporta
       .filter(({ hand }) => detectHeroCooler(hand.tableSnapshot) !== null)
       .map(({ index }) => index),
   );
+
+  // Форсированный префлоп-олл-ин премиум-рукой (Артём 18.07): AK/тузы, всё зашло на префлопе,
+  // постфлоп-решений нет — «что бы ни случилось, я выставляюсь». Обсуждать нечего, вердикт
+  // выходил пустым. Уходит в ту же тихую стопку кулеров. В отличие от detectHeroCooler НЕ требует
+  // фаворитства 67%+ (монетка AK против его диапазона — тоже форс). Постфлоп теми же руками
+  // (рейзы на тёрне/ривере, где надо сдаться) детектор сам отсекает — остаётся в разборе.
+  for (const [index, hand] of hands.entries()) {
+    if (contested[index] && hand.chipResult < 0 && !coolerSet.has(index) && isForcedPreflopAllIn(hand.tableSnapshot))
+      coolerSet.add(index);
+  }
 
   // Потери — главный материал, как раньше (топ по размеру), но потолок потерь — 5 слотов:
   // 2 зарезервированы под тяжёлые РЕШЕНИЯ (займут ниже; не наберётся решений — слоты

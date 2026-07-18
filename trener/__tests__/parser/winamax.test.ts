@@ -34,10 +34,12 @@ describe("parseWinamaxMtt — формат Winamax", () => {
     expect(r.data.hands[2].chipResult).toBe(-1005); // анте 5 + BB 30 + колл 970
   });
 
-  it("спорный проигрыш помечается CRITICAL", () => {
+  // hand[2] — премиум-рука коллом опен-олл-ина на префлопе: форс, постфлоп-решений нет → COOLER
+  // (Артём 18.07). Проверку CRITICAL для спорных потерь несёт forced-preflop-allin.test.ts.
+  it("форс-олл-ин премиум-рукой на префлопе → COOLER", () => {
     const r = parseWinamaxMtt(buffer);
     if (!r.ok) return;
-    expect(r.data.hands[2].importanceLevel).toBe("CRITICAL");
+    expect(r.data.hands[2].importanceLevel).toBe("COOLER");
   });
 
   it("позиция героя на баттоне; борд из SUMMARY", () => {

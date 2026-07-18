@@ -37,10 +37,12 @@ describe("parsePokerStarsMtt — формат PokerStars / Chico", () => {
     expect(result.data.hands[2].chipResult).toBe(-1005); // анте 5 + BB 30 + колл 970, проигрыш
   });
 
-  it("спорный проигрыш помечается CRITICAL", () => {
+  // hand[2] — KK коллом опен-олл-ина на префлопе: форсированный вход премиум-рукой, постфлоп-
+  // решений нет → COOLER, а не «Стоит обсудить» (Артём 18.07: «что бы ни случилось, я выставляюсь»).
+  it("форс-олл-ин премиум-рукой на префлопе → COOLER", () => {
     const result = parsePokerStarsMtt(psBuffer);
     if (!result.ok) return;
-    expect(result.data.hands[2].importanceLevel).toBe("CRITICAL");
+    expect(result.data.hands[2].importanceLevel).toBe("COOLER");
   });
 
   it("определяет позицию героя на баттоне", () => {
