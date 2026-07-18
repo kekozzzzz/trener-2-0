@@ -3,6 +3,7 @@ import type { RawTask, WorkerResult } from "./types";
 import { getHandler } from "./registry";
 import { getStuckProcessingThresholdMs } from "@/config/queue";
 import { safeNotifyAdmin } from "@/infrastructure/adapters/notify";
+import { recheckCardReadinessAfterPoison } from "./steps/generate-hand-analysis";
 
 // После MAX_ATTEMPTS неудач задача уходит в карантин (POISONED).
 const MAX_ATTEMPTS = 3;
@@ -26,6 +27,23 @@ function isTransientRelayError(err: unknown): boolean {
 }
 // Порог «зависшей» PROCESSING-задачи вынесен в общий конфиг (config/queue.ts) — тем же
 // значением пользуется health-проверка воркера, чтобы «зависло» трактовалось одинаково.
+
+// Карантин GENERATE_HAND_ANALYSIS — пересчитываем готовность карточки турнира сразу (см.
+// recheckCardReadinessAfterPoison): иначе, если эта раздача была последней необработанной,
+// пересчитать готовность больше некому, и турнир навсегда застревает в PARSED. Мягко — вторичное
+// действие, сам карантин уже записан, падать из-за него воркер не должен (как и с safeNotifyAdmin).
+async function afterPoisoned(db: PrismaClient, type: string, payload: unknown): Promise<void> {
+  if (type !== "GENERATE_HAND_ANALYSIS") return;
+  const handId = (payload as { handId?: string })?.handId;
+  if (!handId) return;
+  try {
+    await recheckCardReadinessAfterPoison(db, handId);
+  } catch (err) {
+    await safeNotifyAdmin(
+      `⚠️ Карантин GENERATE_HAND_ANALYSIS (раздача ${handId}): не удалось пересчитать готовность карточки турнира: ${String(err)}`
+    );
+  }
+}
 
 // Разгребает очередь до конца, гоняя `concurrency` воркеров параллельно. Каждый
 // крутит runWorkerOnce, пока тот возвращает задачи. Параллельность безопасна:
@@ -93,6 +111,7 @@ export async function runWorkerOnce(db: PrismaClient): Promise<WorkerResult> {
       await safeNotifyAdmin(
         `⚠️ Задача ${task.type} (id ${task.id}) ушла в карантин после ${MAX_ATTEMPTS} неудачных попыток.\nОшибка: ${String(err)}`
       );
+      await afterPoisoned(db, task.type, task.payload);
     }
   }
 
@@ -116,7 +135,7 @@ export async function reapStuckTasks(db: PrismaClient): Promise<ReapResult> {
   // задаче, она крутилась бы вечно: краш минует catch в runWorkerOnce, poison не наступит.
   const exhausted = await db.task.findMany({
     where: { status: "PROCESSING", updatedAt: { lt: cutoff }, attempt: { gte: MAX_ATTEMPTS } },
-    select: { id: true, type: true },
+    select: { id: true, type: true, payload: true },
   });
 
   if (exhausted.length > 0) {
@@ -131,6 +150,7 @@ export async function reapStuckTasks(db: PrismaClient): Promise<ReapResult> {
       await safeNotifyAdmin(
         `⚠️ Задача ${t.type} (id ${t.id}) зависла в PROCESSING (процесс прерван) и ушла в карантин — попытки исчерпаны.`
       );
+      await afterPoisoned(db, t.type, t.payload);
     }
   }
 

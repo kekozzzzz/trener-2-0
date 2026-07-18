@@ -18,7 +18,10 @@ import { PrismaClient, type Prisma } from "@prisma/client";
 import type { HandImportance, PlayerStyle } from "@/parser/types";
 import type { RawTask } from "@/infrastructure/queue/types";
 import { enqueue, runWorkerOnce } from "@/infrastructure/queue";
-import { generateHandAnalysisStep } from "@/infrastructure/queue/steps/generate-hand-analysis";
+import {
+  generateHandAnalysisStep,
+  recheckCardReadinessAfterPoison,
+} from "@/infrastructure/queue/steps/generate-hand-analysis";
 import { splitMarkers } from "@/config/dialogue";
 
 const TEST_PLAYER_ID = "bbbbbbbb-0000-0000-0000-000000000001";
@@ -202,6 +205,25 @@ describe("GENERATE_HAND_ANALYSIS — основной путь", () => {
 
     const brokenHand = await db.hand.findUnique({ where: { id: broken } });
     expect(brokenHand!.analysis).toBeNull();
+  });
+
+  it("карантин ПОСЛЕДНЕЙ необработанной раздачи — воркер сам достраивает CARD_READY (регресс 2026-07-17, задача 956dada0)", async () => {
+    // Раньше пересчёт готовности карточки делала только следующая УСПЕШНАЯ GENERATE_HAND_ANALYSIS
+    // того же турнира. Если карантинная раздача — последняя, следующей не будет, и турнир
+    // навсегда застревал в PARSED. recheckCardReadinessAfterPoison — то, что теперь вызывает
+    // воркер сразу после записи POISONED (infrastructure/queue/worker.ts, afterPoisoned).
+    const tournamentId = await createTournament({ handsCount: 1 });
+    const broken = await createHand(tournamentId, "MEDIUM", true);
+    const brokenTaskId = await enqueue(db, { type: "GENERATE_HAND_ANALYSIS", payload: { handId: broken } });
+    await db.task.update({ where: { id: brokenTaskId }, data: { status: "POISONED", attempt: 3 } });
+
+    let tournament = await db.tournament.findUnique({ where: { id: tournamentId } });
+    expect(tournament!.status).toBe("PARSED"); // ещё не пересчитано — как раньше застревало
+
+    await recheckCardReadinessAfterPoison(db, broken);
+
+    tournament = await db.tournament.findUnique({ where: { id: tournamentId } });
+    expect(tournament!.status).toBe("CARD_READY");
   });
 
   it("повторный вызов после сохранённого analysis не дублирует Dialogue", async () => {

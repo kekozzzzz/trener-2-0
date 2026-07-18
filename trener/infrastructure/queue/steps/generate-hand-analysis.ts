@@ -98,6 +98,20 @@ export const generateHandAnalysisStep: StepHandler = async (task, db) => {
   await markCardReadyIfComplete(db, hand.tournamentId, hand.tournament.playerId);
 };
 
+// Вызывается воркером сразу после того, как ЭТА ЖЕ раздача ушла в POISONED. Без этого
+// пересчитать готовность карточки после карантина некому — обычно это делает следующая
+// успешная GENERATE_HAND_ANALYSIS того же турнира, а если карантинная раздача была
+// последней, следующей просто не будет, и турнир навсегда остаётся в PARSED (регресс
+// 2026-07-17: 6 из 7 раздач разобраны, седьмая в карантине, задача 956dada0).
+export async function recheckCardReadinessAfterPoison(db: PrismaClient, handId: string): Promise<void> {
+  const hand = await db.hand.findUnique({
+    where: { id: handId },
+    select: { tournamentId: true, tournament: { select: { playerId: true } } },
+  });
+  if (!hand) return;
+  await markCardReadyIfComplete(db, hand.tournamentId, hand.tournament.playerId);
+}
+
 // Карточка готова, когда у всех отобранных раздач (selected_for_card) либо есть
 // analysis, либо их GENERATE_HAND_ANALYSIS ушла в карантин — одна сломанная
 // раздача не блокирует всю карточку (architecture/04-потоки-данных.md).
