@@ -857,6 +857,50 @@ describe("renderHandFacts — олл-ин Hero закрывает его реш�
     expect(eqLine(renderShowdownFacts(s))).toBe("");
   });
 
+  // Регресс ATo (Артём 18.07): Hero заколлировал первый олл-ин, потом ещё двое пошли ва-банк, Hero
+  // сбросил. Тренер выдумал «53% эквити» и назвал верный фолд ошибкой (sunk-cost). Теперь факт про
+  // мультивей гасит выдумку числа и sunk-cost.
+  it("несколько олл-инов перед Hero — факт «не выдумывай процент, не sunk-cost»", () => {
+    const r = renderHandFacts(
+      snap({
+        seats: [
+          { label: "Hero", position: "LJ", startingStack: 30000 },
+          { label: "opp1", position: "EARLY", positionName: "UTG+1", startingStack: 6497 },
+          { label: "opp2", position: "SB", startingStack: 22750 },
+          { label: "opp3", position: "BB", startingStack: 70000 },
+        ] as Seat[],
+        heroCards: ["Ad", "Th"],
+        actions: [
+          { street: "PREFLOP", actor: "opp1", action: "ALL_IN", amount: 6497 } as TableAction,
+          { street: "PREFLOP", actor: "Hero", action: "CALL", amount: 6497 } as TableAction,
+          { street: "PREFLOP", actor: "opp2", action: "ALL_IN", amount: 22750 } as TableAction,
+          { street: "PREFLOP", actor: "opp3", action: "ALL_IN", amount: 70000 } as TableAction,
+          { street: "PREFLOP", actor: "Hero", action: "FOLD" } as TableAction,
+        ],
+      }),
+    );
+    expect(r).toContain("3 игрока ва-банк");
+    expect(r).toContain("НЕ выдумывай");
+    expect(r).toContain("невозвратных затрат");
+  });
+
+  it("один олл-ин соперника — мультивей-факт НЕ печатается", () => {
+    const r = renderHandFacts(
+      snap({
+        seats: [
+          { label: "Hero", position: "BB", startingStack: 30000 },
+          { label: "opp1", position: "BTN", startingStack: 20000 },
+        ] as Seat[],
+        heroCards: ["Ad", "Th"],
+        actions: [
+          { street: "PREFLOP", actor: "opp1", action: "ALL_IN", amount: 20000 } as TableAction,
+          { street: "PREFLOP", actor: "Hero", action: "FOLD" } as TableAction,
+        ],
+      }),
+    );
+    expect(r).not.toContain("ва-банк (несколько олл-инов");
+  });
+
   it("Hero НЕ шёл олл-ином — факта нет (не шумим лишней строкой)", () => {
     const r = renderHandFacts(
       snap({
