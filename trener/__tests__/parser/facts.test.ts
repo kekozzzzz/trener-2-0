@@ -805,8 +805,35 @@ describe("renderHandFacts — олл-ин Hero закрывает его реш�
       }),
     );
     expect(r).toContain("был КОЛЛОМ");
-    expect(r).toContain("никто не «отвечает» на твой олл-ин");
+    expect(r).toContain("никто не «отвечает» на твой ход");
     expect(r).not.toContain("Ты пошёл олл-ином"); // не путаем колл с пушем
+  });
+
+  // Регресс «15 BB» (Артём 18.07): Hero BB 39.5 BB ЗАКОЛЛИРОВАЛ олл-ин UTG+1 на 15 BB, оставшись
+  // с ~24 BB. Тренер решил, что Hero — короткий стек на 15 BB, советовал «дисциплинированный фолд на
+  // коротком» и «сет-майнинг без сетов». Теперь: 15 BB — стек СОПЕРНИКА (Hero перекрывает), это КОЛЛ,
+  // не «твой олл-ин», с карманной парой — не сет-майнинг; будущих улиц нет (хедз-ап против ва-банк).
+  it("Hero перекрыл короткий олл-ин коллом — не короткий стек, не «твой олл-ин», не сет-майнинг", () => {
+    const r = renderHandFacts(
+      snap({
+        seats: [
+          { label: "Hero", position: "BB", startingStack: 236970 },
+          { label: "opp1", position: "EARLY", startingStack: 89250 },
+        ] as Seat[],
+        heroCards: ["2c", "2h"],
+        actions: [
+          { street: "PREFLOP", actor: "Hero", action: "POST_BB", amount: 6000 } as TableAction,
+          { street: "PREFLOP", actor: "opp1", action: "ALL_IN", amount: 89250 } as TableAction,
+          { street: "PREFLOP", actor: "Hero", action: "CALL", amount: 83250 } as TableAction,
+        ],
+      }),
+    );
+    expect(r).toContain("ЗАКОЛЛИРОВАЛ олл-ин соперника");
+    expect(r).toContain("НЕ короткий стек");
+    expect(r).toContain("стек более КОРОТКОГО соперника");
+    expect(r).toContain("НЕ сет-майнинг");
+    expect(r).toContain("твоих РЕШЕНИЙ в раздаче больше нет");
+    expect(r).not.toContain("Твой олл-ин на префлопе был КОЛЛОМ");
   });
 
   // Регресс #121/#114/#89 (Артём, 17.07): для префлоп-олл-инов парсер эквити не считал → тренер
