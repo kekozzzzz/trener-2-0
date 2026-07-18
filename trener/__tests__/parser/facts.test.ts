@@ -757,8 +757,33 @@ describe("renderHandFacts — олл-ин Hero закрывает его реш�
     // ⚠️Регресс (Артём поймал): при покрытии коротышей стек НЕ теряется весь, излишек
     // возвращается — «весь стек в банке» противоречило геометрии. Теперь этой фразы быть НЕ должно.
     expect(r).not.toContain("весь твой стек уже в банке");
-    expect(r).toContain("решений у тебя в ЭТОЙ раздаче больше нет");
+    expect(r).toContain("твоих РЕШЕНИЙ в раздаче больше нет");
+    expect(r).toContain("НЕ спрашивай"); // не спрашивать про план на будущие улицы
     expect(r).toContain("не советуй сбросить или заколлировать после него");
+  });
+
+  // Регресс KQ на K66 (Артём 18.07): Hero поставил флоп, HJ пошёл олл-ин, Hero ЗАКОЛЛИРОВАЛ (ход
+  // записан CALL, не ALL_IN) — это олл-ин, будущих улиц для решений нет. Тренер спрашивал «какой
+  // план на тёрне/ривере» — нелепо. Теперь факт ловит колл-олл-ин и запрещает такой вопрос.
+  it("Hero заколлировал олл-ин ходом CALL на флопе — ловим как олл-ин, «не спрашивай про тёрн»", () => {
+    const r = renderHandFacts(
+      snap({
+        seats: [
+          { label: "Hero", position: "LJ", startingStack: 250000 },
+          { label: "opp1", position: "HJ", startingStack: 278759 },
+        ] as Seat[],
+        heroCards: ["Kh", "Qh"],
+        board: ["Kc", "6c", "6h"],
+        actions: [
+          { street: "FLOP", actor: "Hero", action: "BET", amount: 46200 } as TableAction,
+          { street: "FLOP", actor: "opp1", action: "ALL_IN", amount: 278759 } as TableAction,
+          { street: "FLOP", actor: "Hero", action: "CALL", amount: 232559 } as TableAction,
+        ],
+      }),
+    );
+    expect(r).toContain("был КОЛЛОМ");
+    expect(r).toContain("НЕ спрашивай");
+    expect(r).toContain("тёрне/ривере");
   });
 
   // Регресс K5 (Артём 18.07): Hero прочекал тёрн, BTN пошёл олл-ин, Hero ДОЛОЖИЛ меньше — это КОЛЛ
