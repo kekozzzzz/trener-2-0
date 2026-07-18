@@ -254,18 +254,19 @@ export async function HandTable({
                 className="absolute z-20 w-[104px] -translate-x-1/2 -translate-y-1/2"
                 style={pct(sp.x, sp.y)}
               >
-                {!seat.folded && (
+                {/* Свои карты Hero видит ВСЕГДА, даже после фолда (баг Артёма 18.07: на споте, где
+                    он сбросил, стол не показывал его же руку). Карты соперников — рубашкой, и только
+                    пока они в игре; сбросил соперник — карт нет. */}
+                {seat.isHero && state.heroCards.length > 0 ? (
                   <div className="absolute bottom-full left-1/2 mb-1 flex -translate-x-1/2 gap-1">
-                    {seat.isHero && state.heroCards.length > 0 ? (
-                      state.heroCards.map((c, idx) => <Card key={`${c}-${idx}`} card={c} />)
-                    ) : (
-                      <>
-                        <CardBack />
-                        <CardBack />
-                      </>
-                    )}
+                    {state.heroCards.map((c, idx) => <Card key={`${c}-${idx}`} card={c} />)}
                   </div>
-                )}
+                ) : !seat.folded ? (
+                  <div className="absolute bottom-full left-1/2 mb-1 flex -translate-x-1/2 gap-1">
+                    <CardBack />
+                    <CardBack />
+                  </div>
+                ) : null}
 
                 <div
                   className={cn(
