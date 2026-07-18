@@ -62,9 +62,10 @@ export async function StartHereCard({
           <ArrowRight className="size-4" />
         </Link>
       </div>
-      <p className="mt-4 text-small text-muted-foreground">
-        {hand.chipResult < 0 ? t("noteLoss") : t("noteSwing")}
-      </p>
+      {/* Нейтральная подпись: раньше писали «решение стоило дороже всего» / «самая крупная», но
+          «начни отсюда» — это худшая из НЕПРОЙДЕННЫХ раздач, а не всего турнира. Разобрал крупные —
+          осталась мелкая (−2 BB), а подпись врала про величину (Артём 18.07). Без claim о размере. */}
+      <p className="mt-4 text-small text-muted-foreground">{t("startHereNote")}</p>
     </div>
   );
 }

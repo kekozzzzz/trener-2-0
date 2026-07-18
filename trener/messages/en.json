@@ -650,6 +650,7 @@
     "openReview": "Open the review",
     "chips": "chips",
     "noteLoss": "The most questionable of the hands worth discussing - the decision here cost the most.",
+    "startHereNote": "Start your review with this hand.",
     "noteSwing": "The biggest hand worth discussing you haven't worked through - start with it.",
     "sessionDoneTitle": "Session reviewed",
     "sessionDoneBody": "All hands worth discussing worked through: {count} of {count}.",
