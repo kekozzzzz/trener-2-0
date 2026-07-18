@@ -15,6 +15,8 @@ import { AnswerForm } from "./answer-form";
 import { RangeAnswerForm } from "./range-answer-form";
 import { splitMarkers } from "@/config/dialogue";
 import { HandTable } from "@/components/poker/hand-table";
+import { heroPushRangeSpot } from "@/parser/push-range-spot";
+import { PushRangePanel } from "@/components/tournament/push-range-panel";
 import { ScaleToFit } from "@/components/scale-to-fit";
 import { tableStateUpTo, lastActionIndex, tableSignature, type TableState } from "@/parser/table-state";
 import { WaitClient } from "./wait-client";
@@ -137,6 +139,8 @@ export default async function HandDialoguePage({
   const chipSign = chipResult >= 0 ? "+" : "";
   const snapshot = hand.tableData as unknown as TableSnapshot;
   const bigBlind = bigBlindFromSnapshot(snapshot);
+  // Спот пуша (опен-шов / рестил) для панели «эталонный диапазон» под вердиктом; null — не пуш-спот.
+  const pushSpot = heroPushRangeSpot(snapshot);
   const bbResult = bigBlind ? chipResult / bigBlind : null;
 
   // Стол перед каждым вопросом: новые диалоги несут метку действия {{table:N}} в
@@ -280,6 +284,9 @@ export default async function HandDialoguePage({
                 <div className="border border-primary bg-card p-6">
                   <p className="text-body text-foreground">{personalizeHero(dialogue.verdict, nick)}</p>
                 </div>
+                {/* Эталонный диапазон для спота — ПОСЛЕ вердикта (не подсказывает ответ заранее),
+                    по кнопке (не простыня). Только для пуш-спотов (опен-шов / рестил). */}
+                {pushSpot && <PushRangePanel spot={pushSpot} />}
                 <Link
                   href={nextCritical ? `/tournament/${id}/hands/${nextCritical.id}` : `/tournament/${id}`}
                   className={cn(buttonVariants(), "inline-flex")}

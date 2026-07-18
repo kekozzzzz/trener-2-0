@@ -739,6 +739,19 @@
     "actionRaise": "raise",
     "actionAllIn": "all-in"
   },
+  "PushRange": {
+    "button": "Show the reference range for this spot",
+    "title": "Reference range for this spot",
+    "spotOpenshove": "Open-shove from {pos} on a short stack",
+    "spotResteal": "Resteal - jam over an open {opener}",
+    "openerEarly": "from an early position",
+    "openerLate": "from a late position",
+    "legendCore": "Jam",
+    "legendWeight": "Jam part of the time",
+    "legendBorder": "Tolerance edge",
+    "yourHand": "Your hand",
+    "note": "A reference for orientation, not a hard rule (it ignores the specific opponents). Your hand is outlined."
+  },
   "RangeGrid": {
     "combos": "combos",
     "markHands": "Mark hands on the grid",
