@@ -12,8 +12,12 @@ import { detectHeroLimp } from "./limp";
 import { detectHeroOpen } from "./open-raise";
 import { detectHeroIso } from "./iso";
 import { detectHeroOpenShove } from "./open-shove";
-import { isOpenPosition, type OpenPosition } from "@/config/poker/rfi-chart";
-import type { OpenerPosition } from "@/config/poker/bb-defense-chart";
+import { isOpenPosition, rfiCellState, type OpenPosition } from "@/config/poker/rfi-chart";
+import { bbCellState, type OpenerPosition } from "@/config/poker/bb-defense-chart";
+import { bvbCellState } from "@/config/poker/bvb-chart";
+import { vsOpenCellState } from "@/config/poker/vs-open-chart";
+import { fourBetCellState } from "@/config/poker/def-vs-3bet-chart";
+import { isoCellState } from "@/config/poker/iso-chart";
 import type { PusherGroup } from "@/config/poker/call-vs-push-chart";
 import type { PushPosition, StackBand } from "@/config/poker/push-fold-chart";
 import type { RestealBand, RestealOpenerGroup } from "@/config/poker/resteal-chart";
@@ -40,11 +44,51 @@ export type ChartRangeSpot =
   | { kind: "openshove"; position: PushPosition; band: StackBand; heroCode: string };
 
 export function heroChartRangeSpot(snapshot: TableSnapshot): ChartRangeSpot | null {
+  // Панель отвечает на вопрос «а как правильно» ПО РАЗОБРАННОМУ решению.
+  //
+  // Если раздача ушла на постфлоп и Hero там играл, разбор почти всегда про постфлоп, и префлоп-чарт
+  // — шум (Артём 18.07: под разбором ривер-блефа с QTo показался чарт ОТКРЫТИЯ, «в этом смысла нет»).
+  // НО есть исключение, которое Артём назвал сразу следом: если вердикт говорит «постфлоп сыграл
+  // верно, а вот заходить этой рукой не стоило» — чарт как раз НУЖЕН. Поэтому на постфлоп-раздачах
+  // показываем сетку не всегда, а когда САМ ВХОД был ВНЕ чарта: тогда вопрос «а с чем заходить» и
+  // возникает. Стандартный вход + постфлоп-разбор = молчим.
+  //
+  // Пуш-споты (опен-шов, рестил, колл олл-ина) этим не задеты: они решают раздачу до флопа, у Hero
+  // там постфлоп-ходов физически нет — условие всегда ложно.
+  const heroPlayedPostflop = snapshot.actions.some(
+    (a) =>
+      a.actor === "Hero" &&
+      a.street !== "PREFLOP" &&
+      (a.action === "BET" || a.action === "RAISE" || a.action === "ALL_IN" || a.action === "CALL"),
+  );
+  // Показать спот с учётом правила выше: offChart — был ли вход Hero вне эталонного диапазона.
+  const gate = <T extends ChartRangeSpot>(spot: T, offChart: boolean): T | null =>
+    heroPlayedPostflop && !offChart ? null : spot;
+
   const bb = detectHeroBBDefense(snapshot);
-  if (bb) return { kind: "bbdefense", opener: bb.openerPosition, heroCode: bb.code };
+  if (bb) {
+    const st = bbCellState(bb.openerPosition, bb.code);
+    // Защищался рукой вне чарта защиты / 3-бетил рукой вне 3-бет-части — вход спорный.
+    const off =
+      bb.action === "CALL"
+        ? st === "FOLD"
+        : bb.action === "3BET"
+          ? !(st === "THREEBET" || st === "THREEBET_BLUFF")
+          : false; // фолд — входа не было, префлоп-урока нет
+    return gate({ kind: "bbdefense", opener: bb.openerPosition, heroCode: bb.code }, off);
+  }
 
   const bvb = detectHeroBvbDefense(snapshot);
-  if (bvb) return { kind: "bvb", heroCode: bvb.code };
+  if (bvb) {
+    const st = bvbCellState(bvb.code);
+    const off =
+      bvb.action === "CALL"
+        ? st === "FOLD"
+        : bvb.action === "3BET"
+          ? !(st === "THREEBET" || st === "THREEBET_BLUFF")
+          : false;
+    return gate({ kind: "bvb", heroCode: bvb.code }, off);
+  }
 
   const rs = detectHeroResteal(snapshot);
   if (rs) return { kind: "resteal", openerGroup: rs.openerGroup, band: rs.band, heroCode: rs.code };
@@ -54,14 +98,23 @@ export function heroChartRangeSpot(snapshot: TableSnapshot): ChartRangeSpot | nu
     return { kind: "callvspush", pusherGroup: cvp.pusherGroup, pusherBand: cvp.pusherBand, heroCode: cvp.code };
 
   const vo = detectHeroVsOpen(snapshot);
-  if (vo) return { kind: "vsopen", heroPosition: vo.heroPosition, heroCode: vo.code };
+  if (vo) {
+    // Чарт судит только 3-бет; холодный колл эталоном сознательно не грейдится — значит и «вход был
+    // вне чарта» по коллу мы утверждать не можем, на постфлоп-раздачах такой спот молчит.
+    const off = vo.action === "3BET" && vsOpenCellState(vo.heroPosition, vo.code) === "OUT";
+    return gate({ kind: "vsopen", heroPosition: vo.heroPosition, heroCode: vo.code }, off);
+  }
 
   const cvr = detectHeroCallVsResteal(snapshot);
   if (cvr)
     return { kind: "callvsresteal", openerGroup: cvr.openerGroup, jamBand: cvr.jamBand, heroCode: cvr.code };
 
   const def = detectHeroDefVs3bet(snapshot);
-  if (def) return { kind: "defvs3bet", heroPosition: def.heroPosition, heroCode: def.code };
+  if (def) {
+    // Судится только 4-бет; колл 3-бета чарт сознательно не грейдит (вопрос глубины).
+    const off = def.action === "4BET" && fourBetCellState(def.heroPosition, def.code) === "OUT";
+    return gate({ kind: "defvs3bet", heroPosition: def.heroPosition, heroCode: def.code }, off);
+  }
 
   // Дальше — споты, опознанные, но БЕЗ сетки: показывать нечего, и провалиться ниже нельзя.
   if (detectHeroSqueeze(snapshot)) return null;
@@ -69,10 +122,18 @@ export function heroChartRangeSpot(snapshot: TableSnapshot): ChartRangeSpot | nu
   if (detectHeroLimp(snapshot)) return null;
 
   const open = detectHeroOpen(snapshot);
-  if (open) return isOpenPosition(open.position) ? { kind: "rfi", position: open.position, heroCode: open.code } : null;
+  if (open) {
+    if (!isOpenPosition(open.position)) return null;
+    // Открылся рукой вне чарта открытий — вот тогда «не стоило заходить» и чарт нужен.
+    const off = rfiCellState(open.position, open.code) === "OUT";
+    return gate({ kind: "rfi", position: open.position, heroCode: open.code }, off);
+  }
 
   const iso = detectHeroIso(snapshot);
-  if (iso) return { kind: "iso", heroPosition: iso.heroPosition, heroCode: iso.code };
+  if (iso) {
+    const off = isoCellState(iso.heroPosition, iso.code) === "OUT";
+    return gate({ kind: "iso", heroPosition: iso.heroPosition, heroCode: iso.code }, off);
+  }
 
   const push = detectHeroOpenShove(snapshot);
   if (push) return { kind: "openshove", position: push.position, band: push.band, heroCode: push.code };

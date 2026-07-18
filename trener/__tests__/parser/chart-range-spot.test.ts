@@ -103,6 +103,38 @@ describe("heroChartRangeSpot", () => {
     expect(spot).toMatchObject({ pusherBand: "MID", heroCode: "22" });
   });
 
+  // Артём 18.07: под разбором ривер-блефа показался чарт ОТКРЫТИЯ — «в этом смысла нет».
+  // Раздача ушла на постфлоп, разбор про постфлоп, а открытие было стандартным → сетка молчит.
+  it("стандартный вход + раздача разыграна постфлопом → null (чарт открытия там шум)", () => {
+    const s = snap({
+      heroCards: ["Ah", "Qd"], // AQo с CO — в чарте открытий
+      preflop: [
+        { street: "PREFLOP", actor: "Player 3", action: "FOLD" },
+        { street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 250 },
+        { street: "PREFLOP", actor: "Player 2", action: "CALL", amount: 150 },
+        { street: "FLOP", actor: "Player 2", action: "CHECK" },
+        { street: "FLOP", actor: "Hero", action: "BET", amount: 300 },
+      ],
+    });
+    expect(heroChartRangeSpot(s)).toBeNull();
+  });
+
+  // Но исключение, которое Артём назвал сразу следом: «постфлоп сыграл верно, а заходить не стоило».
+  // Вход ВНЕ чарта → вопрос «а с чем заходить» возникает → сетку показываем даже на постфлоп-раздаче.
+  it("вход ВНЕ чарта + постфлоп → сетку показываем (вопрос «а с чем заходить»)", () => {
+    const s = snap({
+      heroCards: ["Kh", "2d"], // K2o с CO — вне чарта открытий
+      preflop: [
+        { street: "PREFLOP", actor: "Player 3", action: "FOLD" },
+        { street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 250 },
+        { street: "PREFLOP", actor: "Player 2", action: "CALL", amount: 150 },
+        { street: "FLOP", actor: "Player 2", action: "CHECK" },
+        { street: "FLOP", actor: "Hero", action: "BET", amount: 300 },
+      ],
+    });
+    expect(heroChartRangeSpot(s)).toEqual({ kind: "rfi", position: "CO", heroCode: "K2o" });
+  });
+
   it("раздача без чартового спота (Hero просто сбросил) → null", () => {
     const s = snap({
       heroCards: ["7c", "2d"],
