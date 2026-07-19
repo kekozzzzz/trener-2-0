@@ -40,6 +40,12 @@ export function getTelegramChannelId(): string {
   return process.env.TELEGRAM_CHANNEL_ID ?? "";
 }
 
+// Публичный @username бота (без @) — для ссылок вида t.me/<username> (кнопка «Написать
+// нам» в постах, ссылка «Написать в Telegram» на /support). Не секрет, дефолт задан.
+export function getTelegramBotUsername(): string {
+  return process.env.TELEGRAM_BOT_USERNAME ?? "whygrid_bot";
+}
+
 // Секрет webhook'а Telegram: бот шлёт его в заголовке X-Telegram-Bot-Api-Secret-Token
 // при каждом обновлении; маршрут принимает апдейт, только если секрет совпал. Пусто —
 // приём входящих не настроен (webhook не регистрируем). Хранить в .env, не в git.

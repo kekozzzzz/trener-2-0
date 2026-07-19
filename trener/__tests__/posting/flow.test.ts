@@ -102,6 +102,52 @@ describe("полный цикл постинга", () => {
     expect(text).toContain("это отзыв, не команда");
     expect(text).toContain("сколько стоит?");
     expect(text).toContain("@stranger");
+    expect(text).toContain("(id 999999)");
+  });
+
+  it("Reply Артёма на пересланное сообщение уходит человеку в тот же чат", async () => {
+    await handleTelegramUpdate({
+      message: { from: { id: 999999, username: "stranger" }, text: "как оплатить?" },
+    });
+    const forwardedText = vi.mocked(sendMessage).mock.calls[0][1];
+    vi.clearAllMocks();
+
+    await handleTelegramUpdate({
+      message: {
+        from: { id: 440359604 },
+        text: "картой на сайте, разберём вместе",
+        reply_to_message: { text: forwardedText },
+      },
+    });
+
+    expect(sendMessage).toHaveBeenNthCalledWith(1, "999999", "картой на сайте, разберём вместе");
+    expect(sendMessage).toHaveBeenNthCalledWith(2, ADMIN, "✅ Ответ доставлен.");
+  });
+
+  it("сбой доставки ответа (человек заблокировал бота) — Артёму приходит уведомление", async () => {
+    await handleTelegramUpdate({
+      message: { from: { id: 999999, username: "stranger" }, text: "вопрос" },
+    });
+    const forwardedText = vi.mocked(sendMessage).mock.calls[0][1];
+    vi.clearAllMocks();
+    vi.mocked(sendMessage).mockRejectedValueOnce(new Error("bot was blocked by the user"));
+
+    await handleTelegramUpdate({
+      message: {
+        from: { id: 440359604 },
+        text: "ответ",
+        reply_to_message: { text: forwardedText },
+      },
+    });
+
+    expect(sendMessage).toHaveBeenNthCalledWith(2, ADMIN, expect.stringContaining("Не удалось доставить"));
+  });
+
+  it("обычное сообщение Артёма без Reply на поддержку — ничего не релеит", async () => {
+    await handleTelegramUpdate({
+      message: { from: { id: 440359604 }, text: "просто пишу боту" },
+    });
+    expect(sendMessage).not.toHaveBeenCalled();
   });
 
   it("не одобренный пост не публикуется по наступлении времени", async () => {

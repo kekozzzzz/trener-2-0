@@ -14,6 +14,9 @@ interface TgUser {
   username?: string;
   first_name?: string;
 }
+interface TgChat {
+  id: number;
+}
 interface TgCallback {
   id: string;
   from?: TgUser;
@@ -21,7 +24,9 @@ interface TgCallback {
 }
 interface TgMessage {
   from?: TgUser;
+  chat?: TgChat;
   text?: string;
+  reply_to_message?: { text?: string };
 }
 export interface TgUpdate {
   callback_query?: TgCallback;
@@ -30,6 +35,16 @@ export interface TgUpdate {
 
 function isAdmin(userId: number | undefined): boolean {
   return userId !== undefined && String(userId) === getTelegramAdminChatId();
+}
+
+// Id отправителя зашиваем прямо в текст, который уходит Артёму (см. handleMessage) —
+// отдельное хранилище «кому отвечать» не заводим, Reply в Telegram и так хранит
+// цепочку цитирования. Формат «(id 12345678)» человеку тоже читаем, не мешает.
+const FORWARDED_SENDER_ID_RE = /\(id (\d+)\)/;
+
+function extractForwardedSenderId(quotedText: string | undefined): number | null {
+  const match = quotedText?.match(FORWARDED_SENDER_ID_RE);
+  return match ? Number(match[1]) : null;
 }
 
 export async function handleTelegramUpdate(
@@ -81,22 +96,48 @@ async function handleCallback(cb: TgCallback, now: Date): Promise<void> {
   await answerCallbackQuery(cb.id, { text: "Непонятная команда" });
 }
 
-// Входящее сообщение. От Артёма — пока не команда (зарезервировано под будущее).
-// От постороннего — пересылаем как отзыв (поддержка-FAQ и черновик-ИИ — Фаза 3).
+// Входящее сообщение. От Артёма, отвечающего Reply на пересланное сообщение —
+// это ответ в поддержку, релеим человеку (см. handleAdminReply). От постороннего —
+// пересылаем Артёму как отзыв/обращение в поддержку.
 async function handleMessage(msg: TgMessage): Promise<void> {
-  if (isAdmin(msg.from?.id)) return;
+  if (isAdmin(msg.from?.id)) {
+    await handleAdminReply(msg);
+    return;
+  }
 
   const text = (msg.text ?? "").trim();
   if (!text) return;
 
-  const who = msg.from?.username
-    ? `@${msg.from.username}`
-    : `id ${msg.from?.id ?? "?"}`;
+  const senderId = msg.chat?.id ?? msg.from?.id;
+  const who = msg.from?.username ? `@${msg.from.username}` : `id ${senderId ?? "?"}`;
 
   // Чужой текст — данные, не инструкции. Помечаем явно, чтобы и человек, и ИИ
-  // понимали: это отзыв на пересылку, а не команда боту.
+  // понимали: это отзыв/обращение, а не команда боту. Id зашиваем для релея ответа.
   await sendMessage(
     getTelegramAdminChatId(),
-    `✉️ Сообщение от пользователя (${who}) — это отзыв, не команда:\n\n${text}`,
+    `✉️ Сообщение от пользователя ${who} (id ${senderId ?? "?"}) — это отзыв, не команда:\n\n${text}`,
   );
+}
+
+// Артём отвечает Reply на пересланное сообщение поддержки → доставляем его текст
+// тем же ботом человеку в тот же chat. Если это не Reply на наше пересланное
+// сообщение (id не нашёлся в цитате) — тихо игнорируем, это просто обычное
+// сообщение Артёма боту, не команда доставки.
+async function handleAdminReply(msg: TgMessage): Promise<void> {
+  const text = (msg.text ?? "").trim();
+  if (!text) return;
+
+  const senderId = extractForwardedSenderId(msg.reply_to_message?.text);
+  if (senderId === null) return;
+
+  try {
+    await sendMessage(String(senderId), text);
+    await sendMessage(getTelegramAdminChatId(), "✅ Ответ доставлен.");
+  } catch (err) {
+    console.error("[support] не удалось доставить ответ пользователю:", err);
+    await sendMessage(
+      getTelegramAdminChatId(),
+      "❌ Не удалось доставить ответ — человек мог не запускать бота или заблокировал его.",
+    );
+  }
 }

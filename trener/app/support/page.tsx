@@ -12,12 +12,17 @@ import { BlurFade } from "@/components/ui/blur-fade";
 import { Wordmark } from "@/components/ui/wordmark";
 import { getCurrentPlayer } from "@/features/auth/queries";
 import { OPERATOR } from "@/config/legal";
+import { getTelegramBotUsername } from "@/config/notify";
+import { isAdminEmail } from "@/config/admin";
 import { SupportForm } from "./support-form";
 
 export default async function SupportPage() {
   const t = await getTranslations("Support");
-  // Если человек залогинен — подставим его почту, чтобы не вводил вручную.
+  // Если человек залогинен — подставим его почту, чтобы не вводил вручную. Кроме
+  // владельца: он тут почти всегда тестирует форму, а не пишет сам себе в поддержку —
+  // своя личная почта в подсказке только путает (QA 2026-07-19).
   const player = await getCurrentPlayer();
+  const defaultEmail = player?.email && !isAdminEmail(player.email) ? player.email : undefined;
 
   return (
     <main>
@@ -37,8 +42,9 @@ export default async function SupportPage() {
               <p className="text-body text-muted-foreground">{t("subtitle")}</p>
             </div>
             <SupportForm
-              defaultEmail={player?.email ?? undefined}
+              defaultEmail={defaultEmail}
               supportEmail={OPERATOR.contactEmail}
+              telegramBotUsername={getTelegramBotUsername()}
             />
           </div>
         </BlurFade>
