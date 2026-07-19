@@ -148,30 +148,43 @@ describe("heroChartRangeSpot", () => {
   });
 });
 
-// Аудит румов 19.07: в хедз-апе баттон — он же малый блайнд и открывает в разы шире, чем BTN в
-// 6-max (~80% против ~45%). Своего чарта на хедз-ап у продукта НЕТ, поэтому судить чужой таблицей
-// нельзя: и вердикт чарта, и панель обязаны молчать. Пропущенный факт мягче ложного.
-describe("хедз-ап не судится чартами 6-max", () => {
-  const headsUp = () =>
+// Артём 19.07: «раз вспомнили — надо делать, у других-то такие ситуации могут быть». В хедз-апе
+// баттон постит малый блайнд и ходит первым, то есть по сути это SB. Раньше он получал ярлык BTN и
+// раздача уезжала в ШЕСТИМАКСОВЫЙ чарт баттона — вдвое уже правильного. Отдельные данные заводить не
+// понадобилось: спот «малый блайнд против большого» — это ровно игра вдвоём, и чарты под него у
+// продукта уже есть (RFI для SB и блайнд-против-блайнда, защита 69% — как раз ширина хедз-апа).
+describe("хедз-ап судится чартами блайнд-против-блайнда, а не баттона 6-max", () => {
+  const heads = (heroPos: "SB" | "BB", preflop: TableAction[]) =>
     snap({
       heroCards: ["Kh", "7d"],
-      heroPosition: "BTN",
+      heroPosition: heroPos,
       seats: [
-        { label: "Hero", position: "BTN", startingStack: 4000 },
-        { label: "Player 1", position: "BB", startingStack: 4000 },
+        { label: "Hero", position: heroPos, startingStack: 4000 },
+        { label: "Player 1", position: heroPos === "SB" ? "BB" : "SB", startingStack: 4000 },
       ],
-      preflop: [{ street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 220 }],
+      preflop,
     });
 
-  it("панель диапазонов молчит", () => {
-    expect(heroChartRangeSpot(headsUp())).toBeNull();
+  it("открытие с баттона (=SB) идёт в чарт малого блайнда, а не баттона", () => {
+    const s = heads("SB", [{ street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 220 }]);
+    expect(heroChartRangeSpot(s)).toEqual({ kind: "rfi", position: "SB", heroCode: "K7o" });
   });
 
-  it("вердикт префлоп-чарта тоже молчит (панель и вердикт не расходятся)", () => {
-    expect(preflopChartFact(headsUp())).toBeNull();
+  it("K7o с баттона в хедз-апе — СТАНДАРТНОЕ открытие, а не «вне чарта»", () => {
+    const s = heads("SB", [{ street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 220 }]);
+    expect(preflopChartFact(s)).toContain("стандартное открытие");
   });
 
-  it("за столом больше двоих K7o с BTN по-прежнему судится", () => {
+  it("защита большого блайнда идёт в чарт блайнд-против-блайнда", () => {
+    const s = heads("BB", [
+      { street: "PREFLOP", actor: "Player 1", action: "RAISE", amount: 220 },
+      { street: "PREFLOP", actor: "Hero", action: "CALL", amount: 120 },
+    ]);
+    expect(heroChartRangeSpot(s)).toEqual({ kind: "bvb", heroCode: "K7o" });
+    expect(preflopChartFact(s)).toContain("блайнд-против-блайнда");
+  });
+
+  it("за столом больше двоих K7o с BTN по-прежнему судится чартом баттона", () => {
     const s = snap({
       heroCards: ["Kh", "7d"],
       preflop: [

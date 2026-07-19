@@ -45,17 +45,7 @@ export function preflopChartFact(snapshot: TableSnapshot): string | null {
   ].join("\n");
 }
 
-// ⚠️ХЕДЗ-АП чартами 6-max не судится. Там баттон — он же малый блайнд, и открывает он в разы шире
-// (порядка 80%+ против ~45% у BTN в 6-max), защита BB тоже другая. Своего чарта на хедз-ап у продукта
-// НЕТ, поэтому единственное честное поведение — не выдавать вердикт вовсе, а не судить по чужой
-// таблице (аудит румов 19.07). Молчание тут безопаснее: пропущенный факт мягче ложного.
-export function isHeadsUp(snapshot: TableSnapshot): boolean {
-  return snapshot.seats.length === 2;
-}
-
 function spotVerdict(snapshot: TableSnapshot): string | null {
-  if (isHeadsUp(snapshot)) return null;
-
   const bb = detectHeroBBDefense(snapshot);
   if (bb) {
     const state = bbCellState(bb.openerPosition, bb.code);
