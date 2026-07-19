@@ -66,7 +66,9 @@ function mockDb(opts: { playerDates: Date[]; authEvents: AuthEventRow[] }): Pris
         }
         return opts.authEvents.filter((e) => e.kind === kind).length;
       },
+      groupBy: async () => [],
     },
+    landingVisit: { groupBy: async () => [] },
     tournament: {
       findMany: async (args: { distinct?: unknown }) => (args.distinct ? [] : []),
       count: async () => 0,
@@ -129,5 +131,20 @@ describe("buildAdminStats", () => {
     expect(s.trial).toEqual({ triedFree: 0, converted: 0, notPaying: 0 });
     expect(s.money).toEqual([]);
     expect(s.queue).toEqual({ pending: 0, processing: 0, poisoned: 0, failed: 0 });
+
+    // Источники переходов: список берётся из конфига, без единого захода — нули,
+    // источник из списка не пропадает.
+    expect(s.acquisition.map((a) => a.slug)).toEqual(["gipsyteam", "telegram"]);
+    expect(s.acquisition[0]).toMatchObject({
+      slug: "gipsyteam",
+      visitsTotal: 0,
+      visits30: 0,
+      registrationsTotal: 0,
+      registrations30: 0,
+    });
+    // Ссылка строится по непрозрачному коду, а не по человекочитаемому slug
+    // (человек не должен угадать источник по виду ссылки).
+    expect(s.acquisition[0].link).not.toContain("gipsyteam");
+    expect(s.acquisition[0].link).toMatch(/\/go\/\d{6}$/);
   });
 });

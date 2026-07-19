@@ -21,6 +21,24 @@ export function isAdminEmail(email: string | null | undefined): boolean {
   return getAdminEmails().includes(email.toLowerCase());
 }
 
+// Собственные тестовые аккаунты Артёма (проверка оплаты и т.п.) — не должны попадать
+// в продуктовую статистику (регистрации/воронка/деньги), иначе искажают картину
+// реального интереса пользователей. Идентификатор — UUID игрока, не email: у одного
+// из тестов аккаунт уже закрыт и анонимизирован (email стёрт), по email его не найти.
+// Найдено и подтверждено Артёмом 2026-07-19 (см. retrospectives).
+const DEFAULT_EXCLUDED_TEST_PLAYER_IDS = [
+  "957b9004-3a84-436b-b447-89668a1ee9ae", // artemiy_bog@mail.ru, тестовая оплата 25.06
+  "f187fdb1-efa6-480d-96a0-82b3648fc449", // закрытый тестовый аккаунт, тоже 25.06
+];
+
+export function getExcludedTestPlayerIds(): string[] {
+  const fromEnv = (process.env.EXCLUDED_TEST_PLAYER_IDS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return fromEnv.length > 0 ? fromEnv : DEFAULT_EXCLUDED_TEST_PLAYER_IDS;
+}
+
 // Смещение часового пояса владельца от UTC в часах — по нему админ-статистика
 // режет сутки («сегодня/вчера»). По умолчанию Москва (+3, летнего времени в РФ нет).
 export function getAdminTzOffsetHours(): number {

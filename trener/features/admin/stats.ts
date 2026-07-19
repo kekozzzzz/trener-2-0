@@ -5,8 +5,10 @@
 // plans/2026-07-02-админ-статистика.md
 
 import type { PrismaClient } from "@prisma/client";
-import { getAdminTzOffsetHours } from "@/config/admin";
+import { getAdminTzOffsetHours, getExcludedTestPlayerIds } from "@/config/admin";
 import { buildCostReport, type CostReport } from "@/features/usage/cost-report";
+import { ACQUISITION_SOURCES } from "@/config/acquisition-sources";
+import { getAppBaseUrl } from "@/config/app";
 
 const HOUR_MS = 3_600_000;
 const DAY_MS = 86_400_000;
@@ -96,6 +98,17 @@ export type AdminStats = {
   };
   llm: { day: CostReport; month: CostReport };
   queue: { pending: number; processing: number; poisoned: number; failed: number };
+  acquisition: AcquisitionSourceStats[];
+};
+
+export type AcquisitionSourceStats = {
+  slug: string;
+  label: string;
+  link: string;
+  visitsTotal: number;
+  visits30: number;
+  registrationsTotal: number;
+  registrations30: number;
 };
 
 // ─────────────────────────── Помощники агрегации ─────────────────────────────
@@ -140,6 +153,9 @@ function topCountries(countries: (string | null)[], topN = 12): CountryCount[] {
 
 export async function buildAdminStats(db: PrismaClient, now = new Date()): Promise<AdminStats> {
   const tz = getAdminTzOffsetHours();
+  // Свои тестовые аккаунты (оплата и т.п.) не должны искажать воронку/регистрации/деньги.
+  const excludedIds = getExcludedTestPlayerIds();
+  const notTestPlayer = { notIn: excludedIds };
   const t0 = dayStartUtc(now, tz, 0); // начало сегодня
   const t1 = dayStartUtc(now, tz, 1); // начало вчера
   const t7 = dayStartUtc(now, tz, 6); // «за 7 дней» = 7 календарных суток с сегодняшними
@@ -170,10 +186,17 @@ export async function buildAdminStats(db: PrismaClient, now = new Date()): Promi
     queueRaw,
     llmDay,
     llmMonth,
+    visitsTotalRaw,
+    visits30Raw,
+    registrationsTotalRaw,
+    registrations30Raw,
   ] = await Promise.all([
-    db.player.findMany({ where: { createdAt: { gte: t30 } }, select: { createdAt: true } }),
-    db.player.count(),
-    db.player.count({ where: { closedAt: { not: null } } }),
+    db.player.findMany({
+      where: { createdAt: { gte: t30 }, id: notTestPlayer },
+      select: { createdAt: true },
+    }),
+    db.player.count({ where: { id: notTestPlayer } }),
+    db.player.count({ where: { closedAt: { not: null }, id: notTestPlayer } }),
     db.authEvent.findMany({
       where: { createdAt: { gte: t30 } },
       select: { kind: true, playerId: true, country: true, createdAt: true },
@@ -181,12 +204,17 @@ export async function buildAdminStats(db: PrismaClient, now = new Date()): Promi
     db.authEvent.count({ where: { kind: { in: [...successKinds] } } }),
     db.authEvent.count({ where: { kind: "LOGIN_FAILED", createdAt: { gte: t30 } } }),
     db.tournament.findMany({
-      where: { deletedAt: null, analysisUnlocked: true, status: "CARD_READY" },
+      where: {
+        deletedAt: null,
+        analysisUnlocked: true,
+        status: "CARD_READY",
+        playerId: notTestPlayer,
+      },
       select: { playerId: true },
       distinct: ["playerId"],
     }),
     db.subscription.findMany({
-      where: { payments: { some: { status: "SUCCEEDED" } } },
+      where: { payments: { some: { status: "SUCCEEDED" } }, playerId: notTestPlayer },
       select: { playerId: true },
     }),
     db.subscription.groupBy({
@@ -195,17 +223,23 @@ export async function buildAdminStats(db: PrismaClient, now = new Date()): Promi
         status: "ACTIVE",
         deletedAt: null,
         OR: [{ nextPaymentAt: null }, { nextPaymentAt: { gt: now } }],
+        playerId: notTestPlayer,
       },
       _count: { _all: true },
     }),
-    db.subscription.count({ where: { createdAt: { gte: t30 } } }),
-    db.subscription.count({ where: { status: "CANCELED", updatedAt: { gte: t30 } } }),
+    db.subscription.count({ where: { createdAt: { gte: t30 }, playerId: notTestPlayer } }),
+    db.subscription.count({
+      where: { status: "CANCELED", updatedAt: { gte: t30 }, playerId: notTestPlayer },
+    }),
     db.payment.findMany({
-      where: { occurredAt: { gte: t30 } },
+      where: { occurredAt: { gte: t30 }, subscription: { playerId: notTestPlayer } },
       select: { amountCents: true, currency: true, status: true, occurredAt: true },
     }),
-    db.tournament.findMany({ where: { createdAt: { gte: t30 } }, select: { createdAt: true } }),
-    db.tournament.count(),
+    db.tournament.findMany({
+      where: { createdAt: { gte: t30 }, playerId: notTestPlayer },
+      select: { createdAt: true },
+    }),
+    db.tournament.count({ where: { playerId: notTestPlayer } }),
     db.tournament.count({ where: { status: "FAILED", createdAt: { gte: t30 } } }),
     db.unrecognizedUpload.count({ where: { createdAt: { gte: t30 } } }),
     db.dialogueRound.count({ where: { answer: { not: null }, updatedAt: { gte: t30 } } }),
@@ -214,6 +248,14 @@ export async function buildAdminStats(db: PrismaClient, now = new Date()): Promi
     db.task.groupBy({ by: ["status"], _count: { _all: true } }),
     buildCostReport(db, 24),
     buildCostReport(db, 24 * 30),
+    db.landingVisit.groupBy({ by: ["source"], _count: { _all: true } }),
+    db.landingVisit.groupBy({ by: ["source"], where: { createdAt: { gte: t30 } }, _count: { _all: true } }),
+    db.authEvent.groupBy({ by: ["utmSource"], where: { kind: "REGISTER" }, _count: { _all: true } }),
+    db.authEvent.groupBy({
+      by: ["utmSource"],
+      where: { kind: "REGISTER", createdAt: { gte: t30 } },
+      _count: { _all: true },
+    }),
   ]);
 
   // Регистрации: счётчики по датам создания игроков (история полная, в отличие
@@ -273,6 +315,26 @@ export async function buildAdminStats(db: PrismaClient, now = new Date()): Promi
   const queueCount = (status: "PENDING" | "PROCESSING" | "POISONED" | "FAILED") =>
     queueRaw.find((q) => q.status === status)?._count._all ?? 0;
 
+  // Источники переходов: по каждому источнику из конфига — заходы и регистрации,
+  // всего и за 30 дней. Источник без единого захода/регистрации просто нулевой,
+  // не пропадает из списка (Артём должен видеть ссылку и её "0", а не пустоту).
+  const visitCount = (rows: { source: string; _count: { _all: number } }[], slug: string) =>
+    rows.find((r) => r.source === slug)?._count._all ?? 0;
+  const registrationCount = (
+    rows: { utmSource: string | null; _count: { _all: number } }[],
+    slug: string,
+  ) => rows.find((r) => r.utmSource === slug)?._count._all ?? 0;
+  const baseUrl = getAppBaseUrl();
+  const acquisition: AcquisitionSourceStats[] = ACQUISITION_SOURCES.map((s) => ({
+    slug: s.slug,
+    label: s.label,
+    link: `${baseUrl}/go/${s.code}`,
+    visitsTotal: visitCount(visitsTotalRaw, s.slug),
+    visits30: visitCount(visits30Raw, s.slug),
+    registrationsTotal: registrationCount(registrationsTotalRaw, s.slug),
+    registrations30: registrationCount(registrations30Raw, s.slug),
+  }));
+
   return {
     generatedAt: now,
     players: {
@@ -321,5 +383,6 @@ export async function buildAdminStats(db: PrismaClient, now = new Date()): Promi
       poisoned: queueCount("POISONED"),
       failed: queueCount("FAILED"),
     },
+    acquisition,
   };
 }

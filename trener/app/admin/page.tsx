@@ -8,9 +8,15 @@ import { getTranslations } from "next-intl/server";
 import { prisma } from "@/infrastructure/db/client";
 import { requireSession } from "@/features/auth/session";
 import { isAdminEmail } from "@/config/admin";
-import { buildAdminStats, type DayPoint, type PeriodCounts } from "@/features/admin/stats";
+import {
+  buildAdminStats,
+  type DayPoint,
+  type PeriodCounts,
+  type AcquisitionSourceStats,
+} from "@/features/admin/stats";
 import { formatUsd } from "@/features/usage/cost-report";
 import { PageHeader } from "@/components/page-header";
+import { CopyLinkButton } from "@/components/copy-link-button";
 
 // Вкладка владельца: сводка по продукту (регистрации, входы, страны, пробники,
 // подписки, деньги, загрузки, ИИ-расходы, очередь). Доступ ТОЛЬКО владельцу
@@ -57,6 +63,16 @@ export default async function AdminPage() {
             </p>
           </Card>
         </div>
+
+        {/* Источники переходов: меченые ссылки /go/<source> на внешние площадки */}
+        <Card className="mt-8">
+          <CardTitle>{t("sourcesTitle")}</CardTitle>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            {s.acquisition.map((src) => (
+              <SourceRow key={src.slug} src={src} t={t} />
+            ))}
+          </div>
+        </Card>
 
         {/* Страны */}
         <div className="mt-8 grid gap-8 md:grid-cols-2">
@@ -265,6 +281,34 @@ function Bars({ points }: { points: DayPoint[] }) {
         <span>{points[0]?.label}</span>
         <span>{points[points.length - 1]?.label}</span>
       </div>
+    </div>
+  );
+}
+
+function SourceRow({
+  src,
+  t,
+}: {
+  src: AcquisitionSourceStats;
+  t: (key: string) => string;
+}) {
+  return (
+    <div className="border border-border p-4">
+      <div className="flex items-center justify-between gap-4">
+        <span className="font-mono text-label uppercase tracking-label text-foreground">
+          {src.label}
+        </span>
+        <CopyLinkButton link={src.link} copyLabel={t("sourcesCopy")} copiedLabel={t("sourcesCopied")} />
+      </div>
+      <p className="mt-2 truncate font-mono text-small text-muted-foreground">{src.link}</p>
+      <div className="mt-4 grid grid-cols-2 gap-4">
+        <Stat label={t("sourcesVisits")} value={src.visitsTotal} accent />
+        <Stat label={t("sourcesRegistrations")} value={src.registrationsTotal} />
+      </div>
+      <p className="mt-4 text-small text-muted-foreground">
+        {t("sourcesVisits30")}: <Num>{src.visits30}</Num> · {t("sourcesRegistrations")}:{" "}
+        <Num>{src.registrations30}</Num>
+      </p>
     </div>
   );
 }

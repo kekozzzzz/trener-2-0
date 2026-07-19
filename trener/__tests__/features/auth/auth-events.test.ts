@@ -36,6 +36,19 @@ describe("recordAuthEvent", () => {
     expect(row!.country).toBeNull();
   });
 
+  it("REGISTER вне HTTP-контекста: utmSource NULL, событие всё равно пишется", async () => {
+    const before = new Date(Date.now() - 1000);
+    await recordAuthEvent("REGISTER", null);
+
+    const row = await prisma.authEvent.findFirst({
+      where: { kind: "REGISTER", createdAt: { gte: before } },
+      orderBy: { createdAt: "desc" },
+    });
+    expect(row).not.toBeNull();
+    createdIds.push(row!.id);
+    expect(row!.utmSource).toBeNull();
+  });
+
   it("ошибка БД глушится: несуществующий playerId (FK) не бросает наружу", async () => {
     const ghost = "00000000-0000-0000-0000-00000000dead";
     await expect(recordAuthEvent("LOGIN_PASSWORD", ghost)).resolves.toBeUndefined();

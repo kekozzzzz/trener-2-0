@@ -99,10 +99,10 @@
     "charts": "Charts",
     "account": "Account",
     "logout": "Sign out",
-    "admin": "Stats"
+    "admin": "Admin"
   },
   "Admin": {
-    "title": "Stats",
+    "title": "Admin",
     "generatedAt": "Generated",
     "registrations": "Registrations",
     "logins": "Account logins",
@@ -143,7 +143,13 @@
     "llmMonth": "Last 30 days",
     "llmRequests": "Requests in 30 days",
     "llmCacheSaved": "Cache saved",
-    "queueTitle": "Task queue"
+    "queueTitle": "Task queue",
+    "sourcesTitle": "Sources",
+    "sourcesVisits": "Visits",
+    "sourcesRegistrations": "Registrations",
+    "sourcesVisits30": "Last 30 days",
+    "sourcesCopy": "Copy",
+    "sourcesCopied": "Copied"
   },
   "Footer": {
     "documents": "Legal",
@@ -160,7 +166,9 @@
     "sending": "Sending",
     "sentNotice": "Message sent. We'll reply to the email you gave within a day.",
     "backHome": "Back home",
-    "orEmail": "Or email us at:"
+    "orEmail": "Or email us at:",
+    "orTelegram": "Fastest way - message us on Telegram:",
+    "telegramCta": "Message on Telegram"
   },
   "Login": {
     "title": "Sign in",

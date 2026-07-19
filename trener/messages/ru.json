@@ -99,10 +99,10 @@
     "charts": "Чарты",
     "account": "Аккаунт",
     "logout": "Выйти",
-    "admin": "Статистика"
+    "admin": "Админ"
   },
   "Admin": {
-    "title": "Статистика",
+    "title": "Админ",
     "generatedAt": "Собрано",
     "registrations": "Регистрации",
     "logins": "Входы в аккаунт",
@@ -143,7 +143,13 @@
     "llmMonth": "За 30 дней",
     "llmRequests": "Запросов за 30 дней",
     "llmCacheSaved": "Кэш сэкономил",
-    "queueTitle": "Очередь задач"
+    "queueTitle": "Очередь задач",
+    "sourcesTitle": "Источники",
+    "sourcesVisits": "Заходов",
+    "sourcesRegistrations": "Регистраций",
+    "sourcesVisits30": "За 30 дней",
+    "sourcesCopy": "Копировать",
+    "sourcesCopied": "Скопировано"
   },
   "Footer": {
     "documents": "Документы",
@@ -160,7 +166,9 @@
     "sending": "Отправляем",
     "sentNotice": "Сообщение отправлено. Отвечу на указанную почту в течение дня.",
     "backHome": "На главную",
-    "orEmail": "Или напишите на почту:"
+    "orEmail": "Или напишите на почту:",
+    "orTelegram": "Быстрее всего — напишите в Telegram:",
+    "telegramCta": "Написать в Telegram"
   },
   "Login": {
     "title": "Вход",

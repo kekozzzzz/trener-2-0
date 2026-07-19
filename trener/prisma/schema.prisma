@@ -142,6 +142,7 @@ model AuthEvent {
   playerId  String?       @map("player_id") @db.Uuid // NULL — неудачная попытка по несуществующему email
   kind      AuthEventKind
   country   String?                                   // ISO-код страны («RU»); NULL — определить не удалось
+  utmSource String?       @map("utm_source")           // источник перехода (config/acquisition-sources.ts) по cookie wg_src; только для kind=REGISTER
   createdAt DateTime      @default(now()) @map("created_at")
 
   player Player? @relation(fields: [playerId], references: [id], onDelete: SetNull)
@@ -149,6 +150,20 @@ model AuthEvent {
   @@index([createdAt], map: "idx_auth_events_recent")
   @@index([kind, createdAt], map: "idx_auth_events_kind")
   @@map("auth_events")
+}
+
+// ─────────────── Заходы по размеченным ссылкам (/go/<source>) ───────────────
+// Одна строка = один клик по ссылке источника (GipsyTeam, Telegram, ...), не
+// продублированный cookie'ой первого касания. Питает /admin, блок «Источники»:
+// сколько зашло / сколько из них зарегистрировалось (auth_events.utm_source).
+
+model LandingVisit {
+  id        String   @id @default(uuid()) @db.Uuid
+  source    String                                     // слаг из config/acquisition-sources.ts
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([source, createdAt], map: "idx_landing_visits_source")
+  @@map("landing_visits")
 }
 
 // ─────────────────── Профиль игрока (1:1, создаётся с первым турниром) ────────
