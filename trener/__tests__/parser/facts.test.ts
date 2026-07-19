@@ -1118,3 +1118,43 @@ describe("renderHandFacts — разделы банка названы и не �
     expect(renderHandFacts(s)).not.toContain("ты ДЕЛИШЬ банк");
   });
 });
+
+// Артём 19.07: вердикт назвал ошибкой РИВЕР-колл, хотя ривер Hero спас (пятёрка спарила доску и
+// принесла раздел), а решалось на тёрне и на входе с K3o. Если последняя карта улучшила руку,
+// ранние решения принимались рукой СЛАБЕЕ — искать ошибку надо там.
+describe("renderHandFacts — на какую улицу смотреть, если рука улучшилась последней картой", () => {
+  const base = (heroCards: string[], board: string[]) =>
+    snap({
+      seats: [
+        { label: "Hero", position: "BB", startingStack: 15600 },
+        { label: "opp1", position: "CO", startingStack: 15600 },
+      ] as Seat[],
+      heroCards,
+      board,
+      actions: [
+        { street: "PREFLOP", actor: "Hero", action: "POST_BB", amount: 300 } as TableAction,
+        { street: "PREFLOP", actor: "opp1", action: "RAISE", amount: 600 } as TableAction,
+        { street: "PREFLOP", actor: "Hero", action: "CALL", amount: 300 } as TableAction,
+        { street: "TURN", actor: "Hero", action: "CHECK" } as TableAction,
+        { street: "TURN", actor: "opp1", action: "BET", amount: 2130 } as TableAction,
+        { street: "TURN", actor: "Hero", action: "CALL", amount: 2130 } as TableAction,
+        { street: "RIVER", actor: "Hero", action: "CHECK" } as TableAction,
+        { street: "RIVER", actor: "opp1", action: "BET", amount: 3300 } as TableAction,
+        { street: "RIVER", actor: "Hero", action: "CALL", amount: 3300 } as TableAction,
+      ],
+    });
+
+  it("ривер улучшил руку → факт зовёт смотреть на РАННИЕ решения", () => {
+    // K3o: на тёрне пара королей, ривер спарил борд → две пары.
+    const r = renderHandFacts(base(["Kd", "3h"], ["Kh", "5c", "Qd", "8c", "5h"]));
+    expect(r).toContain("Твоя рука УЛУЧШИЛАСЬ последней картой");
+    expect(r).toContain("колл на тёрне");
+    expect(r).toContain("не на ту улицу");
+  });
+
+  it("рука НЕ улучшилась → лишнего указания не появляется", () => {
+    // Пара королей и на тёрне, и на ривере: ривер — блэнк.
+    const r = renderHandFacts(base(["Kd", "3h"], ["Kh", "5c", "Qd", "8c", "2s"]));
+    expect(r).not.toContain("Твоя рука УЛУЧШИЛАСЬ последней картой");
+  });
+});

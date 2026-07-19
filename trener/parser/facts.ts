@@ -1205,6 +1205,28 @@ export function renderHandFacts(snapshot: TableSnapshot): string {
     }
   }
 
+  // ⚠️КАКУЮ УЛИЦУ разбирать. Если последняя карта УЛУЧШИЛА руку Hero, то решения до неё принимались
+  // рукой СЛАБЕЕ той, что дошла до вскрытия, — значит искать ошибку надо там, а не в финальном
+  // действии. Тренер вешал вину на ривер-колл, хотя ривер Hero спас (Артём 19.07: K3o на K5Q85 —
+  // пятёрка спарила доску и принесла РАЗДЕЛ банка; «по тёрну не нужно было коллировать или вообще
+  // заходить»). Разбирать последнее действие, ставшее возможным благодаря улучшению, — не та улица.
+  const seenStreets = (["FLOP", "TURN", "RIVER"] as const).filter(
+    (s) => heroSawStreet(snapshot, s) && boardUpToStreet(snapshot.board, s).length >= 3,
+  );
+  if (seenStreets.length >= 2) {
+    const last = seenStreets[seenStreets.length - 1];
+    const prev = seenStreets[seenStreets.length - 2];
+    const mhLast = heroMadeHand(snapshot.heroCards, boardUpToStreet(snapshot.board, last));
+    const mhPrev = heroMadeHand(snapshot.heroCards, boardUpToStreet(snapshot.board, prev));
+    const catLast = mhLast ? madeHandCategoryRu(mhLast.category) : null;
+    const catPrev = mhPrev ? madeHandCategoryRu(mhPrev.category) : null;
+    if (catLast && catPrev && catLast.place < catPrev.place) {
+      lines.push(
+        `Твоя рука УЛУЧШИЛАСЬ последней картой: на ${STREET_RU[prev]} у тебя было ${catPrev.ru}, на ${STREET_RU[last]} стало ${catLast.ru}. Значит решения, принятые ДО неё (колл на ${STREET_RU[prev]} и сам вход в раздачу), делались рукой СЛАБЕЕ той, что дошла до вскрытия: последняя карта тебя ВЫРУЧИЛА, а не подвела. Ища ошибку, проверь эти РАННИЕ решения, а не только последнее действие - назвать ошибкой финальный ход, который стал возможен благодаря улучшению, значит указать не на ту улицу.`,
+      );
+    }
+  }
+
   // Ярлык фактически выпавшей карты тёрна/ривера (свип): усилила/скэр/дро-сгорело — чтобы модель
   // не сверяла флоповые множества с реальной картой «на глаз». Блэнк не печатаем (не шумим).
   for (const [ruName, cardIdx, street] of [
