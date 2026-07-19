@@ -968,7 +968,7 @@
     "legendAlways": "Always open - the core of the range",
     "legendSometimes": "Sometimes, depending on the spot (roughly half the time)",
     "legendOut": "Not opened",
-    "disclaimer": "This is not GTO solver output - these are your coach's working ranges for micro-stakes tournaments. The core matches solver ranges; in early positions our ranges are softer than the solver's - the coach only punishes clearly loose opens, not borderline hands. Want to play tighter - stick to the solid lime zone.",
+    "disclaimer": "This is not GTO solver output - these are your coach's working ranges for micro-stakes tournaments. The core matches solver ranges; in early positions our ranges are softer than the solver's - the coach only punishes clearly loose opens, not borderline hands. Want to play tighter - stick to the solid lime zone. There is no single correct chart: strong players and different schools use their own ranges, and that is fine. We keep ONE consistent reference so the coach never contradicts itself; if you play a different chart, say so in the review - the coach will take it into account instead of calling your hand a mistake.",
     "depthNote": "Baseline for stacks of 20 big blinds and deeper: shorter stacks are push-fold territory. Deeper than 60 blinds the edges can widen slightly.",
     "pushTitle": "Short-stack push-fold",
     "pushIntro": "Which hands to go all-in with first when everyone folds to you. Pick a stack and a position.",
