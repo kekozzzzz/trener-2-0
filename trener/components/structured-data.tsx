@@ -4,11 +4,18 @@ import { getAppBaseUrl } from "@/config/app";
 // Google связать имя «Whygrid» именно с этим доменом — чтобы сайт находился по бренду,
 // а не только по точному адресу https://whygrid.app.
 //
+// alternateName — второе имя бренда для поиска с русской раскладки: «Вайгрид»
+// (и «вай грид» вразбивку). Так Google знает, что запрос «вайгрид» — это про этот же
+// сайт, а не только латинское «Whygrid».
+//
 // Без dangerouslySetInnerHTML (запрещён проектом, architecture/07-безопасность.md).
 // React экранирует символы < > & в текстовом содержимом <script>, поэтому в разметке
 // используем ТОЛЬКО безопасные значения (имя бренда, URL, ссылка на логотип) — там
-// этих символов нет, и JSON-LD доходит до поисковика в исходном виде. Свободный текст
-// (описания) сюда не кладём специально: он мог бы содержать & и исказить JSON.
+// этих символов нет (кириллица безопасна), и JSON-LD доходит до поисковика в исходном
+// виде. Свободный текст (описания) сюда не кладём специально: он мог бы содержать & и
+// исказить JSON.
+const BRAND_ALT_NAMES = ["Вайгрид", "вай грид"];
+
 export function StructuredData() {
   const base = getAppBaseUrl();
   const data = [
@@ -16,12 +23,14 @@ export function StructuredData() {
       "@context": "https://schema.org",
       "@type": "WebSite",
       name: "Whygrid",
+      alternateName: BRAND_ALT_NAMES,
       url: base,
     },
     {
       "@context": "https://schema.org",
       "@type": "Organization",
       name: "Whygrid",
+      alternateName: BRAND_ALT_NAMES,
       url: base,
       logo: `${base}/icon.png`,
     },
