@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { getTranslations } from "next-intl/server";
-import { indexable } from "@/lib/seo";
+import { indexablePage } from "@/lib/seo";
 import { getCurrentPlayer } from "@/features/auth/queries";
 import { getPlans, formatUsd } from "@/config/plans";
 import { AuthNav } from "@/components/auth-nav";
@@ -18,7 +18,8 @@ import { GRID_RANKS, cellCode } from "@/config/poker/hand-grid";
 import { buildRange } from "@/config/poker/hand-range";
 
 // Лендинг — в белом списке индексации (заголовок и описание берёт из корневого layout).
-export const metadata = indexable;
+// canonical «/» склеивает http/https/www-дубли главной на один адрес.
+export const metadata = indexablePage("/");
 
 // Лендинг видят все, включая залогиненных. Призыв адаптируется: гостя ведём в
 // регистрацию, залогиненного — сразу в инструмент «Разбор» (/analyze).

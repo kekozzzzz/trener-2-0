@@ -1,4 +1,4 @@
-import { indexable } from "@/lib/seo";
+import { indexablePage } from "@/lib/seo";
 import { getLocale } from "next-intl/server";
 
 // Страница публичная и открыта поиску (решение Артёма 2026-07-06): чарты гуглятся
@@ -7,7 +7,7 @@ import { getLocale } from "next-intl/server";
 export async function generateMetadata() {
   const locale = await getLocale();
   return {
-    ...indexable,
+    ...indexablePage("/charts"),
     title: locale === "en" ? "MTT Preflop Charts" : "Префлоп-чарты для MTT",
     description:
       locale === "en"

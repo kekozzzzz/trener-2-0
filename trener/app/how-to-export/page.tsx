@@ -5,13 +5,13 @@ import { AuthNav } from "@/components/auth-nav";
 import { Wordmark } from "@/components/ui/wordmark";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
-import { indexable } from "@/lib/seo";
+import { indexablePage } from "@/lib/seo";
 import { HandHistoryGuide } from "@/components/upload/hand-history-guide";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Meta");
   return {
-    ...indexable,
+    ...indexablePage("/how-to-export"),
     title: t("howToExportTitle"),
     description: t("howToExportDescription"),
   };
