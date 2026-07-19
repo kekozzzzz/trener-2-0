@@ -11,6 +11,24 @@ const BUTTON_SEAT = /Seat #(\d+) is the button/;
 const TABLE_MAX = /(\d+)-max/;
 const BOARD_LINE = /^Board \[(.+?)\]$/m;
 const POT_TOTAL = /^Total pot ([\d,]+)/m;
+// Уровень блайндов из заголовка: PokerStars пишет его РИМСКИМИ («- Level IV (100/200) -»),
+// клоны на том же формате (Chico, PokerPlanets) встречаются и с арабскими. Без него из промпта
+// пропадала строка «Уровень блайндов турнира» (аудит румов 19.07). Если уровня в заголовке нет
+// вовсе — оставляем undefined, выдумывать стадию турнира нельзя.
+const LEVEL_RE = /-\s*Level\s+([IVXL]+|\d+)\s*\(/i;
+const ROMAN_DIGITS: Record<string, number> = { I: 1, V: 5, X: 10, L: 50 };
+
+function parseLevel(raw: string): number | undefined {
+  if (/^\d+$/.test(raw)) return parseInt(raw, 10);
+  const s = raw.toUpperCase();
+  let total = 0;
+  for (let i = 0; i < s.length; i++) {
+    const cur = ROMAN_DIGITS[s[i]] ?? 0;
+    const next = ROMAN_DIGITS[s[i + 1]] ?? 0;
+    total += cur < next ? -cur : cur; // IV = 4, VI = 6
+  }
+  return total > 0 ? total : undefined;
+}
 const STREET_HEADER = /^\*\*\* (FLOP|TURN|RIVER) \*\*\*/;
 const SUMMARY_START = /^\*\*\* SUMMARY \*\*\*/m;
 const SB_LINE = /^(.+?): posts small blind/m;
@@ -195,6 +213,7 @@ export function parseHand(handText: string, heroName: string): ParsedHandSnapsho
   const boardMatch = BOARD_LINE.exec(handText);
   const board = boardMatch ? boardMatch[1].split(" ") : [];
 
+  const levelMatch = LEVEL_RE.exec(handText);
   const potMatch = POT_TOTAL.exec(handText);
   const potTotal = potMatch ? parseNum(potMatch[1]) : 0;
 
@@ -206,6 +225,7 @@ export function parseHand(handText: string, heroName: string): ParsedHandSnapsho
     potTotal,
     tableSize,
     buttonSeat: buttonSeatNum ?? undefined,
+    level: levelMatch ? parseLevel(levelMatch[1]) : undefined,
   };
 
   return { chipResult: computeHeroChipResult(handText, heroName), tableSnapshot };

@@ -203,6 +203,10 @@ function resolvePositions(
   return byName;
 }
 
+// Уровень блайндов из заголовка: «- Level 1 (10/20) -». Без него из промпта пропадала строка
+// «Уровень блайндов турнира» (аудит румов 19.07).
+const LEVEL_RE = /-\s*Level\s+(\d+)\s*\(/i;
+
 export function parseHand(handText: string, heroName: string): ParsedHandSnapshot {
   const seatRows = parseSeats(handText);
   const buttonSeat = BUTTON_SEAT.exec(handText)?.[1];
@@ -238,6 +242,7 @@ export function parseHand(handText: string, heroName: string): ParsedHandSnapsho
   const boardMatch = BOARD_LINE.exec(handText);
   const board = boardMatch ? boardMatch[1].split(" ") : [];
 
+  const levelMatch = LEVEL_RE.exec(handText);
   const potMatch = POT_TOTAL.exec(handText);
   const potTotal = potMatch ? parseNum(potMatch[1]) : 0;
 
@@ -249,6 +254,7 @@ export function parseHand(handText: string, heroName: string): ParsedHandSnapsho
     potTotal,
     tableSize,
     buttonSeat: buttonSeatNum ?? undefined,
+    level: levelMatch ? parseInt(levelMatch[1], 10) : undefined,
   };
 
   return { chipResult: computeHeroChipResult(handText, heroName), tableSnapshot };

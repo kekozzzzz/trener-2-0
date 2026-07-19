@@ -1,5 +1,6 @@
 import type { TableSnapshot } from "./types";
 import { detectHeroBBDefense } from "./bb-defense";
+import { isHeadsUp } from "./preflop-chart-fact";
 import { detectHeroBvbDefense } from "./bvb-defense";
 import { detectHeroResteal } from "./resteal";
 import { detectHeroCallVsPush } from "./call-vs-push";
@@ -44,6 +45,11 @@ export type ChartRangeSpot =
   | { kind: "openshove"; position: PushPosition; band: StackBand; heroCode: string };
 
 export function heroChartRangeSpot(snapshot: TableSnapshot): ChartRangeSpot | null {
+  // Хедз-ап нашими чартами не судится (см. isHeadsUp в preflop-chart-fact.ts): там баттон — он же
+  // малый блайнд и открывает в разы шире. Панель обязана молчать там же, где молчит вердикт, иначе
+  // игроку показали бы 6-max сетку как эталон для хедз-апа.
+  if (isHeadsUp(snapshot)) return null;
+
   // Панель отвечает на вопрос «а как правильно» ПО РАЗОБРАННОМУ решению.
   //
   // Если раздача ушла на постфлоп и Hero там играл, разбор почти всегда про постфлоп, и префлоп-чарт

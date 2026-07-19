@@ -78,14 +78,16 @@ beforeAll(async () => {
   });
 });
 
+// Чистим очередь ЦЕЛИКОМ: runWorkerOnce берёт одну ЛЮБУЮ задачу, и чужой остаток другого типа
+// перехватил бы прогон (см. тот же фикс в generate-hand-analysis.test.ts, 19.07).
 beforeEach(async () => {
   await db.tournament.deleteMany({ where: { playerId: TEST_PLAYER_ID } });
-  await db.task.deleteMany({ where: { type: "GENERATE_HAND_ANALYSIS" } });
+  await db.task.deleteMany();
 });
 
 afterAll(async () => {
   await db.tournament.deleteMany({ where: { playerId: TEST_PLAYER_ID } });
-  await db.task.deleteMany({ where: { type: "GENERATE_HAND_ANALYSIS" } });
+  await db.task.deleteMany();
   await db.player.delete({ where: { id: TEST_PLAYER_ID } }).catch(() => {});
   await db.$disconnect();
 });

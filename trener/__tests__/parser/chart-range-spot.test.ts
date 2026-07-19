@@ -11,6 +11,7 @@
 import { describe, it, expect } from "vitest";
 import type { Position, TableAction, TableSnapshot } from "@/parser/types";
 import { heroChartRangeSpot } from "@/parser/chart-range-spot";
+import { preflopChartFact } from "@/parser/preflop-chart-fact";
 
 // Стол на 40bb (BB=100): SB и BB постят, дальше — префлоп. Hero на CO по умолчанию.
 function snap(opts: {
@@ -144,5 +145,40 @@ describe("heroChartRangeSpot", () => {
       ],
     });
     expect(heroChartRangeSpot(s)?.kind).not.toBe("rfi");
+  });
+});
+
+// Аудит румов 19.07: в хедз-апе баттон — он же малый блайнд и открывает в разы шире, чем BTN в
+// 6-max (~80% против ~45%). Своего чарта на хедз-ап у продукта НЕТ, поэтому судить чужой таблицей
+// нельзя: и вердикт чарта, и панель обязаны молчать. Пропущенный факт мягче ложного.
+describe("хедз-ап не судится чартами 6-max", () => {
+  const headsUp = () =>
+    snap({
+      heroCards: ["Kh", "7d"],
+      heroPosition: "BTN",
+      seats: [
+        { label: "Hero", position: "BTN", startingStack: 4000 },
+        { label: "Player 1", position: "BB", startingStack: 4000 },
+      ],
+      preflop: [{ street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 220 }],
+    });
+
+  it("панель диапазонов молчит", () => {
+    expect(heroChartRangeSpot(headsUp())).toBeNull();
+  });
+
+  it("вердикт префлоп-чарта тоже молчит (панель и вердикт не расходятся)", () => {
+    expect(preflopChartFact(headsUp())).toBeNull();
+  });
+
+  it("за столом больше двоих K7o с BTN по-прежнему судится", () => {
+    const s = snap({
+      heroCards: ["Kh", "7d"],
+      preflop: [
+        { street: "PREFLOP", actor: "Player 3", action: "FOLD" },
+        { street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 220 },
+      ],
+    });
+    expect(heroChartRangeSpot(s)).not.toBeNull();
   });
 });

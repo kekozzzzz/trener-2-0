@@ -149,6 +149,9 @@ function computeHeroChipResult(handText: string, heroName: string): number {
   return collected + uncalledReturned - ante - totalInvested;
 }
 
+// Уровень блайндов из заголовка Winamax: «... buyIn: 5€ + 0.50€ level: 1 - HandId: ...».
+const LEVEL_RE = /level:\s*(\d+)/i;
+
 export function parseHand(handText: string, heroName: string): ParsedHandSnapshot {
   const seatRows = parseSeats(handText);
   const buttonSeat = BUTTON_SEAT.exec(handText)?.[1];
@@ -183,6 +186,7 @@ export function parseHand(handText: string, heroName: string): ParsedHandSnapsho
   const boardMatch = BOARD_LINE.exec(handText);
   const board = boardMatch ? boardMatch[1].split(" ") : [];
 
+  const levelMatch = LEVEL_RE.exec(handText);
   const potMatch = POT_TOTAL.exec(handText);
   const potTotal = potMatch ? parseNum(potMatch[1]) : 0;
 
@@ -194,6 +198,7 @@ export function parseHand(handText: string, heroName: string): ParsedHandSnapsho
     potTotal,
     tableSize,
     buttonSeat: buttonSeatNum ?? undefined,
+    level: levelMatch ? parseInt(levelMatch[1], 10) : undefined,
   };
 
   return { chipResult: computeHeroChipResult(handText, heroName), tableSnapshot };

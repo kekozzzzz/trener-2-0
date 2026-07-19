@@ -92,18 +92,19 @@ beforeAll(async () => {
   });
 });
 
-// При готовности карточки шаг ставит и обзор турнира, и пересборку характеристики
-// игрока — чистим оба, иначе невычищенные задачи перехватывает runWorkerOnce.
-const TASK_TYPES = ["GENERATE_HAND_ANALYSIS", "GENERATE_TOURNAMENT_SUMMARY", "GENERATE_PLAYER_CHARACTERISTIC"];
-
+// ⚠️Чистим очередь ЦЕЛИКОМ, а не по списку типов. runWorkerOnce берёт ОДНУ ЛЮБУЮ задачу из общей
+// таблицы: если от предыдущего файла тестов осталась задача другого типа, воркер возьмёт ЕЁ, счётчик
+// «обработана 1 задача» честно пройдёт, а наш анализ не выполнится — hand.analysis останется null.
+// Именно так тест плавающе падал (19.07, ~1 прогон из 3): в изоляции всегда зелёный, в общем
+// прогоне — как повезёт. Остальные файлы очереди давно чистят таблицу полностью, этот отставал.
 beforeEach(async () => {
   await db.tournament.deleteMany({ where: { playerId: TEST_PLAYER_ID } });
-  await db.task.deleteMany({ where: { type: { in: TASK_TYPES } } });
+  await db.task.deleteMany();
 });
 
 afterAll(async () => {
   await db.tournament.deleteMany({ where: { playerId: TEST_PLAYER_ID } });
-  await db.task.deleteMany({ where: { type: { in: TASK_TYPES } } });
+  await db.task.deleteMany();
   await db.player.delete({ where: { id: TEST_PLAYER_ID } }).catch(() => {});
   await db.$disconnect();
 });
