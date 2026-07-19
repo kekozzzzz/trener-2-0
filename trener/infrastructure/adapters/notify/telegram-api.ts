@@ -177,16 +177,32 @@ export async function getUpdates(
     timeout: String(pollSec),
     allowed_updates: JSON.stringify(["callback_query", "message"]),
   });
+  const url = `${apiBase()}/bot${token}/getUpdates?${params.toString()}`;
+  const timeoutMs = pollSec * 1000 + getTelegramCallTimeoutMs();
+
   // Таймаут ОБЯЗАТЕЛЕН: без него зависший релей держит опрос дефолтом undici ~5 мин, а
   // страж крона poll-telegram (isRunning) всё это время отдаёт 429 → кнопки ✅/✏️ и входящие
   // замирают до перезапуска. Даём запас на long-poll (timeoutSec) сверх обычного предела.
-  const signal =
-    opts?.signal ?? AbortSignal.timeout(pollSec * 1000 + getTelegramCallTimeoutMs());
-  const response = await fetch(`${apiBase()}/bot${token}/getUpdates?${params.toString()}`, {
-    method: "GET",
-    headers: proxyHeaders(),
-    signal,
-  });
+  //
+  // ОДИН быстрый повтор на таймаут (регресс 2026-07-19): в отличие от sendMessage,
+  // getUpdates дерётся раз в минуту крон-опросом на одном и том же долгоживущем
+  // процессе — пул соединений undici к релею успевает протухнуть между заходами
+  // (соединение выглядит живым, но зависает на первом же байте). Проверено вручную:
+  // сам релей отвечает <1с, повторный заход почти всегда получает свежее соединение
+  // и проходит с первого раза — входящие иначе НЕ принимались вовсе (см. retrospectives
+  // 2026-07-19). Второй заход тоже таймаутом — отдаём ошибку наверх как раньше.
+  async function attempt(signal: AbortSignal): Promise<Response> {
+    return fetch(url, { method: "GET", headers: proxyHeaders(), signal });
+  }
+
+  let response: Response;
+  try {
+    response = await attempt(opts?.signal ?? AbortSignal.timeout(timeoutMs));
+  } catch (err) {
+    if (opts?.signal || !(err instanceof DOMException) || err.name !== "TimeoutError") throw err;
+    response = await attempt(AbortSignal.timeout(timeoutMs));
+  }
+
   if (!response.ok) {
     throw new Error(`Telegram getUpdates не прошёл: HTTP ${response.status}`);
   }
