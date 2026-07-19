@@ -233,3 +233,53 @@ describe("донк только при СВЕЖЕЙ инициативе соп�
     expect(donkLeads(s).some((d) => d.street === "FLOP")).toBe(true);
   });
 });
+
+// Артём 19.07: тренер написал «когда агрессор чекает флоп, он признаёт слабость диапазона — туза
+// или короля у него редко будет» и на этом построил совет коллировать. Но чек агрессора —
+// ДВУСТОРОННЯЯ линия: там и отказ от банка, и придержанная сильная рука. На микролимитах такая
+// ловушка обычное дело. Парсер теперь размечает линию и прямо запрещает читать её как слабость.
+describe("renderTacticalMarks — отложенный контбет не читается как слабость", () => {
+  const heroOpensBb: TableAction[] = [
+    A("PREFLOP", "Hero", "POST_BB", 300),
+    A("PREFLOP", "Player 1", "RAISE", 700),
+    A("PREFLOP", "Hero", "CALL", 400),
+  ];
+
+  it("агрессор чекнул флоп и поставил тёрн → метка с запретом читать чек как слабость", () => {
+    const s = snap("BB", ["Ks", "As", "5d", "9d"], [
+      ...heroOpensBb,
+      A("FLOP", "Hero", "CHECK"),
+      A("FLOP", "Player 1", "CHECK"),
+      A("TURN", "Hero", "CHECK"),
+      A("TURN", "Player 1", "BET", 870),
+    ]);
+    const out = renderTacticalMarks(s);
+    expect(out).toContain("отложенный контбет");
+    expect(out).toContain("НЕЛЬЗЯ читать как признание слабости");
+    expect(out).toContain("придержанная сильная рука");
+  });
+
+  it("обычный контбет флопа меткой отложенного НЕ помечается", () => {
+    const s = snap("BB", ["Ks", "As", "5d", "9d"], [
+      ...heroOpensBb,
+      A("FLOP", "Hero", "CHECK"),
+      A("FLOP", "Player 1", "BET", 400),
+      A("FLOP", "Hero", "CALL", 400),
+      A("TURN", "Hero", "CHECK"),
+      A("TURN", "Player 1", "BET", 870),
+    ]);
+    const out = renderTacticalMarks(s);
+    expect(out).toContain("c-bet");
+    expect(out).not.toContain("отложенный контбет");
+  });
+
+  it("ставит на тёрне НЕ префлоп-агрессор → это не отложенный контбет", () => {
+    const s = snap("BB", ["Ks", "As", "5d", "9d"], [
+      ...heroOpensBb,
+      A("FLOP", "Hero", "CHECK"),
+      A("FLOP", "Player 1", "CHECK"),
+      A("TURN", "Hero", "BET", 500), // лидирует сам Hero
+    ]);
+    expect(renderTacticalMarks(s)).not.toContain("отложенный контбет");
+  });
+});

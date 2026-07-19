@@ -521,3 +521,33 @@ describe("claimsPocketPair — сторож выдуманной карманн�
     expect(() => cleanCoachText(t, "ru", undefined, undefined, undefined, undefined, false)).not.toThrow();
   });
 });
+
+// Артём 19.07: «в описании раздачи всё ещё пишется не символами, а буквами» — модель выдала
+// «На борде 4c 5c 8c 6c Kd». Промпт значки просит прямым текстом, но просьбы держат плохо —
+// переводим кодом. Конвертируем ТОЛЬКО карты из снимка, иначе замена легализовала бы выдуманную.
+describe("cleanCoachText — буквенные масти переводятся в значки", () => {
+  const cards = new Set(["4c", "5c", "8c", "6c", "Kd", "8h", "7h"].map((c) => c[0].toUpperCase() + c[1]));
+
+  it("карты раздачи получают значок масти", () => {
+    const out = cleanCoachText("На борде 4c 5c 8c 6c Kd у тебя стрит.", "ru", cards);
+    expect(out).toContain("4♣");
+    expect(out).toContain("5♣");
+    expect(out).toContain("Kd".replace("Kd", "K♦"));
+    expect(out).not.toContain("4c");
+    expect(out).not.toContain("Kd");
+  });
+
+  it("десятка в бытовой записи сначала нормализуется, потом получает значок", () => {
+    const withTen = new Set([...cards, "Td"]);
+    expect(cleanCoachText("пришла 10d", "ru", withTen)).toContain("T♦");
+  });
+
+  it("карта ВНЕ снимка НЕ получает значок — замена не легализует выдуманную карту", () => {
+    // Ac в раздаче нет. Наша замена обязана его не трогать: иначе «Ac» стал бы «A♣» и выглядел бы
+    // как законная карта раздачи. (Отдельная известная дыра: выдуманную карту, записанную БУКВАМИ,
+    // сторож strayCard не ловит — он проверяет только форму со значком.)
+    const out = cleanCoachText("у него был Ac", "ru", cards);
+    expect(out).not.toContain("A♣");
+    expect(out).toContain("Ac");
+  });
+});

@@ -847,18 +847,25 @@ export function renderFlushSummary(hero: string[], board: string[]): string | nu
   const suits = ["s", "h", "d", "c"];
   const boardN = (s: string) => board.filter((c) => c.length >= 2 && c[1].toLowerCase() === s).length;
   const heroN = (s: string) => hero.filter((c) => c.length >= 2 && c[1].toLowerCase() === s).length;
-  // Флеш/дро У HERO — по масти с максимумом карт (борд+рука). Дро = 4 карты одной масти.
-  let bestSuit = "s";
-  for (const s of suits) if (boardN(s) + heroN(s) > boardN(bestSuit) + heroN(bestSuit)) bestSuit = s;
-  const bestTotal = boardN(bestSuit) + heroN(bestSuit);
-  const bestRu = SUIT_RU_GEN[bestSuit] ?? bestSuit;
-  if (bestTotal >= 5) return `Флеш-угроза: у тебя СОБРАН флеш ${bestRu} (${heroN(bestSuit)} в руке + ${boardN(bestSuit)} на борде).`;
+  // ⚠️Флеш/дро считаются ТВОИМИ только если ты реально держишь карты этой масти. Раньше суммировались
+  // борд+рука без этой проверки, и четыре трефы НА БОРДЕ при 8♥7♥ давали «у ТЕБЯ было флеш-дро треф»
+  // (Артём 19.07). Хуже того, ложная ветка вытесняла настоящее предупреждение, что флеш возможен
+  // только у соперника, — и тренер советовал рейз «на велью» в доску из четырёх одномастных.
+  let ownSuit: string | null = null;
+  for (const s of suits) {
+    if (heroN(s) === 0) continue;
+    if (ownSuit === null || boardN(s) + heroN(s) > boardN(ownSuit) + heroN(ownSuit)) ownSuit = s;
+  }
+  const ownTotal = ownSuit ? boardN(ownSuit) + heroN(ownSuit) : 0;
+  const ownRu = ownSuit ? SUIT_RU_GEN[ownSuit] ?? ownSuit : "";
+  if (ownSuit && ownTotal >= 5)
+    return `Флеш-угроза: у тебя СОБРАН флеш ${ownRu} (${heroN(ownSuit)} в руке + ${boardN(ownSuit)} на борде).`;
   // Дро считаем только пока есть будущая карта: на ривере (борд=5) 4 карты масти — это уже НЕ дро,
   // флеша нет (регресс #85: A7 бубны на ривере, 4 бубны без пятой — «натсового флеша» нет).
-  if (bestTotal === 4 && board.length < 5)
-    return `Флеш-угроза: у тебя ФЛЕШ-ДРО ${bestRu} (${heroN(bestSuit)} в руке + ${boardN(bestSuit)} на борде, не хватает одной карты) - но это ещё НЕ флеш.`;
-  if (bestTotal === 4 && board.length === 5)
-    return `Флеш-угроза: до ривера у тебя было флеш-дро ${bestRu} (4 карты масти), но пятая не пришла - флеша НЕТ, не пиши, что собрал флеш.`;
+  if (ownSuit && ownTotal === 4 && board.length < 5)
+    return `Флеш-угроза: у тебя ФЛЕШ-ДРО ${ownRu} (${heroN(ownSuit)} в руке + ${boardN(ownSuit)} на борде, не хватает одной карты) - но это ещё НЕ флеш.`;
+  if (ownSuit && ownTotal === 4 && board.length === 5)
+    return `Флеш-угроза: до ривера у тебя было флеш-дро ${ownRu} (${heroN(ownSuit)} в руке + ${boardN(ownSuit)} на борде), но пятая не пришла - флеша НЕТ, не пиши, что собрал флеш.`;
   // Своего флеша/дро нет. Угроза соперника — по масти с максимумом НА БОРДЕ (3+ = флеш возможен у него).
   let maxBoardSuit = "s";
   for (const s of suits) if (boardN(s) > boardN(maxBoardSuit)) maxBoardSuit = s;
@@ -866,7 +873,13 @@ export function renderFlushSummary(hero: string[], board: string[]): string | nu
   if (maxBoardN < 3) {
     return `Флеш-угроза: на борде максимум ${maxBoardN} карты одной масти, у тебя тоже нет 4 одной масти - флеша и флеш-дро НЕТ ни у тебя, ни у соперника, не выдумывай флеш.`;
   }
-  return `Флеш-угроза: на борде ${maxBoardN} карт(ы) масти ${SUIT_RU_GEN[maxBoardSuit] ?? maxBoardSuit}, а у тебя этой масти нет - СВОЕГО флеша и флеш-дро у тебя НЕТ (флеш возможен только у соперника), не приписывай флеш или флеш-дро себе.`;
+  const maxRu = SUIT_RU_GEN[maxBoardSuit] ?? maxBoardSuit;
+  // Четыре и больше одномастных НА БОРДЕ при отсутствии этой масти у Hero — самая опасная текстура:
+  // сопернику достаточно ОДНОЙ карты масти. Отдельная громкая строка нужна потому, что тренер на
+  // такой доске советовал рейз «на велью» стритом без трефы (Артём 19.07: «тут нет добора никогда»).
+  if (maxBoardN >= 4)
+    return `Флеш-угроза: на борде ${maxBoardN} карты масти ${maxRu}, а у тебя этой масти НЕТ. Сопернику хватит ОДНОЙ карты ${maxRu}, чтобы иметь готовый флеш, — он бьёт любую твою руку слабее фулл-хауса, включая стрит и сет. Значит рук СЛАБЕЕ твоей, готовых заплатить рейз, тут почти нет: добирать не с кого, а платить будут в основном флеши. Не советуй рейз «на велью» и не пиши, что ты впереди большей части его диапазона.`;
+  return `Флеш-угроза: на борде ${maxBoardN} карт(ы) масти ${maxRu}, а у тебя этой масти нет - СВОЕГО флеша и флеш-дро у тебя НЕТ (флеш возможен только у соперника), не приписывай флеш или флеш-дро себе.`;
 }
 
 export function renderHandFacts(snapshot: TableSnapshot): string {
@@ -1170,13 +1183,21 @@ export function renderHandFacts(snapshot: TableSnapshot): string {
     // соперника. Обобщает vuln/кикер на ЛЮБУЮ руку (включая одну пару/воздух, которым иначе нет ни
     // одного числа силы).
     if (odds) {
-      const oddsKey = `${odds.losesTo}|${odds.total}|${odds.beats}`;
+      const oddsKey = `${odds.losesTo}|${odds.total}|${odds.beats}|${odds.ties}`;
       if (oddsKey !== prevOdds) {
         prevOdds = oddsKey;
         const brk = odds.losesByCategory.length
           ? ` (из них ${odds.losesByCategory.map((c) => `${c.count} ${c.category}`).join(", ")})`
           : "";
-        let s = `Расклады против твоей руки на ${STREET_RU[street]} (перебор всей колоды - НЕ диапазон конкретного соперника, а сколько способов обойти тебя вообще существует): тебя бьют ${odds.losesTo} из ${odds.total} возможных комбо${brk}; ты впереди ${odds.beats}.`;
+        // ⚠️Ничьи считались, но в факт НЕ попадали: модель видела только «бьют» и «впереди» и
+        // трактовала раздел банка как проигрыш («ты почти никогда не выигрываешь — только делишь,
+        // значит колл невыгоден»). Раздел — это ПОЛОВИНА банка, а не ноль (Артём 19.07, K3o на
+        // спаренной доске: 62 комбо делят). Называем их и говорим, как считать.
+        const tiesPart =
+          odds.ties > 0
+            ? ` С ${odds.ties} комбо ты ДЕЛИШЬ банк - это не проигрыш: раздел возвращает половину, и в счёт эквити он идёт как ПОЛОВИНА выигрыша, а не как ноль.`
+            : "";
+        let s = `Расклады против твоей руки на ${STREET_RU[street]} (перебор всей колоды - НЕ диапазон конкретного соперника, а сколько способов обойти тебя вообще существует): тебя бьют ${odds.losesTo} из ${odds.total} возможных комбо${brk}; ты впереди ${odds.beats}.${tiesPart}`;
         if (street === "RIVER" && odds.beats > 0 && !odds.heroBeatsValue)
           s += ` Всё, что ты бьёшь - воздух соперника (ни одной его готовой руки ты не бьёшь): по сути блеф-кэтчер.`;
         lines.push(s);

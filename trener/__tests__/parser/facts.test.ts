@@ -1046,3 +1046,75 @@ describe("renderHandFacts — карта улицы не комментируе�
     expect(renderHandFacts(s)).toContain("Карта тёрна для тебя");
   });
 });
+
+// Артём 19.07: борд 4c5c8c6c Kd, у Hero 8h7h (стрит, ни одной трефы). Парсер писал «до ривера у
+// ТЕБЯ было флеш-дро треф» — считал 4 трефы БОРДА своими. Ложная ветка вытесняла предупреждение,
+// что флеш возможен только у соперника, и тренер советовал рейз «на велью» в доску из четырёх
+// одномастных: «тут нет добора никогда вообще».
+describe("renderFlushSummary — масть считается своей только если она есть в руке", () => {
+  it("4 одномастных на борде, у Hero этой масти нет → громкое предупреждение, а не «твоё дро»", () => {
+    const out = renderFlushSummary(["8h", "7h"], ["4c", "5c", "8c", "6c", "Kd"]) ?? "";
+    expect(out).not.toContain("у тебя было флеш-дро");
+    expect(out).toContain("у тебя этой масти НЕТ");
+    expect(out).toContain("хватит ОДНОЙ карты");
+    expect(out).toContain("Не советуй рейз «на велью»");
+  });
+
+  it("своё флеш-дро (2 в руке + 2 на борде) по-прежнему считается твоим", () => {
+    const out = renderFlushSummary(["Ah", "9h"], ["2h", "7h", "Kd"]) ?? "";
+    expect(out).toContain("ФЛЕШ-ДРО");
+  });
+
+  it("одна карта масти в руке + 3 на борде — тоже твоё дро", () => {
+    const out = renderFlushSummary(["Ah", "9c"], ["2h", "7h", "Kh"]) ?? "";
+    expect(out).toContain("ФЛЕШ-ДРО");
+  });
+
+  it("собранный флеш остаётся собранным", () => {
+    const out = renderFlushSummary(["Ah", "9h"], ["2h", "7h", "Kh", "3c", "4d"]) ?? "";
+    expect(out).toContain("СОБРАН флеш");
+  });
+
+  it("три одномастных на борде без своей масти — прежняя мягкая формулировка", () => {
+    const out = renderFlushSummary(["Ad", "9s"], ["2h", "7h", "Kh", "3c", "4s"]) ?? "";
+    expect(out).toContain("флеш возможен только у соперника");
+  });
+});
+
+// Артём 19.07: K3o на K♥5♣Q♦8♣5♥ делит банк с любым Kx (кикер — дама с борда). Тренер писал
+// «ты почти никогда не выигрываешь — только делишь, значит колл невыгоден», трактуя раздел как
+// проигрыш. Раздел — это ПОЛОВИНА банка. Ничьи считались, но в факт не попадали.
+describe("renderHandFacts — разделы банка названы и не считаются проигрышем", () => {
+  const splitSnap = () =>
+    snap({
+      seats: [
+        { label: "Hero", position: "BB", startingStack: 15600 },
+        { label: "opp1", position: "CO", startingStack: 5700 },
+      ] as Seat[],
+      heroCards: ["Kd", "3h"],
+      board: ["Kh", "5c", "Qd", "8c", "5h"],
+      actions: [
+        { street: "PREFLOP", actor: "Hero", action: "POST_BB", amount: 300 } as TableAction,
+        { street: "PREFLOP", actor: "opp1", action: "RAISE", amount: 600 } as TableAction,
+        { street: "PREFLOP", actor: "Hero", action: "CALL", amount: 300 } as TableAction,
+        { street: "RIVER", actor: "Hero", action: "CHECK" } as TableAction,
+        { street: "RIVER", actor: "opp1", action: "BET", amount: 3300 } as TableAction,
+      ],
+    });
+
+  it("комбо, с которыми делишь, названы и помечены как половина, а не ноль", () => {
+    const r = renderHandFacts(splitSnap());
+    expect(r).toContain("ты ДЕЛИШЬ банк");
+    expect(r).toContain("это не проигрыш");
+    expect(r).toContain("ПОЛОВИНА выигрыша");
+  });
+
+  it("когда ничьих нет — лишней строки про раздел не появляется", () => {
+    const s = splitSnap();
+    // Стрит-флеш от девятки: повторить его сопернику нечем (обе старшие карты у Hero),
+    // всё остальное строго слабее — ничьих ровно ноль.
+    s.heroCards = ["9h", "8h"];
+    s.board = ["5h", "6h", "7h", "2c", "2d"];
+    expect(renderHandFacts(s)).not.toContain("ты ДЕЛИШЬ банк");
+  });
+});

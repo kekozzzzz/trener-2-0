@@ -6,16 +6,17 @@ import {
   PLANS_LIST,
 } from "@/config/plans";
 
-// Сетка 2026-07-10 (plans/2026-07-10-новые-тарифы.md): $7/25 и $21/безлимит (fair-use 300),
+// Сетка 2026-07-10 (plans/2026-07-10-новые-тарифы.md): $7/25 и безлимит (fair-use 300),
+// цена «Продвинутого» поднята с $21 до $28 по решению Артёма 19.07.2026.
 // max скрыт с витрины, но жив для старых подписок. Тесты закрепляют решение Артёма —
 // случайная правка чисел без нового решения должна уронить тест.
 
 describe("тарифная сетка 2026-07-10", () => {
-  it("витрина — два тарифа: $7/25 и $21/безлимит; max скрыт", () => {
+  it("витрина — два тарифа: $7/25 и $28/безлимит; max скрыт", () => {
     const plans = getPlans();
     expect(plans.map((p) => p.code)).toEqual(["basic", "standard"]);
     expect(plans[0]).toMatchObject({ priceUsd: 7, tournamentLimit: 25 });
-    expect(plans[1]).toMatchObject({ priceUsd: 21, unlimited: true });
+    expect(plans[1]).toMatchObject({ priceUsd: 28, unlimited: true });
   });
 
   it("скрытый max остаётся рабочим планом (старые подписки: comp владельца, тестер)", () => {

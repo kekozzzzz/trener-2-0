@@ -114,6 +114,29 @@ export function renderTacticalMarks(snapshot: TableSnapshot): string {
   if (preAgg && flopFirstAgg && flopFirstAgg.actor === preAgg && flopFirstAgg.action === "BET")
     marks.push(`c-bet (продолженную ставку префлоп-агрессора) на флопе поставил ${name(preAgg)}`);
 
+  // Отложенный контбет: префлоп-агрессор ЧЕКНУЛ флоп и поставил на тёрне. Линия ДВУСТОРОННЯЯ —
+  // в ней и отказ от банка, и намеренно придержанная сильная рука. Метка нужна потому, что модель
+  // читала чек агрессора как категорическое «признал слабость диапазона» и на этом строила совет
+  // коллировать (Артём 19.07: «это же может быть блеф-ловушка, фиши такие обожают»).
+  if (preAgg) {
+    const checkedFlop = snapshot.actions.some(
+      (a) => a.street === "FLOP" && a.actor === preAgg && a.action === "CHECK",
+    );
+    const flopBetByAnyone = snapshot.actions.some(
+      (a) => a.street === "FLOP" && (a.action === "BET" || a.action === "RAISE" || a.action === "ALL_IN"),
+    );
+    const turnLead = snapshot.actions.find(
+      (a) => a.street === "TURN" && (a.action === "BET" || a.action === "ALL_IN"),
+    );
+    if (checkedFlop && !flopBetByAnyone && turnLead && turnLead.actor === preAgg)
+      marks.push(
+        `отложенный контбет: префлоп-агрессор ${name(preAgg)} чекнул флоп и поставил только на тёрне. ` +
+          `Эту линию НЕЛЬЗЯ читать как признание слабости: в ней и отказ от банка, и намеренно ` +
+          `придержанная сильная рука (слоуплей на сухой доске — обычное дело на микролимитах). ` +
+          `Не пиши «раз чекнул флоп, туза/короля у него почти нет» — чек флопа этого НЕ доказывает`,
+      );
+  }
+
   // Чек-рейзы по улицам: тот же actor сначала CHECK, затем РЕЙЗ на той же улице.
   // ⚠️ALL_IN сам по себе чек-рейзом не является: румы пишут им и КОЛЛ ва-банк (см. aggression.ts),
   // а чек-КОЛЛ олл-ина — это не чек-рейз. Сверяем сумму через общий критерий (аудит 18.07).
