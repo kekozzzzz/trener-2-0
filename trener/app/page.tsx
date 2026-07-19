@@ -6,6 +6,7 @@ import { getCurrentPlayer } from "@/features/auth/queries";
 import { getPlans, formatUsd } from "@/config/plans";
 import { AuthNav } from "@/components/auth-nav";
 import { Wordmark } from "@/components/ui/wordmark";
+import { StructuredData } from "@/components/structured-data";
 import { SiteFooter } from "@/components/site-footer";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { Badge } from "@/components/ui/badge";
@@ -109,6 +110,7 @@ export default async function HomePage() {
 
   return (
     <main>
+      <StructuredData />
       <BlurFade direction="up" offset={8} blur="0px" duration={0.3}>
         <header className="border-b border-border">
           {/* Мобайл: вордмарк и навигация в две центрированные строки — гостевая и
