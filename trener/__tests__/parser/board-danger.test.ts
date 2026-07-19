@@ -120,6 +120,73 @@ describe("renderShowdownFacts — фаза 4: вскрытые карты с к�
     expect(out).toContain("не ослабляй посчитанную комбинацию");
   });
 
+  // ⚠️Обратная сторона той же пометки: комбинация соперника считается по ПОЛНОМУ борду. Если он
+  // коллировал ставку Hero на ФЛОПЕ с дро, а флеш собрался только на ривере, писать «заколлировал
+  // именно с этой готовой рукой» НЕЛЬЗЯ — тогда это ложный факт («заколлировал флоп-бет с флешем»).
+  // Пометка обязана выходить только на РИВЕРНОМ колле.
+  it("колл ставки Hero на ФЛОПЕ с дро (флеш собрался на ривере) — пометки про готовую руку НЕТ", () => {
+    const s = snap({
+      seats: [
+        { label: "Hero", position: "CO", startingStack: 30000 },
+        { label: "Player 8", position: "BTN", startingStack: 30000, shownCards: ["Ah", "Qh"] },
+      ],
+      heroCards: ["Ks", "Kd"],
+      board: ["2h", "7h", "Kc", "3c", "9h"], // флеш черв у соперника достроился только ривером
+      actions: [
+        { street: "FLOP", actor: "Hero", action: "BET", amount: 1000 },
+        { street: "FLOP", actor: "Player 8", action: "CALL", amount: 1000 },
+        { street: "TURN", actor: "Hero", action: "CHECK" },
+        { street: "TURN", actor: "Player 8", action: "CHECK" },
+        { street: "RIVER", actor: "Hero", action: "CHECK" },
+        { street: "RIVER", actor: "Player 8", action: "CHECK" },
+      ],
+    });
+    const out = renderShowdownFacts(s);
+    expect(out).toContain("флеш"); // саму комбинацию на вскрытии называем
+    expect(out).not.toContain("заколлировал ИМЕННО с этой готовой рукой");
+  });
+
+  // Находка состязательного ревью 18.07: парсер GG пишет КОЛЛ олл-ина тем же ALL_IN, что и пуш.
+  // Если Hero сам ДОЛОЖИЛ олл-ином на ривере, а третий игрок оверколлировал, пометка «твою ставку
+  // он заколлировал» — ложь: Hero не ставил.
+  it("Hero сам доложил олл-ином (колл, а не ставка) — пометки «твою ставку заколлировал» НЕТ", () => {
+    const s = snap({
+      seats: [
+        { label: "Hero", position: "CO", startingStack: 2800 },
+        { label: "Player 3", position: "BTN", startingStack: 30000 },
+        { label: "Player 8", position: "BB", startingStack: 30000, shownCards: ["Ad", "6d"] },
+      ],
+      heroCards: ["Kh", "Qs"],
+      board: ["Jd", "6s", "2c", "3s", "Ac"],
+      actions: [
+        { street: "RIVER", actor: "Player 3", action: "BET", amount: 3000 },
+        { street: "RIVER", actor: "Hero", action: "ALL_IN", amount: 2800 }, // доложил меньше — это КОЛЛ
+        { street: "RIVER", actor: "Player 8", action: "CALL", amount: 3000 },
+      ],
+    });
+    expect(renderShowdownFacts(s)).not.toContain("заколлировал ИМЕННО с этой готовой рукой");
+  });
+
+  // Вторая часть той же находки: между ставкой Hero и коллом кто-то поднял — значит соперник
+  // коллировал ЧУЖОЙ рейз, а не ставку Hero.
+  it("между ставкой Hero и коллом был чужой рейз — пометку не вешаем", () => {
+    const s = snap({
+      seats: [
+        { label: "Hero", position: "CO", startingStack: 30000 },
+        { label: "Player 3", position: "BTN", startingStack: 30000 },
+        { label: "Player 8", position: "BB", startingStack: 30000, shownCards: ["8c", "8d"] },
+      ],
+      heroCards: ["Kh", "Qs"],
+      board: ["Jh", "6c", "As", "8s", "2d"],
+      actions: [
+        { street: "RIVER", actor: "Hero", action: "BET", amount: 500 },
+        { street: "RIVER", actor: "Player 3", action: "RAISE", amount: 2000 },
+        { street: "RIVER", actor: "Player 8", action: "CALL", amount: 2000 },
+      ],
+    });
+    expect(renderShowdownFacts(s)).not.toContain("заколлировал ИМЕННО с этой готовой рукой");
+  });
+
   // Блокер из ревью: Hero сфолдил до вскрытия, соперники вскрылись. Руки Hero на шоудауне
   // не было — строку «твоя рука выиграла/проиграла» давать НЕЛЬЗЯ (ложный факт), но саму
   // комбинацию вскрывшегося показываем.

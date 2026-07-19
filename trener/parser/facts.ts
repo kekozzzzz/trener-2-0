@@ -2,6 +2,7 @@ import type { Street, TableAction, TableSnapshot } from "./types";
 import { bigBlindFromSnapshot } from "./big-blind";
 import { equityVsHandPreflop } from "./cooler";
 import { boardUpToStreet, tableStateUpTo } from "./table-state";
+import { lastAggressionIndex } from "./aggression";
 import {
   heroMadeHand,
   madeHandCategoryRu,
@@ -741,14 +742,26 @@ export function renderShowdownFacts(snapshot: TableSnapshot): string {
   // коллом ГОТОВОЙ рукой. Регресс 18.07 (QTo, борд J6A88): тренер написал, что блеф заколлировали
   // «даже парой восьмёрок», хотя парсер передал «две пары (тузов и восьмёрок)». Смысл перевернулся —
   // вышло, будто коллировали мусором, хотя коллировала крепкая рука.
-  const heroAggroIdx = snapshot.actions.reduce(
-    (last, a, i) =>
-      a.actor === "Hero" && (a.action === "BET" || a.action === "RAISE" || a.action === "ALL_IN") ? i : last,
-    -1,
-  );
-  const calledHeroBet = (label: string) =>
-    heroAggroIdx >= 0 &&
-    snapshot.actions.slice(heroAggroIdx + 1).some((a) => a.actor === label && a.action === "CALL");
+  // Последняя НАСТОЯЩАЯ ставка Hero. Все румы пишут колл-олл-ина тем же ALL_IN, что и пуш, поэтому
+  // без сверки сумм КОЛЛ Hero принимался за его СТАВКУ и выходило «твою ставку заколлировали» там,
+  // где Hero сам доложил (находка ревью 18.07). Критерий — общий для парсера, см. aggression.ts.
+  const heroAggroIdx = lastAggressionIndex(snapshot, "Hero");
+  // ⚠️Утверждать «заколлировал ИМЕННО с ЭТОЙ готовой рукой» можно ТОЛЬКО когда колл был на РИВЕРЕ:
+  // mh считается по ПОЛНОМУ борду, а на ранней улице соперник мог заколлировать с ДРО, которое
+  // собралось позже. Иначе получился бы ложный факт («заколлировал твой флоп-бет с флешем», хотя
+  // флеша тогда не было) — тот же критический класс, что и выдуманное вскрытие.
+  const calledHeroBet = (label: string) => {
+    if (heroAggroIdx < 0 || board.length !== 5) return false;
+    if (snapshot.actions[heroAggroIdx].street !== "RIVER") return false;
+    // Если между ставкой Hero и коллом кто-то ПОДНЯЛ, соперник заколлировал уже чужой рейз, а не
+    // ставку Hero — пометку вешать нельзя (вторая часть находки ревью).
+    const after = snapshot.actions.slice(heroAggroIdx + 1);
+    const raiseIdx = after.findIndex(
+      (a) => a.actor !== "Hero" && (a.action === "BET" || a.action === "RAISE" || a.action === "ALL_IN"),
+    );
+    const window = raiseIdx >= 0 ? after.slice(0, raiseIdx) : after;
+    return window.some((a) => a.actor === label && a.action === "CALL" && a.street === "RIVER");
+  };
 
   const lines: string[] = [];
   for (const seat of snapshot.seats) {

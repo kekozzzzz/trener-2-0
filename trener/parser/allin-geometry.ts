@@ -1,5 +1,6 @@
 import type { TableSnapshot } from "./types";
 import { bigBlindFromSnapshot } from "./big-blind";
+import { isAggressiveActionAt } from "./aggression";
 
 // Факты-v2, фаза 3: геометрия ре-пуша Hero поверх уже вошедшего в олл-ин короткого.
 // Арифметика, которую быстрый режим теряет, а старая модель путала всегда: часть
@@ -39,7 +40,7 @@ export function detectAllInGeometry(snapshot: TableSnapshot): AllInGeometry | nu
     pot += delta;
   };
 
-  for (const a of snapshot.actions) {
+  for (const [i, a] of snapshot.actions.entries()) {
     if (a.street !== "PREFLOP") break; // только префлоп-ре-пуш
     const prev = committed.get(a.actor) ?? 0;
 
@@ -52,6 +53,11 @@ export function detectAllInGeometry(snapshot: TableSnapshot): AllInGeometry | nu
 
       if (a.action === "ALL_IN") {
         if (allInAhead.size === 0) return null; // впереди никто не в олл-ине — опен-шов, не ре-пуш
+        // ⚠️Плоский КОЛЛ чужого олл-ина румы пишут тем же ALL_IN (см. aggression.ts). Ре-пуша тут
+        // нет: Hero доложил последним, фолд-эквити у него ноль и «забрать банк без вскрытия» он не
+        // может. Старый комментарий ниже утверждал, что колл сюда не попадёт, — это было неверно, и
+        // на реальной раздаче GG выходила «геометрия твоего ре-пуша» на плоском колле (аудит 18.07).
+        if (!isAggressiveActionAt(snapshot, i)) return null;
 
         const heroStack = heroSeat.startingStack;
         const potBefore = pot; // банк ДО добавления шова Hero
@@ -92,8 +98,10 @@ export function detectAllInGeometry(snapshot: TableSnapshot): AllInGeometry | nu
       // `return null`, из-за чего терялась частая линия «Hero открыл → в него олл-ин → Hero ре-пуш»
       // (регресс: раздачи ATs и AJs-vs-AKs — тренер писал «забрать банк сразу» без факта геометрии).
       // НЕ выходим: ход учитывается общим switch ниже (он один для соперников и таких ходов Hero),
-      // и цикл идёт дальше до реального ре-пуша. Плоский колл олл-ина ре-пуша не создаёт (Hero так и
-      // не сделает ALL_IN → в конце вернём null), опен-шов тоже (allInAhead пуст).
+      // и цикл идёт дальше до реального ре-пуша. Опен-шов геометрии не даёт (allInAhead пуст).
+      // ⚠️Плоский колл чужого олл-ина сюда НЕ попадает — румы пишут его как ALL_IN, и он отсекается
+      // выше через isAggressiveActionAt (раньше тут стояло допущение «Hero так и не сделает ALL_IN»,
+      // и оно было ложным: на GG колл ва-банк — это ровно ALL_IN).
     }
 
     // Соперник.

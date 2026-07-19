@@ -1,6 +1,7 @@
 import type { Street, TableSnapshot } from "./types";
 import { nodeStateAt } from "./alternatives";
 import { bigBlindFromSnapshot } from "./big-blind";
+import { isAggressiveActionAt } from "./aggression";
 
 // Инициатива на постфлопе: держит тот, кто сделал ПОСЛЕДНЕЕ агрессивное действие
 // (бет/рейз/олл-ин) на предыдущих улицах. Форсы (блайнды/анте) и чек/колл/фолд инициативу
@@ -113,13 +114,25 @@ export function renderTacticalMarks(snapshot: TableSnapshot): string {
   if (preAgg && flopFirstAgg && flopFirstAgg.actor === preAgg && flopFirstAgg.action === "BET")
     marks.push(`c-bet (продолженную ставку префлоп-агрессора) на флопе поставил ${name(preAgg)}`);
 
-  // Чек-рейзы по улицам: тот же actor сначала CHECK, затем RAISE/ALL_IN-рейз на той же улице.
-  for (const street of ["FLOP", "TURN", "RIVER"] as const) {
-    const checked = new Set<string>();
-    for (const a of snapshot.actions.filter((x) => x.street === street)) {
-      if (a.action === "CHECK") checked.add(a.actor);
-      else if ((a.action === "RAISE" || a.action === "ALL_IN") && checked.has(a.actor))
-        marks.push(`чек-рейз на ${STREET_RU[street]} сделал ${name(a.actor)}`);
+  // Чек-рейзы по улицам: тот же actor сначала CHECK, затем РЕЙЗ на той же улице.
+  // ⚠️ALL_IN сам по себе чек-рейзом не является: румы пишут им и КОЛЛ ва-банк (см. aggression.ts),
+  // а чек-КОЛЛ олл-ина — это не чек-рейз. Сверяем сумму через общий критерий (аудит 18.07).
+  const checkedOn = new Map<string, Set<string>>();
+  for (const [i, a] of snapshot.actions.entries()) {
+    if (a.street === "PREFLOP") continue;
+    let checked = checkedOn.get(a.street);
+    if (!checked) {
+      checked = new Set<string>();
+      checkedOn.set(a.street, checked);
+    }
+    if (a.action === "CHECK") {
+      checked.add(a.actor);
+    } else if (
+      (a.action === "RAISE" || a.action === "ALL_IN") &&
+      checked.has(a.actor) &&
+      isAggressiveActionAt(snapshot, i)
+    ) {
+      marks.push(`чек-рейз на ${STREET_RU[a.street]} сделал ${name(a.actor)}`);
     }
   }
 

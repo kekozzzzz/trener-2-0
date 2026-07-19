@@ -172,9 +172,18 @@ function parseActions(
         action = isAllIn ? "ALL_IN" : "RAISE";
         amount = nowStreet;
         break;
-      case "ALL_IN": // type 7 — колл олл-ина, sum = инкремент колла
-        amount = raw.sum;
+      case "ALL_IN": {
+        // type 7 — ЛЮБОЙ уход ва-банк, а не только колл (комментарий «колл олл-ина» был неполон:
+        // в реальных файлах этим же типом идёт и агрессивный джем поверх чужой ставки).
+        // Приводим сумму к общему для всех румов соглашению, иначе размерности разъезжаются ВНУТРИ
+        // рума и джем читается как доплата: рейз → ИТОГ по улице, колл → ПРИРОСТ (аудит 18.07).
+        const highBefore = [...streetCommit.entries()].reduce(
+          (m, [name, v]) => (name === raw.player ? m : Math.max(m, v)),
+          0,
+        );
+        amount = nowStreet > highBefore ? nowStreet : raw.sum;
         break;
+      }
       case "POST_SB":
       case "POST_BB":
       case "POST_ANTE":
@@ -230,6 +239,11 @@ export function parseGame(gameXml: string, heroName: string, tableSize?: number)
       positionName: resolved?.fine ?? "OTHER",
       startingStack: p.chips,
       seatNumber: p.seat,
+      // Кто и сколько забрал из банка — атрибут win в <player>. Без него факт «Банк по итогам
+      // забрал: …» на iPoker не выходил вовсе, и модели оставалось выводить победителя из знака
+      // результата — ровно то, что этот факт запрещает (аудит румов 18.07). Ноль не пишем, чтобы
+      // «победителями» не стали все сидящие за столом.
+      ...(p.win > 0 ? { collected: p.win } : {}),
     };
   });
 

@@ -121,4 +121,30 @@ describe("allin-geometry — фаза 3: геометрия ре-пуша", () =
     });
     expect(detectAllInGeometry(s)).toBeNull();
   });
+
+  // Аудит румов 18.07: ВСЕ румы пишут плоский КОЛЛ чужого олл-ина тем же action="ALL_IN", что и пуш.
+  // Раньше геометрия «твоего ре-пуша» выходила и на таком колле — ложный факт: Hero доложил
+  // последним, фолд-эквити у него ноль, «забрать банк без вскрытия» невозможно. Воспроизведено на
+  // реальном файле GG20260618-1715 (Hero: calls 21,076 and is all-in против рейза to 33,995).
+  it("плоский КОЛЛ чужого олл-ина (записан как ALL_IN) — геометрии ре-пуша НЕТ", () => {
+    const s = snap({
+      seats: [
+        { label: "Hero", position: "BTN", positionName: "BTN", startingStack: 24276 },
+        { label: "Player C", position: "CO", positionName: "CO", startingStack: 33995 },
+        { label: "Player B", position: "BB", positionName: "BB", startingStack: 40000 },
+      ],
+      actions: [
+        { street: "PREFLOP", actor: "Player B", action: "POST_BB", amount: BB },
+        { street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 3000 },
+        { street: "PREFLOP", actor: "Player C", action: "ALL_IN", amount: 33995 }, // рейз-олл-ин
+        { street: "PREFLOP", actor: "Hero", action: "ALL_IN", amount: 21076 }, // ДОЛОЖИЛ меньше = колл
+      ],
+    });
+    expect(detectAllInGeometry(s)).toBeNull();
+  });
+
+  // Обратная сторона: настоящий ре-пуш ПОВЕРХ чужого олл-ина геометрию давать обязан (не пересушили).
+  it("настоящий ре-пуш поверх чужого олл-ина — геометрия остаётся", () => {
+    expect(detectAllInGeometry(rejam)).not.toBeNull();
+  });
 });
