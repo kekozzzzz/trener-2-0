@@ -942,3 +942,107 @@ describe("renderHandFacts — олл-ин Hero закрывает его реш�
     expect(r).not.toContain("весь твой стек уже в банке");
   });
 });
+
+// Аудит румов 19.07 — регрессы, которые я же и внёс днём раньше. Все три класса: факт утверждал
+// то, чего в раздаче не было. Подтверждены независимо на 4 румах.
+describe("renderHandFacts — факты не должны утверждать несуществующее (аудит 19.07)", () => {
+  const seats = [
+    { label: "Hero", position: "CO", startingStack: 30000 },
+    { label: "opp1", position: "BTN", startingStack: 8000 },
+    { label: "opp2", position: "SB", startingStack: 9000 },
+    { label: "opp3", position: "BB", startingStack: 30000 },
+  ] as Seat[];
+
+  it("Hero сбросил ДО чужих олл-инов → «перед тобой УЖЕ N ва-банк» НЕ выходит", () => {
+    const r = renderHandFacts(
+      snap({
+        seats,
+        heroCards: ["Ah", "Ts"],
+        actions: [
+          { street: "PREFLOP", actor: "opp3", action: "POST_BB", amount: 1000 } as TableAction,
+          { street: "PREFLOP", actor: "Hero", action: "FOLD" } as TableAction, // Hero вышел ПЕРВЫМ
+          { street: "PREFLOP", actor: "opp1", action: "ALL_IN", amount: 8000 } as TableAction,
+          { street: "PREFLOP", actor: "opp2", action: "ALL_IN", amount: 9000 } as TableAction,
+        ],
+      }),
+    );
+    expect(r).not.toContain("ва-банк (несколько олл-инов сразу)");
+  });
+
+  it("перед решением Hero действительно двое ва-банк → факт выходит", () => {
+    const r = renderHandFacts(
+      snap({
+        seats,
+        heroCards: ["Ah", "Ts"],
+        actions: [
+          { street: "PREFLOP", actor: "opp3", action: "POST_BB", amount: 1000 } as TableAction,
+          { street: "PREFLOP", actor: "opp1", action: "ALL_IN", amount: 8000 } as TableAction,
+          { street: "PREFLOP", actor: "opp2", action: "ALL_IN", amount: 9000 } as TableAction,
+          { street: "PREFLOP", actor: "Hero", action: "FOLD" } as TableAction, // решал, ВИДЯ оба шова
+        ],
+      }),
+    );
+    expect(r).toContain("ва-банк (несколько олл-инов сразу)");
+  });
+
+  it("в раздаче нет ни одного олл-ина → приписка про «коллировать ли его олл-ин» НЕ выходит", () => {
+    const r = renderHandFacts(
+      snap({
+        seats: [
+          { label: "Hero", position: "CO", startingStack: 40000 },
+          { label: "opp1", position: "BTN", startingStack: 12000 },
+        ] as Seat[],
+        heroCards: ["Ah", "Jd"],
+        board: ["Kh", "2c", "2s"],
+        actions: [
+          { street: "PREFLOP", actor: "opp1", action: "POST_BB", amount: 1000 } as TableAction,
+          { street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 3000 } as TableAction,
+          { street: "PREFLOP", actor: "opp1", action: "CALL", amount: 2000 } as TableAction,
+          { street: "FLOP", actor: "opp1", action: "BET", amount: 3251 } as TableAction,
+          { street: "FLOP", actor: "Hero", action: "FOLD" } as TableAction,
+        ],
+      }),
+    );
+    // сама поправка «это стек короткого соперника» верна и без олл-ина — она остаётся
+    expect(r).toContain("стек более КОРОТКОГО соперника");
+    expect(r).not.toContain("коллировать ли его олл-ин");
+  });
+});
+
+// Аудит румов 19.07 (находка не моя, но того же класса): цикл «Карта тёрна/ривера для тебя» был
+// единственным без guard'а heroSawStreet — и сброшенной руке изъявительно сообщали её несыгранное
+// будущее: «Карта тёрна для тебя: подняла твою руку до фулл-хауса».
+describe("renderHandFacts — карта улицы не комментируется для сброшенной руки", () => {
+  const foldedPreflop = () =>
+    snap({
+      seats: [
+        { label: "Hero", position: "LJ", startingStack: 30000 },
+        { label: "opp1", position: "BB", startingStack: 30000 },
+      ] as Seat[],
+      heroCards: ["Ah", "3d"],
+      board: ["3s", "Ad", "7s", "3c", "Th"], // тёрн дал бы Hero фулл-хаус — но он не играл
+      actions: [
+        { street: "PREFLOP", actor: "opp1", action: "POST_BB", amount: 1000 } as TableAction,
+        { street: "PREFLOP", actor: "Hero", action: "FOLD" } as TableAction,
+        { street: "PREFLOP", actor: "opp1", action: "CHECK" } as TableAction,
+      ],
+    });
+
+  it("Hero сбросил на префлопе → «Карта тёрна/ривера для тебя» НЕ печатается", () => {
+    const r = renderHandFacts(foldedPreflop());
+    expect(r).not.toContain("Карта тёрна для тебя");
+    expect(r).not.toContain("Карта ривера для тебя");
+  });
+
+  it("Hero дошёл до вскрытия → ярлык карты остаётся (не пересушили)", () => {
+    const s = foldedPreflop();
+    s.actions = [
+      { street: "PREFLOP", actor: "opp1", action: "POST_BB", amount: 1000 },
+      { street: "PREFLOP", actor: "Hero", action: "CALL", amount: 1000 },
+      { street: "FLOP", actor: "Hero", action: "CHECK" },
+      { street: "TURN", actor: "Hero", action: "CHECK" },
+      { street: "RIVER", actor: "Hero", action: "CHECK" },
+    ];
+    expect(renderHandFacts(s)).toContain("Карта тёрна для тебя");
+  });
+});

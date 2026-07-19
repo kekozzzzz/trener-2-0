@@ -152,8 +152,11 @@ function parseActions(
     const prevCommitted = committed.get(raw.player) ?? 0;
     const nowCommitted = prevCommitted + raw.sum;
     committed.set(raw.player, nowCommitted);
+    // ⚠️Анте в СТАВОЧНЫЙ итог улицы не входит: у остальных румов «raises … to Y» считает Y без анте,
+    // а здесь оно попадало в nowStreet и раздувало размер рейза («рискуешь 3.3 BB» вместо 3.0 BB —
+    // аудит румов 19.07). В общий вклад раздачи (committed, для олл-ина) анте по-прежнему идёт.
     const prevStreet = streetCommit.get(raw.player) ?? 0;
-    const nowStreet = prevStreet + raw.sum;
+    const nowStreet = base === "POST_ANTE" ? prevStreet : prevStreet + raw.sum;
     streetCommit.set(raw.player, nowStreet);
 
     const actor = nameToLabel.get(raw.player) ?? raw.player;
@@ -184,9 +187,14 @@ function parseActions(
         amount = nowStreet > highBefore ? nowStreet : raw.sum;
         break;
       }
+      // ⚠️Посты блайндов/анте ВЫНУЖДЕННЫЕ и остаются собой, даже если забрали весь стек: иначе
+      // POST_BB превращался в ALL_IN, bigBlindFromSnapshot не находил блайнд, bb=null — и молча
+      // пропадала вся пачка фактов в BB вместе с чарт-вердиктом и панелью (аудит румов 19.07).
       case "POST_SB":
       case "POST_BB":
       case "POST_ANTE":
+        amount = raw.sum;
+        break;
       case "CALL":
       case "BET":
         action = isAllIn ? "ALL_IN" : base;

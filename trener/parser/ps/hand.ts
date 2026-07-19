@@ -57,10 +57,14 @@ function parseVerb(rest: string): Pick<TableAction, "action" | "amount"> | null 
     return { action: m[3] ? "ALL_IN" : "RAISE", amount: parseNum(m[2]) };
   if ((m = rest.match(/^posts the ante ([\d,]+)$/)))
     return { action: "POST_ANTE", amount: parseNum(m[1]) };
+  // ⚠️Пост блайнда — ВЫНУЖДЕННЫЙ, и остаётся POST_SB/POST_BB даже с пометкой «and is all-in»
+  // (она значит лишь, что стек игрока меньше блайнда). Раньше такой пост становился ALL_IN, из-за
+  // чего bigBlindFromSnapshot не находил POST_BB, bb=null и из промпта молча пропадала вся пачка
+  // фактов в BB — стеки, зоны, пороги, чарт-вердикт и панель диапазонов (аудит румов 19.07).
   if ((m = rest.match(/^posts small blind ([\d,]+)( and is all-in)?$/)))
-    return { action: m[2] ? "ALL_IN" : "POST_SB", amount: parseNum(m[1]) };
+    return { action: "POST_SB", amount: parseNum(m[1]) };
   if ((m = rest.match(/^posts big blind ([\d,]+)( and is all-in)?$/)))
-    return { action: m[2] ? "ALL_IN" : "POST_BB", amount: parseNum(m[1]) };
+    return { action: "POST_BB", amount: parseNum(m[1]) };
 
   return null;
 }

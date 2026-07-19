@@ -57,10 +57,12 @@ function parseVerb(rest: string): Pick<TableAction, "action" | "amount"> | null 
     return { action: m[3] ? "ALL_IN" : "RAISE", amount: parseNum(m[2]) };
   if ((m = rest.match(/^posts ante ([\d,.]+)$/)))
     return { action: "POST_ANTE", amount: parseNum(m[1]) };
+  // ⚠️Пост блайнда вынужденный — остаётся POST_SB/POST_BB даже с «and is all-in» (см. ps/hand.ts):
+  // иначе теряется большой блайнд раздачи и молча исчезает вся пачка фактов в BB (аудит 19.07).
   if ((m = rest.match(/^posts the small blind ([\d,.]+)( and is all-in)?$/)))
-    return { action: m[2] ? "ALL_IN" : "POST_SB", amount: parseNum(m[1]) };
+    return { action: "POST_SB", amount: parseNum(m[1]) };
   if ((m = rest.match(/^posts the big blind ([\d,.]+)( and is all-in)?$/)))
-    return { action: m[2] ? "ALL_IN" : "POST_BB", amount: parseNum(m[1]) };
+    return { action: "POST_BB", amount: parseNum(m[1]) };
 
   return null;
 }

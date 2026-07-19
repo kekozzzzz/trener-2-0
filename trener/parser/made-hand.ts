@@ -155,7 +155,15 @@ export type MadeHand = {
 };
 
 // Готовая рука Hero по картам + борду (3+ карты). null — префлоп (борда нет).
-export function heroMadeHand(heroCards: string[], board: string[]): MadeHand | null {
+// subject — ЧЬЯ это рука. Функция зовётся и для руки соперника на вскрытии, а часть описаний
+// написана во втором лице («своей пары у ТЕБЯ нет»): на чужой руке это читалось как факт про Hero
+// и обе руки выходили слово-в-слово одинаковыми при разном вердикте (аудит румов 19.07).
+export function heroMadeHand(
+  heroCards: string[],
+  board: string[],
+  subject: "hero" | "opponent" = "hero",
+): MadeHand | null {
+  const own = subject === "hero" ? "у тебя" : "у него";
   const hero = heroCards.map(parseCard).filter((c): c is Card => c !== null);
   const boardC = board.map(parseCard).filter((c): c is Card => c !== null);
   if (hero.length < 2 || boardC.length < 3) return null;
@@ -205,7 +213,7 @@ export function heroMadeHand(heroCards: string[], board: string[]): MadeHand | n
       category = "PAIR";
       const pr = v7[1];
       if (!improves) {
-        ru = `пара ${GEN_PL[pr]} лежит на борде — своей пары у тебя нет, кикер ${SG[v7[2]] ?? "—"}`;
+        ru = `пара ${GEN_PL[pr]} лежит на борде — своей пары ${own} нет, кикер ${SG[v7[2]] ?? "—"}`;
         strength = "AIR"; // пара на борде, своей нет — по силе это воздух
       } else if (heroPair && hero[0].rank === pr) {
         if (pr > boardRanks[0]) {
@@ -250,7 +258,7 @@ export function heroMadeHand(heroCards: string[], board: string[]): MadeHand | n
       playsBoard = cmp(v7, vBoard) === 0;
     }
     if (playsBoard) {
-      ru = `${ru} - но эта комбинация целиком на борде, своей руки у тебя нет (играешь борд/кикер)`;
+      ru = `${ru} - но эта комбинация целиком на борде, своей руки ${own} нет (играешь борд/кикер)`;
       strength = "AIR";
     }
   }

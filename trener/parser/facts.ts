@@ -760,7 +760,12 @@ export function renderShowdownFacts(snapshot: TableSnapshot): string {
       (a) => a.actor !== "Hero" && (a.action === "BET" || a.action === "RAISE" || a.action === "ALL_IN"),
     );
     const window = raiseIdx >= 0 ? after.slice(0, raiseIdx) : after;
-    return window.some((a) => a.actor === label && a.action === "CALL" && a.street === "RIVER");
+    // Колл ва-банк румы пишут как ALL_IN — засчитываем и его, иначе пометка терялась там, где
+    // соперник коллировал ставку Hero последними фишками (аудит румов 19.07). Настоящий рейз-олл-ин
+    // сюда не попадёт: он отсечён поиском чужой агрессии выше (raiseIdx).
+    return window.some(
+      (a) => a.actor === label && a.street === "RIVER" && (a.action === "CALL" || a.action === "ALL_IN"),
+    );
   };
 
   const lines: string[] = [];
@@ -768,7 +773,10 @@ export function renderShowdownFacts(snapshot: TableSnapshot): string {
     if (seat.label === "Hero" || !seat.shownCards || seat.shownCards.length !== 2) continue;
     const cards = seat.shownCards.join(" ");
     const code = handCode(seat.shownCards);
-    const mh = board.length >= 3 ? heroMadeHand(seat.shownCards, board) : null;
+    // subject "opponent" — иначе описание чужой руки выходит во втором лице («своей пары У ТЕБЯ
+    // нет») и читается как факт про Hero: обе руки становились слово-в-слово одинаковыми при
+    // РАЗНОМ вердикте, кто старше (аудит румов 19.07).
+    const mh = board.length >= 3 ? heroMadeHand(seat.shownCards, board, "opponent") : null;
     let line = mh
       ? `${seat.label} вскрыл ${cards}${code ? ` (${code})` : ""}: ${mh.ru}.`
       : `${seat.label} вскрыл ${cards}${code ? ` (${code})` : ""}.`;
@@ -967,9 +975,13 @@ export function renderHandFacts(snapshot: TableSnapshot): string {
     // читала «15 BB» как стек Hero и советовала пуш-фолд/«дисциплинированный фолд на коротком стеке»
     // (Артём 18.07: у Hero 39.5 BB, олл-ин соперника 15 BB — тренер решил, что у Hero 15 BB).
     const behindBb = f.heroStackBb !== null ? round1(f.heroStackBb - f.effectiveStackBb) : 0;
+    // ⚠️Хвост про «коллировать ли его олл-ин» дописываем ТОЛЬКО если олл-ин соперника реально был:
+    // иначе на обычной раздаче без единого ва-банк выходило утверждение про несуществующий олл-ин
+    // (аудит румов 19.07). Сама поправка «это стек короткого, а не твой» верна и без олл-ина.
+    const someoneAllIn = snapshot.actions.some((a) => a.actor !== "Hero" && a.action === "ALL_IN");
     const coverNote =
       f.heroStackBb !== null && behindBb >= 8
-        ? ` Это стек более КОРОТКОГО соперника, а НЕ твой: у тебя ${f.heroStackBb} BB, ты его ПЕРЕКРЫВАЕШЬ и после максимального размена оставляешь ~${behindBb} BB. Ты НЕ короткий стек — не рассуждай про «пуш-фолд/дисциплинированный фолд на коротком стеке»; ты решаешь, коллировать ли его олл-ин, оставаясь с игровым стеком.`
+        ? ` Это стек более КОРОТКОГО соперника, а НЕ твой: у тебя ${f.heroStackBb} BB, ты его ПЕРЕКРЫВАЕШЬ и после максимального размена оставляешь ~${behindBb} BB. Ты НЕ короткий стек — не рассуждай про «пуш-фолд/дисциплинированный фолд на коротком стеке»${someoneAllIn ? "; ты решаешь, коллировать ли его олл-ин, оставаясь с игровым стеком." : "."}`
         : "";
     lines.push(`Эффективный стек (против крупнейшего соперника): ${f.effectiveStackBb} BB.${coverNote}`);
   }
@@ -1014,7 +1026,16 @@ export function renderHandFacts(snapshot: TableSnapshot): string {
     const opps = st.seats.filter((s) => !s.isHero && !s.folded);
     const curBet = priorSameStreet ? Math.max(...opps.map((s) => s.streetBet), 0) : 0;
     const bettor = priorSameStreet ? (opps.find((s) => s.streetBet === curBet && curBet > 0) ?? null) : null;
-    const effRem = bettor ? Math.min(heroRem, bettor.remainingStack) : heroRem;
+    // ⚠️Когда ставки на улице ещё не было, «эффективный остаток» — это НЕ стек самого Hero, а
+    // минимум из его стека и стека крупнейшего ЖИВОГО соперника: разыграть больше него нельзя.
+    // Раньше сюда шёл heroRem, и против коротыша SPR завышался кратно, споря с f.sprFlop
+    // (аудит румов 19.07).
+    const maxOppRem = opps.reduce((m, s) => Math.max(m, s.remainingStack), 0);
+    const effRem = bettor
+      ? Math.min(heroRem, bettor.remainingStack)
+      : opps.length > 0
+        ? Math.min(heroRem, maxOppRem)
+        : heroRem;
     const spr = round1(effRem / st.potSoFar);
     const potBb = bb ? round1(st.potSoFar / bb) : null;
     const remBb = bb ? round1(effRem / bb) : null;
@@ -1165,8 +1186,16 @@ export function renderHandFacts(snapshot: TableSnapshot): string {
 
   // Ярлык фактически выпавшей карты тёрна/ривера (свип): усилила/скэр/дро-сгорело — чтобы модель
   // не сверяла флоповые множества с реальной картой «на глаз». Блэнк не печатаем (не шумим).
-  for (const [ruName, cardIdx] of [["тёрна", 3] as const, ["ривера", 4] as const]) {
+  for (const [ruName, cardIdx, street] of [
+    ["тёрна", 3, "TURN"] as const,
+    ["ривера", 4, "RIVER"] as const,
+  ]) {
     if (snapshot.board.length <= cardIdx) continue;
+    // ⚠️Улицы после фолда Hero — призрак (см. heroSawStreet): рука, которой он НЕ играл. Соседние
+    // циклы (готовая рука, дро, ауты, угрозы) этот guard имеют, а здесь его не было — и сброшенной
+    // на префлопе руке изъявительно сообщалось «Карта тёрна для тебя: подняла твою руку до
+    // фулл-хауса» (аудит румов 19.07, воспроизведено на двух раздачах фикстуры GG).
+    if (!heroSawStreet(snapshot, street)) continue;
     const impact = fallenCardImpact(snapshot.heroCards, snapshot.board.slice(0, cardIdx), snapshot.board[cardIdx]);
     if (impact && impact.kind !== "blank") lines.push(`Карта ${ruName} для тебя: ${impact.detail}.`);
   }
@@ -1348,8 +1377,12 @@ export function renderHandFacts(snapshot: TableSnapshot): string {
     // а не «попаду ли в сет» (Артём 18.07: «играешь в сет-майнинг без сетов»).
     const heroPair =
       snapshot.heroCards.length === 2 && snapshot.heroCards[0][0] === snapshot.heroCards[1][0];
+    // ⚠️Довод «постфлоп-ставок нет» верен ТОЛЬКО когда доигровки действительно не будет — то есть
+    // при том же условии, что и «будущих улиц нет». Если Hero перекрыл коротыша и за столом остался
+    // живой соперник с фишками, постфлоп ВОЗМОЖЕН, и утверждение становится ложным (аудит румов
+    // 19.07, iPoker). Пара всё равно играет эквити, но обосновываем это без вранья про постфлоп.
     const noSetmine =
-      wasCall && heroPair
+      wasCall && heroPair && !heroStaysWithLiveOpp
         ? ` Это НЕ сет-майнинг: сет-майнинг — дешёвый колл в надежде собрать сет и выиграть большой банк ПОСТФЛОП, а тут постфлоп-ставок нет, рука идёт до вскрытия. Твоя пара играет на ЭКВИТИ против его диапазона (порог пот-оддсов уже посчитан выше), а не на «соберу ли сет» — не советуй фолд «потому что не попадёшь в сет».`
         : "";
     if (wasCall) {
@@ -1371,9 +1404,21 @@ export function renderHandFacts(snapshot: TableSnapshot): string {
   // через sunk-cost («банк наполовину твой») — околесица, переубедил игрока, который ответил верно.
   // Против нескольких олл-инов эквити резко падает (надо обойти ВСЕХ), точного числа парсер не даёт
   // (перебор диапазонов ×N неподъёмен). Гасим выдумку числа и sunk-cost детерминированным фактом.
-  const oppAllIns = new Set(
-    snapshot.actions.filter((a) => a.actor !== "Hero" && a.action === "ALL_IN").map((a) => a.actor),
-  );
+  // ⚠️Считаем ТОЛЬКО тех, кто был ва-банк ДО хода Hero: факт говорит «перед тобой УЖЕ N ва-банк».
+  // Раньше брались ВСЕ олл-ины раздачи, и строка вылезала там, где Hero сбросил ДО них или где
+  // пушил сам, а соперники доколлировали после (аудит румов 19.07: воспроизведено на 4 румах).
+  // Посты блайндов/анте решением Hero не являются — по ним не замеряем.
+  let facingAllIns = 0;
+  const allInSoFar = new Set<string>();
+  for (const a of snapshot.actions) {
+    if (a.actor !== "Hero") {
+      if (a.action === "ALL_IN") allInSoFar.add(a.actor);
+      continue;
+    }
+    if (a.action === "POST_ANTE" || a.action === "POST_SB" || a.action === "POST_BB") continue;
+    facingAllIns = Math.max(facingAllIns, allInSoFar.size);
+  }
+  const oppAllIns = { size: facingAllIns };
   if (oppAllIns.size >= 2) {
     lines.push(
       `Перед тобой УЖЕ ${oppAllIns.size} игрока ва-банк (несколько олл-инов сразу). Чтобы колл окупился, твоя рука должна обойти ВСЕХ разом - в мультивее эквити резко ниже, чем против одного, и ТОЧНОГО числа парсер тут НЕ считает (перебор диапазонов на каждого неподъёмен): процент эквити НЕ выдумывай, рассуждай словами («против трёх шовов даже сильная рука часто позади»). И вложенное ранее - уже НЕ твоё: у фишек нет памяти, не называй банк «наполовину твоим» и не гони колл через «раз уж вложил» - это ловушка невозвратных затрат, дисциплинированный фолд тут чаще верен.`,

@@ -65,6 +65,34 @@ describe("isForcedPreflopAllIn", () => {
   it("99 — ниже порога TT+, не отсекаем", () => {
     expect(isForcedPreflopAllIn(preflopAllInSnap({ heroCards: ["9s", "9d"] }))).toBe(false);
   });
+
+  // ⚠️Аудит румов 19.07 (подтверждено на ПЯТИ румах): без требования реального олл-ина «форсом»
+  // считался любой крупный префлоп-вход премиум-рукой с чек-фолдом флопа, и раздача молча уходила
+  // в кулеры — то есть ПРОПАДАЛА из разбора. Это хуже ложного факта: игрок теряет спот, который
+  // как раз стоило обсудить.
+  it("крупный префлоп-рейз премиум-рукой + чек-фолд флопа БЕЗ олл-ина — НЕ форс", () => {
+    const s = preflopAllInSnap();
+    s.actions = [
+      { street: "PREFLOP", actor: "Hero", action: "POST_BB", amount: 100 },
+      { street: "PREFLOP", actor: "Villain", action: "RAISE", amount: 900 },
+      { street: "PREFLOP", actor: "Hero", action: "CALL", amount: 800 }, // крупный вход, но не олл-ин
+      { street: "FLOP", actor: "Hero", action: "CHECK" },
+      { street: "FLOP", actor: "Villain", action: "BET", amount: 900 },
+      { street: "FLOP", actor: "Hero", action: "FOLD" }, // чек-фолд: CHECK/FOLD не «добровольные»
+    ];
+    expect(isForcedPreflopAllIn(s)).toBe(false);
+  });
+
+  it("3-бет премиум-рукой и фолд на 4-бет (олл-ина не было) — НЕ форс", () => {
+    const s = preflopAllInSnap({ heroCards: ["As", "Ad"] });
+    s.actions = [
+      { street: "PREFLOP", actor: "Villain", action: "RAISE", amount: 250 },
+      { street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 900 },
+      { street: "PREFLOP", actor: "Villain", action: "RAISE", amount: 2600 },
+      { street: "PREFLOP", actor: "Hero", action: "FOLD" },
+    ];
+    expect(isForcedPreflopAllIn(s)).toBe(false);
+  });
 });
 
 describe("assignImportanceLevels — форс-олл-ин не идёт в критические", () => {

@@ -88,10 +88,24 @@ function parseRawActions(handText: string, seatNames: string[]): RawAction[] {
 
 // Олл-ин помечаем, когда суммарный вклад игрока достигает его стартового стека.
 function markAllIns(raws: RawAction[], stackByName: Map<string, number>): TableAction[] {
-  const committed = new Map<string, number>();
+  const committed = new Map<string, number>(); // за всю раздачу
+  const streetCommitted = new Map<string, number>(); // на текущей улице
+  let street: Street | null = null;
   return raws.map((r) => {
+    if (r.street !== street) {
+      street = r.street;
+      streetCommitted.clear();
+    }
+    // ⚠️У 888 «raises [Y]» — АБСОЛЮТНАЯ сумма игрока на улице (см. parseVerb), а call/bet/посты —
+    // ПРИРОСТ. Складывать всё подряд нельзя: при втором рейзе на той же улице вклад раздувался,
+    // достигал стека и игрок ЛОЖНО помечался ALL_IN (аудит румов 19.07). Считаем приростами.
+    // ⚠️Анте в ставочный итог улицы НЕ входит: «raises [1000]» при анте 5 означает 1000 сверх анте,
+    // и вычитание анте из рейза занижало вклад — игрок со стеком 1005 переставал считаться ва-банк.
+    const prevStreet = streetCommitted.get(r.name) ?? 0;
+    const delta = r.action === "RAISE" ? Math.max((r.amount ?? 0) - prevStreet, 0) : r.amount ?? 0;
+    if (r.action !== "POST_ANTE") streetCommitted.set(r.name, prevStreet + delta);
     const prev = committed.get(r.name) ?? 0;
-    const now = prev + (r.amount ?? 0);
+    const now = prev + delta;
     committed.set(r.name, now);
     const stack = stackByName.get(r.name);
     const isAllIn =

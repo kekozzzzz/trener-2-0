@@ -26,6 +26,14 @@ export function isForcedPreflopAllIn(snapshot: TableSnapshot): boolean {
   if (!bb || !heroSeat) return false;
   const minAmount = Math.max(SIGNIFICANT_BB * bb, heroSeat.startingStack * SIGNIFICANT_STACK_SHARE);
 
+  // ⚠️Обязательное условие: на префлопе кто-то РЕАЛЬНО ушёл ва-банк (сам Hero или соперник, чей
+  // олл-ин Hero заколлировал). Без этой проверки «форсом» считался ЛЮБОЙ крупный префлоп-вход
+  // премиум-рукой с последующим чек-фолдом флопа — и такие раздачи молча уходили в кулеры, пропадая
+  // из разбора (аудит румов 19.07: воспроизведено на пяти румах). Это хуже ложного факта: игрок
+  // теряет раздачу, которую как раз стоило обсудить.
+  const preflopAllIn = snapshot.actions.some((a) => a.street === "PREFLOP" && a.action === "ALL_IN");
+  if (!preflopAllIn) return false;
+
   let bigPreflopCommit = false;
   for (const a of snapshot.actions) {
     if (a.actor !== "Hero" || !CONTINUE_ACTIONS.has(a.action)) continue;
