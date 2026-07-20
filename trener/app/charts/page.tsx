@@ -26,6 +26,7 @@ import { PushChartPanel } from "@/components/charts/push-chart-panel";
 import { BBDefensePanel } from "@/components/charts/bb-defense-panel";
 import { VsOpenPanel } from "@/components/charts/vs-open-panel";
 import { IsoPanel } from "@/components/charts/iso-panel";
+import { SbLimpPanel } from "@/components/charts/sb-limp-panel";
 import {
   RestealPanel,
   CallVsPushPanel,
@@ -89,6 +90,15 @@ export default async function ChartsPage() {
           <p className="mt-2 max-w-2xl text-small text-muted-foreground">{t("isoIntro")}</p>
           <div className="mt-6">
             <IsoPanel />
+          </div>
+        </div>
+
+        {/* Лимп с малого блайнда (заказ Артёма 19-20.07): у чарта один спот, переключателя нет. */}
+        <div className="mt-16 border-t border-border pt-16" id="sblimp">
+          <h2 className="text-h2">{t("sbLimpTitle")}</h2>
+          <p className="mt-2 max-w-2xl text-small text-muted-foreground">{t("sbLimpIntro")}</p>
+          <div className="mt-6">
+            <SbLimpPanel />
           </div>
         </div>
 

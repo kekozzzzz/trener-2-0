@@ -11,6 +11,7 @@
 import { describe, it, expect } from "vitest";
 import type { TableSnapshot, TableAction } from "@/parser/types";
 import { sbLimpCellState } from "@/config/poker/sb-limp-chart";
+import { GRID_RANKS, cellCode } from "@/config/poker/hand-grid";
 import { detectHeroSbLimpFacingRaise } from "@/parser/sb-limp";
 import { preflopChartFact } from "@/parser/preflop-chart-fact";
 
@@ -37,6 +38,26 @@ describe("sbLimpCellState — раскладка малого блайнда", (
     // Ни одна клетка не должна попасть в FOLD: вход стопроцентный.
     for (const code of ["32o", "72o", "92o", "42o"]) {
       expect(sbLimpCellState(code)).not.toBe("FOLD");
+    }
+  });
+
+  // ⚠️Регресс: когда лимп-рейз убрали из чарта в текстовую подсказку, руки K5s-K2s остались без
+  // ветки и провалились в «не входим вовсе» — при стопроцентном-то входе. Поймано проверкой сетки
+  // перед выкатом на /charts. Проверяем ВСЮ сетку целиком, а не выборочные руки.
+  it("ни одна из 169 клеток не проваливается в FOLD", () => {
+    const fell: string[] = [];
+    for (let row = 0; row < GRID_RANKS.length; row++) {
+      for (let col = 0; col < GRID_RANKS.length; col++) {
+        const code = cellCode(row, col);
+        if (sbLimpCellState(code) === "FOLD") fell.push(code);
+      }
+    }
+    expect(fell).toEqual([]);
+  });
+
+  it("одномастные короли — лимп-колл (король + масть)", () => {
+    for (const code of ["K5s", "K4s", "K3s", "K2s"]) {
+      expect(sbLimpCellState(code)).toBe("LIMP_CALL");
     }
   });
 });

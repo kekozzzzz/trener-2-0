@@ -1015,7 +1015,17 @@
     "isoDisclaimer": "Isolation is almost the opening range, but slightly tighter: small pairs 22-66 are better off just limping along (set-mining cheaply), and the junky bottom folds. Against several limpers or with a big sizing isolate even tighter.",
     "ctaTitle": "And how do you open?",
     "ctaText": "That's the baseline. Upload your hand histories - the parser will compare your game against these very charts for free and build your personal charts: where you're wider than the norm and where you're tighter. No subscription needed.",
-    "ctaButton": "Upload your hands"
+    "ctaButton": "Upload your hands",
+    "sbLimpTitle": "Limping from the small blind",
+    "sbLimpIntro": "Folded to you, you are in the small blind. Strong hands open with a raise, the rest come in limping - half a blind is already invested and a cheap flop against one opponent pays off. The grid answers the second question: what to do when the big blind raises your limp.",
+    "sbLimpLegendRaise": "Open with a RAISE - limping this hand is not our line",
+    "sbLimpLegendCall": "Limp and CALL the big blind raise",
+    "sbLimpLegendFold": "Limp, but fold to a raise",
+    "sbLimpCell_RAISE_FIRST": "open with a raise",
+    "sbLimpCell_LIMP_CALL": "limp, call a raise",
+    "sbLimpCell_LIMP_FOLD": "limp, fold to a raise",
+    "sbLimpCell_FOLD": "do not enter",
+    "sbLimpDisclaimer": "Defence against a raise over your limp is wider than usual here, and that is deliberate: opponents know that limping means seeing a cheap flop, so they attack limps widely - including with trash. Against that, an ace, king, broadway or a suited hand already calls. Limp-raising is NOT part of the reference: it is a situational play based on reading the opponent (works against an aggressive regular, pointless against a passive one), so the coach never treats its absence as a mistake."
   },
   "PlayerCharts": {
     "hide": "Hide charts",
