@@ -10,7 +10,8 @@ import { detectHeroDefVs3bet } from "./def-vs-3bet";
 import { detectHeroBvbDefense } from "./bvb-defense";
 import { bvbCellState, isBvbThreeBetSignificantlyWide } from "@/config/poker/bvb-chart";
 import { detectHeroSqueeze } from "./squeeze";
-import { detectHeroSbLimp } from "./sb-limp";
+import { detectHeroSbLimp, detectHeroSbLimpFacingRaise } from "./sb-limp";
+import { sbLimpCellState, SB_LIMP_RAISE_HINT } from "@/config/poker/sb-limp-chart";
 import { detectHeroLimp } from "./limp";
 import { detectHeroCallVsResteal } from "./call-vs-resteal";
 import { callVsRestealCellState } from "@/config/poker/call-vs-resteal-chart";
@@ -196,6 +197,28 @@ function spotVerdict(snapshot: TableSnapshot): string | null {
 
   // SB-лимп при фолде до Hero — по эталону продукта НЕ утечка (дёшево смотрим флоп,
   // сильной рукой рейзим): страхуем тренера от старого рефлекса «лимп = ошибка».
+  // Лимп с SB, и большой блайнд ПОДНЯЛ — этот ответ судит sb-limp-chart (заказ Артёма 19.07).
+  // Проверяем ДО общей ветки лимпа: там вердикт только про сам вход, а тут есть решение на рейз.
+  const sbLimpVsRaise = detectHeroSbLimpFacingRaise(snapshot);
+  if (sbLimpVsRaise) {
+    const state = sbLimpCellState(sbLimpVsRaise.code);
+    const spot = `лимп с SB рукой ${sbLimpVsRaise.code}, большой блайнд поднял`;
+    const tail = ` ${SB_LIMP_RAISE_HINT}`;
+    if (sbLimpVsRaise.action === "CALL") {
+      if (state === "LIMP_CALL")
+        return `${spot}: колл — В ЧАРТЕ. Против рейза по лимпу защищаемся широко: соперники понимают, что лимпом идут дёшево посмотреть флоп, и атакуют его в том числе мусором, поэтому туз, король, бродвей или масть тут уже коллируют. Это не ошибка.${tail}`;
+      if (state === "LIMP_FOLD")
+        return `${spot}: по эталону этой рукой на рейз СБРАСЫВАЮТ — ни высокой карты, ни масти, ни связки. Колл тайтовой ошибкой не назовёшь, но чарт его не поддерживает.${tail}`;
+      return `${spot}: этой рукой мы вообще открываемся РЕЙЗОМ, а не лимпом — вход лимпом уже нестандартен, дальше суди по обстоятельствам.${tail}`;
+    }
+    // FOLD
+    if (state === "LIMP_CALL")
+      return `${spot}: фолд — по чарту эта рука обычно КОЛЛИРУЕТ рейз по лимпу (против широкой атаки на лимпы туз/король/бродвей/масть защищаются). Фолд тайтовее эталона.${tail}`;
+    if (state === "LIMP_FOLD")
+      return `${spot}: фолд — ПО ЧАРТУ. Вошли дёшево, но на рейз с этой рукой сбрасываем без сожаления: цель лимпа была увидеть флоп за копейку, а не драться до него.${tail}`;
+    return `${spot}: фолд — этой рукой мы открываемся рейзом, а не лимпом; сам вход лимпом нестандартен.${tail}`;
+  }
+
   const sbLimp = detectHeroSbLimp(snapshot);
   if (sbLimp) {
     return `SB-лимп ${sbLimp} при фолде до тебя: по эталону это НЕ утечка — дешёвый комплит против одного BB нормален (сильной рукой тут рейзят 3-3.5bb). Не называй сам лимп ошибкой; смотри розыгрыш постфлопа.`;

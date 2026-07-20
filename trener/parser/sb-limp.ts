@@ -32,3 +32,36 @@ export function detectHeroSbLimp(snapshot: TableSnapshot): string | null {
 
   return null;
 }
+
+// Что было ПОСЛЕ лимпа: большой блайнд поднял, и Hero ответил. Именно этот спот судит
+// sb-limp-chart (лимп-колл против лимп-фолда). Заказ Артёма 19.07.
+//
+// Возвращает null, если лимпа не было ИЛИ BB не поднимал (тогда судить нечего — играем флоп)
+// ИЛИ Hero ответил не коллом/фолдом (рейз = ситуативный лимп-рейз, чартом сознательно не судится,
+// см. SB_LIMP_RAISE_HINT).
+export type HeroSbLimpFacingRaise = {
+  code: string;
+  action: "CALL" | "FOLD";
+};
+
+export function detectHeroSbLimpFacingRaise(snapshot: TableSnapshot): HeroSbLimpFacingRaise | null {
+  const code = detectHeroSbLimp(snapshot);
+  if (!code) return null;
+
+  const preflop = snapshot.actions.filter((a) => a.street === "PREFLOP");
+  const heroLimpIdx = preflop.findIndex((a) => a.actor === "Hero" && a.action === "CALL");
+  if (heroLimpIdx < 0) return null;
+
+  const after = preflop.slice(heroLimpIdx + 1);
+  // BB должен ПОДНЯТЬ (иначе идём на флоп — судить нечего). Олл-ин BB тоже подъём.
+  const raisedIdx = after.findIndex(
+    (a) => a.actor !== "Hero" && (a.action === "RAISE" || a.action === "ALL_IN"),
+  );
+  if (raisedIdx < 0) return null;
+
+  const heroReply = after.slice(raisedIdx + 1).find((a) => a.actor === "Hero");
+  if (!heroReply) return null;
+  if (heroReply.action === "CALL" || heroReply.action === "ALL_IN") return { code, action: "CALL" };
+  if (heroReply.action === "FOLD") return { code, action: "FOLD" };
+  return null; // рейз в ответ — лимп-рейз, чартом не судим
+}
