@@ -1,3 +1,4 @@
+import type { PrismaClient } from "@prisma/client";
 import type { TableAction, TableSnapshot } from "@/parser/types";
 import { bigBlindFromSnapshot } from "@/parser/big-blind";
 import { CHAIN_NORMS, chainVerdict, type ChainId, type ChainVerdict } from "@/config/poker/decision-chains";
@@ -151,4 +152,50 @@ export function renderDecisionChainsFact(stats: ChainStat[]): string {
     ...lines,
     "Как этим пользоваться: заводить разговор про цепочку можно ТОЛЬКО при вердикте «ЗА НОРМОЙ». «В норме» — при случае похвали коротко и не выдумывай проблему; «на границе» — не трогай вовсе. Сумму брошенных BB называй лишь там, где вердикт «за нормой»: сбрасывать после промаха — обычный покер, и голая сумма без нормы пугает игрока здоровой статистикой.",
   ].join("\n");
+}
+
+// ─── Счёт ЗА ВСЁ ВРЕМЯ с кэшем ────────────────────────────────────────────────────────────────
+// Цепочкам нужна БОЛЬШАЯ выборка: ситуация «в меня 3-бетнули» случается ~7 раз за турнир, а порог
+// вердикта — 50 наблюдений. Окно последних игровых дней (как у карточки ученика) до порога не
+// дотягивает, поэтому считаем по ВСЕМ раздачам игрока.
+//
+// Замер на реальных данных (5999 раздач, 13.4 МБ JSONB): разбор 69 мс + подсчёт 26 мс = 95 мс.
+// Прогноз роста: ~170 турниров → 0.5 с, ~340 турниров → 1 с. То есть скан позволителен, менять
+// схему БД ради накопительных счётчиков не нужно (решение Артёма 20.07 после замера).
+//
+// Но звать его на КАЖДЫЙ раунд диалога нельзя — поэтому кэш в памяти воркера, как у карточки
+// ученика. Пересчёт происходит редко: при истечении TTL или после загрузки нового турнира
+// (invalidateDecisionChainsCache). Плата за перезапуск процесса — те же 95 мс на первом разборе.
+const CHAINS_CACHE_TTL_MS = 15 * 60_000;
+const CHAINS_CACHE_MAX = 500;
+const chainsCache = new Map<string, { at: number; stats: ChainStat[] }>();
+
+export async function getDecisionChains(db: PrismaClient, playerId: string): Promise<ChainStat[]> {
+  const hit = chainsCache.get(playerId);
+  if (hit && Date.now() - hit.at < CHAINS_CACHE_TTL_MS) return hit.stats;
+
+  const tournaments = await db.tournament.findMany({
+    where: { playerId, deletedAt: null },
+    select: { id: true },
+  });
+  const stats =
+    tournaments.length === 0
+      ? computeDecisionChains([])
+      : computeDecisionChains(
+          (
+            await db.hand.findMany({
+              where: { tournamentId: { in: tournaments.map((t) => t.id) } },
+              select: { tableData: true },
+            })
+          ).map((h) => h.tableData as unknown as TableSnapshot),
+        );
+
+  if (chainsCache.size >= CHAINS_CACHE_MAX) chainsCache.clear();
+  chainsCache.set(playerId, { at: Date.now(), stats });
+  return stats;
+}
+
+// Сбросить кэш игрока — зовётся после загрузки нового турнира, чтобы цифры не отставали.
+export function invalidateDecisionChainsCache(playerId: string): void {
+  chainsCache.delete(playerId);
 }

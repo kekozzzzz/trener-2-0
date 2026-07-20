@@ -14,6 +14,11 @@ export function renderPlayerCard(card: PlayerCard | null | undefined): string {
     parts.push(`Сводная характеристика его игры (по ${card.tournamentsCounted} загруженным турнирам): «${card.characteristic}»`);
   }
 
+  // Цепочки решений за всё время — готовая строка из features/profile/decision-chains.ts.
+  // Внутри уже сказано, что деньги называются только при вердикте «за нормой», а при норме
+  // проблему выдумывать нельзя.
+  if (card.decisionChains) parts.push(card.decisionChains);
+
   if (card.notes.length > 0) {
     const noteLines = card.notes.map((n) => `- ${formatNoteDate(n.date)}: ${n.text}`);
     parts.push(`Твои заметки с прошлых занятий с ним (даты реальные — на них можно ссылаться):\n${noteLines.join("\n")}`);

@@ -6,6 +6,7 @@ import { selectHandsForCard } from "@/features/card/select-hands";
 import { computeSpotFingerprint, spotKey } from "@/parser/spot-fingerprint";
 import { computeSpotMarks, type StoredSpot } from "@/features/memory/spot-marks";
 import { enqueue, CRITICAL_ANALYSIS_PRIORITY } from "../enqueue";
+import { invalidateDecisionChainsCache } from "@/features/profile/decision-chains";
 
 type ParsePayload = {
   tournamentId: string;
@@ -93,4 +94,8 @@ export const parseTournamentStep: StepHandler = async (task, db) => {
       });
     }
   });
+
+  // Новый турнир меняет цепочки решений за всё время — сбрасываем их кэш, иначе тренер будет
+  // считать по устаревшим данным до истечения TTL.
+  if (owner) invalidateDecisionChainsCache(owner.playerId);
 };

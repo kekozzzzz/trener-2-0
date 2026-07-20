@@ -91,6 +91,7 @@ describe("заметки в карточке ученика", () => {
       leaks: [],
       notes: [{ date: "2026-06-28", text: "Договорились фолдить колл 3-бета вне позиции." }],
       selfLevel: null,
+      decisionChains: "",
     };
     const block = renderPlayerCard(card);
     expect(block).toContain("28.06: Договорились фолдить");

@@ -55,6 +55,7 @@ const card: PlayerCard = {
   ],
   notes: [{ date: "2026-06-28", text: "Договорились фолдить колл 3-бета вне позиции." }],
   selfLevel: null,
+  decisionChains: "",
 };
 
 describe("renderPlayerCard", () => {
@@ -92,6 +93,7 @@ describe("ориентир (самооценка уровня) в карточк
       leaks: [],
       notes: [],
       selfLevel: "DEEP",
+      decisionChains: "",
     };
     const block = renderPlayerCard(coldStart);
     expect(block).toContain("С КЕМ ТЫ ГОВОРИШЬ");

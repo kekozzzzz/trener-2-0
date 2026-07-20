@@ -2,6 +2,7 @@ import type { PrismaClient } from "@prisma/client";
 import type { PlayerCard, PlayerCardLeak } from "@/infrastructure/adapters/llm/types";
 import { countLeaks, gameDayKey, leakDynamics, type LeakDynamics, type LeakKind } from "@/features/profile/leak-trend";
 import { pruneCoachNotes, type StoredCoachNotes } from "@/features/memory/coach-notes";
+import { getDecisionChains, renderDecisionChainsFact } from "@/features/profile/decision-chains";
 import { LEAK_WINDOW_DAYS } from "@/config/leaks";
 import { isSelfLevelActive, isValidSelfLevel } from "@/config/self-level";
 
@@ -158,9 +159,16 @@ async function buildPlayerCard(db: PrismaClient, playerId: string, currentDay: s
   }));
 
   const characteristic = profile?.characteristic ?? null;
+
+  // Цепочки решений за ВСЁ время (не за окно ликов): ситуация «в меня 3-бетнули» случается ~7 раз
+  // за турнир, а вердикт требует 50 наблюдений — окна не хватит. Расчёт со своим кэшем, замер на
+  // реальных данных: 95 мс на 5999 раздач (см. features/profile/decision-chains.ts).
+  const decisionChains = renderDecisionChainsFact(await getDecisionChains(db, playerId));
+
   // Тренеру нечего вспомнить — ни характеристики, ни ликов, ни заметок, ни активного
   // ориентира. Ориентир держит карточку живой на самом старте, пока остального ещё нет.
-  if (!characteristic && leaks.length === 0 && notes.length === 0 && !activeSelfLevel) return null;
+  if (!characteristic && leaks.length === 0 && notes.length === 0 && !activeSelfLevel && !decisionChains)
+    return null;
 
   return {
     characteristic,
@@ -168,5 +176,6 @@ async function buildPlayerCard(db: PrismaClient, playerId: string, currentDay: s
     leaks,
     notes,
     selfLevel: activeSelfLevel,
+    decisionChains,
   };
 }
