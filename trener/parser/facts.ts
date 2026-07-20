@@ -3,6 +3,7 @@ import { bigBlindFromSnapshot } from "./big-blind";
 import { equityVsHandPreflop } from "./cooler";
 import { boardUpToStreet, tableStateUpTo } from "./table-state";
 import { lastAggressionIndex } from "./aggression";
+import { stageHint, SHORT_TABLE_SEATS } from "@/config/poker/tournament-stage";
 import {
   heroMadeHand,
   madeHandCategoryRu,
@@ -906,6 +907,32 @@ export function renderHandFacts(snapshot: TableSnapshot): string {
 
   // Уровень блайндов (стадия турнира) — если парсер его вытащил из шапки HH.
   if (snapshot.level != null) lines.push(`Уровень блайндов турнира: ${snapshot.level}.`);
+
+  // Признак поздней стадии → тренер СПРАШИВАЕТ, а не утверждает (идея Артёма 20.07: «давай будем
+  // спрашивать, если стол 3-4 макс и уровни большие»). Стадии в HH нет, выдумывать её нельзя, но
+  // косвенные признаки есть — короткий стол, высокий уровень, короткий средний стек. Подробности
+  // и калибровка порогов — в config/poker/tournament-stage.ts.
+  {
+    const seatCount = snapshot.seats.length;
+    const avgStackBb =
+      bb && seatCount > 0
+        ? snapshot.seats.reduce((s, x) => s + (x.startingStack ?? 0), 0) / seatCount / bb
+        : null;
+    const hint = stageHint(snapshot.level, seatCount, avgStackBb);
+    if (hint) {
+      const why: string[] = [];
+      if (seatCount <= SHORT_TABLE_SEATS) why.push(`за столом всего ${seatCount} игрока`);
+      if (snapshot.level != null) why.push(`уровень блайндов ${snapshot.level}`);
+      if (avgStackBb != null) why.push(`средний стек за столом ${round1(avgStackBb)} BB`);
+      const what =
+        hint === "FINAL_TABLE"
+          ? "похоже на финальный или предфинальный стол"
+          : "похоже на район призовых (пузырь или около него)";
+      lines.push(
+        `Признак поздней стадии турнира (${why.join(", ")}): ${what}. ⚠️Это ДОГАДКА по косвенным признакам, а НЕ факт: в HH-файле стадии нет, сколько игроков осталось в турнире и близко ли деньги — неизвестно. НЕ утверждай стадию и не строй на ней вердикт молча. Если стадия важна для этого решения (маргинальный колл, риск вылета, давление на коротких) — СПРОСИ игрока прямо: «это уже район денег / финалка?» — и дальше опирайся на его ответ. Если он скажет, что до денег далеко, — про ICM и «выживание» не рассуждай вовсе.`,
+      );
+    }
+  }
 
   // Сколько игроков живо ПО УЛИЦАМ — не только «на флоп пошло N»: на тёрне/ривере число могло
   // упасть, и от него зависит агрессия воздухом (мультивей режет блеф). Считаем по фолдам ДО
