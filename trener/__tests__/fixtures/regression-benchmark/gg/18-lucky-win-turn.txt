@@ -1,0 +1,24 @@
+Poker Hand #TM1000000018: Tournament #500000018, Тестовый турнир - Level5(50/100) - 2026/07/20 12:00:00
+Table '500000018 1' 2-max Seat #1 is the button
+Seat 1: Hero (5000 in chips)
+Seat 2: игрок1 (5000 in chips)
+Hero: posts small blind 50
+игрок1: posts big blind 100
+*** HOLE CARDS ***
+Dealt to Hero [6c 6d]
+Hero: raises 250 to 300
+игрок1: calls 200
+*** FLOP *** [Kh 9h 2c]
+игрок1: checks
+Hero: checks
+*** TURN *** [Kh 9h 2c] [3d]
+игрок1: bets 900
+Hero: calls 900
+*** RIVER *** [Kh 9h 2c 3d] [6h]
+игрок1: checks
+Hero: checks
+игрок1: shows [Ac Kd]
+Hero collected 2400 from pot
+*** SUMMARY ***
+Total pot 2400 | Rake 0
+Board [Kh 9h 2c 3d 6h]

@@ -1,0 +1,44 @@
+<root>
+<general>
+<tournamentcode>600000019</tournamentcode>
+<tournamentname>Тестовый турнир iPoker</tournamentname>
+<nickname>Hero</nickname>
+<tablesize>3</tablesize>
+</general>
+<game gamecode="700000019">
+<startdate>2026-07-20 12:00:00</startdate>
+<players>
+<player seat="1" dealer="1" name="игрок2" chips="1500" win="4500" bet="1500" />
+<player seat="2" dealer="0" name="игрок1" chips="10000" win="0" bet="5500" />
+<player seat="3" dealer="0" name="Hero" chips="10000" win="8000" bet="5500" />
+</players>
+<round no="0">
+<action player="игрок1" type="1" sum="50" />
+<action player="Hero" type="2" sum="100" />
+</round>
+<round no="1">
+<action player="игрок2" type="6" sum="300" />
+<action player="игрок1" type="3" sum="250" />
+<action player="Hero" type="3" sum="200" />
+</round>
+<round no="2">
+<cards type="Flop">S9 D4 C2</cards>
+<action player="игрок2" type="7" sum="1500" />
+<action player="игрок1" type="3" sum="1200" />
+<action player="Hero" type="3" sum="1200" />
+</round>
+<round no="3">
+<cards type="Turn">HK</cards>
+<action player="игрок1" type="5" sum="1000" />
+<action player="Hero" type="3" sum="1000" />
+</round>
+<round no="4">
+<cards type="River">S7</cards>
+<action player="игрок1" type="5" sum="3000" />
+<action player="Hero" type="3" sum="3000" />
+</round>
+<cards player="Hero" type="Pocket">C4 D7</cards>
+<cards player="игрок2" type="Pocket">C9 H9</cards>
+<cards player="игрок1" type="Pocket">CK H5</cards>
+</game>
+</root>

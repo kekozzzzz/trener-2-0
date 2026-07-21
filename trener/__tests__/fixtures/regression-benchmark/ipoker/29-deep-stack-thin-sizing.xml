@@ -1,0 +1,42 @@
+<root>
+<general>
+<tournamentcode>600000029</tournamentcode>
+<tournamentname>Тестовый турнир iPoker</tournamentname>
+<nickname>Hero</nickname>
+<tablesize>2</tablesize>
+</general>
+<game gamecode="700000029">
+<startdate>2026-07-20 12:00:00</startdate>
+<players>
+<player seat="1" dealer="1" name="Hero" chips="25000" win="2100" bet="1050" />
+<player seat="2" dealer="0" name="игрок1" chips="25000" win="0" bet="1050" />
+</players>
+<round no="0">
+<action player="Hero" type="1" sum="50" />
+<action player="игрок1" type="2" sum="100" />
+</round>
+<round no="1">
+<action player="Hero" type="6" sum="250" />
+<action player="игрок1" type="3" sum="200" />
+</round>
+<round no="2">
+<cards type="Flop">C9 D5 H2</cards>
+<action player="игрок1" type="4" sum="0" />
+<action player="Hero" type="5" sum="400" />
+<action player="игрок1" type="3" sum="400" />
+</round>
+<round no="3">
+<cards type="Turn">CK</cards>
+<action player="игрок1" type="4" sum="0" />
+<action player="Hero" type="4" sum="0" />
+</round>
+<round no="4">
+<cards type="River">S7</cards>
+<action player="игрок1" type="4" sum="0" />
+<action player="Hero" type="5" sum="350" />
+<action player="игрок1" type="3" sum="350" />
+</round>
+<cards player="Hero" type="Pocket">H9 D8</cards>
+<cards player="игрок1" type="Pocket">CQ DJ</cards>
+</game>
+</root>

@@ -14,7 +14,7 @@ import { FloatingGlossary } from "@/components/metrics/glossary";
 import { AnswerForm } from "./answer-form";
 import { RangeAnswerForm } from "./range-answer-form";
 import { splitMarkers } from "@/config/dialogue";
-import { HandTable } from "@/components/poker/hand-table";
+import { HandTable, PlayingCard } from "@/components/poker/hand-table";
 import { heroChartRangeSpot } from "@/parser/chart-range-spot";
 import { ChartRangePanel } from "@/components/tournament/chart-range-panel";
 import { ScaleToFit } from "@/components/scale-to-fit";
@@ -188,6 +188,18 @@ export default async function HandDialoguePage({
         <h1 className="text-h1">{t("title")}</h1>
 
         <div className="mt-8 border border-border bg-card p-6">
+          {snapshot.heroCards.length > 0 && (
+            <div className="mb-4 flex items-center gap-3">
+              <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
+                {t("yourHand")}
+              </p>
+              <div className="flex gap-1">
+                {snapshot.heroCards.map((c, idx) => (
+                  <PlayingCard key={`${c}-${idx}`} card={c} />
+                ))}
+              </div>
+            </div>
+          )}
           {played && <p className="text-body text-muted-foreground">{played}</p>}
           {bbResult !== null ? (
             <>

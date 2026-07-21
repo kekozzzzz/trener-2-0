@@ -166,7 +166,7 @@ export function parseHand(handText: string, heroName: string): ParsedHandSnapsho
 
   const nameToLabel = new Map<string, string>();
   for (const row of seatRows) {
-    nameToLabel.set(row.name, row.name === heroName ? "Hero" : `Player ${row.seatNum}`);
+    nameToLabel.set(row.name, row.name === heroName ? "Hero" : `игрок ${row.seatNum}`);
   }
 
   const positionByName = resolvePositions(seatRows, buttonSeatNum, sbName, bbName);

@@ -214,10 +214,10 @@ export function parseHand(handText: string, heroName: string): ParsedHandSnapsho
   const sbName = SB_LINE.exec(handText)?.[1] ?? null;
   const bbName = BB_LINE.exec(handText)?.[1] ?? null;
 
-  // Обезличивание: реальный ник героя → "Hero", соперники → "Player <место>".
+  // Обезличивание: реальный ник героя → "Hero", соперники → "игрок <место>".
   const nameToLabel = new Map<string, string>();
   for (const row of seatRows) {
-    nameToLabel.set(row.name, row.name === heroName ? "Hero" : `Player ${row.seatNum}`);
+    nameToLabel.set(row.name, row.name === heroName ? "Hero" : `игрок ${row.seatNum}`);
   }
 
   const positionByName = resolvePositions(seatRows, buttonSeatNum, sbName, bbName);

@@ -228,7 +228,7 @@ export function parseGame(gameXml: string, heroName: string, tableSize?: number)
 
   const nameToLabel = new Map<string, string>();
   for (const p of players) {
-    nameToLabel.set(p.name, p.name === heroName ? "Hero" : `Player ${p.seat}`);
+    nameToLabel.set(p.name, p.name === heroName ? "Hero" : `игрок ${p.seat}`);
   }
 
   const buttonSeatNum = players.find((p) => p.dealer)?.seat ?? null;

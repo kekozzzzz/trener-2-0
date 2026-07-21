@@ -309,6 +309,13 @@ const INVENTED_SHOWDOWN_RES: RegExp[] = [
       `(?:в\\s+итоге\\s+)?(?:показал|вскрыл|имел|держал)`,
     "i",
   ),
+  // «ты уже победил руку соперника (KK)», «рука оппонента — сет» — комбинация привязана
+  // к «рук(а/у) соперника/оппонента» БЕЗ отдельного глагола вскрытия (регресс 2026-07-21,
+  // эталонный прогон #12: тренер написал «победил руку соперника (KK)» при пустом
+  // shownCards — ни один из двух паттернов выше не поймал: там требуется «оказался/был/
+  // показал/вскрыл» рядом ИМЕННО со словом «соперник» в именительном падеже, а тут
+  // «соперника» в родительном при слове «руку», без совпадающего глагола).
+  new RegExp(`рук${RU}\\s+(?:соперник${RU}*|оппонент${RU}*)[^.!?]{0,20}?${SHOWDOWN_COMBO}`, "i"),
 ];
 // Сослагательное/предположительное рядом — это гипотеза, а не утверждение факта.
 const SHOWDOWN_HYPOTHESIS_RE = new RegExp(
@@ -571,14 +578,20 @@ export function validateHandAnalysis(
   // рукой T3o (#25). В чат и вердикт не тащим: там игрок сам может спросить «а будь у меня пара?»,
   // и база ложных срабатываний не измерена.
   const noPair = heroNoPocketPair(request.tableSnapshot);
+  // Сторож выдуманного вскрытия — на played/optimal/note: они уходят игроку НАПРЯМУЮ (played
+  // всегда показан вверху страницы, note — единственный текст у STRONG/MEDIUM без вердикта),
+  // а раньше здесь стоял только на verdict/chat-reply (регресс 2026-07-21, эталонный прогон
+  // #12: «победил руку соперника (KK)» в played/optimal никто не ловил). question/draftVerdict
+  // НЕ трогаем: на стадии вопроса карты соперника прячутся намеренно (см. validateVerdict).
+  const noShowdown = noShowdownInHand(request.tableSnapshot);
 
   if (request.importanceLevel === "CRITICAL") {
     if (typeof result.question !== "string" || typeof result.draftVerdict !== "string") {
       throw new Error("LLM вернул CRITICAL-разбор без question/draftVerdict");
     }
     return {
-      played: cleanCoachText(result.played, request.locale, cards, fix, heroFirst, undefined, noPair),
-      optimal: cleanCoachText(result.optimal, request.locale, cards, fix, heroFirst, undefined, noPair),
+      played: cleanCoachText(result.played, request.locale, cards, fix, heroFirst, noShowdown, noPair),
+      optimal: cleanCoachText(result.optimal, request.locale, cards, fix, heroFirst, noShowdown, noPair),
       optimalAction: parseOptimalAction(result.optimalAction),
       question: cleanCoachText(result.question, request.locale, cards, fix, heroFirst, undefined, noPair),
       draftVerdict: cleanCoachText(result.draftVerdict, request.locale, cards, fix, heroFirst, undefined, noPair),
@@ -591,9 +604,9 @@ export function validateHandAnalysis(
     throw new Error(`LLM вернул ${request.importanceLevel}-разбор без note`);
   }
   return {
-    played: cleanCoachText(result.played, request.locale, cards, fix, heroFirst, undefined, noPair),
-    optimal: cleanCoachText(result.optimal, request.locale, cards, fix, heroFirst, undefined, noPair),
-    note: cleanCoachText(result.note, request.locale, cards, fix, heroFirst, undefined, noPair),
+    played: cleanCoachText(result.played, request.locale, cards, fix, heroFirst, noShowdown, noPair),
+    optimal: cleanCoachText(result.optimal, request.locale, cards, fix, heroFirst, noShowdown, noPair),
+    note: cleanCoachText(result.note, request.locale, cards, fix, heroFirst, noShowdown, noPair),
   };
 }
 

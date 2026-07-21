@@ -110,21 +110,21 @@ describe("снимок раздачи (hands[])", () => {
     expect(hero?.startingStack).toBe(51807);
 
     const button = hand.tableSnapshot.seats.find((s) => s.position === "BTN");
-    expect(button?.label).toBe("Player 3");
+    expect(button?.label).toBe("игрок 3");
     const bb = hand.tableSnapshot.seats.find((s) => s.position === "BB");
-    expect(bb?.label).toBe("Player 5");
+    expect(bb?.label).toBe("игрок 5");
 
     // Размер стола из «8-max», номер места и точные имена ранних позиций (LJ-стиль).
     expect(hand.tableSnapshot.tableSize).toBe(8);
     expect(hand.tableSnapshot.buttonSeat).toBe(3);
     const byLabel = (l: string) => hand.tableSnapshot.seats.find((s) => s.label === l);
     // ранние места EARLY (коарс) получают точные имена: UTG, UTG+1, LJ
-    expect(byLabel("Player 6")?.positionName).toBe("UTG");
-    expect(byLabel("Player 7")?.positionName).toBe("UTG+1");
-    expect(byLabel("Player 8")?.positionName).toBe("LJ");
+    expect(byLabel("игрок 6")?.positionName).toBe("UTG");
+    expect(byLabel("игрок 7")?.positionName).toBe("UTG+1");
+    expect(byLabel("игрок 8")?.positionName).toBe("LJ");
     // у не-ранних точное имя совпадает с позицией
-    expect(byLabel("Player 6")?.position).toBe("EARLY");
-    expect(byLabel("Player 1")?.positionName).toBe("HJ");
+    expect(byLabel("игрок 6")?.position).toBe("EARLY");
+    expect(byLabel("игрок 1")?.positionName).toBe("HJ");
     expect(hero?.positionName).toBe("SB");
 
     const heroAllIn = hand.tableSnapshot.actions.find(
@@ -166,21 +166,21 @@ describe("снимок раздачи (hands[])", () => {
     const hand = hands[5];
     expect(hand.chipResult).toBe(26762);
     expect(hand.tableSnapshot.seats).toHaveLength(7);
-    expect(hand.tableSnapshot.seats.find((s) => s.label === "Player 1")).toBeUndefined();
+    expect(hand.tableSnapshot.seats.find((s) => s.label === "игрок 1")).toBeUndefined();
 
     const button = hand.tableSnapshot.seats.find((s) => s.position === "BTN");
-    expect(button?.label).toBe("Player 6");
+    expect(button?.label).toBe("игрок 6");
     const sb = hand.tableSnapshot.seats.find((s) => s.position === "SB");
-    expect(sb?.label).toBe("Player 7");
+    expect(sb?.label).toBe("игрок 7");
     const bb = hand.tableSnapshot.seats.find((s) => s.position === "BB");
-    expect(bb?.label).toBe("Player 8");
+    expect(bb?.label).toBe("игрок 8");
 
     // Позиция считается по кольцу занятых мест от баттона: Hero — HJ (за два места до баттона).
     const hero = hand.tableSnapshot.seats.find((s) => s.label === "Hero");
     expect(hero?.position).toBe("HJ");
 
     // CO — место прямо перед баттоном, ранние места — EARLY.
-    expect(hand.tableSnapshot.seats.find((s) => s.position === "CO")?.label).toBe("Player 5");
+    expect(hand.tableSnapshot.seats.find((s) => s.position === "CO")?.label).toBe("игрок 5");
     expect(hand.tableSnapshot.seats.filter((s) => s.position === "EARLY")).toHaveLength(2);
   });
 });

@@ -1,0 +1,25 @@
+<root>
+<general>
+<tournamentcode>600000022</tournamentcode>
+<tournamentname>Тестовый турнир iPoker</tournamentname>
+<nickname>Hero</nickname>
+<tablesize>2</tablesize>
+</general>
+<game gamecode="700000022">
+<startdate>2026-07-20 12:00:00</startdate>
+<players>
+<player seat="1" dealer="1" name="Hero" chips="5000" win="0" bet="250" />
+<player seat="2" dealer="0" name="игрок1" chips="5000" win="500" bet="250" />
+</players>
+<round no="0">
+<action player="Hero" type="1" sum="50" />
+<action player="игрок1" type="2" sum="100" />
+</round>
+<round no="1">
+<action player="Hero" type="6" sum="200" />
+<action player="игрок1" type="6" sum="3400" />
+<action player="Hero" type="0" sum="0" />
+</round>
+<cards player="Hero" type="Pocket">CK D7</cards>
+</game>
+</root>

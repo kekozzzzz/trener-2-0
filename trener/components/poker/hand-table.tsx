@@ -49,7 +49,7 @@ function actionLabel(a: SeatAction, bigBlind: number | null, labels: TableLabels
   return name;
 }
 
-function Card({ card, board }: { card: string; board?: boolean }) {
+export function PlayingCard({ card, board }: { card: string; board?: boolean }) {
   const rank = card[0]?.toUpperCase() ?? "?";
   const suit = SUIT_GLYPH[card[1]?.toLowerCase() ?? ""] ?? card[1] ?? "";
   return (
@@ -184,7 +184,7 @@ export async function HandTable({
         <div className="absolute left-1/2 top-1/2 w-3/5 -translate-x-1/2 -translate-y-1/2 text-center">
           <div className="mb-2 flex justify-center gap-1">
             {state.board.length > 0 ? (
-              state.board.map((c, i) => <Card key={`${c}-${i}`} card={c} board />)
+              state.board.map((c, i) => <PlayingCard key={`${c}-${i}`} card={c} board />)
             ) : (
               <span className="font-mono text-label uppercase tracking-label text-muted-foreground">{labels.beforeFlop}</span>
             )}
@@ -259,7 +259,7 @@ export async function HandTable({
                     пока они в игре; сбросил соперник — карт нет. */}
                 {seat.isHero && state.heroCards.length > 0 ? (
                   <div className="absolute bottom-full left-1/2 mb-1 flex -translate-x-1/2 gap-1">
-                    {state.heroCards.map((c, idx) => <Card key={`${c}-${idx}`} card={c} />)}
+                    {state.heroCards.map((c, idx) => <PlayingCard key={`${c}-${idx}`} card={c} />)}
                   </div>
                 ) : !seat.folded ? (
                   <div className="absolute bottom-full left-1/2 mb-1 flex -translate-x-1/2 gap-1">
