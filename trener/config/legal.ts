@@ -24,12 +24,16 @@ export const OPERATOR = {
 // Внешняя ИИ-модель, в которую уходят данные для анализа. Это трансграничная
 // передача в страну без адекватной защиты (152-ФЗ, ст. 12) — раскрывается честно
 // в Политике и в согласии при регистрации. См. architecture/07-безопасность.md.
-// Фактическая цепочка ИИ-обработки (2026-07): запросы идут через шлюз OpenRouter к
-// моделям Z.ai / Zhipu AI (разбор, GLM — выбран аудитом 2026-07-11), DeepSeek (запасная
-// модель разбора) и Mistral AI (распознавание голоса); Anthropic — резервная модель
-// (переключается флагом LLM_PROVIDER). Согласие и политика называют всех.
+// Фактическая цепочка ИИ-обработки (обновлено 2026-07-21, сверено с config/llm.ts):
+// запросы идут через шлюз OpenRouter к модели Google (Gemini 3.1 Flash Lite, боевая с
+// 17.07 — DEFAULT_OPENROUTER_MODEL); Z.ai/Zhipu AI (GLM) — аварийный дешёвый запас
+// (OPENROUTER_MODEL без передеплоя), DeepSeek — ещё один поддерживаемый вариант разбора
+// через тот же шлюз (config/llm-pricing.ts); Mistral AI — распознавание голоса (Voxtral,
+// config/stt.ts); Anthropic — полный резервный провайдер В ОБХОД OpenRouter (флаг
+// LLM_PROVIDER=anthropic). Согласие и политика называют всех. Раньше здесь была ошибка:
+// Z.ai/GLM был назван основной моделью разбора, хотя основная — Google/Gemini.
 export const AI_PROCESSOR = {
-  name: "OpenRouter, Inc. / Z.ai (Zhipu AI) / DeepSeek / Mistral AI / Anthropic PBC",
+  name: "OpenRouter, Inc. / Google LLC / Z.ai (Zhipu AI) / DeepSeek / Mistral AI / Anthropic PBC",
   country: "США",
 } as const;
 
