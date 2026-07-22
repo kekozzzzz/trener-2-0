@@ -184,6 +184,10 @@ const POSITION_CODES = new Set(["UTG", "MP", "HJ", "CO", "LJ", "EP", "BTN", "SB"
 // «VPIP 42%» игроку, латинский бэкстоп это бракует (throw→ретрай). SPR/ICM/GTO — частые/структурные,
 // оставлены (SPR про свою руку, ICM/GTO ещё и чистятся словарём RU_LATIN_FIXES раньше).
 const ABBREV = new Set(["SPR", "ICM", "GTO", "MTT", "PKO", "EV", "BI", "RFI"]);
+// Статистические термины соперника, запрещённые игроку (см. ABBREV выше), но легитимные во
+// внутреннем дневнике тренера (coach-notes.ts) — его игрок никогда не видит, P3 там не действует
+// (карантин 22.07: дневник трижды бракнул «VPIP» о самом ученике тем же бэкстопом).
+const STAT_ABBREV = new Set(["VPIP", "PFR", "WTSD", "AF", "MDF"]);
 const HAS_LATIN = /[A-Za-z]/;
 const HAND_NOTATION = /^[AKQJT2-9]{1,2}[sox]?$/i; // A, K, AKs, QJo, T9s, Kx
 const RANK_SEQ = /^[AKQJT2-9]{2,5}$/i; // последовательность рангов (стрит-нотация: QJT, T9, AKQ) — не мусор
@@ -194,7 +198,7 @@ const BLIND_TOKEN = /^\d*(bb|sb)$/i; // стек/ставка в блайнда�
 // КОНСЕРВАТИВНО: только слова со строчными латинскими буквами (value, showdown, HoFlush,
 // Hero), а всё двусмысленное пропускаем — коды позиций (регистронезависимо), заглавные
 // аббревиатуры, нотацию рук, коды карт, стеки в блайндах, одиночные буквы (C-бет), числа.
-function firstStrayLatin(text: string): string | null {
+function firstStrayLatin(text: string, internalDiary?: boolean): string | null {
   // Токены — по буквам И цифрам, иначе нотация с цифрой рвётся (A6s → «A»+«s», ложный брак).
   const tokens = text.match(/[A-Za-z0-9]+/g);
   if (!tokens) return null;
@@ -203,6 +207,7 @@ function firstStrayLatin(text: string): string | null {
     if (t.length === 1) continue; // одиночная латинская буква (C-бет, инициал) — не мусор-слово
     if (POSITION_CODES.has(t.toUpperCase())) continue; // код позиции регистронезависимо
     if (ABBREV.has(t.toUpperCase())) continue; // разрешённая аббревиатура (SPR, ICM…)
+    if (internalDiary && STAT_ABBREV.has(t.toUpperCase())) continue; // дневник тренера — игрок не видит
     if (HAND_NOTATION.test(t)) continue; // нотация руки
     if (RANK_SEQ.test(t)) continue; // последовательность рангов (стрит QJT/T9) — не англ. слово
     if (CARD_CODE.test(t)) continue; // код карты
@@ -413,6 +418,7 @@ export function cleanCoachText(
   heroFirstPostflop?: boolean,
   noShowdown?: boolean,
   noPocketPair?: boolean,
+  internalDiary?: boolean,
 ): string {
   if (CJK_RE.test(text)) {
     throw new Error("LLM вернул CJK-иероглифы в тексте для игрока");
@@ -480,7 +486,7 @@ export function cleanCoachText(
     // она тащит «Player N» заметно чаще GLM). Промпт по-прежнему велит звать позицией; это лишь
     // предохранитель. Корневой фикс — убрать «Player N» из самого снимка — отдельно.
     out = out.replace(/\bPlayers?\s*\d*/gi, "соперник");
-    const stray = firstStrayLatin(out);
+    const stray = firstStrayLatin(out, internalDiary);
     if (stray !== null) {
       throw new Error(`LLM вернул латиницу в тексте для игрока: «${stray}»`);
     }
@@ -708,7 +714,7 @@ export function validateCoachNotes(result: { notes?: unknown }): CoachNotesResul
       typeof item.basedOn === "number" && Number.isInteger(item.basedOn) && item.basedOn >= 1
         ? item.basedOn
         : undefined;
-    notes.push({ text: cleanCoachText(item.text), basedOn });
+    notes.push({ text: cleanCoachText(item.text, "ru", undefined, undefined, undefined, undefined, undefined, true), basedOn });
   }
   return { notes };
 }

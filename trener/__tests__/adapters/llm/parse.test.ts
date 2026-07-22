@@ -329,6 +329,17 @@ describe("статистические термины соперника бра�
     expect(() => cleanCoachText("тут важен ICM, стек короткий")).not.toThrow();
     expect(() => cleanCoachText("по RFI-чарту это опен")).not.toThrow();
   });
+  // Карантин 22.07: дневник тренера (coach-notes.ts) — игрок его никогда не видит, P3 туда не
+  // применим. Флаг internalDiary снимает запрет ТОЛЬКО для этих 5 терминов и ТОЛЬКО там, где
+  // вызывающий явно его передал (validateCoachNotes) — реплики игроку по-прежнему бракуются.
+  it("во внутреннем дневнике тренера (internalDiary=true) те же термины разрешены", () => {
+    expect(() =>
+      cleanCoachText("ученик завышает VPIP на баттоне", "ru", undefined, undefined, undefined, undefined, undefined, true),
+    ).not.toThrow();
+    expect(() =>
+      cleanCoachText("PFR и WTSD ученика стабильны", "ru", undefined, undefined, undefined, undefined, undefined, true),
+    ).not.toThrow();
+  });
 });
 
 // P3 2026-07-15 (регресс #41): выдуманную масть ОДНОЗНАЧНОЙ карманной карты Hero исправляем, а не
