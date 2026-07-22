@@ -15,6 +15,7 @@ import {
   type AcquisitionSourceStats,
 } from "@/features/admin/stats";
 import { formatUsd } from "@/features/usage/cost-report";
+import { getPlan } from "@/config/plans";
 import { PageHeader } from "@/components/page-header";
 import { CopyLinkButton } from "@/components/copy-link-button";
 
@@ -55,6 +56,7 @@ export default async function AdminPage() {
           </Card>
           <Card>
             <CardTitle>{t("logins")}</CardTitle>
+            <p className="mt-2 text-small text-muted-foreground">{t("loginsHint")}</p>
             <PeriodRow counts={s.logins.counts} t={t} />
             <Bars points={s.logins.byDay} />
             <p className="mt-4 text-small text-muted-foreground">
@@ -113,7 +115,7 @@ export default async function AdminPage() {
                 {s.subscriptions.activeByPlan.map((p) => (
                   <li key={p.planCode} className="flex items-baseline justify-between">
                     <span className="font-mono text-label uppercase tracking-label text-muted-foreground">
-                      {p.planCode}
+                      {getPlan(p.planCode)?.title ?? p.planCode}
                     </span>
                     <Num>{p.count}</Num>
                   </li>
@@ -313,6 +315,18 @@ function SourceRow({
   );
 }
 
+// Полное название страны по ISO-коду для показа (само хранится только код — приватность
+// не задета, это чисто отображение уже полученного значения). Незнакомый/битый код —
+// возвращаем как есть, страница не должна падать из-за кривых данных.
+const countryDisplayNames = new Intl.DisplayNames(["ru"], { type: "region" });
+function countryLabel(code: string): string {
+  try {
+    return countryDisplayNames.of(code) ?? code;
+  } catch {
+    return code;
+  }
+}
+
 function CountryList({
   items,
   unknown,
@@ -328,8 +342,8 @@ function CountryList({
     <ul className="mt-4 space-y-2">
       {items.map((i) => (
         <li key={i.country ?? "unknown"} className="flex items-center gap-4">
-          <span className="w-16 shrink-0 font-mono text-label uppercase tracking-label text-muted-foreground">
-            {i.country ?? unknown}
+          <span className="w-32 shrink-0 truncate font-mono text-small text-muted-foreground">
+            {i.country ? countryLabel(i.country) : unknown}
           </span>
           <span className="h-2 bg-primary" style={{ width: `${(i.count / max) * 100}%` }} />
           <span className="ml-auto font-mono text-small text-foreground">{i.count}</span>
