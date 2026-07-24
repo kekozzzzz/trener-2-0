@@ -4,7 +4,11 @@
 // ДО постановки платной задачи. На клиент не попадают.
 
 import type { PrismaClient } from "@prisma/client";
-import { getEffectiveTournamentLimit, getSubscriptionPeriodDays } from "@/config/plans";
+import {
+  getEffectiveTournamentLimit,
+  getFreeTournamentLimit,
+  getSubscriptionPeriodDays,
+} from "@/config/plans";
 import { isAdminEmail } from "@/config/admin";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -118,19 +122,21 @@ export async function assessAiAccess(
     return { allowed: true };
   }
 
-  // Без активной подписки — бесплатно только ПЕРВЫЙ турнир игрока (с диалогом).
-  const firstTournament = await db.tournament.findFirst({
+  // Без активной подписки — бесплатны первые getFreeTournamentLimit() турниров игрока (с диалогом).
+  const freeLimit = getFreeTournamentLimit();
+  const freeTournaments = await db.tournament.findMany({
     where: { playerId, deletedAt: null },
     orderBy: { createdAt: "asc" },
+    take: freeLimit,
     select: { id: true },
   });
 
-  // Загрузка нового турнира: свободно, только если турниров ещё нет (это и будет первый).
+  // Загрузка нового турнира: свободно, пока бесплатных турниров ещё не набралось.
   if (!opts?.tournamentId) {
-    return firstTournament ? { allowed: false, reason: "PAYWALL" } : { allowed: true };
+    return freeTournaments.length < freeLimit ? { allowed: true } : { allowed: false, reason: "PAYWALL" };
   }
 
-  // Диалог/чат: свободно, только если действие на первом (бесплатном) турнире.
-  if (firstTournament && firstTournament.id === opts.tournamentId) return { allowed: true };
+  // Диалог/чат: свободно, только если действие на одном из бесплатных турниров.
+  if (freeTournaments.some((t) => t.id === opts.tournamentId)) return { allowed: true };
   return { allowed: false, reason: "PAYWALL" };
 }

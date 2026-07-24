@@ -3,6 +3,7 @@ import {
   getPlans,
   getPlan,
   getEffectiveTournamentLimit,
+  getFreeTournamentLimit,
   PLANS_LIST,
 } from "@/config/plans";
 
@@ -26,6 +27,12 @@ describe("тарифная сетка 2026-07-10", () => {
     expect(max?.tournamentLimit).toBe(500);
     // Полный список (для гейта/вебхука) по-прежнему знает все три кода.
     expect(PLANS_LIST.map((p) => p.code)).toEqual(["basic", "standard", "max"]);
+  });
+
+  // Временно 3 на период тестирования (запрос Артёма 24.07.2026) вместо обычного 1 —
+  // тест закрепляет ТЕКУЩЕЕ решение, случайная правка числа без нового решения его уронит.
+  it("бесплатных турниров без подписки — 3 (временно, на тест)", () => {
+    expect(getFreeTournamentLimit()).toBe(3);
   });
 
   it("fair-use предохранитель безлимита — 300 разборов за период", () => {

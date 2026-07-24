@@ -19,7 +19,7 @@ function mockDb(opts: {
   email: string;
   subscription?: Sub;
   analyzedCount?: number; // турниров уже разобрано за период (счётчик лимита)
-  firstTournamentId?: string | null;
+  existingTournamentIds?: string[]; // существующие турниры игрока, по createdAt asc
   unlockedTournamentId?: string | null; // какой турнир уже открыт (analysisUnlocked=true)
 }): PrismaClient {
   return {
@@ -31,7 +31,9 @@ function mockDb(opts: {
         analysisUnlocked: opts.unlockedTournamentId != null && where.id === opts.unlockedTournamentId,
       }),
       count: async () => opts.analyzedCount ?? 0,
-      findFirst: async () => (opts.firstTournamentId ? { id: opts.firstTournamentId } : null),
+      // Имитирует Prisma take: N — реальный код сам режет запрос лимитом бесплатных турниров.
+      findMany: async ({ take }: { take: number }) =>
+        (opts.existingTournamentIds ?? []).slice(0, take).map((id) => ({ id })),
     },
   } as unknown as PrismaClient;
 }
@@ -52,7 +54,7 @@ const activeSub = (planCode: string): Sub => {
 
 describe("assessAiAccess", () => {
   it("владелец — без лимита", async () => {
-    const db = mockDb({ email: OWNER_EMAIL, firstTournamentId: "T1" });
+    const db = mockDb({ email: OWNER_EMAIL, existingTournamentIds: ["T1"] });
     expect(await assessAiAccess(db, "p", { tournamentId: "T9" })).toEqual({ allowed: true });
   });
 
@@ -101,7 +103,12 @@ describe("assessAiAccess", () => {
       nextPaymentAt: new Date(now - 10 * DAY_MS), // оплаченный период закончился
       deletedAt: null,
     };
-    const db = mockDb({ email: "u@x.ru", subscription: expired, firstTournamentId: "T1" });
+    // Бесплатный лимит (3) уже выбран — без него истёкшая подписка не отличалась бы от активной.
+    const db = mockDb({
+      email: "u@x.ru",
+      subscription: expired,
+      existingTournamentIds: ["T1", "T2", "T3"],
+    });
     const res = await assessAiAccess(db, "p");
     expect(res.allowed).toBe(false);
     if (res.allowed) return;
@@ -109,26 +116,34 @@ describe("assessAiAccess", () => {
   });
 
   it("без подписки, турниров ещё нет → первая загрузка бесплатна", async () => {
-    const db = mockDb({ email: "u@x.ru", firstTournamentId: null });
+    const db = mockDb({ email: "u@x.ru", existingTournamentIds: [] });
     expect(await assessAiAccess(db, "p")).toEqual({ allowed: true });
   });
 
-  it("без подписки, турнир уже есть, новая загрузка → PAYWALL", async () => {
-    const db = mockDb({ email: "u@x.ru", firstTournamentId: "T1" });
+  // Лимит бесплатных турниров — getFreeTournamentLimit() (config/plans.ts), сейчас 3
+  // (временно на тест, план вернуть на 1 — не хардкодить число нигде, кроме конфига).
+  it("без подписки, бесплатных турниров ещё МЕНЬШЕ лимита → новая загрузка бесплатна", async () => {
+    const db = mockDb({ email: "u@x.ru", existingTournamentIds: ["T1", "T2"] }); // 2 < 3
+    expect(await assessAiAccess(db, "p")).toEqual({ allowed: true });
+  });
+
+  it("без подписки, бесплатных турниров РОВНО лимит → новая загрузка PAYWALL", async () => {
+    const db = mockDb({ email: "u@x.ru", existingTournamentIds: ["T1", "T2", "T3"] }); // 3 = лимит
     const res = await assessAiAccess(db, "p");
     expect(res.allowed).toBe(false);
     if (res.allowed) return;
     expect(res.reason).toBe("PAYWALL");
   });
 
-  it("без подписки, диалог на ПЕРВОМ (бесплатном) турнире → доступ", async () => {
-    const db = mockDb({ email: "u@x.ru", firstTournamentId: "T1" });
-    expect(await assessAiAccess(db, "p", { tournamentId: "T1" })).toEqual({ allowed: true });
+  it("без подписки, диалог на ЛЮБОМ из бесплатных турниров → доступ", async () => {
+    const db = mockDb({ email: "u@x.ru", existingTournamentIds: ["T1", "T2", "T3"] });
+    expect(await assessAiAccess(db, "p", { tournamentId: "T2" })).toEqual({ allowed: true });
   });
 
-  it("без подписки, действие на ДРУГОМ турнире → PAYWALL", async () => {
-    const db = mockDb({ email: "u@x.ru", firstTournamentId: "T1" });
-    const res = await assessAiAccess(db, "p", { tournamentId: "T2" });
+  it("без подписки, действие на турнире ВНЕ бесплатного набора → PAYWALL", async () => {
+    // T4 существует (игрок его уже когда-то создал), но в бесплатные первые 3 не попал.
+    const db = mockDb({ email: "u@x.ru", existingTournamentIds: ["T1", "T2", "T3", "T4"] });
+    const res = await assessAiAccess(db, "p", { tournamentId: "T4" });
     expect(res.allowed).toBe(false);
     if (res.allowed) return;
     expect(res.reason).toBe("PAYWALL");
