@@ -453,15 +453,26 @@ export function renderRangeReads(reads: RangeRead[] | undefined, locale: Locale)
   const en = locale === "en";
   const streetName = en ? STREET_EN : STREET_RU;
 
+  const hasEstimated = reads.some((r) => r.estimated);
+
   const lines = reads.map((r) => {
     const parts: string[] = [];
     const where = r.street ? ` (${streetName[r.street]})` : "";
     if (en) {
+      // Игрок диапазон САМ не отметил — эталонный чарт вместо разметки (план
+      // 2026-07-26-эталонный-3бет-диапазон.md). Каждая строка сама себя маркирует —
+      // не полагаемся только на общий заголовок блока, модель может его проскочить.
       parts.push(
-        `- Round ${r.roundNumber}${where}: marked "${r.notation}" — ${r.gridPct}% of all starting hands${r.fullGrid ? " (the ENTIRE grid — “he plays everything”)" : ""}.`
+        r.estimated
+          ? `- Round ${r.roundNumber}: the player did NOT mark a range himself here. ESTIMATE instead of his answer — our reference 3-bet chart for the opponent's position (adjusted to his profile when known with confidence): "${r.notation}" (${r.gridPct}% of hands). This is NOT what this specific opponent held — it is what such opponents typically 3-bet with.`
+          : `- Round ${r.roundNumber}${where}: marked "${r.notation}" — ${r.gridPct}% of all starting hands${r.fullGrid ? " (the ENTIRE grid — “he plays everything”)" : ""}.`
       );
       if (r.equityPct !== null)
-        parts.push(`Hero's hand equity against this range on this street: ${r.equityPct}% (${r.combosLive} live combos after removing Hero's cards and the board).`);
+        parts.push(
+          r.estimated
+            ? `Hero's hand equity against this ESTIMATE on the preflop all-in: ${r.equityPct}% (${r.combosLive} live combos). Talk about it as a statistic/typical spread ("typically/on average"), not as something the player was certain to know — and don't blend it with the specific opponent's actual revealed hand (if that fact is also present) into one unconditional statement.`
+            : `Hero's hand equity against this range on this street: ${r.equityPct}% (${r.combosLive} live combos after removing Hero's cards and the board).`
+        );
       if (r.buckets)
         parts.push(`Breakdown on this board: of ${r.buckets.total} combos you beat ${r.buckets.beats}, you're behind ${r.buckets.losesTo}${r.buckets.ties ? `, tie ${r.buckets.ties}` : ""}. Of those you beat, ${r.buckets.worsePays} have a pair+ (will pay a value bet) and ${r.buckets.worseAir} are air (fold to a bet) — so a value bet earns from ${r.buckets.worsePays}, not all ${r.buckets.beats}.`);
       if (r.vpipContrast) {
@@ -479,10 +490,16 @@ export function renderRangeReads(reads: RangeRead[] | undefined, locale: Locale)
       }
     } else {
       parts.push(
-        `- Раунд ${r.roundNumber}${where}: отмечено «${r.notation}» — ${r.gridPct}% всех стартовых рук${r.fullGrid ? " (ВСЯ сетка — «он играет всё»)" : ""}.`
+        r.estimated
+          ? `- Раунд ${r.roundNumber}: игрок диапазон ЗДЕСЬ САМ НЕ ОТМЕТИЛ. ОЦЕНКА вместо его ответа — наш эталонный чарт 3-бета для позиции соперника (подстроен под его профиль, если он известен уверенно): «${r.notation}» (${r.gridPct}% рук). Это НЕ то, что держал именно этот соперник, — это то, чем такие соперники ОБЫЧНО 3-бетят.`
+          : `- Раунд ${r.roundNumber}${where}: отмечено «${r.notation}» — ${r.gridPct}% всех стартовых рук${r.fullGrid ? " (ВСЯ сетка — «он играет всё»)" : ""}.`
       );
       if (r.equityPct !== null)
-        parts.push(`Эквити руки Hero против этого диапазона на этой улице: ${r.equityPct}% (${r.combosLive} живых комбо после вычета карт Hero и борда).`);
+        parts.push(
+          r.estimated
+            ? `Эквити руки Hero против этого ЭТАЛОНА на префлоп-олл-ине: ${r.equityPct}% (${r.combosLive} живых комбо). Говори об этом как о статистике/обычном раскладе («по статистике/типичный диапазон»), а не как о том, что игрок обязан был знать точно, — и не смешивай это с готовой рукой конкретного соперника из другого блока фактов (если он там есть) в одном безусловном утверждении.`
+            : `Эквити руки Hero против этого диапазона на этой улице: ${r.equityPct}% (${r.combosLive} живых комбо после вычета карт Hero и борда).`
+        );
       if (r.buckets)
         parts.push(`Раскладка на этом борде: из ${r.buckets.total} комбо ты бьёшь ${r.buckets.beats}, позади ${r.buckets.losesTo}${r.buckets.ties ? `, дележ ${r.buckets.ties}` : ""}. Из тех, что бьёшь, ${r.buckets.worsePays} с парой+ (заплатят велью-бет), а ${r.buckets.worseAir} - воздух (сбросят на бет) - значит велью-ставка добирает с ${r.buckets.worsePays}, а не со всех ${r.buckets.beats}.`);
       if (r.vpipContrast) {
@@ -502,6 +519,13 @@ export function renderRangeReads(reads: RangeRead[] | undefined, locale: Locale)
     return parts.join(" ");
   });
 
+  const estimatedNoteEn = hasEstimated
+    ? "\n- Some entries above are marked ESTIMATE — they came from our reference chart, not from the player. Never phrase an estimate as \"you should have known this\" or as a certain fact about the specific opponent; use \"typically/on average\" language for it."
+    : "";
+  const estimatedNoteRu = hasEstimated
+    ? "\n- Некоторые записи выше помечены ОЦЕНКА — это эталонный чарт, а не слова игрока. Никогда не формулируй оценку как «ты обязан был это знать» или как достоверный факт про конкретного соперника — только «обычно/по статистике»."
+    : "";
+
   if (en) {
     return `Ranges the player marked on the 13×13 grid — with the parser's EXACT numbers against them (computed by code via full deck enumeration; do NOT recompute or estimate them yourself):
 ${lines.join("\n")}
@@ -511,7 +535,7 @@ How to use these numbers:
 - Never quote a bare number, especially an extreme one (0%, near-zero, near-100%): in the SAME sentence explain in plain words WHY the board/range makes it so ("the board is paired with eights — your two pair is below every hand in his range"). A bare number forces the player to puzzle out the reason himself.
 - If the marking is implausibly wide (the entire grid, a large gap vs his real entry frequency) — don't adapt to it: ask how many of those hands the opponent would realistically have played this way to this street.
 - If combos were ADDED during a cut — point at it with a question: which new hands could have appeared here, and where were they earlier?
-- The numbers serve the dialogue, not replace it: one question at a time, no lectures.`;
+- The numbers serve the dialogue, not replace it: one question at a time, no lectures.${estimatedNoteEn}`;
   }
 
   return `Диапазоны, которые игрок отметил на сетке 13×13, — и ТОЧНЫЕ числа парсера против них (посчитаны кодом честным перебором колоды; НЕ пересчитывай и не прикидывай их сам):
@@ -522,7 +546,7 @@ ${lines.join("\n")}
 - Никогда не бросай голое число, особенно крайнее (0%, почти ноль, почти 100%): в ТОЙ ЖЕ фразе объясни простыми словами, ПОЧЕМУ борд/диапазон его таким делают («борд спарен восьмёрками — твои две пары младше любой руки его диапазона»). Голое число заставляет игрока самому минуту гадать, почему так.
 - Если отмечено неправдоподобно широко (вся сетка, большой разрыв с реальной частотой входа) — не подстраивайся под это: спроси, сколько из этих рук оппонент реально доиграл бы так до этой улицы.
 - Если при нарезке ДОЛОЖЕНЫ комбо — укажи на это вопросом: откуда на этой улице взялись руки, которых раньше в диапазоне не было?
-- Числа служат диалогу, а не заменяют его: одна мысль на вопрос, без лекций.`;
+- Числа служат диалогу, а не заменяют его: одна мысль на вопрос, без лекций.${estimatedNoteRu}`;
 }
 
 function outputSchemaFor(request: HandAnalysisRequest): string {

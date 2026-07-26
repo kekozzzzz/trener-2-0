@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { TableAction, TableSnapshot } from "@/parser/types";
 import { detectHeroVsOpen } from "@/parser/vs-open";
-import { isVsOpenThreeBetSignificantlyWide } from "@/config/poker/vs-open-chart";
+import { isVsOpenThreeBetSignificantlyWide, referenceThreeBetRange } from "@/config/poker/vs-open-chart";
 
 describe("isVsOpenThreeBetSignificantlyWide — 3-бет против опена шире нормы", () => {
   it("велью/блеф в ренже, мусор — флаг", () => {
@@ -81,5 +81,36 @@ describe("detectHeroVsOpen — против одиночного опена (н�
       hero: { street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 250 },
     });
     expect(detectHeroVsOpen(s)).toBeNull();
+  });
+});
+
+// Эталонный диапазон 3-бета для запасного факта вердикта (план
+// 2026-07-26-эталонный-3бет-диапазон.md): подстройка ТОЛЬКО при confidence "solid".
+describe("referenceThreeBetRange — эталон с поправкой на тип соперника", () => {
+  const base = referenceThreeBetRange("CO");
+
+  it("без типа/уверенности — база (велью+блеф) без изменений", () => {
+    expect(referenceThreeBetRange("CO")).toBe(base);
+    expect(referenceThreeBetRange("CO", "NIT", "tentative")).toBe(base);
+    expect(referenceThreeBetRange("CO", "FISH", "tentative")).toBe(base);
+  });
+
+  it("REG (solid) — тоже база без изменений", () => {
+    expect(referenceThreeBetRange("CO", "REG", "solid")).toBe(base);
+  });
+
+  it("NIT (solid) — только велью, диапазон УЖЕ базы", () => {
+    const nit = referenceThreeBetRange("CO", "NIT", "solid");
+    expect(nit.has("AA")).toBe(true); // велью
+    expect(nit.has("KQo")).toBe(false); // блеф-комбо CO — из NIT-диапазона убран
+    expect(nit.size).toBeLessThan(base.size);
+  });
+
+  it("FISH/LAG (solid) — база + один шаг допуска, ШИРЕ базы", () => {
+    const fish = referenceThreeBetRange("CO", "FISH", "solid");
+    const lag = referenceThreeBetRange("CO", "LAG", "solid");
+    expect(fish.size).toBeGreaterThan(base.size);
+    expect(lag).toEqual(fish); // FISH и LAG используют один и тот же допуск
+    for (const code of base) expect(fish.has(code)).toBe(true); // допуск ⊇ базы
   });
 });

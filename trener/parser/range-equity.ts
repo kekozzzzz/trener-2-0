@@ -56,7 +56,10 @@ export function combosForCode(code: string): [string, string][] {
 }
 
 // Живые комбо диапазона: без комбо, задевающих мёртвые карты (Hero + борд).
-function liveCombos(codes: Iterable<string>, dead: Set<string>): [string, string][] {
+// Экспортирована для equityVsRangePreflop (parser/cooler.ts, план
+// 2026-07-26-эталонный-3бет-диапазон.md) — тот же список комбо, естественно
+// взвешенный (пара даёт 6 записей, оффсьют — 12), нужен и там.
+export function liveCombos(codes: Iterable<string>, dead: Set<string>): [string, string][] {
   const out: [string, string][] = [];
   for (const code of new Set(codes))
     for (const [a, b] of combosForCode(code)) if (!dead.has(a) && !dead.has(b)) out.push([a, b]);

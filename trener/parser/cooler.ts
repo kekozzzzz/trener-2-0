@@ -2,6 +2,7 @@ import type { Street, TableSnapshot } from "./types";
 import { bigBlindFromSnapshot } from "./big-blind";
 import { equityVsHand } from "./lucky-win";
 import { cardSetValue, compareValues } from "./made-hand";
+import { liveCombos } from "./range-equity";
 import { detectHeroOpen } from "./open-raise";
 import { detectHeroBBDefense } from "./bb-defense";
 import { detectHeroIso } from "./iso";
@@ -92,6 +93,62 @@ export function equityVsHandPreflop(hero: string[], villain: string[]): number |
     else if (c === 0) ties += 1;
   }
   return Math.round(((wins + ties / 2) / MC_ITERATIONS) * 1000) / 10;
+}
+
+// Эквити Hero против ДИАПАЗОНА на префлоп-олл-ине (план
+// 2026-07-26-эталонный-3бет-диапазон.md): эталонный чарт 3-бета вместо разметки
+// игрока, когда тот диапазон сам не отметил. Область применения узкая и осознанная
+// (согласовано с Артёмом 26.07) — ТОЛЬКО когда деньги уже вошли в банк олл-ином на
+// префлопе (как и preflopAllInEquityLine ниже): дальше улиц нет, диапазон — последний
+// честный вход, а не прикидка «как пойдёт постфлоп-игра» (эту прикидку сознательно НЕ
+// делаем — decision 2026-07-03 про range-equity.ts здесь не нарушается, там речь про
+// произвольные постфлоп-линии, тут — про закрытый вопрос «против кого мы выставились»).
+//
+// Монте-Карло того же типа, что equityVsHandPreflop (детерминированное зерно, 40k
+// прогонов, ±0.5 п.п.), но соперник на каждой итерации — случайное ЖИВОЕ комбо из
+// диапазона (естественный вес: у пары 6 комбо, у оффсьюта — 12), а не одна рука.
+export type RangeEquityPreflop = { equityPct: number; combosLive: number };
+
+export function equityVsRangePreflop(hero: string[], codes: Iterable<string>): RangeEquityPreflop | null {
+  if (hero.length !== 2) return null;
+  const heroDead = new Set(hero);
+  if (heroDead.size !== 2) return null;
+
+  const combos = liveCombos(codes, heroDead);
+  if (combos.length === 0) return null; // диапазон пуст после вычета карт Hero — сам факт для тренера
+
+  const sortedCodes = [...new Set(codes)].sort();
+  let seed = 0;
+  for (const ch of [...hero, ...sortedCodes].join("")) seed = (seed * 31 + ch.charCodeAt(0)) | 0;
+  const rng = mulberry32(seed);
+
+  let wins = 0;
+  let ties = 0;
+  const board = new Array<string>(5);
+  for (let iter = 0; iter < MC_ITERATIONS; iter++) {
+    const villain = combos[Math.floor(rng() * combos.length)];
+    const dead = new Set([...hero, ...villain]);
+    const deck: string[] = [];
+    for (const r of ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"]) {
+      for (const s of ["c", "d", "h", "s"]) {
+        const card = r + s;
+        if (!dead.has(card)) deck.push(card);
+      }
+    }
+    for (let i = 0; i < 5; i++) {
+      const j = i + Math.floor(rng() * (deck.length - i));
+      const tmp = deck[i];
+      deck[i] = deck[j];
+      deck[j] = tmp;
+      board[i] = deck[i];
+    }
+    const c = compareValues(cardSetValue([...hero, ...board]), cardSetValue([...villain, ...board]));
+    if (c > 0) wins += 1;
+    else if (c === 0) ties += 1;
+  }
+  // Целый процент (не 1 знак после запятой, как у equityVsHandPreflop) — та же
+  // точность, что у RangeRead.equityPct из range-equity.ts (согласованный формат).
+  return { equityPct: Math.round(((wins + ties / 2) / MC_ITERATIONS) * 100), combosLive: combos.length };
 }
 
 // «Чистый префлоп»: ни один эталонный грейдер не флагнул вход Hero и он не лимпил

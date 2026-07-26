@@ -23,6 +23,7 @@ const READ: RangeRead = {
   buckets: { total: 52, beats: 30, losesTo: 20, ties: 2, worsePays: 12, worseAir: 18 },
   vpipContrast: { seatLabel: "Player 3", vpip: 22, handsObserved: 40, gapPp: -16 },
   cut: { vsRound: 1, foldPct: 63, addedCombos: 12 },
+  estimated: false,
 };
 
 const snapshot: TableSnapshot = {
@@ -87,5 +88,31 @@ describe.each(CASES)("блок диапазонов в промпте: $name", (
   it("без отметок — промпт без блока", () => {
     expect(build(undefined)).not.toContain("Диапазоны, которые игрок отметил");
     expect(build([])).not.toContain("Диапазоны, которые игрок отметил");
+  });
+
+  // Регресс 26.07: раньше единственный факт при пропущенной разметке — эквити против
+  // ОДНОЙ вскрывшейся руки — подавался языком диапазона («спектр доминирует»), хотя
+  // никакого диапазона не считали. Теперь запасной факт явно помечен как ОЦЕНКА.
+  it("запасной эталонный диапазон (estimated:true) — явно помечен как оценка, не факт", () => {
+    const ESTIMATED_READ: RangeRead = {
+      roundNumber: 1,
+      notation: "JJ+, AKs, AKo, AQs, AQo, KQo, AJo, KJo, ATo",
+      gridPct: 9,
+      fullGrid: false,
+      street: "PREFLOP",
+      equityPct: 46,
+      combosLive: 46,
+      buckets: null,
+      vpipContrast: null,
+      cut: null,
+      estimated: true,
+    };
+    const prompt = build([ESTIMATED_READ]);
+    expect(prompt).toContain("НЕ ОТМЕТИЛ");
+    expect(prompt).toContain("ОЦЕНКА");
+    expect(prompt).toContain("НЕ то, что держал именно этот соперник");
+    expect(prompt).toContain("46% (46 живых комбо)");
+    expect(prompt).toContain("не смешивай это с готовой рукой конкретного соперника");
+    expect(prompt).toContain("Некоторые записи выше помечены ОЦЕНКА");
   });
 });

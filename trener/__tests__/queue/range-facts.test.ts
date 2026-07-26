@@ -137,6 +137,94 @@ describe("buildRangeReads — факты парсера по отмеченны�
     expect(reads).toHaveLength(0);
   });
 
+  // Регресс 26.07 (раздача 179eec8d): игрок написал текстом вместо разметки сетки,
+  // Hero открылся с HJ, CO 3-бетнул, Hero пошёл олл-ин. План
+  // 2026-07-26-эталонный-3бет-диапазон.md — запасной факт вместо тишины.
+  const THREEBET_SNAPSHOT: TableSnapshot = {
+    board: ["5d", "7c", "Tc", "Ts", "Th"],
+    heroCards: ["Kc", "Qd"],
+    potTotal: 37418,
+    seats: [
+      { label: "Hero", position: "HJ", positionName: "HJ", startingStack: 17989 },
+      { label: "Player 2", position: "CO", positionName: "CO", startingStack: 28668, shownCards: ["Ah", "Ad"], opponentToken: "opp1" },
+      { label: "Player 3", position: "BTN", positionName: "BTN", startingStack: 10788 },
+      { label: "Player 4", position: "SB", positionName: "SB", startingStack: 20930 },
+      { label: "Player 5", position: "BB", positionName: "BB", startingStack: 9808 },
+    ],
+    actions: [
+      { street: "PREFLOP", actor: "Player 4", action: "POST_SB", amount: 300 },
+      { street: "PREFLOP", actor: "Player 5", action: "POST_BB", amount: 600 },
+      { street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 1200 },
+      { street: "PREFLOP", actor: "Player 2", action: "RAISE", amount: 4215 },
+      { street: "PREFLOP", actor: "Player 3", action: "FOLD" },
+      { street: "PREFLOP", actor: "Player 4", action: "FOLD" },
+      { street: "PREFLOP", actor: "Player 5", action: "FOLD" },
+      { street: "PREFLOP", actor: "Hero", action: "ALL_IN", amount: 17899 },
+      { street: "PREFLOP", actor: "Player 2", action: "CALL", amount: 13684 },
+    ],
+  };
+
+  it("игрок не отметил диапазон, но Hero открылся-получил 3-бет-пошёл олл-ин → запасной эталонный факт", () => {
+    const reads = buildRangeReads({
+      history: [
+        {
+          roundNumber: 1,
+          question: "{{table:18}} {{range}} С каким диапазоном соперник на CO делает 3-бет?",
+          answer: "Тут я, скорее всего, ошибся. Надо было в пас.",
+        },
+      ],
+      tableSnapshot: THREEBET_SNAPSHOT,
+      opponents: [],
+    });
+
+    expect(reads).toHaveLength(1);
+    const r = reads[0];
+    expect(r.estimated).toBe(true);
+    expect(r.street).toBe("PREFLOP");
+    // Эталонный CO-диапазон (без данных об оппоненте — база велью+блеф), не «против одной AA».
+    expect(r.equityPct).toBeGreaterThan(35);
+    expect(r.equityPct).toBeLessThan(55);
+    expect(r.buckets).toBeNull();
+    expect(r.vpipContrast).toBeNull();
+  });
+
+  it("тот же спот, но соперник — известный NIT (solid) → диапазон уже, эквити Hero ниже", () => {
+    const nitOpponent: OpponentFact = {
+      seatLabel: "Player 2",
+      type: "NIT",
+      confidence: "solid",
+      vpip: 12,
+      pfr: 9,
+      handsObserved: 120,
+    };
+    const readsBase = buildRangeReads({
+      history: [{ roundNumber: 1, question: "{{range}}", answer: "текст без сетки" }],
+      tableSnapshot: THREEBET_SNAPSHOT,
+      opponents: [],
+    });
+    const readsNit = buildRangeReads({
+      history: [{ roundNumber: 1, question: "{{range}}", answer: "текст без сетки" }],
+      tableSnapshot: THREEBET_SNAPSHOT,
+      opponents: [nitOpponent],
+    });
+    expect(readsNit[0].equityPct!).toBeLessThan(readsBase[0].equityPct!);
+  });
+
+  it("Hero открылся-получил 3-бет, но НЕ пошёл олл-ином (колл) → запасного факта нет", () => {
+    const called: TableSnapshot = {
+      ...THREEBET_SNAPSHOT,
+      actions: THREEBET_SNAPSHOT.actions.map((a) =>
+        a.actor === "Hero" && a.action === "ALL_IN" ? { ...a, action: "CALL" as const } : a,
+      ),
+    };
+    const reads = buildRangeReads({
+      history: [{ roundNumber: 1, question: "{{range}}", answer: "текст без сетки" }],
+      tableSnapshot: called,
+      opponents: [],
+    });
+    expect(reads).toHaveLength(0);
+  });
+
   it("два известных злодея — сверку с VPIP не делаем (чей диапазон — не знаем)", () => {
     const reads = buildRangeReads({
       history: [

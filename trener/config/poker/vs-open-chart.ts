@@ -83,3 +83,24 @@ export function vsOpenCellState(pos: OpenPosition, code: string): VsOpenCellStat
   if (THREEBET_TOLERANCE[pos].has(code)) return "BORDER";
   return "OUT";
 }
+
+// Эталонный диапазон 3-бета — запасной факт для вердикта, когда игрок САМ диапазон не
+// отметил (план 2026-07-26-эталонный-3бет-диапазон.md). Тип принимаем строковыми
+// литералами, а не типом из parser/opponent-profile: конфиг не должен зависеть от
+// бизнес-логики (правило слоёв), структурная совместимость с OpponentFact достаточна.
+//
+// Подстройка ТОЛЬКО при confidence "solid" (мало раздач на оппонента — не гадаем):
+// NIT — только велью (без блефовых комбо, диапазон уже); FISH/LAG — велью+блеф+допуск
+// (THREEBET_TOLERANCE, тот же «один шаг шире», что и у грейдера спью-3-бета); REG или
+// нет данных/только "tentative" — база (велью+блеф) без изменений.
+export function referenceThreeBetRange(
+  pos: OpenPosition,
+  opponentType?: "FISH" | "LAG" | "NIT" | "REG",
+  confidence?: "tentative" | "solid",
+): ReadonlySet<string> {
+  if (confidence === "solid") {
+    if (opponentType === "NIT") return THREEBET_VALUE_SET[pos];
+    if (opponentType === "FISH" || opponentType === "LAG") return THREEBET_TOLERANCE[pos];
+  }
+  return THREEBET_RANGE[pos];
+}

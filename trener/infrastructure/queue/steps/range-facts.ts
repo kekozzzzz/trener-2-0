@@ -16,6 +16,9 @@ import { percentOf, formatRange } from "@/config/poker/hand-grid";
 import { equityVsRange, cutBetween } from "@/parser/range-equity";
 import { rangeBuckets } from "@/parser/range-buckets";
 import { tableStateUpTo, lastActionIndex, boardUpToStreet } from "@/parser/table-state";
+import { detectHeroOpenFacedThreeBet } from "@/parser/vs-open-3bet-faced";
+import { referenceThreeBetRange } from "@/config/poker/vs-open-chart";
+import { equityVsRangePreflop } from "@/parser/cooler";
 
 const GRID_CODES_TOTAL = 169;
 
@@ -34,6 +37,41 @@ export type RangeFactsInput = {
   opponents?: OpponentFact[];
 };
 
+// Запасной факт (план 2026-07-26-эталонный-3бет-диапазон.md): игрок диапазон 3-бета
+// САМ не отметил (текстовый ответ вместо сетки) — вместо тишины подставляем ЭТАЛОННЫЙ
+// диапазон 3-бета для позиции соперника (vs-open-chart.ts), с поправкой на его тип,
+// если известен уверенно. Область НАМЕРЕННО узкая: только когда Hero открылся, получил
+// ровно один 3-бет и ответил на него ОЛЛ-ИНОМ (деньги уже все в банке на префлопе —
+// дальше улиц нет, это последний честный вход, а не прикидка постфлоп-игры). Иначе —
+// null, факта нет, как и раньше (не гадаем за пределами этого узкого спота).
+function estimatedThreeBetRead(
+  roundNumber: number,
+  tableSnapshot: TableSnapshot,
+  opponents: OpponentFact[] | undefined,
+): RangeRead | null {
+  const spot = detectHeroOpenFacedThreeBet(tableSnapshot);
+  if (!spot || spot.heroAction !== "ALL_IN" || !spot.threebetterPosition) return null;
+
+  const villain = opponents?.find((o) => o.seatLabel === spot.threebetterSeatLabel);
+  const codes = referenceThreeBetRange(spot.threebetterPosition, villain?.type, villain?.confidence);
+  const equity = equityVsRangePreflop(tableSnapshot.heroCards, codes);
+  if (!equity) return null;
+
+  return {
+    roundNumber,
+    notation: formatRange(codes),
+    gridPct: Math.round(percentOf(codes)),
+    fullGrid: false,
+    street: "PREFLOP",
+    equityPct: equity.equityPct,
+    combosLive: equity.combosLive,
+    buckets: null, // раскладка комбо на борде — только постфлоп, здесь решение до флопа
+    vpipContrast: null, // это не разметка игрока — сверивать её с VPIP соперника нечего
+    cut: null, // не итеративная нарезка, разовый запасной факт
+    estimated: true,
+  };
+}
+
 export function buildRangeReads({ history, tableSnapshot, opponents }: RangeFactsInput): RangeRead[] {
   const reads: RangeRead[] = [];
   // Сверку с VPIP делаем только при ровно одном известном злодее — иначе не знаем
@@ -48,7 +86,13 @@ export function buildRangeReads({ history, tableSnapshot, opponents }: RangeFact
 
     const notation = extractRangeNotation(round.answer);
     const codes = notation ? parseRangeNotation(notation) : [];
-    if (codes.length === 0) continue; // нотация не распозналась — факта нет
+    if (codes.length === 0) {
+      // Игрок диапазон не отметил (текстовый ответ) — пробуем узкий запасной факт
+      // (3-бет-vs-открытие Hero, олл-ин). Не подошло — по-прежнему факта нет.
+      const estimated = estimatedThreeBetRead(round.roundNumber, tableSnapshot, opponents);
+      if (estimated) reads.push(estimated);
+      continue;
+    }
 
     // Улица точки решения вопроса: по метке {{table:N}}; без метки — финал раздачи.
     const idx = tableActionIndex ?? lastActionIndex(tableSnapshot);
@@ -86,6 +130,7 @@ export function buildRangeReads({ history, tableSnapshot, opponents }: RangeFact
       cut: cut
         ? { vsRound: prev!.roundNumber, foldPct: cut.foldPct, addedCombos: cut.addedCombos }
         : null,
+      estimated: false,
     });
 
     prev = { roundNumber: round.roundNumber, codes };

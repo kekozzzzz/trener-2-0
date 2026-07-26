@@ -6,7 +6,7 @@
 
 import { describe, it, expect } from "vitest";
 import type { TableSnapshot } from "@/parser/types";
-import { detectHeroCooler, hasCleanPreflop } from "@/parser/cooler";
+import { detectHeroCooler, hasCleanPreflop, equityVsRangePreflop } from "@/parser/cooler";
 import { assignImportanceLevels } from "@/parser/ggpoker/classify";
 
 // Стол BB=100: Hero (KK, оверпара) чек-коллит крупный олл-ин на тёрне против
@@ -108,6 +108,69 @@ describe("detectHeroCooler — префлоп-олл-ин (Монте-Карло
       { street: "PREFLOP", actor: "Player 1", action: "CALL", amount: 4900 },
     ];
     expect(detectHeroCooler(s)).toBeNull();
+  });
+});
+
+// Эквити Hero против ДИАПАЗОНА на префлоп-олл-ине (план
+// 2026-07-26-эталонный-3бет-диапазон.md) — эталонный запасной факт, когда игрок сам
+// диапазон не отметил. Проверено внешним источником (cardfight.com) 26.07: KQo vs AA
+// ≈12.88% — здесь то же самое, но против МНОЖЕСТВА комбо сразу.
+describe("equityVsRangePreflop — эквити против диапазона на префлоп-олл-ине", () => {
+  it("KQo против чистого AA (диапазон из одного кода, 6 комбо) — близко к KQo vs AA (~12.9%)", () => {
+    const eq = equityVsRangePreflop(["Kc", "Qd"], ["AA"]);
+    expect(eq).not.toBeNull();
+    expect(eq!.equityPct).toBeGreaterThan(10);
+    expect(eq!.equityPct).toBeLessThan(16);
+    expect(eq!.combosLive).toBe(6);
+  });
+
+  it("KQo против мусора (72o) — Hero фаворит с большим отрывом", () => {
+    const eq = equityVsRangePreflop(["Kc", "Qd"], ["72o"])!;
+    expect(eq.equityPct).toBeGreaterThan(60);
+    expect(eq.combosLive).toBe(12);
+  });
+
+  it("вес комбо: смешанный диапазон {AA,72o} (6 и 12 комбо) ближе к 72o, чем к AA", () => {
+    const eqAA = equityVsRangePreflop(["Kc", "Qd"], ["AA"])!.equityPct;
+    const eqTrash = equityVsRangePreflop(["Kc", "Qd"], ["72o"])!.equityPct;
+    const mix = equityVsRangePreflop(["Kc", "Qd"], ["AA", "72o"])!;
+    expect(mix.combosLive).toBe(18);
+    expect(mix.equityPct).toBeGreaterThan(eqAA);
+    expect(mix.equityPct).toBeLessThan(eqTrash);
+    // 12 комбо 72o против 6 комбо AA — смесь ближе к 72o, чем к середине.
+    const mid = (eqAA + eqTrash) / 2;
+    expect(mix.equityPct).toBeGreaterThan(mid);
+  });
+
+  it("против реального эталонного диапазона 3-бета CO — заметно честнее, чем «против одной AA»", () => {
+    // Тот самый диапазон CO из vs-open-chart.ts (велью+блеф) — не 12%, а близко к полтине,
+    // потому что KQo сам входит в диапазон блефа и бьёт немалую часть чужих рук.
+    const range = [
+      "JJ", "AKs", "AKo", "AQs", "AQo", // велью
+      "TT", "AJs", "ATs", "A5s", "A4s", "A3s", "KQs", "KJs", "KTs", "KQo", "KJo", "AJo", "ATo", "KTo", "76s", "65s", // блеф
+    ];
+    const eq = equityVsRangePreflop(["Kc", "Qd"], range)!;
+    expect(eq.equityPct).toBeGreaterThan(35);
+    expect(eq.equityPct).toBeLessThan(55);
+  });
+
+  it("детерминированность: два вызова с одним входом дают одно и то же число", () => {
+    const call = () => equityVsRangePreflop(["Ac", "Kd"], ["QQ", "JJ", "AKo"]);
+    expect(call()).toEqual(call());
+  });
+
+  it("пустой диапазон → null", () => {
+    expect(equityVsRangePreflop(["Kc", "Qd"], [])).toBeNull();
+  });
+
+  it("Hero держит обе карты редкой пары (AA vs AA) — не падает, честная развязка ~50%", () => {
+    // Крайний случай: у диапазона AA после вычета карт Hero остаётся только одно живое
+    // комбо (AcAs) — не пусто, движок должен честно посчитать, а не споткнуться.
+    const eq = equityVsRangePreflop(["Ah", "Ad"], ["AA"]);
+    expect(eq).not.toBeNull();
+    expect(eq!.combosLive).toBe(1);
+    expect(eq!.equityPct).toBeGreaterThan(35);
+    expect(eq!.equityPct).toBeLessThan(65);
   });
 });
 
