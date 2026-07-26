@@ -47,6 +47,22 @@ export type DecisionMark = {
   weightBb: number; // банк + цена — ранжир кандидатов
 };
 
+// Тай-брейк при РАВНОМ весе (найдено Артёмом 26.07): вес — не единственный критерий,
+// иначе побеждает канал, который в коде добавлен раньше, — случайность порядка кода,
+// а не осознанный выбор. Конкретный триггер: BIG_FOLD и FOLD_INVEST могут сработать на
+// ОДНОЙ И ТОЙ ЖЕ точке решения (свой крупный бет на улице → рейз соперника → фолд на
+// ТОЙ ЖЕ улице) — оба считают weightBb от одного и того же node.pot/node.toCall, вес
+// совпадает всегда. FOLD_INVEST в этом случае — более конкретная и полная история
+// («сам поставил и знал, каким будет план на рейз»), BIG_FOLD — общий случай, уместен,
+// когда более специфичный канал не сработал. Меньшее число — выше приоритет.
+const CHANNEL_PRIORITY: Record<DecisionChannel, number> = {
+  FOLD_INVEST: 0,
+  MISSED_VALUE: 1,
+  BIG_CALL_WON: 2,
+  WON_BLUFF: 3,
+  BIG_FOLD: 4,
+};
+
 // Все сработавшие каналы раздачи (без дублей канала — берётся самая тяжёлая точка).
 export function decisionMarks(snapshot: TableSnapshot, chipResult: number): DecisionMark[] {
   const bb = bigBlindFromSnapshot(snapshot);
@@ -190,7 +206,9 @@ export function decisionMarks(snapshot: TableSnapshot, chipResult: number): Deci
     add({ channel: "MISSED_VALUE", street: c.street, potBb, weightBb: potBb });
   }
 
-  return [...byChannel.values()].sort((a, b) => b.weightBb - a.weightBb);
+  return [...byChannel.values()].sort(
+    (a, b) => b.weightBb - a.weightBb || CHANNEL_PRIORITY[a.channel] - CHANNEL_PRIORITY[b.channel],
+  );
 }
 
 // Самый тяжёлый канал раздачи — ранжир кандидата в критические.

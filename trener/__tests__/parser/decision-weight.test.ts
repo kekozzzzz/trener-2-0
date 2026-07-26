@@ -90,7 +90,7 @@ describe("decisionMarks — BIG_FOLD", () => {
 });
 
 describe("decisionMarks — FOLD_INVEST", () => {
-  it("свой крупный бет на улице → рейз соперника → фолд = FOLD_INVEST", () => {
+  function investFoldSnap(): TableSnapshot {
     const s = baseSnap();
     s.board = ["Kd", "7s", "2c"];
     s.actions.push(
@@ -102,8 +102,36 @@ describe("decisionMarks — FOLD_INVEST", () => {
       { street: "FLOP", actor: "Player 1", action: "RAISE", amount: 1800 },
       { street: "FLOP", actor: "Hero", action: "FOLD" },
     );
-    const marks = decisionMarks(s, -820);
+    return s;
+  }
+
+  it("свой крупный бет на улице → рейз соперника → фолд = FOLD_INVEST", () => {
+    const marks = decisionMarks(investFoldSnap(), -820);
     expect(marks.find((m) => m.channel === "FOLD_INVEST")).toBeDefined();
+  });
+
+  // Тай-брейк (Артём 26.07, реальная раздача — 3-бет префлоп, контбет на воздухе на
+  // флопе, рейз-олл-ин соперника, фолд ОДНОЙ улицей): BIG_FOLD и FOLD_INVEST считаются
+  // от ОДНОЙ точки решения (тот же node.pot/node.toCall) → weightBb совпадает всегда.
+  // Раньше побеждал BIG_FOLD (добавлен в Map первым по коду — случайность порядка, не
+  // выбор), хотя FOLD_INVEST даёт более точную тему («что ты хотел этой ставкой и что
+  // планировал на поднятие») вместо общей «что тебя испугало».
+  it("тай-брейк по весу: свой бет и фолд на ОДНОЙ улице → топ-канал FOLD_INVEST, не BIG_FOLD", () => {
+    const s = investFoldSnap();
+    const marks = decisionMarks(s, -820);
+    // Оба канала действительно сработали на этой раздаче и весят одинаково — иначе тест
+    // ничего не проверяет.
+    const bigFold = marks.find((m) => m.channel === "BIG_FOLD");
+    const foldInvest = marks.find((m) => m.channel === "FOLD_INVEST");
+    expect(bigFold).toBeDefined();
+    expect(foldInvest).toBeDefined();
+    expect(bigFold!.weightBb).toBe(foldInvest!.weightBb);
+
+    expect(topDecisionMark(s, -820)?.channel).toBe("FOLD_INVEST");
+
+    const hint = questionTopicHint(s, -820);
+    expect(hint).toContain("СТАВКА → ФОЛД");
+    expect(hint).not.toContain("КРУПНЫЙ ФОЛД");
   });
 });
 
