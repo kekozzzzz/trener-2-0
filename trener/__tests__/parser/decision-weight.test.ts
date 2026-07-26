@@ -290,6 +290,60 @@ describe("decisionMarks — MISSED_VALUE", () => {
   });
 });
 
+// Реконструкция реальной раздачи (план 2026-07-27-выиграл-но-ошибся-vs-4бет.md, скриншот
+// 26.07): Hero (BB) сквизует до 10bb над опеном MP (2bb) и двумя коллерами, MP 4-бетит до
+// 22.9bb, Hero шовит 77.8bb. БЛАЙНДЫ 50/100 → minAmount = max(500, 10%×стека).
+function squeezeVsFourBetSnap(heroCards: string[]): TableSnapshot {
+  return {
+    seats: [
+      { label: "Player 2", position: "EARLY", positionName: "MP", startingStack: 540 },
+      { label: "Player 3", position: "CO", positionName: "CO", startingStack: 6630 },
+      { label: "Player 4", position: "BTN", positionName: "BTN", startingStack: 6600 },
+      { label: "SBP", position: "SB", startingStack: 8790 },
+      { label: "Hero", position: "BB", positionName: "BB", startingStack: 8790 },
+    ],
+    heroCards,
+    board: ["2h", "5d", "7c", "Tc", "Kh"], // борд нейтрален — эквити считается против ДИАПАЗОНА на префлоп-олл-ине, не по борду
+    actions: [
+      { street: "PREFLOP", actor: "SBP", action: "POST_SB", amount: 50 },
+      { street: "PREFLOP", actor: "Hero", action: "POST_BB", amount: 100 },
+      { street: "PREFLOP", actor: "Player 2", action: "RAISE", amount: 200 },
+      { street: "PREFLOP", actor: "Player 3", action: "CALL", amount: 200 },
+      { street: "PREFLOP", actor: "Player 4", action: "CALL", amount: 200 },
+      { street: "PREFLOP", actor: "SBP", action: "FOLD" },
+      { street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 1000 },
+      { street: "PREFLOP", actor: "Player 2", action: "RAISE", amount: 2290 },
+      { street: "PREFLOP", actor: "Player 3", action: "FOLD" },
+      { street: "PREFLOP", actor: "Player 4", action: "FOLD" },
+      { street: "PREFLOP", actor: "Hero", action: "ALL_IN", amount: 7780 },
+    ],
+    potTotal: 16120,
+  };
+}
+
+describe("decisionMarks — WON_VS_NARROW_RANGE", () => {
+  it("99 против сквиз→4-бет MP, выигрыш: эквити против типового 4-бета MP <50% → канал срабатывает", () => {
+    const marks = decisionMarks(squeezeVsFourBetSnap(["9s", "9d"]), 16120);
+    const mark = marks.find((m) => m.channel === "WON_VS_NARROW_RANGE");
+    expect(mark).toBeDefined();
+    expect(mark!.street).toBe("PREFLOP");
+  });
+
+  it("тот же спот, но Hero держит AA (эквити против типового 4-бета MP заведомо ≥50%) → канал НЕ срабатывает", () => {
+    const marks = decisionMarks(squeezeVsFourBetSnap(["Ah", "Ac"]), 16120);
+    expect(marks.find((m) => m.channel === "WON_VS_NARROW_RANGE")).toBeUndefined();
+  });
+
+  it("тот же спот, но раздача проиграна (chipResult<=0) → канал не участвует", () => {
+    const marks = decisionMarks(squeezeVsFourBetSnap(["9s", "9d"]), -8790);
+    expect(marks.find((m) => m.channel === "WON_VS_NARROW_RANGE")).toBeUndefined();
+  });
+
+  it("нет спота 4-бета (обычный одиночный опен без сквиза) → канал не участвует", () => {
+    expect(decisionMarks(baseSnap(), 100).find((m) => m.channel === "WON_VS_NARROW_RANGE")).toBeUndefined();
+  });
+});
+
 describe("assignImportanceLevels — квоты решений в потолке", () => {
   function lossHand(chips: number): { chipResult: number; tableSnapshot: TableSnapshot } {
     const s = baseSnap();

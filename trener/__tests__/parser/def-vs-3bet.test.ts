@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { TableAction, TableSnapshot } from "@/parser/types";
 import { detectHeroDefVs3bet } from "@/parser/def-vs-3bet";
-import { isFourBetSignificantlyWide } from "@/config/poker/def-vs-3bet-chart";
+import { isFourBetSignificantlyWide, referenceFourBetRange } from "@/config/poker/def-vs-3bet-chart";
 
 describe("isFourBetSignificantlyWide — 4-бет против 3-бета шире нормы", () => {
   it("велью/блеф-блокеры в норме, мусорный 4-бет — флаг", () => {
@@ -92,5 +92,37 @@ describe("detectHeroDefVs3bet — защита vs 3-бет", () => {
       response: { street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 2500 },
     });
     expect(detectHeroDefVs3bet(s)).toBeNull();
+  });
+});
+
+// Эталонный диапазон 4-бета для запасного факта decision-weight.ts (план
+// 2026-07-27-выиграл-но-ошибся-vs-4бет.md): та же подстройка, что у
+// referenceThreeBetRange — confidence "solid" обязателен.
+describe("referenceFourBetRange — эталон с поправкой на тип соперника", () => {
+  const base = referenceFourBetRange("MP");
+
+  it("без типа/уверенности — база (велью+блеф-блокеры) без изменений", () => {
+    expect(referenceFourBetRange("MP")).toBe(base);
+    expect(referenceFourBetRange("MP", "NIT", "tentative")).toBe(base);
+    expect(referenceFourBetRange("MP", "FISH", "tentative")).toBe(base);
+  });
+
+  it("REG (solid) — тоже база без изменений", () => {
+    expect(referenceFourBetRange("MP", "REG", "solid")).toBe(base);
+  });
+
+  it("NIT (solid) — только велью, диапазон УЖЕ базы", () => {
+    const nit = referenceFourBetRange("MP", "NIT", "solid");
+    expect(nit.has("AA")).toBe(true); // велью
+    expect(nit.has("A5s")).toBe(false); // блеф-блокер MP — из NIT-диапазона убран
+    expect(nit.size).toBeLessThan(base.size);
+  });
+
+  it("FISH/LAG (solid) — база + один шаг допуска, ШИРЕ базы", () => {
+    const fish = referenceFourBetRange("MP", "FISH", "solid");
+    const lag = referenceFourBetRange("MP", "LAG", "solid");
+    expect(fish.size).toBeGreaterThan(base.size);
+    expect(lag).toEqual(fish);
+    for (const code of base) expect(fish.has(code)).toBe(true);
   });
 });

@@ -71,3 +71,21 @@ export function fourBetCellState(pos: OpenPosition, code: string): FourBetCellSt
   if (FOURBET_TOLERANCE[pos].has(code)) return "BORDER";
   return "OUT";
 }
+
+// Эталонный диапазон 4-бета — запасной факт для decision-weight.ts, когда исходный
+// опенер повторно рейзит (4-бетит) над 3-бетом/сквизом Hero, и нужно судить
+// продолжение Hero не по вскрытой руке соперника, а по ТИПОВОМУ диапазону 4-бета
+// для его открывавшей позиции (план 2026-07-27-выиграл-но-ошибся-vs-4бет.md).
+// Тот же паттерн подстройки, что у referenceThreeBetRange (vs-open-chart.ts):
+// confidence "solid" обязателен для подстройки под тип — на "tentative" не гадаем.
+export function referenceFourBetRange(
+  pos: OpenPosition,
+  opponentType?: "FISH" | "LAG" | "NIT" | "REG",
+  confidence?: "tentative" | "solid",
+): ReadonlySet<string> {
+  if (confidence === "solid") {
+    if (opponentType === "NIT") return FOURBET_VALUE_SET[pos];
+    if (opponentType === "FISH" || opponentType === "LAG") return FOURBET_TOLERANCE[pos];
+  }
+  return FOURBET_RANGE[pos];
+}
