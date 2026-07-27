@@ -4,6 +4,7 @@ import { prisma } from "@/infrastructure/db/client";
 import { getAppBaseUrl } from "@/config/app";
 import {
   findAcquisitionSourceByCode,
+  isBotUserAgent,
   ACQUISITION_COOKIE,
   ACQUISITION_COOKIE_MAX_AGE_DAYS,
 } from "@/config/acquisition-sources";
@@ -18,13 +19,14 @@ export const dynamic = "force-dynamic";
 // повторный переход по другой ссылке не переписывает уже отданный источник.
 // Учёт захода — вторичная запись, ошибка БД глушится (как в features/auth/auth-events.ts).
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ code: string }> },
 ): Promise<NextResponse> {
   const { code } = await params;
   const known = findAcquisitionSourceByCode(code);
+  const isBot = isBotUserAgent(req.headers.get("user-agent"));
 
-  if (known) {
+  if (known && !isBot) {
     const jar = await cookies();
     if (!jar.get(ACQUISITION_COOKIE)) {
       jar.set(ACQUISITION_COOKIE, known.slug, {

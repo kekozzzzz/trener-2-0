@@ -24,3 +24,15 @@ export function findAcquisitionSourceByCode(code: string): AcquisitionSource | u
 // регистрация читает её и привязывает источник к auth_events.utm_source.
 export const ACQUISITION_COOKIE = "wg_src";
 export const ACQUISITION_COOKIE_MAX_AGE_DAYS = 90;
+
+// Краулеры-превьюшники соцсетей/мессенджеров (Instagram/Facebook, Telegram, ...)
+// сами обходят ссылку, как только её вставляют в профиль/сообщение — это не заход
+// живого человека, а генерация карточки-превью. Такие User-Agent не считаем и не
+// ставим им cookie источника, иначе счётчик в /admin врёт с первой же минуты.
+const BOT_USER_AGENT_PATTERN =
+  /bot|facebookexternalhit|facebot|telegrambot|twitterbot|slackbot|whatsapp|discordbot|linkedinbot|skypeuripreview|vkshare|pinterest|redditbot|preview|crawler|spider/i;
+
+export function isBotUserAgent(userAgent: string | null): boolean {
+  if (!userAgent) return true; // без UA — тоже не живой браузер, не считаем
+  return BOT_USER_AGENT_PATTERN.test(userAgent);
+}
