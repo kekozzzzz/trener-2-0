@@ -838,6 +838,8 @@
     "freeformPlaceholder": "Необязательно",
     "ratingLow": "плохо",
     "ratingHigh": "супер",
+    "recommendLow": "Точно нет",
+    "recommendHigh": "Точно да",
     "submit": "Отправить",
     "sending": "Отправляем",
     "thanksTitle": "Спасибо",

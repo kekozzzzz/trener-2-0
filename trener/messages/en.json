@@ -838,6 +838,8 @@
     "freeformPlaceholder": "Optional",
     "ratingLow": "bad",
     "ratingHigh": "great",
+    "recommendLow": "Definitely not",
+    "recommendHigh": "Definitely yes",
     "submit": "Send",
     "sending": "Sending",
     "thanksTitle": "Thanks",

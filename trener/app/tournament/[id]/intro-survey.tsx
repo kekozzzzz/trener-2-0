@@ -158,7 +158,7 @@ export function IntroSurveyLine({ tournamentId }: { tournamentId: string }) {
 
             <div>
               <p className="text-body text-foreground">{t("recommendLabel")}</p>
-              <RatingGroup name="recommendRating" low={t("ratingLow")} high={t("ratingHigh")} />
+              <RatingGroup name="recommendRating" low={t("recommendLow")} high={t("recommendHigh")} />
             </div>
 
             <div className="space-y-2">
