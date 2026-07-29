@@ -24,6 +24,7 @@ import { ParsingWaitClient } from "./parsing-wait-client";
 import { AutoUnlockClient } from "./auto-unlock-client";
 import { AnalysisProgress } from "./analysis-progress";
 import { SelfLevelLine } from "./self-level";
+import { IntroSurveyLine } from "./intro-survey";
 import { isValidSelfLevel, isSelfLevelActive } from "@/config/self-level";
 import { getAnalysisTimingSec } from "@/features/tournaments/estimate";
 import { getQueueConcurrency } from "@/config/queue";
@@ -446,6 +447,7 @@ export default async function TournamentPage({
     select: {
       nickname: true,
       selfLevel: true,
+      introSurveyShownAt: true,
       profile: { select: { tournamentsCounted: true, avgHandsCount: true } },
     },
   });
@@ -461,6 +463,17 @@ export default async function TournamentPage({
   // из уже разобранных раздач). Пока идёт — держим живое обновление и плейсхолдеры,
   // чтобы раздачи и картина всплывали сами, без ручного обновления страницы.
   const processing = tournament.status !== "CARD_READY" || !summary?.overview;
+
+  // Опрос «мы только в начале пути» (план 2026-07-29): один раз, после того как игрок
+  // впервые увидел готовый разбор своего первого турнира. «Первый» — простой и надёжный
+  // признак: у игрока вообще нет других (неудалённых) турниров, кроме этого — не завязан
+  // на PlayerProfile.tournamentsCounted, который считается агрегацией и может отставать.
+  const otherTournamentsCount = me?.introSurveyShownAt
+    ? 0 // уже показывали — считать турниры незачем
+    : await prisma.tournament.count({
+        where: { playerId: session.playerId, deletedAt: null, id: { not: id } },
+      });
+  const showIntroSurvey = !processing && !me?.introSurveyShownAt && otherTournamentsCount === 0;
 
   // «Разбор займёт примерно N минут» для баннера — по реальному среднему времени недавних
   // разборов (правило 1). Считаем только пока идёт разбор, иначе лишний запрос не нужен.
@@ -492,6 +505,10 @@ export default async function TournamentPage({
         {/* «Ориентир»: тихая строчка самооценки уровня — только пока приор ещё помогает
             (первые турниры), дальше сервер её скрывает. План 2026-07-10. */}
         {showSelfLevel && <SelfLevelLine level={selfLevel} tournamentId={id} />}
+
+        {/* Опрос «мы только в начале пути»: строчка-приглашение под подписью турнира,
+            анкета открывается кнопкой «Пройти опрос». Один показ, план 2026-07-29. */}
+        {showIntroSurvey && <IntroSurveyLine tournamentId={id} />}
 
         {/* Пока турнир досчитывается — баннер с честными этапами. Он же опрашивает статус и
             подгоняет страницу, чтобы разборы раздач всплывали в списках ниже по очереди. */}

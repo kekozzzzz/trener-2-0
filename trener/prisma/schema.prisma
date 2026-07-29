@@ -19,6 +19,7 @@ model Player {
   nickname        String?                             // покерный ник игрока для ПОКАЗА в разборах (вместо «Hero»); в LLM не передаётся (приватность, правило 5)
   locale          String    @default("ru")            // язык интерфейса и писем: "ru" | "en"; ставится при регистрации из куки, меняется тумблером. Нужен для писем из крона/вебхука, где куки нет
   selfLevel       String?   @map("self_level")         // самооценка уровня понимания покера игроком: "NEW"|"BASICS"|"CONFIDENT"|"DEEP"; NULL = не выбрано. Мягкий приор для ТОНА тренера на первые турниры (config/self-level.ts), потом гаснет. НЕ влияет на числа (правило 1) и не отменяет вопрос «почему» (правило 2)
+  introSurveyShownAt DateTime? @map("intro_survey_shown_at") // момент показа опроса «мы в начале пути» после первого турнира — и при отправке ответа, и при закрытии без ответа; NULL = ещё не показывали, план 2026-07-29
 
   passwordHash    String?   @map("password_hash")    // NULL после анонимизации; хэш, никогда не открытый пароль
   termsAcceptedAt DateTime? @map("terms_accepted_at") // момент согласия на обработку данных при регистрации (07-безопасность.md)
@@ -35,8 +36,41 @@ model Player {
   accountClosureTokens AccountClosureToken[]
   llmUsage     LlmUsage[]
   authEvents   AuthEvent[]
+  introSurveyResponses IntroSurveyResponse[]
 
   @@map("players")
+}
+
+// ─────────────────── Опрос после первого турнира ──────────────────────────────
+// «Мы только в начале пути» — короткий опрос про контент/стилистику/сократовские
+// вопросы тренера, показывается один раз после того, как игрок впервые увидел
+// готовый разбор своего первого турнира. 4 оценки обязательны, 6 текстовых полей —
+// по желанию. Показ (в т.ч. закрытие без ответа) фиксируется в Player.introSurveyShownAt,
+// эта таблица хранит только реально отправленные ответы. План 2026-07-29.
+model IntroSurveyResponse {
+  id               String   @id @default(uuid()) @db.Uuid
+  playerId         String   @map("player_id") @db.Uuid
+  tournamentId     String   @map("tournament_id") @db.Uuid
+
+  usefulnessRating Int      @map("usefulness_rating")   // насколько разбор был полезен, 1-5
+  unclearText      String?  @map("unclear_text")        // что было непонятно / как будто пропущено
+  toneRating       Int      @map("tone_rating")          // тон тренера — на своём месте или резал глаз, 1-5
+  styleChangeText  String?  @map("style_change_text")   // что изменить в подаче
+  questionsRating  Int      @map("questions_rating")    // вопросы тренера вели к сути или были угадайкой, 1-5
+  moreDetailText   String?  @map("more_detail_text")    // больше цифр/конкретики или проще
+  likedText        String?  @map("liked_text")          // что зацепило больше всего
+  missingText      String?  @map("missing_text")        // чего не хватило
+  recommendRating  Int      @map("recommend_rating")    // посоветовал бы другу-игроку, 1-5
+  freeformText     String?  @map("freeform_text")       // свободный комментарий
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  player     Player     @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  @@index([playerId], map: "idx_intro_survey_player")
+  @@index([tournamentId], map: "idx_intro_survey_tournament")
+  @@map("intro_survey_responses")
 }
 
 // ─────────────────── Учёт расходов LLM ────────────────────────────────────────
@@ -230,6 +264,7 @@ model Tournament {
   player Player   @relation(fields: [playerId], references: [id], onDelete: Restrict)
   hhFile HhFile?
   hands  Hand[]
+  introSurveyResponses IntroSurveyResponse[]
 
   // Горячие индексы из architecture/03-база-данных.md раздел 2
   // WHERE deleted_at IS NULL — добавлено вручную в SQL миграции (Prisma не поддерживает partial index в DSL)
