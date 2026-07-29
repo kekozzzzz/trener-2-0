@@ -99,6 +99,26 @@ export type AdminStats = {
   llm: { day: CostReport; month: CostReport };
   queue: { pending: number; processing: number; poisoned: number; failed: number };
   acquisition: AcquisitionSourceStats[];
+  surveys: SurveyResponseRow[];
+};
+
+// Ответ опроса «мы только в начале пути» (план 2026-07-29) — последние N штук,
+// самые свежие первыми, для показа владельцу как есть (без агрегации: ответов
+// пока мало, а качественный текст важнее сводных чисел).
+export type SurveyResponseRow = {
+  id: string;
+  createdAt: Date;
+  playerLabel: string;
+  usefulnessRating: number;
+  toneRating: number;
+  questionsRating: number;
+  recommendRating: number;
+  unclearText: string | null;
+  styleChangeText: string | null;
+  moreDetailText: string | null;
+  likedText: string | null;
+  missingText: string | null;
+  freeformText: string | null;
 };
 
 export type AcquisitionSourceStats = {
@@ -190,6 +210,7 @@ export async function buildAdminStats(db: PrismaClient, now = new Date()): Promi
     visits30Raw,
     registrationsTotalRaw,
     registrations30Raw,
+    surveysRaw,
   ] = await Promise.all([
     db.player.findMany({
       where: { createdAt: { gte: t30 }, id: notTestPlayer },
@@ -255,6 +276,25 @@ export async function buildAdminStats(db: PrismaClient, now = new Date()): Promi
       by: ["utmSource"],
       where: { kind: "REGISTER", createdAt: { gte: t30 } },
       _count: { _all: true },
+    }),
+    db.introSurveyResponse.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      select: {
+        id: true,
+        createdAt: true,
+        usefulnessRating: true,
+        toneRating: true,
+        questionsRating: true,
+        recommendRating: true,
+        unclearText: true,
+        styleChangeText: true,
+        moreDetailText: true,
+        likedText: true,
+        missingText: true,
+        freeformText: true,
+        player: { select: { email: true, nickname: true } },
+      },
     }),
   ]);
 
@@ -335,6 +375,22 @@ export async function buildAdminStats(db: PrismaClient, now = new Date()): Promi
     registrations30: registrationCount(registrations30Raw, s.slug),
   }));
 
+  const surveys: SurveyResponseRow[] = surveysRaw.map((r) => ({
+    id: r.id,
+    createdAt: r.createdAt,
+    playerLabel: r.player?.nickname ?? r.player?.email ?? "—",
+    usefulnessRating: r.usefulnessRating,
+    toneRating: r.toneRating,
+    questionsRating: r.questionsRating,
+    recommendRating: r.recommendRating,
+    unclearText: r.unclearText,
+    styleChangeText: r.styleChangeText,
+    moreDetailText: r.moreDetailText,
+    likedText: r.likedText,
+    missingText: r.missingText,
+    freeformText: r.freeformText,
+  }));
+
   return {
     generatedAt: now,
     players: {
@@ -384,5 +440,6 @@ export async function buildAdminStats(db: PrismaClient, now = new Date()): Promi
       failed: queueCount("FAILED"),
     },
     acquisition,
+    surveys,
   };
 }

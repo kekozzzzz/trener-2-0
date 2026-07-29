@@ -150,7 +150,18 @@
     "sourcesRegistrations": "Регистраций",
     "sourcesVisits30": "За 30 дней",
     "sourcesCopy": "Копировать",
-    "sourcesCopied": "Скопировано"
+    "sourcesCopied": "Скопировано",
+    "surveysTitle": "Опрос после первого турнира",
+    "surveysUsefulness": "Полезность",
+    "surveysTone": "Тон",
+    "surveysQuestions": "Вопросы тренера",
+    "surveysRecommend": "Посоветует",
+    "surveysUnclear": "Непонятно/пропущено",
+    "surveysStyleChange": "Изменить в подаче",
+    "surveysMoreDetail": "Больше/меньше деталей",
+    "surveysLiked": "Понравилось",
+    "surveysMissing": "Не хватило",
+    "surveysFreeform": "Комментарий"
   },
   "Footer": {
     "documents": "Документы",
@@ -805,10 +816,10 @@
     "skip": "Не знаю / пропустить"
   },
   "IntroSurvey": {
-    "bannerText": "Мы только в начале пути с Whygrid - оставь отзыв, реально поможет.",
+    "cardTitle": "Пройти опрос",
+    "bannerText": "Мы только в начале пути с Whygrid. Оставь отзыв - он реально может повлиять на то, каким станет продукт.",
     "takeSurveyButton": "Пройти опрос",
-    "title": "Пройти опрос",
-    "intro": "Пара минут - твоё мнение может повлиять на то, каким станет продукт.",
+    "title": "Опрос",
     "usefulnessLabel": "Насколько разбор оказался полезен?",
     "unclearLabel": "Что было непонятно или как будто пропущено?",
     "unclearPlaceholder": "Необязательно",

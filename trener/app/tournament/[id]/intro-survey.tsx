@@ -57,14 +57,16 @@ function SubmitButton() {
   );
 }
 
-// «Мы только в начале пути» — тихая строчка под подписью турнира (правка Артёма
-// 2026-07-29: не автопоп-ап, а приглашение по клику — так и без конфликта с
-// авто-открытием диалога «Ориентир» на том же первом турнире). Сама 10-вопросная
-// анкета открывается кнопкой «Пройти опрос», как обычный Dialog. Показ фиксирует
-// сервер (Player.introSurveyShownAt) один раз — либо при отправке, либо когда
-// открытый опрос закрыли не ответив; саму строчку-приглашение (кнопку не нажали)
-// сервер не помечает — она остаётся точкой входа, пока страница считается «первым
-// турниром» (см. gate в page.tsx). План 2026-07-29-опрос-после-первого-турнира.md.
+// «Мы только в начале пути» — карточка под подписью турнира (правка Артёма 2026-07-29:
+// не автопоп-ап, а приглашение с кнопкой — так и без конфликта с авто-открытием диалога
+// «Ориентир» на том же первом турнире). Стиль карточки — как у StartHereCard/
+// SessionDoneCard (components/tournament/focus-slot.tsx), они сидят в том же месте
+// страницы. Сама 10-вопросная анкета открывается кнопкой «Пройти опрос», как обычный
+// Dialog, без повтора вступительного текста — сразу вопросы. Показ фиксирует сервер
+// (Player.introSurveyShownAt) один раз — либо при отправке, либо когда открытый опрос
+// закрыли не ответив; саму карточку (кнопку не нажали) сервер не помечает — она
+// остаётся точкой входа, пока страница считается «первым турниром» (см. gate в
+// page.tsx). План 2026-07-29-опрос-после-первого-турнира.md.
 export function IntroSurveyLine({ tournamentId }: { tournamentId: string }) {
   const t = useTranslations("IntroSurvey");
   const [open, setOpen] = useState(false);
@@ -76,7 +78,7 @@ export function IntroSurveyLine({ tournamentId }: { tournamentId: string }) {
     setOpen(next);
     if (!next) {
       // Диалог реально открывали и закрыли — это и есть «показали». Отправили успешно
-      // или просто закрыли крестиком/фоном/Escape — строчка больше не нужна.
+      // или просто закрыли крестиком/фоном/Escape — карточка больше не нужна.
       if (!state.success) {
         startDismiss(() => {
           void dismissIntroSurveyAction();
@@ -90,9 +92,12 @@ export function IntroSurveyLine({ tournamentId }: { tournamentId: string }) {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <div className="mt-3 flex flex-wrap items-center gap-3">
-        <p className="text-small text-muted-foreground">{t("bannerText")}</p>
-        <DialogTrigger render={<Button variant="outline" size="sm">{t("takeSurveyButton")}</Button>} />
+      <div className="mt-8 border border-primary bg-card p-6">
+        <p className="font-mono text-label uppercase tracking-label text-primary">
+          {t("cardTitle")}
+        </p>
+        <p className="mt-2 text-body text-foreground">{t("bannerText")}</p>
+        <DialogTrigger render={<Button className="mt-4">{t("takeSurveyButton")}</Button>} />
       </div>
 
       <DialogContent className="max-h-[85vh] overflow-y-auto rounded-none sm:max-w-lg">
@@ -100,9 +105,11 @@ export function IntroSurveyLine({ tournamentId }: { tournamentId: string }) {
           <DialogTitle className="font-heading text-h3 text-foreground">
             {state.success ? t("thanksTitle") : t("title")}
           </DialogTitle>
-          <DialogDescription className="text-small text-muted-foreground">
-            {state.success ? t("thanksBody") : t("intro")}
-          </DialogDescription>
+          {state.success && (
+            <DialogDescription className="text-small text-muted-foreground">
+              {t("thanksBody")}
+            </DialogDescription>
+          )}
         </DialogHeader>
 
         {!state.success && (

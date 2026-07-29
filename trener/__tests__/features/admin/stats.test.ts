@@ -80,6 +80,7 @@ function mockDb(opts: { playerDates: Date[]; authEvents: AuthEventRow[] }): Pris
     chatMessage: { count: async () => 0 },
     task: { groupBy: async () => [] },
     llmUsage: { findMany: async () => [] },
+    introSurveyResponse: { findMany: async () => [] },
   } as unknown as PrismaClient;
 }
 

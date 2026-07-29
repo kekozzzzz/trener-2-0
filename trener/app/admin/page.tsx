@@ -13,6 +13,7 @@ import {
   type DayPoint,
   type PeriodCounts,
   type AcquisitionSourceStats,
+  type SurveyResponseRow,
 } from "@/features/admin/stats";
 import { formatUsd } from "@/features/usage/cost-report";
 import { getPlan } from "@/config/plans";
@@ -203,6 +204,21 @@ export default async function AdminPage() {
             </div>
           </Card>
         </div>
+
+        {/* Опрос «мы только в начале пути» (план 2026-07-29): последние ответы как есть,
+            без агрегации — пока их мало, качественный текст важнее сводных чисел. */}
+        <Card className="mt-8">
+          <CardTitle>{t("surveysTitle")}</CardTitle>
+          {s.surveys.length === 0 ? (
+            <p className="mt-4 text-small text-muted-foreground">{t("noDataYet")}</p>
+          ) : (
+            <ul className="mt-4 space-y-6">
+              {s.surveys.map((r) => (
+                <SurveyRow key={r.id} r={r} t={t} />
+              ))}
+            </ul>
+          )}
+        </Card>
       </section>
     </main>
   );
@@ -350,6 +366,43 @@ function CountryList({
         </li>
       ))}
     </ul>
+  );
+}
+
+function SurveyRow({ r, t }: { r: SurveyResponseRow; t: (key: string) => string }) {
+  const texts: { label: string; value: string | null }[] = [
+    { label: t("surveysUnclear"), value: r.unclearText },
+    { label: t("surveysStyleChange"), value: r.styleChangeText },
+    { label: t("surveysMoreDetail"), value: r.moreDetailText },
+    { label: t("surveysLiked"), value: r.likedText },
+    { label: t("surveysMissing"), value: r.missingText },
+    { label: t("surveysFreeform"), value: r.freeformText },
+  ].filter((x) => x.value);
+
+  return (
+    <li className="border border-border p-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <span className="font-mono text-small text-foreground">{r.playerLabel}</span>
+        <span className="font-mono text-label uppercase tracking-label text-muted-foreground">
+          {r.createdAt.toLocaleString("ru-RU", { timeZone: "Europe/Moscow" })} МСК
+        </span>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <Stat label={t("surveysUsefulness")} value={`${r.usefulnessRating}/5`} accent />
+        <Stat label={t("surveysTone")} value={`${r.toneRating}/5`} />
+        <Stat label={t("surveysQuestions")} value={`${r.questionsRating}/5`} />
+        <Stat label={t("surveysRecommend")} value={`${r.recommendRating}/5`} />
+      </div>
+      {texts.length > 0 && (
+        <div className="mt-4 space-y-2">
+          {texts.map((x) => (
+            <p key={x.label} className="text-small text-muted-foreground">
+              <span className="text-foreground">{x.label}:</span> {x.value}
+            </p>
+          ))}
+        </div>
+      )}
+    </li>
   );
 }
 

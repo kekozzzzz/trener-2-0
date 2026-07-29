@@ -150,7 +150,18 @@
     "sourcesRegistrations": "Registrations",
     "sourcesVisits30": "Last 30 days",
     "sourcesCopy": "Copy",
-    "sourcesCopied": "Copied"
+    "sourcesCopied": "Copied",
+    "surveysTitle": "Post-first-tournament survey",
+    "surveysUsefulness": "Usefulness",
+    "surveysTone": "Tone",
+    "surveysQuestions": "Coach questions",
+    "surveysRecommend": "Would recommend",
+    "surveysUnclear": "Unclear/missing",
+    "surveysStyleChange": "Change in delivery",
+    "surveysMoreDetail": "More/less detail",
+    "surveysLiked": "Liked",
+    "surveysMissing": "Missing",
+    "surveysFreeform": "Comment"
   },
   "Footer": {
     "documents": "Legal",
@@ -805,10 +816,10 @@
     "skip": "Not sure / skip"
   },
   "IntroSurvey": {
-    "bannerText": "We're just getting started with Whygrid - leave feedback, it really helps.",
+    "cardTitle": "Take the survey",
+    "bannerText": "We're just getting started with Whygrid. Leave feedback - it can genuinely shape what the product becomes.",
     "takeSurveyButton": "Take the survey",
-    "title": "Take the survey",
-    "intro": "A couple of minutes - your opinion can genuinely shape the product.",
+    "title": "Survey",
     "usefulnessLabel": "How useful was this breakdown?",
     "unclearLabel": "What was unclear or felt missing?",
     "unclearPlaceholder": "Optional",
