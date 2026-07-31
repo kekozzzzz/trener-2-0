@@ -200,6 +200,20 @@ model LandingVisit {
   @@map("landing_visits")
 }
 
+// Один заход на сайт вообще — независимо от источника (GipsyTeam/Telegram/Instagram
+// через /go-ссылки или напрямую по адресу whygrid.app). Пишется JS-«маячком»
+// (components/site-visit-tracker.tsx) при первом монтировании корневого layout —
+// это отсекает бо́льшую часть ботов, которые не выполняют JS. Питает /admin,
+// карточку «Заходы на сайт» (в отличие от «Повторные входы» — тот считает только
+// вход в аккаунт, не любое посещение).
+model SiteVisit {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt], map: "idx_site_visits_created_at")
+  @@map("site_visits")
+}
+
 // ─────────────────── Профиль игрока (1:1, создаётся с первым турниром) ────────
 
 model PlayerProfile {

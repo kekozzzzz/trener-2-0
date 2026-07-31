@@ -5,6 +5,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { cn } from "@/lib/utils";
 import { getAppBaseUrl } from "@/config/app";
+import { SiteVisitTracker } from "@/components/site-visit-tracker";
 
 const inter = localFont({
   src: "../public/fonts/inter-variable.ttf",
@@ -65,7 +66,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       className={cn("font-sans", inter.variable, interHeading.variable, jetbrainsMono.variable)}
     >
       <body>
-        <NextIntlClientProvider messages={messages}>{children}</NextIntlClientProvider>
+        <NextIntlClientProvider messages={messages}>
+          <SiteVisitTracker />
+          {children}
+        </NextIntlClientProvider>
       </body>
     </html>
   );

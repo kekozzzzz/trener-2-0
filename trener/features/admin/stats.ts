@@ -65,6 +65,7 @@ export type AdminStats = {
     byDay: DayPoint[]; // последние 14 дней
     failed30: number; // неудачные попытки за 30 дней
   };
+  siteVisits: PeriodCounts; // ЛЮБОЙ заход на сайт (не только вход в аккаунт), см. SiteVisit
   countries: {
     logins30: CountryCount[]; // топ стран по входам за 30 дней
     registrations30: CountryCount[]; // топ стран по регистрациям за 30 дней
@@ -190,6 +191,8 @@ export async function buildAdminStats(db: PrismaClient, now = new Date()): Promi
     authEvents30,
     loginsTotal,
     failed30,
+    siteVisitDates30,
+    siteVisitsTotal,
     readyTournamentPlayers,
     payerSubs,
     activeByPlanRaw,
@@ -224,6 +227,8 @@ export async function buildAdminStats(db: PrismaClient, now = new Date()): Promi
     }),
     db.authEvent.count({ where: { kind: { in: [...successKinds] } } }),
     db.authEvent.count({ where: { kind: "LOGIN_FAILED", createdAt: { gte: t30 } } }),
+    db.siteVisit.findMany({ where: { createdAt: { gte: t30 } }, select: { createdAt: true } }),
+    db.siteVisit.count(),
     db.tournament.findMany({
       where: {
         deletedAt: null,
@@ -328,6 +333,17 @@ export async function buildAdminStats(db: PrismaClient, now = new Date()): Promi
     failed30,
   };
 
+  // Заходы на сайт вообще (маячок SiteVisitTracker): в отличие от «Входов» это
+  // считает любое посещение, а не только событие входа в аккаунт.
+  const siteVisitDates = siteVisitDates30.map((v) => v.createdAt);
+  const siteVisits: PeriodCounts = {
+    today: countSince(siteVisitDates, t0),
+    yesterday: countSince(siteVisitDates, t1, t0),
+    last7: countSince(siteVisitDates, t7),
+    last30: siteVisitDates.length,
+    total: siteVisitsTotal,
+  };
+
   const tried = new Set(readyTournamentPlayers.map((t) => t.playerId));
   const payers = new Set(payerSubs.map((s) => s.playerId));
   const converted = [...tried].filter((id) => payers.has(id)).length;
@@ -400,6 +416,7 @@ export async function buildAdminStats(db: PrismaClient, now = new Date()): Promi
       closed: playersClosed,
     },
     logins,
+    siteVisits,
     countries: {
       logins30: topCountries(loginEvents.map((e) => e.country)),
       registrations30: topCountries(registerEvents.map((e) => e.country)),

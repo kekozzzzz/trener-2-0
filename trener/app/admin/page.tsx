@@ -67,6 +67,13 @@ export default async function AdminPage() {
           </Card>
         </div>
 
+        {/* Заходы на сайт вообще — не только вход в аккаунт (тот выше, «Повторные входы») */}
+        <Card className="mt-8">
+          <CardTitle>{t("siteVisits")}</CardTitle>
+          <p className="mt-2 text-small text-muted-foreground">{t("siteVisitsHint")}</p>
+          <PeriodRow counts={s.siteVisits} t={t} />
+        </Card>
+
         {/* Источники переходов: меченые ссылки /go/<source> на внешние площадки */}
         <Card className="mt-8">
           <CardTitle>{t("sourcesTitle")}</CardTitle>

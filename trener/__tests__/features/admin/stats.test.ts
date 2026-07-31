@@ -69,6 +69,7 @@ function mockDb(opts: { playerDates: Date[]; authEvents: AuthEventRow[] }): Pris
       groupBy: async () => [],
     },
     landingVisit: { groupBy: async () => [] },
+    siteVisit: { findMany: async () => [], count: async () => 0 },
     tournament: {
       findMany: async (args: { distinct?: unknown }) => (args.distinct ? [] : []),
       count: async () => 0,
@@ -129,13 +130,14 @@ describe("buildAdminStats", () => {
     expect(s.countries.registrations30).toEqual([{ country: "KZ", count: 1 }]);
 
     // Пустые источники не валят сборку: нули и пустые списки.
+    expect(s.siteVisits).toEqual({ today: 0, yesterday: 0, last7: 0, last30: 0, total: 0 });
     expect(s.trial).toEqual({ triedFree: 0, converted: 0, notPaying: 0 });
     expect(s.money).toEqual([]);
     expect(s.queue).toEqual({ pending: 0, processing: 0, poisoned: 0, failed: 0 });
 
     // Источники переходов: список берётся из конфига, без единого захода — нули,
     // источник из списка не пропадает.
-    expect(s.acquisition.map((a) => a.slug)).toEqual(["gipsyteam", "telegram"]);
+    expect(s.acquisition.map((a) => a.slug)).toEqual(["gipsyteam", "telegram", "instagram"]);
     expect(s.acquisition[0]).toMatchObject({
       slug: "gipsyteam",
       visitsTotal: 0,
