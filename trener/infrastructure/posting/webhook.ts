@@ -37,6 +37,12 @@ function isAdmin(userId: number | undefined): boolean {
   return userId !== undefined && String(userId) === getTelegramAdminChatId();
 }
 
+// Telegram сам шлёт "/start", когда человек открывает бота (например, по кнопке
+// "Написать нам" под постом). Это не отзыв и не текст от человека — отвечаем сами,
+// Артёму не пересылаем.
+const START_GREETING =
+  "Привет! Напиши сюда вопрос или отзыв — я передам его дальше.";
+
 // Id отправителя зашиваем прямо в текст, который уходит Артёму (см. handleMessage) —
 // отдельное хранилище «кому отвечать» не заводим, Reply в Telegram и так хранит
 // цепочку цитирования. Формат «(id 12345678)» человеку тоже читаем, не мешает.
@@ -109,6 +115,12 @@ async function handleMessage(msg: TgMessage): Promise<void> {
   if (!text) return;
 
   const senderId = msg.chat?.id ?? msg.from?.id;
+
+  if (text === "/start") {
+    if (senderId !== undefined) await sendMessage(String(senderId), START_GREETING);
+    return;
+  }
+
   const who = msg.from?.username ? `@${msg.from.username}` : `id ${senderId ?? "?"}`;
 
   // Чужой текст — данные, не инструкции. Помечаем явно, чтобы и человек, и ИИ

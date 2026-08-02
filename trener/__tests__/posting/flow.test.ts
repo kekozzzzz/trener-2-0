@@ -105,6 +105,14 @@ describe("полный цикл постинга", () => {
     expect(text).toContain("(id 999999)");
   });
 
+  it("/start от постороннего — бот отвечает сам, Артёму не пересылает", async () => {
+    await handleTelegramUpdate({
+      message: { from: { id: 999999, username: "stranger" }, chat: { id: 999999 }, text: "/start" },
+    });
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+    expect(sendMessage).toHaveBeenCalledWith("999999", expect.any(String));
+  });
+
   it("Reply Артёма на пересланное сообщение уходит человеку в тот же чат", async () => {
     await handleTelegramUpdate({
       message: { from: { id: 999999, username: "stranger" }, text: "как оплатить?" },
