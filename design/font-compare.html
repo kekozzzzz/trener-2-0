@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;900&family=Unbounded:wght@400;900&family=Golos+Text:wght@400;900&family=Manrope:wght@400;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root{
+    --bg:#0E0E0E; --surface:#1A1A1A; --line:#2A2A2A;
+    --text:#F5F5F5; --muted:#8C8C8C; --lime:#D4FF33;
+  }
+  body{ width:1200px; background:var(--bg); }
+  .panel{
+    padding:56px 64px; border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .panel:last-child{ border-bottom:none; }
+  .name{ font-family:'JetBrains Mono', monospace; font-size:18px; letter-spacing:2px;
+         color:var(--muted); text-transform:uppercase; width:220px; flex-shrink:0; }
+  .sample{ flex:1; }
+  .headline{ color:var(--text); font-weight:900; font-size:52px; line-height:1.08; }
+  .num{ color:var(--lime); font-weight:700; font-size:64px; text-align:right; width:260px; flex-shrink:0; }
+</style>
+</head>
+<body>
+  <div class="panel">
+    <div class="name">Inter<br><span style="color:var(--text)">(сейчас)</span></div>
+    <div class="sample"><div class="headline" style="font-family:'Inter',sans-serif;">Где утекли фишки</div></div>
+    <div class="num" style="font-family:'JetBrains Mono',monospace;">−55 BB</div>
+  </div>
+  <div class="panel">
+    <div class="name">Unbounded</div>
+    <div class="sample"><div class="headline" style="font-family:'Unbounded',sans-serif;">Где утекли фишки</div></div>
+    <div class="num" style="font-family:'Unbounded',sans-serif;">−55 BB</div>
+  </div>
+  <div class="panel">
+    <div class="name">Golos Text</div>
+    <div class="sample"><div class="headline" style="font-family:'Golos Text',sans-serif;">Где утекли фишки</div></div>
+    <div class="num" style="font-family:'JetBrains Mono',monospace;">−55 BB</div>
+  </div>
+  <div class="panel">
+    <div class="name">Manrope</div>
+    <div class="sample"><div class="headline" style="font-family:'Manrope',sans-serif;">Где утекли фишки</div></div>
+    <div class="num" style="font-family:'JetBrains Mono',monospace;">−55 BB</div>
+  </div>
+</body>
+</html>

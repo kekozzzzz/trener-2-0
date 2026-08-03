@@ -2,6 +2,9 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   :root{
@@ -11,29 +14,29 @@
   html,body{ width:1080px; height:1080px; background:var(--bg); }
   #card{
     width:1080px; height:1080px; background:var(--bg); color:var(--text);
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: 'Golos Text', sans-serif;
     padding:72px; display:flex; flex-direction:column;
   }
   .top{ display:flex; justify-content:space-between; align-items:center; }
   .wm{ font-weight:900; letter-spacing:1px; font-size:30px; }
   .wm .w{ color:var(--lime); }
   .tag{
-    font-family:'Courier New', monospace; font-size:22px; letter-spacing:3px;
+    font-family:'JetBrains Mono', monospace; font-size:22px; letter-spacing:3px;
     color:var(--muted); text-transform:uppercase;
   }
   .hook{ margin-top:54px; font-weight:900; font-size:62px; line-height:1.05; max-width:900px; }
   .label{
-    font-family:'Courier New', monospace; font-size:22px; letter-spacing:3px;
+    font-family:'JetBrains Mono', monospace; font-size:22px; letter-spacing:3px;
     color:var(--muted); text-transform:uppercase; margin-bottom:18px;
   }
-  .sect{ margin-top:48px; }
-  .cards{ display:flex; gap:18px; }
+  .sect{ margin-top:48px; display:flex; flex-direction:column; align-items:center; }
+  .cards{ display:flex; gap:18px; justify-content:center; }
   .c{
     width:108px; height:150px; background:var(--surface); border:1px solid var(--line);
     display:flex; flex-direction:column; align-items:center; justify-content:center;
   }
-  .c .r{ font-weight:900; font-size:52px; line-height:1; }
-  .c .s{ font-size:40px; line-height:1; margin-top:6px; }
+  .c .r{ font-family: Arial, sans-serif; font-weight:900; font-size:52px; line-height:1; }
+  .c .s{ font-family: Arial, sans-serif; font-size:40px; line-height:1; margin-top:6px; }
   .c.brick{ opacity:0.45; }
   .heart .r,.heart .s{ color:var(--lime); }
   .dark .r,.dark .s{ color:var(--text); }
@@ -42,15 +45,14 @@
     margin-top:auto; border-top:1px solid var(--line); padding-top:40px;
     display:flex; align-items:flex-end; justify-content:space-between;
   }
-  .stat .big{ font-family:'Courier New', monospace; font-weight:700; }
+  .stat .big{ font-family:'JetBrains Mono', monospace; font-weight:700; }
   .stat .eq{ font-size:96px; color:var(--lime); line-height:0.9; }
-  .stat .sub{ font-family:'Courier New', monospace; font-size:26px; color:var(--muted); margin-top:10px; letter-spacing:1px; }
+  .stat .sub{ font-family:'JetBrains Mono', monospace; font-size:26px; color:var(--muted); margin-top:10px; letter-spacing:1px; }
   .loss{ text-align:right; }
-  .loss .num{ font-family:'Courier New', monospace; font-weight:700; font-size:72px; color:var(--text); line-height:0.9; }
-  .loss .cap{ font-family:'Courier New', monospace; font-size:24px; color:var(--muted); letter-spacing:2px; margin-top:10px; }
-  .foot{ margin-top:34px; display:flex; align-items:center; gap:16px; }
+  .loss .num{ font-family:'JetBrains Mono', monospace; font-weight:700; font-size:72px; color:var(--text); line-height:0.9; }
+  .loss .cap{ font-family:'JetBrains Mono', monospace; font-size:24px; color:var(--muted); letter-spacing:2px; margin-top:10px; }
+  .foot{ margin-top:34px; display:flex; align-items:center; justify-content:flex-end; }
   .foot svg{ width:40px; height:40px; }
-  .foot .url{ font-family:'Courier New', monospace; font-size:28px; color:var(--lime); letter-spacing:1px; }
 </style>
 </head>
 <body>
@@ -99,7 +101,6 @@
       <rect x="6.5" y="17.5" width="8" height="8" fill="none" stroke="#F5F5F5" stroke-width="2"/>
       <rect x="17.5" y="17.5" width="8" height="8" fill="none" stroke="#F5F5F5" stroke-width="2"/>
     </svg>
-    <div class="url">whygrid.app</div>
   </div>
 </div>
 </body>

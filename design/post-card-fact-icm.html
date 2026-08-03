@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root{
+    --bg:#0E0E0E; --surface:#1A1A1A; --line:#2A2A2A;
+    --text:#F5F5F5; --muted:#8C8C8C; --lime:#D4FF33;
+  }
+  html,body{ width:1080px; height:1080px; background:var(--bg); }
+  #card{
+    width:1080px; height:1080px; background:var(--bg); color:var(--text);
+    font-family: 'Golos Text', sans-serif;
+    padding:64px; display:flex; flex-direction:column;
+  }
+  .top{ display:flex; justify-content:space-between; align-items:center; }
+  .wm{ font-weight:900; letter-spacing:1px; font-size:30px; }
+  .wm .w{ color:var(--lime); }
+  .tag{
+    font-family:'Courier New', monospace; font-size:22px; letter-spacing:3px;
+    color:var(--muted); text-transform:uppercase;
+  }
+
+  .mid{ flex:1; display:flex; flex-direction:column; justify-content:center; }
+
+  .setup{ font-family:'Courier New', monospace; font-size:34px; color:var(--muted); max-width:960px; line-height:1.35; }
+  .setup b{ color:var(--lime); font-weight:700; }
+
+  /* разворот: карты + приговор */
+  .reveal{ margin-top:44px; display:flex; align-items:center; justify-content:center; gap:36px; }
+  .hcards{ display:flex; gap:14px; }
+  .hc{
+    width:120px; height:166px; background:var(--surface); border:1px solid var(--lime);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+  }
+  .hc .r{ font-family: Arial, sans-serif; font-weight:900; font-size:58px; line-height:1; color:var(--text); }
+  .hc .s{ font-family: Arial, sans-serif; font-size:44px; line-height:1; margin-top:6px; color:var(--text); }
+  .verb{ font-weight:900; font-size:96px; line-height:1; color:var(--lime); }
+
+  .fact{ margin-top:48px; font-size:34px; line-height:1.45; color:var(--text); max-width:960px; }
+  .fact .muted{ color:var(--muted); }
+
+  .foot{ display:flex; justify-content:flex-end; }
+  .foot svg{ width:36px; height:36px; }
+</style>
+</head>
+<body>
+<div id="card">
+  <div class="top">
+    <div class="wm"><span class="w">WHY</span>GRID</div>
+    <div class="tag">Факт</div>
+  </div>
+
+  <div class="mid">
+    <div class="setup">В сателлите на баббл-стадии, при жёстком ICM-давлении, даже эта рука -</div>
+
+    <div class="reveal">
+      <div class="hcards">
+        <div class="hc"><div class="r">A</div><div class="s">♠</div></div>
+        <div class="hc"><div class="r">A</div><div class="s">♥</div></div>
+      </div>
+      <div class="verb">ФОЛД</div>
+    </div>
+
+    <div class="fact">
+      Твои фишки на бабле стоят не одинаково. Вылететь прямо перед деньгами обходится
+      дороже, чем рисковать ими позже, когда ты уже в призах - и иногда даже пара тузов
+      того не стоит.
+    </div>
+  </div>
+
+  <div class="foot">
+    <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+      <rect x="6.5" y="6.5" width="8" height="8" fill="none" stroke="#F5F5F5" stroke-width="2"/>
+      <rect x="17.5" y="6.5" width="8" height="8" fill="#D4FF33"/>
+      <rect x="6.5" y="17.5" width="8" height="8" fill="none" stroke="#F5F5F5" stroke-width="2"/>
+      <rect x="17.5" y="17.5" width="8" height="8" fill="none" stroke="#F5F5F5" stroke-width="2"/>
+    </svg>
+  </div>
+</div>
+</body>
+</html>

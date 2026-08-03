@@ -2,6 +2,9 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   :root{
@@ -11,14 +14,14 @@
   html,body{ width:1080px; height:1080px; background:var(--bg); }
   #card{
     width:1080px; height:1080px; background:var(--bg); color:var(--text);
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: 'Golos Text', sans-serif;
     padding:64px; display:flex; flex-direction:column;
   }
   .top{ display:flex; justify-content:space-between; align-items:center; }
   .wm{ font-weight:900; letter-spacing:1px; font-size:30px; }
   .wm .w{ color:var(--lime); }
   .tag{
-    font-family:'Courier New', monospace; font-size:22px; letter-spacing:3px;
+    font-family:'JetBrains Mono', monospace; font-size:22px; letter-spacing:3px;
     color:var(--muted); text-transform:uppercase;
   }
 
@@ -31,38 +34,37 @@
     width:92px; height:128px; background:var(--surface); border:1px solid var(--line);
     display:flex; flex-direction:column; align-items:center; justify-content:center;
   }
-  .hc .r{ font-weight:900; font-size:46px; line-height:1; color:var(--text); }
-  .hc .s{ font-size:34px; line-height:1; margin-top:4px; color:var(--text); }
-  .hero .htag{ font-family:'Courier New', monospace; font-size:26px; color:var(--muted); }
+  .hc .r{ font-family: Arial, sans-serif; font-weight:900; font-size:46px; line-height:1; color:var(--text); }
+  .hc .s{ font-family: Arial, sans-serif; font-size:34px; line-height:1; margin-top:4px; color:var(--text); }
+  .hero .htag{ font-family:'JetBrains Mono', monospace; font-size:26px; color:var(--muted); }
   .hero .htag b{ color:var(--text); font-weight:700; }
 
   /* таблица улиц */
-  .table{ margin-top:40px; font-family:'Courier New', monospace; }
+  .table{ margin-top:40px; font-family:'JetBrains Mono', monospace; }
   .row{
-    display:grid; grid-template-columns:170px 1fr 250px; align-items:center;
+    display:grid; grid-template-columns:170px 1fr 320px; align-items:center;
     padding:20px 0; border-top:1px solid var(--line);
   }
   .row .st{ font-size:26px; letter-spacing:2px; color:var(--muted); }
-  .row .bd{ font-size:34px; font-weight:700; letter-spacing:6px; }
-  .row .ac{ font-size:26px; text-align:right; color:var(--text); }
+  .row .bd{ font-family: Arial, sans-serif; font-size:34px; font-weight:700; letter-spacing:6px; }
+  .row .ac{ font-size:24px; text-align:right; color:var(--text); line-height:1.3; }
+  .row .ac .who{ color:var(--muted); font-size:20px; letter-spacing:1px; }
   .row .ac .bet{ color:var(--muted); }
   .row.leak{ background:#15170A; margin:0 -20px; padding-left:20px; padding-right:20px;
              border-top:1px solid var(--lime); }
   .row.leak .st{ color:var(--lime); }
+  .row.leak .ac .who{ color:var(--lime); }
   .row.leak .ac .bet{ color:var(--lime); font-weight:700; }
   .row .call{ color:var(--text); }
   .row.leak .call{ color:var(--lime); }
 
   /* вывод */
   .verdict{ margin-top:40px; font-size:30px; line-height:1.4; color:var(--text); }
-  .verdict b{ color:var(--lime); font-weight:700; font-family:'Courier New', monospace; }
+  .verdict b{ color:var(--lime); font-weight:700; font-family:'JetBrains Mono', monospace; }
   .verdict .muted{ color:var(--muted); }
 
-  .foot{ margin-top:auto; display:flex; align-items:flex-end; justify-content:space-between; }
-  .foot .left{ display:flex; align-items:center; gap:16px; }
-  .foot svg{ width:40px; height:40px; }
-  .foot .url{ font-family:'Courier New', monospace; font-size:28px; color:var(--lime); letter-spacing:1px; }
-  .foot .res{ font-family:'Courier New', monospace; font-weight:700; font-size:80px; line-height:0.8; }
+  .foot{ margin-top:auto; display:flex; align-items:flex-end; justify-content:flex-end; }
+  .foot .res{ font-family:'JetBrains Mono', monospace; font-weight:700; font-size:80px; line-height:0.8; }
   .foot .res .cap{ font-size:22px; color:var(--muted); letter-spacing:2px; font-weight:400; text-align:right; margin-top:8px; }
 </style>
 </head>
@@ -86,36 +88,27 @@
   <div class="table">
     <div class="row">
       <div class="st">ФЛОП</div>
-      <div class="bd">Q 7 3</div>
-      <div class="ac"><span class="bet">ставка 64%</span> → <span class="call">колл</span></div>
+      <div class="bd">Q♠ 7♦ 3♣</div>
+      <div class="ac"><span class="who">соперник ставит</span><br><span class="bet">64%</span> → <span class="call">твой колл</span></div>
     </div>
     <div class="row">
       <div class="st">ТЁРН</div>
-      <div class="bd">+ 2</div>
-      <div class="ac"><span class="bet">ставка 72%</span> → <span class="call">колл</span></div>
+      <div class="bd">2♥</div>
+      <div class="ac"><span class="who">соперник ставит</span><br><span class="bet">72%</span> → <span class="call">твой колл</span></div>
     </div>
     <div class="row leak">
       <div class="st">РИВЕР</div>
-      <div class="bd">+ 5</div>
-      <div class="ac"><span class="bet">ОВЕРБЕТ 131%</span> → <span class="call">колл</span></div>
+      <div class="bd">5♦</div>
+      <div class="ac"><span class="who">соперник — ОВЕРБЕТ</span><br><span class="bet">131%</span> → <span class="call">твой колл</span></div>
     </div>
   </div>
 
   <div class="verdict">
-    Чтобы такой колл окупился, нужно было <b>36%</b>.<br>
-    <span class="muted">Одной парой против овербета — почти никогда. У соперника сет.</span>
+    Топ-пара против овербета на ривере - почти всегда проигранный колл.<br>
+    <span class="muted">Таким размером редко блефуют - у соперника обычно уже сильная рука.</span>
   </div>
 
   <div class="foot">
-    <div class="left">
-      <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-        <rect x="6.5" y="6.5" width="8" height="8" fill="none" stroke="#F5F5F5" stroke-width="2"/>
-        <rect x="17.5" y="6.5" width="8" height="8" fill="#D4FF33"/>
-        <rect x="6.5" y="17.5" width="8" height="8" fill="none" stroke="#F5F5F5" stroke-width="2"/>
-        <rect x="17.5" y="17.5" width="8" height="8" fill="none" stroke="#F5F5F5" stroke-width="2"/>
-      </svg>
-      <div class="url">whygrid.app</div>
-    </div>
     <div class="res">−55 BB<div class="cap">слил на одном колле</div></div>
   </div>
 </div>
