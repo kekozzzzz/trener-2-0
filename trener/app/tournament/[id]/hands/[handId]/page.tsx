@@ -8,8 +8,7 @@ import { bigBlindFromSnapshot } from "@/parser/big-blind";
 import type { TableSnapshot } from "@/parser/types";
 import { requireSession } from "@/features/auth/session";
 import { personalizeHero } from "@/lib/hero-name";
-import { AuthNav } from "@/components/auth-nav";
-import { Wordmark } from "@/components/ui/wordmark";
+import { PageHeader } from "@/components/page-header";
 import { FloatingGlossary } from "@/components/metrics/glossary";
 import { AnswerForm } from "./answer-form";
 import { RangeAnswerForm } from "./range-answer-form";
@@ -104,14 +103,7 @@ export default async function HandDialoguePage({
     if (!hand.tournament.analysisUnlocked) {
       return (
         <main>
-          <header className="border-b border-border">
-            <div className="mx-auto flex max-w-5xl items-center justify-between px-8 py-6">
-              <Link href="/">
-                <Wordmark />
-              </Link>
-              <AuthNav />
-            </div>
-          </header>
+          <PageHeader />
           <section className="mx-auto max-w-5xl px-8 py-16">
             <h1 className="text-h1">{t("lockedTitle")}</h1>
             <p className="mt-4 max-w-2xl text-body text-muted-foreground">
@@ -173,14 +165,7 @@ export default async function HandDialoguePage({
   return (
     <main>
       <FloatingGlossary />
-      <header className="border-b border-border">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-8 py-6">
-          <Link href="/">
-            <Wordmark />
-          </Link>
-          <AuthNav />
-        </div>
-      </header>
+      <PageHeader />
 
       <section className="mx-auto max-w-5xl px-8 py-16">
         {/* Фоновая отметка «просмотрено» при открытии разбора (см. mark-viewed.tsx). */}

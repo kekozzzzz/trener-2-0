@@ -197,6 +197,7 @@
     "resetDone": "Password updated. Sign in with your new password."
   },
   "Landing": {
+    "demoPlayerLabel": "player",
     "showcaseTitle": "Inside a review",
     "showcaseSubtitle": "These are not mockups - they are real product screens: the same table, the same grid, the same coach.",
     "showcaseTableCaption": "The table at the decision point: pocket fives facing a BTN all-in preflop - the review starts here",

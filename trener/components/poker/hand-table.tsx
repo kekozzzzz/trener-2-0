@@ -19,6 +19,7 @@ type TableLabels = {
   table: string;
   beforeFlop: string;
   pot: string;
+  ante: string;
 };
 
 const SUIT_GLYPH: Record<string, string> = { c: "♣", d: "♦", h: "♥", s: "♠" };
@@ -117,6 +118,7 @@ export async function HandTable({
     table: t("table"),
     beforeFlop: t("beforeFlop"),
     pot: t("pot"),
+    ante: t("actionAnte"),
   };
   const bySeat = new Map(state.seats.map((s) => [s.seatNumber, s]));
   const heroSeat = state.seats.find((s) => s.isHero)?.seatNumber ?? 1;
@@ -176,7 +178,7 @@ export async function HandTable({
             {state.level != null && <span>L{state.level} · </span>}
             {state.smallBlind != null ? `${state.smallBlind.toLocaleString("ru-RU")}/` : ""}
             {state.bigBlind.toLocaleString("ru-RU")}
-            {state.ante != null && state.ante > 0 && ` (анте ${state.ante.toLocaleString("ru-RU")})`}
+            {state.ante != null && state.ante > 0 && ` (${labels.ante} ${state.ante.toLocaleString("ru-RU")})`}
           </div>
         )}
 

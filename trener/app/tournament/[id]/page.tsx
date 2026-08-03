@@ -15,8 +15,7 @@ import type { TableSnapshot } from "@/parser/types";
 import { HoleCards } from "@/components/poker/hole-cards";
 import { unlockTournamentAnalysisAction } from "./actions";
 import { personalizeHero } from "@/lib/hero-name";
-import { AuthNav } from "@/components/auth-nav";
-import { Wordmark } from "@/components/ui/wordmark";
+import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -69,19 +68,6 @@ function renderOverview(overview: string, tournamentId: string, nick: string | n
       </Link>
     );
   });
-}
-
-function PageHeader() {
-  return (
-    <header className="border-b border-border">
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-8 py-6">
-        <Link href="/">
-          <Wordmark />
-        </Link>
-        <AuthNav />
-      </div>
-    </header>
-  );
 }
 
 function StatCard({ label, children }: { label: string; children: React.ReactNode }) {

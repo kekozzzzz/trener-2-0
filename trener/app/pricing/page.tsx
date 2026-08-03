@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Check } from "lucide-react";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { AuthNav } from "@/components/auth-nav";
+import { PageHeader } from "@/components/page-header";
 import { Wordmark } from "@/components/ui/wordmark";
 import { PricingCard } from "@/components/ui/pricing-card";
 import { CheckoutButton } from "@/components/subscription/checkout-button";
@@ -52,14 +52,7 @@ export default async function PricingPage() {
 
   return (
     <main>
-      <header className="border-b border-border">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-8 py-6">
-          <Link href="/">
-            <Wordmark />
-          </Link>
-          <AuthNav />
-        </div>
-      </header>
+      <PageHeader />
 
       <section className="mx-auto max-w-5xl px-8 py-16 sm:py-24">
         <div className="mx-auto max-w-2xl space-y-4 text-center">

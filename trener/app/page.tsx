@@ -342,30 +342,36 @@ export default async function HomePage() {
 // цена колла ~44% (колл 14bb в банк 17.8bb), диапазон пуша 20-25%.
 // Рендерится ТЕМ ЖЕ компонентом HandTable, что и в разборе.
 const DEMO_BB = 250;
-const DEMO_TABLE: TableState = {
-  tableSize: 8,
-  buttonSeat: 6,
-  heroCards: ["5s", "5h"],
-  board: [],
-  potSoFar: 17.8 * DEMO_BB,
-  bigBlind: DEMO_BB,
-  smallBlind: 125,
-  ante: 35,
-  level: 5,
-  street: "PREFLOP",
-  decisionActor: "игрок 5",
-  playersAfterHero: 0,
-  seats: [
-    { label: "игрок 1", position: "EARLY", positionName: "UTG", startingStack: 60 * DEMO_BB, remainingStack: 60 * DEMO_BB, seatNumber: 1, isHero: false, folded: true, isCurrent: false, streetBet: 0, lastAction: { action: "FOLD" } },
-    { label: "игрок 2", position: "EARLY", positionName: "UTG+1", startingStack: 88 * DEMO_BB, remainingStack: 88 * DEMO_BB, seatNumber: 2, isHero: false, folded: true, isCurrent: false, streetBet: 0, lastAction: { action: "FOLD" } },
-    { label: "игрок 3", position: "EARLY", positionName: "LJ", startingStack: 41 * DEMO_BB, remainingStack: 41 * DEMO_BB, seatNumber: 3, isHero: false, folded: true, isCurrent: false, streetBet: 0, lastAction: { action: "FOLD" } },
-    { label: "игрок 4", position: "HJ", positionName: "HJ", startingStack: 25 * DEMO_BB, remainingStack: 25 * DEMO_BB, seatNumber: 4, isHero: false, folded: true, isCurrent: false, streetBet: 0, lastAction: { action: "FOLD" } },
-    { label: "игрок 7", position: "CO", positionName: "CO", startingStack: 52 * DEMO_BB, remainingStack: 52 * DEMO_BB, seatNumber: 5, isHero: false, folded: true, isCurrent: false, streetBet: 0, lastAction: { action: "FOLD" } },
-    { label: "игрок 5", position: "BTN", positionName: "BTN", startingStack: 15 * DEMO_BB, remainingStack: 0, seatNumber: 6, isHero: false, folded: false, isCurrent: true, streetBet: 15 * DEMO_BB, lastAction: { action: "ALL_IN", amount: 15 * DEMO_BB } },
-    { label: "игрок 6", position: "SB", positionName: "SB", startingStack: 33 * DEMO_BB, remainingStack: 33 * DEMO_BB, seatNumber: 7, isHero: false, folded: true, isCurrent: false, streetBet: 0, lastAction: { action: "FOLD" } },
-    { label: "Hero", position: "BB", positionName: "BB", startingStack: 34 * DEMO_BB, remainingStack: 33 * DEMO_BB, seatNumber: 8, isHero: true, folded: false, isCurrent: false, streetBet: 1 * DEMO_BB, lastAction: null },
-  ],
-};
+// Метки соперников переведены (t("demoPlayerLabel")) — стол демонстрационный, но
+// рендерится тем же HandTable, что и разбор реальных раздач, поэтому русские слова
+// внутри английской версии витрины выглядят как несовпадение с текстом рядом
+// («это реальные экраны продукта»).
+function buildDemoTable(playerWord: string): TableState {
+  return {
+    tableSize: 8,
+    buttonSeat: 6,
+    heroCards: ["5s", "5h"],
+    board: [],
+    potSoFar: 17.8 * DEMO_BB,
+    bigBlind: DEMO_BB,
+    smallBlind: 125,
+    ante: 35,
+    level: 5,
+    street: "PREFLOP",
+    decisionActor: `${playerWord} 5`,
+    playersAfterHero: 0,
+    seats: [
+      { label: `${playerWord} 1`, position: "EARLY", positionName: "UTG", startingStack: 60 * DEMO_BB, remainingStack: 60 * DEMO_BB, seatNumber: 1, isHero: false, folded: true, isCurrent: false, streetBet: 0, lastAction: { action: "FOLD" } },
+      { label: `${playerWord} 2`, position: "EARLY", positionName: "UTG+1", startingStack: 88 * DEMO_BB, remainingStack: 88 * DEMO_BB, seatNumber: 2, isHero: false, folded: true, isCurrent: false, streetBet: 0, lastAction: { action: "FOLD" } },
+      { label: `${playerWord} 3`, position: "EARLY", positionName: "LJ", startingStack: 41 * DEMO_BB, remainingStack: 41 * DEMO_BB, seatNumber: 3, isHero: false, folded: true, isCurrent: false, streetBet: 0, lastAction: { action: "FOLD" } },
+      { label: `${playerWord} 4`, position: "HJ", positionName: "HJ", startingStack: 25 * DEMO_BB, remainingStack: 25 * DEMO_BB, seatNumber: 4, isHero: false, folded: true, isCurrent: false, streetBet: 0, lastAction: { action: "FOLD" } },
+      { label: `${playerWord} 7`, position: "CO", positionName: "CO", startingStack: 52 * DEMO_BB, remainingStack: 52 * DEMO_BB, seatNumber: 5, isHero: false, folded: true, isCurrent: false, streetBet: 0, lastAction: { action: "FOLD" } },
+      { label: `${playerWord} 5`, position: "BTN", positionName: "BTN", startingStack: 15 * DEMO_BB, remainingStack: 0, seatNumber: 6, isHero: false, folded: false, isCurrent: true, streetBet: 15 * DEMO_BB, lastAction: { action: "ALL_IN", amount: 15 * DEMO_BB } },
+      { label: `${playerWord} 6`, position: "SB", positionName: "SB", startingStack: 33 * DEMO_BB, remainingStack: 33 * DEMO_BB, seatNumber: 7, isHero: false, folded: true, isCurrent: false, streetBet: 0, lastAction: { action: "FOLD" } },
+      { label: "Hero", position: "BB", positionName: "BB", startingStack: 34 * DEMO_BB, remainingStack: 33 * DEMO_BB, seatNumber: 8, isHero: true, folded: false, isCurrent: false, streetBet: 1 * DEMO_BB, lastAction: null },
+    ],
+  };
+}
 
 // Отмеченный диапазон для витринной сетки — реальная отметка игрока (широкий опен BTN).
 const DEMO_RANGE = buildRange([
@@ -404,6 +410,7 @@ function DemoRangeGrid() {
 
 async function ProductShowcase() {
   const t = await getTranslations("Landing");
+  const demoTable = buildDemoTable(t("demoPlayerLabel"));
   return (
     <section className="border-t border-border bg-background">
       <div className="mx-auto max-w-5xl px-8 py-16 sm:py-24">
@@ -414,7 +421,7 @@ async function ProductShowcase() {
 
         <div className="mx-auto mt-12 max-w-4xl">
           <ScaleToFit baseWidth={896}>
-            <HandTable state={DEMO_TABLE} nick={null} fit />
+            <HandTable state={demoTable} nick={null} fit />
           </ScaleToFit>
           <p className="mt-3 font-mono text-label uppercase tracking-label text-muted-foreground">
             {t("showcaseTableCaption")}
