@@ -6,12 +6,14 @@ import path from "path";
 // Подменяем сетевой клиент Telegram — тест не ходит в сеть, только проверяет вызовы.
 vi.mock("@/infrastructure/adapters/notify/telegram-api", () => ({
   sendPhoto: vi.fn(),
+  sendMediaGroup: vi.fn(),
   sendMessage: vi.fn(),
   answerCallbackQuery: vi.fn(),
 }));
 
 import {
   sendPhoto,
+  sendMediaGroup,
   sendMessage,
   answerCallbackQuery,
 } from "@/infrastructure/adapters/notify/telegram-api";
@@ -80,6 +82,57 @@ describe("полный цикл постинга", () => {
       url: "https://t.me/whygrid_bot",
     });
     expect(getPost("sliv-01", dir)?.status).toBe("PUBLISHED");
+  });
+
+  it("альбом (карусель): превью и публикация идут sendMediaGroup + кнопки отдельным сообщением", async () => {
+    fs.writeFileSync(path.join(dir, "slide1.png"), Buffer.from("PNG1"));
+    fs.writeFileSync(path.join(dir, "slide2.png"), Buffer.from("PNG2"));
+    addPost({
+      id: "carousel-01",
+      imageFiles: ["slide1.png", "slide2.png"],
+      caption: "Текст карусели",
+      scheduledAt: "2026-06-29T16:00:00.000Z",
+      previewAt: "2026-06-28T16:00:00.000Z",
+      status: "QUEUED",
+      buttonText: "Разобрать свой турнир",
+      buttonUrl: "https://whygrid.app",
+    });
+
+    // 1. Превью: альбом без кнопок + отдельное сообщение с кнопками одобрения.
+    await runScheduler(new Date("2026-06-28T17:00:00.000Z"));
+    expect(sendMediaGroup).toHaveBeenCalledTimes(1);
+    const [previewChat, previewPhotos, previewOpts] = vi.mocked(sendMediaGroup).mock.calls[0];
+    expect(previewChat).toBe(ADMIN);
+    expect(previewPhotos).toHaveLength(2);
+    expect(previewOpts?.caption).toContain("Текст карусели");
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+    const [, , approvalOpts] = vi.mocked(sendMessage).mock.calls[0];
+    expect(approvalOpts?.replyMarkup?.inline_keyboard[0][0]).toMatchObject({
+      callback_data: "approve:carousel-01",
+    });
+    expect(getPost("carousel-01", dir)?.status).toBe("PREVIEW_SENT");
+
+    // 2. Одобрение.
+    await handleTelegramUpdate(
+      { callback_query: { id: "cbq3", from: { id: 440359604 }, data: "approve:carousel-01" } },
+      new Date("2026-06-28T18:00:00.000Z"),
+    );
+    expect(getPost("carousel-01", dir)?.status).toBe("APPROVED");
+
+    // 3. Публикация: альбом в канал + отдельное сообщение с кнопкой-ссылкой.
+    vi.clearAllMocks();
+    await runScheduler(new Date("2026-06-29T17:00:00.000Z"));
+    const [pubChat, pubPhotos, pubOpts] = vi.mocked(sendMediaGroup).mock.calls[0];
+    expect(pubChat).toBe("@whygrid");
+    expect(pubPhotos).toHaveLength(2);
+    expect(pubOpts?.caption).toBe("Текст карусели");
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+    const [, , pubButtonOpts] = vi.mocked(sendMessage).mock.calls[0];
+    expect(pubButtonOpts?.replyMarkup?.inline_keyboard[0][0]).toMatchObject({
+      text: "Разобрать свой турнир",
+      url: "https://whygrid.app",
+    });
+    expect(getPost("carousel-01", dir)?.status).toBe("PUBLISHED");
   });
 
   it("безопасность: чужой не может одобрить пост", async () => {

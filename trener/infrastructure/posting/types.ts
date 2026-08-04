@@ -16,7 +16,11 @@ export type PostStatus =
 
 export interface QueuedPost {
   id: string; // стабильный id (его задаёт генератор контента), напр. "sliv-01"
-  imageFile: string; // имя файла картинки в каталоге очереди, напр. "sliv-01.png"
+  imageFile?: string; // имя файла картинки в каталоге очереди, напр. "sliv-01.png"
+  // Альбом (карусель) — 2-10 файлов, отправляются одним sendMediaGroup. Если задано,
+  // используется вместо imageFile. Telegram НЕ поддерживает кнопки под альбомом — их
+  // при публикации шлём отдельным сообщением сразу следом (см. service.ts).
+  imageFiles?: string[];
   caption: string; // текст поста (подпись под картинкой)
   scheduledAt: string; // ISO UTC — когда публиковать
   previewAt: string; // ISO UTC — когда слать превью на одобрение (обычно за день до)

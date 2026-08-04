@@ -123,6 +123,40 @@ export async function sendPhoto(
   }
 }
 
+// Альбом из нескольких фото (карусель) — одним сообщением, свайпается в клиенте
+// Telegram. Подпись показываем только на первом фото (Telegram сам растягивает её
+// на всё сообщение). ВАЖНО: у sendMediaGroup нет reply_markup вообще — Bot API этого
+// не поддерживает, кнопки (одобрение/CTA) шлём отдельным sendMessage сразу следом.
+export async function sendMediaGroup(
+  chatId: string,
+  photos: Buffer[],
+  opts?: { caption?: string; token?: string },
+): Promise<void> {
+  const token = opts?.token ?? getTelegramBotToken();
+  const media = photos.map((_, i) => ({
+    type: "photo",
+    media: `attach://photo${i}`,
+    ...(i === 0 && opts?.caption ? { caption: opts.caption } : {}),
+  }));
+
+  const form = new FormData();
+  form.set("chat_id", chatId);
+  form.set("media", JSON.stringify(media));
+  photos.forEach((buf, i) => {
+    form.set(`photo${i}`, new Blob([new Uint8Array(buf)]), `photo${i}.png`);
+  });
+
+  const response = await fetch(`${apiBase()}/bot${token}/sendMediaGroup`, {
+    method: "POST",
+    headers: proxyHeaders(),
+    body: form,
+    signal: AbortSignal.timeout(getTelegramCallTimeoutMs()),
+  });
+  if (!response.ok) {
+    throw new Error(`Telegram sendMediaGroup не прошёл: HTTP ${response.status}`);
+  }
+}
+
 // Подтверждение нажатия inline-кнопки: убирает «часики» на кнопке у пользователя.
 // Тихо игнорируем ошибку — это косметика, ядро действия уже отработало.
 export async function answerCallbackQuery(
