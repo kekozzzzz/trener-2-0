@@ -674,6 +674,25 @@ export function boardDangerFacts(heroCards: string[], board: string[]): string[]
     }
   }
 
+  // Флеш-угроза — независимо от спаренности/трипса (доска может быть и спарена, и трёхмастная
+  // одновременно). Не предупреждаем, если это масть самого Hero (тогда это его аут, не угроза
+  // против него) — та же граница, что и в scareCards/fallenCardImpact (heroSuitCount < 2).
+  const suitCount = new Map<string, number>();
+  for (const c of b) suitCount.set(c.suit, (suitCount.get(c.suit) ?? 0) + 1);
+  const flushSuitEntry = [...suitCount.entries()].find(([, n]) => n >= 3);
+  if (flushSuitEntry) {
+    const [suit, n] = flushSuitEntry;
+    const hero = heroCards.map(parseCard).filter((c): c is Card => c !== null);
+    const heroSuitCount = hero.filter((c) => c.suit === suit).length;
+    if (heroSuitCount < 2) {
+      const suitNameRu: Record<string, string> = { s: "пик", h: "черв", d: "бубен", c: "треф" };
+      const suitName = suitNameRu[suit] ?? suit;
+      out.push(
+        `Опасность борда: на доске ${n} карты одной масти (${suitName}) - у любого соперника с двумя картами этой масти уже готовый флеш. Внезапная крупная ставка на такой доске после пассивной игры (чек-чек-бет) - частый признак собравшегося флеша, не блефа. Не сбрасывай флеш со счетов при чтении диапазона только потому, что рука соперника "выглядела" слабой раньше.`,
+      );
+    }
+  }
+
   return out;
 }
 
