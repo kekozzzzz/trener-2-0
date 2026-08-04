@@ -1,6 +1,6 @@
 ---
 name: project_owner_comp_access
-description: Стена в проде ВКЛючена; владелец проходит по admin-байпасу; комп-доступ для не-админа = строка max-подписки (выдан тестеру zebster@bk.ru 2026-06-28)
+description: Стена в проде ВКЛючена; владелец проходит по admin-байпасу; комп-доступ для не-админа = строка max-подписки (был выдан тестеру zebster@bk.ru 2026-06-28, закрыт 2026-08-04)
 metadata: 
   node_type: memory
   type: project
@@ -16,3 +16,5 @@ metadata:
 **Как выдал тестеру `zebster@bk.ru` (2026-06-28, на проде):** создал Player (email + termsAcceptedAt) и Subscription `status=ACTIVE, planCode=max, currentPeriodStart=now, nextPaymentAt=2099-01-01, paymentMethodId=null, externalSubscriptionId='comp-zebster-bk-ru'`. Payment-проводку НЕ писал (реальных денег нет — финансовую ленту не подделывать). Карта не привязана + срок далеко → крон автопродления/напоминаний и `runSubscriptionRenewals` её НЕ трогают (секция 2 гасит EXPIRED только при `nextPaymentAt<now`). Вход — по магик-ссылке на тот же email (аккаунт уже есть → сразу сессия). Скрипт — разовый `_grant_tmp.cjs` в `~/trener-2-0/trener` через релей-jump ([[feedback_server_ops_self]]), удалён после.
 
 **«Потом закроем»:** soft-delete — выставить `subscriptions.deletedAt=now` (или `status=EXPIRED`) у этого игрока; необратимого ничего.
+
+**Закрыто 2026-08-04:** доступ снят — на проде выставлены `status=EXPIRED, deletedAt=2026-08-04T16:50:19Z` для подписки `comp-zebster-bk-ru`. Player и история турниров не тронуты (soft-delete, правило проекта №5); при необходимости выдать снова — обнулить `deletedAt` и вернуть `status=ACTIVE`.
