@@ -44,24 +44,28 @@ model Player {
 // ─────────────────── Опрос после первого турнира ──────────────────────────────
 // «Мы только в начале пути» — короткий опрос про контент/стилистику/сократовские
 // вопросы тренера, показывается один раз после того, как игрок впервые увидел
-// готовый разбор своего первого турнира. 4 оценки обязательны, 6 текстовых полей —
-// по желанию. Показ (в т.ч. закрытие без ответа) фиксируется в Player.introSurveyShownAt,
-// эта таблица хранит только реально отправленные ответы. План 2026-07-29.
+// готовый разбор своего первого турнира. 4 оценки + PMF-выбор обязательны, 4 текстовых
+// поля — по желанию. Показ (в т.ч. закрытие без ответа) фиксируется в Player.introSurveyShownAt,
+// эта таблица хранит только реально отправленные ответы. План 2026-07-29, ревизия 2026-08-05
+// (добавлен PMF-вопрос, unclearText/styleChangeText переиспользованы под объединённые
+// формулировки — missingText/moreDetailText больше не пишутся новыми ответами, оставлены
+// ради истории уже собранных до ревизии).
 model IntroSurveyResponse {
   id               String   @id @default(uuid()) @db.Uuid
   playerId         String   @map("player_id") @db.Uuid
   tournamentId     String   @map("tournament_id") @db.Uuid
 
   usefulnessRating Int      @map("usefulness_rating")   // насколько разбор был полезен, 1-5
-  unclearText      String?  @map("unclear_text")        // что было непонятно / как будто пропущено
+  unclearText      String?  @map("unclear_text")        // что было непонятно ИЛИ чего не хватило (с ревизии 2026-08-05 — объединённый вопрос, ранее только «непонятно»)
   toneRating       Int      @map("tone_rating")          // тон тренера — на своём месте или резал глаз, 1-5
-  styleChangeText  String?  @map("style_change_text")   // что изменить в подаче
+  styleChangeText  String?  @map("style_change_text")   // что изменить в подаче — тон, объём деталей и т.д. (с ревизии 2026-08-05 объединяет прежний вопрос про детали)
   questionsRating  Int      @map("questions_rating")    // вопросы тренера вели к сути или были угадайкой, 1-5
-  moreDetailText   String?  @map("more_detail_text")    // больше цифр/конкретики или проще
+  moreDetailText   String?  @map("more_detail_text")    // legacy: «больше цифр/конкретики или проще», не пишется с ревизии 2026-08-05 — вопрос слит со styleChangeText
   likedText        String?  @map("liked_text")          // что зацепило больше всего
-  missingText      String?  @map("missing_text")        // чего не хватило
+  missingText      String?  @map("missing_text")        // legacy: «чего не хватило» отдельным полем, не пишется с ревизии 2026-08-05 — вопрос слит с unclearText
   recommendRating  Int      @map("recommend_rating")    // посоветовал бы другу-игроку, 1-5
   freeformText     String?  @map("freeform_text")       // свободный комментарий
+  pmfReaction      String?  @map("pmf_reaction")        // тест Шона Эллиса, с ревизии 2026-08-05: "VERY_DISAPPOINTED"|"SOMEWHAT_DISAPPOINTED"|"NOT_DISAPPOINTED"; NULL только у ответов до ревизии
 
   createdAt DateTime @default(now()) @map("created_at")
 

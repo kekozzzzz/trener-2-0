@@ -40,6 +40,29 @@ function RatingGroup({ name, low, high }: { name: string; low: string; high: str
   );
 }
 
+// Три варианта, не шкала — тест Шона Эллиса (PMF), ревизия 2026-08-05.
+function PmfChoiceGroup() {
+  const t = useTranslations("IntroSurvey");
+  const options: { value: string; label: string }[] = [
+    { value: "VERY_DISAPPOINTED", label: t("pmfVeryDisappointed") },
+    { value: "SOMEWHAT_DISAPPOINTED", label: t("pmfSomewhatDisappointed") },
+    { value: "NOT_DISAPPOINTED", label: t("pmfNotDisappointed") },
+  ];
+  return (
+    <div className="mt-3 space-y-2">
+      {options.map((o) => (
+        <label
+          key={o.value}
+          className="flex cursor-pointer items-center gap-3 border border-border bg-card px-3 py-2 text-small text-foreground transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary has-[:checked]:text-primary-foreground hover:border-primary"
+        >
+          <input type="radio" name="pmfReaction" value={o.value} required className="sr-only" />
+          {o.label}
+        </label>
+      ))}
+    </div>
+  );
+}
+
 function SubmitButton() {
   const { pending } = useFormStatus();
   const t = useTranslations("IntroSurvey");
@@ -61,12 +84,13 @@ function SubmitButton() {
 // не автопоп-ап, а приглашение с кнопкой — так и без конфликта с авто-открытием диалога
 // «Ориентир» на том же первом турнире). Стиль карточки — как у StartHereCard/
 // SessionDoneCard (components/tournament/focus-slot.tsx), они сидят в том же месте
-// страницы. Сама 10-вопросная анкета открывается кнопкой «Пройти опрос», как обычный
-// Dialog, без повтора вступительного текста — сразу вопросы. Показ фиксирует сервер
+// страницы. Сама анкета открывается кнопкой «Пройти опрос», как обычный Dialog, без
+// повтора вступительного текста — сразу вопросы. Показ фиксирует сервер
 // (Player.introSurveyShownAt) один раз — либо при отправке, либо когда открытый опрос
 // закрыли не ответив; саму карточку (кнопку не нажали) сервер не помечает — она
 // остаётся точкой входа, пока страница считается «первым турниром» (см. gate в
-// page.tsx). План 2026-07-29-опрос-после-первого-турнира.md.
+// page.tsx). План 2026-07-29-опрос-после-первого-турнира.md, ревизия 2026-08-05:
+// добавлен PMF-вопрос Шона Эллиса, два текстовых поля объединены с другими.
 export function IntroSurveyLine({ tournamentId }: { tournamentId: string }) {
   const t = useTranslations("IntroSurvey");
   const [open, setOpen] = useState(false);
@@ -122,18 +146,13 @@ export function IntroSurveyLine({ tournamentId }: { tournamentId: string }) {
             </div>
 
             <div className="space-y-2">
-              <p className="text-body text-foreground">{t("unclearLabel")}</p>
-              <Textarea name="unclearText" rows={2} placeholder={t("unclearPlaceholder")} />
+              <p className="text-body text-foreground">{t("likedLabel")}</p>
+              <Textarea name="likedText" rows={2} placeholder={t("likedPlaceholder")} />
             </div>
 
             <div>
               <p className="text-body text-foreground">{t("toneLabel")}</p>
               <RatingGroup name="toneRating" low={t("ratingLow")} high={t("ratingHigh")} />
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-body text-foreground">{t("styleChangeLabel")}</p>
-              <Textarea name="styleChangeText" rows={2} placeholder={t("styleChangePlaceholder")} />
             </div>
 
             <div>
@@ -142,18 +161,18 @@ export function IntroSurveyLine({ tournamentId }: { tournamentId: string }) {
             </div>
 
             <div className="space-y-2">
-              <p className="text-body text-foreground">{t("moreDetailLabel")}</p>
-              <Textarea name="moreDetailText" rows={2} placeholder={t("moreDetailPlaceholder")} />
+              <p className="text-body text-foreground">{t("unclearLabel")}</p>
+              <Textarea name="unclearText" rows={2} placeholder={t("unclearPlaceholder")} />
             </div>
 
             <div className="space-y-2">
-              <p className="text-body text-foreground">{t("likedLabel")}</p>
-              <Textarea name="likedText" rows={2} placeholder={t("likedPlaceholder")} />
+              <p className="text-body text-foreground">{t("styleChangeLabel")}</p>
+              <Textarea name="styleChangeText" rows={2} placeholder={t("styleChangePlaceholder")} />
             </div>
 
-            <div className="space-y-2">
-              <p className="text-body text-foreground">{t("missingLabel")}</p>
-              <Textarea name="missingText" rows={2} placeholder={t("missingPlaceholder")} />
+            <div>
+              <p className="text-body text-foreground">{t("pmfLabel")}</p>
+              <PmfChoiceGroup />
             </div>
 
             <div>

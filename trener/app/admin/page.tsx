@@ -376,6 +376,12 @@ function CountryList({
   );
 }
 
+const PMF_LABEL_KEY: Record<string, string> = {
+  VERY_DISAPPOINTED: "surveysPmfVeryDisappointed",
+  SOMEWHAT_DISAPPOINTED: "surveysPmfSomewhatDisappointed",
+  NOT_DISAPPOINTED: "surveysPmfNotDisappointed",
+};
+
 function SurveyRow({ r, t }: { r: SurveyResponseRow; t: (key: string) => string }) {
   const texts: { label: string; value: string | null }[] = [
     { label: t("surveysUnclear"), value: r.unclearText },
@@ -400,6 +406,12 @@ function SurveyRow({ r, t }: { r: SurveyResponseRow; t: (key: string) => string 
         <Stat label={t("surveysQuestions")} value={`${r.questionsRating}/5`} />
         <Stat label={t("surveysRecommend")} value={`${r.recommendRating}/5`} />
       </div>
+      {r.pmfReaction && (
+        <p className="mt-4 text-small text-muted-foreground">
+          <span className="text-foreground">{t("surveysPmf")}:</span>{" "}
+          {t(PMF_LABEL_KEY[r.pmfReaction] ?? "surveysPmf")}
+        </p>
+      )}
       {texts.length > 0 && (
         <div className="mt-4 space-y-2">
           {texts.map((x) => (

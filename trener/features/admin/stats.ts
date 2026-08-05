@@ -114,11 +114,12 @@ export type SurveyResponseRow = {
   toneRating: number;
   questionsRating: number;
   recommendRating: number;
+  pmfReaction: string | null; // "VERY_DISAPPOINTED"|"SOMEWHAT_DISAPPOINTED"|"NOT_DISAPPOINTED"|null (null — ответы до ревизии 2026-08-05)
   unclearText: string | null;
   styleChangeText: string | null;
-  moreDetailText: string | null;
+  moreDetailText: string | null; // legacy-поле, не пишется с ревизии 2026-08-05
   likedText: string | null;
-  missingText: string | null;
+  missingText: string | null; // legacy-поле, не пишется с ревизии 2026-08-05
   freeformText: string | null;
 };
 
@@ -292,6 +293,7 @@ export async function buildAdminStats(db: PrismaClient, now = new Date()): Promi
         toneRating: true,
         questionsRating: true,
         recommendRating: true,
+        pmfReaction: true,
         unclearText: true,
         styleChangeText: true,
         moreDetailText: true,
@@ -399,6 +401,7 @@ export async function buildAdminStats(db: PrismaClient, now = new Date()): Promi
     toneRating: r.toneRating,
     questionsRating: r.questionsRating,
     recommendRating: r.recommendRating,
+    pmfReaction: r.pmfReaction,
     unclearText: r.unclearText,
     styleChangeText: r.styleChangeText,
     moreDetailText: r.moreDetailText,

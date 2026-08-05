@@ -83,13 +83,16 @@ export async function unlockTournamentAnalysisAction(formData: FormData): Promis
 }
 
 // ─────────────────── Опрос «мы только в начале пути» после первого турнира ────
-// Показывается один раз (флаг Player.introSurveyShownAt), план 2026-07-29. 4 оценки
-// обязательны, 6 текстовых полей — по желанию. Ничего не считает и не советует —
-// чистый сбор мнения, правила 1/2 не затронуты.
+// Показывается один раз (флаг Player.introSurveyShownAt), план 2026-07-29, ревизия
+// 2026-08-05. 4 оценки + PMF-выбор обязательны, 4 текстовых поля — по желанию.
+// Ничего не считает и не советует — чистый сбор мнения, правила 1/2 не затронуты.
 
 export type IntroSurveyState = { error?: string; success?: boolean };
 
 const MAX_SURVEY_TEXT_LENGTH = 2000;
+
+const PMF_REACTIONS = ["VERY_DISAPPOINTED", "SOMEWHAT_DISAPPOINTED", "NOT_DISAPPOINTED"] as const;
+type PmfReaction = (typeof PMF_REACTIONS)[number];
 
 function surveyRatingOf(formData: FormData, name: string): number | null {
   const n = Number(formData.get(name));
@@ -99,6 +102,13 @@ function surveyRatingOf(formData: FormData, name: string): number | null {
 function surveyTextOf(formData: FormData, name: string): string | null {
   const raw = String(formData.get(name) ?? "").trim();
   return raw ? raw.slice(0, MAX_SURVEY_TEXT_LENGTH) : null;
+}
+
+// Тест Шона Эллиса («как бы ты себя почувствовал без продукта») — сигнал product-market
+// fit, добавлен ревизией 2026-08-05 вместо чистого ощущения полезности.
+function surveyPmfReactionOf(formData: FormData): PmfReaction | null {
+  const raw = String(formData.get("pmfReaction") ?? "");
+  return (PMF_REACTIONS as readonly string[]).includes(raw) ? (raw as PmfReaction) : null;
 }
 
 export async function submitIntroSurveyAction(
@@ -121,15 +131,14 @@ export async function submitIntroSurveyAction(
   const toneRating = surveyRatingOf(formData, "toneRating");
   const questionsRating = surveyRatingOf(formData, "questionsRating");
   const recommendRating = surveyRatingOf(formData, "recommendRating");
-  if (!usefulnessRating || !toneRating || !questionsRating || !recommendRating) {
+  const pmfReaction = surveyPmfReactionOf(formData);
+  if (!usefulnessRating || !toneRating || !questionsRating || !recommendRating || !pmfReaction) {
     return { error: t("introSurveyMissingRatings") };
   }
 
   const unclearText = surveyTextOf(formData, "unclearText");
   const styleChangeText = surveyTextOf(formData, "styleChangeText");
-  const moreDetailText = surveyTextOf(formData, "moreDetailText");
   const likedText = surveyTextOf(formData, "likedText");
-  const missingText = surveyTextOf(formData, "missingText");
   const freeformText = surveyTextOf(formData, "freeformText");
 
   await prisma.$transaction([
@@ -142,11 +151,10 @@ export async function submitIntroSurveyAction(
         toneRating,
         styleChangeText,
         questionsRating,
-        moreDetailText,
         likedText,
-        missingText,
         recommendRating,
         freeformText,
+        pmfReaction,
       },
     }),
     prisma.player.update({ where: { id: playerId }, data: { introSurveyShownAt: new Date() } }),
@@ -157,6 +165,11 @@ export async function submitIntroSurveyAction(
     select: { email: true, nickname: true },
   });
   const who = player?.nickname ?? player?.email ?? playerId;
+  const pmfLabel: Record<PmfReaction, string> = {
+    VERY_DISAPPOINTED: "сильно расстроился",
+    SOMEWHAT_DISAPPOINTED: "расстроился бы, но пережил",
+    NOT_DISAPPOINTED: "не расстроился бы",
+  };
   const lines = [
     "📝 Опрос после первого турнира",
     `Игрок: ${who}`,
@@ -164,12 +177,11 @@ export async function submitIntroSurveyAction(
     `Тон тренера: ${toneRating}/5`,
     `Вопросы тренера: ${questionsRating}/5`,
     `Посоветует другу: ${recommendRating}/5`,
+    `Без Whygrid: ${pmfLabel[pmfReaction]}`,
   ];
-  if (unclearText) lines.push("", "Что было непонятно/пропущено:", unclearText);
+  if (unclearText) lines.push("", "Что было непонятно/не хватило:", unclearText);
   if (styleChangeText) lines.push("", "Что изменить в подаче:", styleChangeText);
-  if (moreDetailText) lines.push("", "Больше/меньше деталей:", moreDetailText);
   if (likedText) lines.push("", "Что зацепило больше всего:", likedText);
-  if (missingText) lines.push("", "Чего не хватило:", missingText);
   if (freeformText) lines.push("", "Свободный комментарий:", freeformText);
   await safeNotifyAdmin(lines.join("\n"));
 
