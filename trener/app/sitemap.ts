@@ -12,6 +12,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/range`, changeFrequency: "monthly", priority: 0.6 },
     { url: `${base}/push-fold`, changeFrequency: "monthly", priority: 0.6 },
     { url: `${base}/hand-review`, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${base}/icm`, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${base}/leaks`, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${base}/ggpoker`, changeFrequency: "monthly", priority: 0.6 },
     { url: `${base}/how-to-export`, changeFrequency: "monthly", priority: 0.6 },
     { url: `${base}/legal`, changeFrequency: "yearly", priority: 0.3 },
   ];
