@@ -137,7 +137,7 @@ describe("buildAdminStats", () => {
 
     // Источники переходов: список берётся из конфига, без единого захода — нули,
     // источник из списка не пропадает.
-    expect(s.acquisition.map((a) => a.slug)).toEqual(["gipsyteam", "telegram", "instagram"]);
+    expect(s.acquisition.map((a) => a.slug)).toEqual(["gipsyteam", "telegram", "instagram", "youtube"]);
     expect(s.acquisition[0]).toMatchObject({
       slug: "gipsyteam",
       visitsTotal: 0,
