@@ -49,6 +49,11 @@ export async function generateMetadata(): Promise<Metadata> {
       type: "website",
       siteName: "Whygrid",
       locale: locale === "en" ? "en_US" : "ru_RU",
+      images: [{ url: "/og/default.png", width: 1200, height: 630, alt: "Whygrid" }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      images: ["/og/default.png"],
     },
     // По умолчанию ЗАКРЫТО от поиска — публичные страницы открываются точечно через
     // `indexable` (lib/seo.ts). Так будущие страницы не утекают в Google автоматически.
