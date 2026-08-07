@@ -170,6 +170,13 @@ export type HeroFacingBet = {
   heroAllInOnCall?: boolean;
   // Замазан: НЕ олл-ин, но вложена заметная доля стека и остаток после колла ≤ банка (SPR<1).
   potCommitted?: boolean;
+  // Сколько СОПЕРНИКОВ уже в банке к моменту решения Hero: поддержали текущую ставку или сидят
+  // ва-банк на меньшую сумму. ≥2 — решение мультивей, колл обязан обойти столько диапазонов сразу.
+  oppsInPot?: number;
+  // Готовая рука Hero на этой улице — СЛАБАЯ пара (ниже двух карт борда): карманка под двумя
+  // оверкартами, третья пара. Без этого признака madeValue сплющивал топ-пару и 66 под K и T в
+  // одинаковое «пара+» (регресс 07.08, см. рендер ниже).
+  madeWeak?: boolean;
 };
 
 // Спот, где Hero сам ставит/рейзит как агрессор.
@@ -183,6 +190,10 @@ export type HeroBet = {
   potIfCalled: number;
   // если у Hero есть дро на этой улице — эквити до следующей улицы, % (бет = полу-блеф)
   drawEquityPct?: number;
+  // Сколько соперников должны сбросить, чтобы атака сработала СРАЗУ. Порог foldsNeededPct посчитан
+  // как доля ОДНОГО диапазона; когда живых соперников двое и больше, сбросить обязаны ВСЕ, и
+  // «≥40% диапазона соперника» перестаёт быть тем порогом, который модель читает (регресс 07.08).
+  oppsToFold?: number;
   // у Hero УЖЕ есть готовая рука пара+ (тогда ставка с дро — велью с добором, НЕ полу-блеф).
   madeValue?: boolean;
   // геометрия второго барреля (свип): если эту ставку заколлируют, SPR на СЛЕДУЮЩЕЙ улице.
@@ -231,6 +242,7 @@ function heroBetFact(
   heroRemAfterBet: number,
   effOppRem: number,
   oppCall: number,
+  oppsToFold: number,
 ): HeroBet {
   const size = pct(risk / potBefore);
   const fact: HeroBet = {
@@ -241,6 +253,7 @@ function heroBetFact(
     // если соперник коллирует: банк = было + риск Hero + сколько РЕАЛЬНО доложит соперник (при
     // чек-рейзе он уже вложил, докладывает МЕНЬШЕ risk — ревью доводок).
     potIfCalled: potBefore + risk + oppCall,
+    oppsToFold,
   };
   // Геометрия второго барреля: SPR следующей улицы, если ставку заколлируют. Только флоп/тёрн (у
   // ривера следующей улицы нет) и когда соперник может доложить НЕ в олл-ин (иначе улиц дальше нет).
@@ -393,6 +406,14 @@ function walkPot(snapshot: TableSnapshot, bigBlind: number | null): HandFacts {
     return { heroRemAfterBet, effOppRem: eff.rem, oppCall };
   };
 
+  // Сколько соперников ещё живы и МОГУТ сбросить в ответ на ставку Hero. Порог фолд-эквити
+  // («сбросится ≥X% диапазона») посчитан для ОДНОГО — против двоих и больше сбросить обязаны все,
+  // и тот же X перестаёт означать то, что читает модель. Ва-банк исключаем: сбросить он не может.
+  const liveOpponents = () =>
+    snapshot.seats.filter(
+      (s) => s.label !== "Hero" && !folded.has(s.label) && (startingStack.get(s.label) ?? 0) - (invested.get(s.label) ?? 0) > 0,
+    ).length;
+
   for (const a of snapshot.actions) {
     if (a.street !== street) {
       // начало новой улицы: фиксируем банк до её действий, обнуляем ставку улицы
@@ -440,7 +461,7 @@ function walkPot(snapshot: TableSnapshot, bigBlind: number | null): HandFacts {
         // Доля банка как рид — постфлоп-понятие; префлоп меряют в BB, не в %банка.
         if (street !== "PREFLOP" && a.actor === "Hero" && pot > 0) {
           const g = heroBetGeom(amt, committed + amt);
-          heroBets.push(heroBetFact(snapshot, street, amt, pot, g.heroRemAfterBet, g.effOppRem, g.oppCall));
+          heroBets.push(heroBetFact(snapshot, street, amt, pot, g.heroRemAfterBet, g.effOppRem, g.oppCall, liveOpponents()));
         } else if (street !== "PREFLOP" && pot > 0) {
           const size = pct(amt / pot);
           bets.push({ street, actor: a.actor, sizePctOfPot: size, sizeClass: sizeClass(size) });
@@ -459,7 +480,7 @@ function walkPot(snapshot: TableSnapshot, bigBlind: number | null): HandFacts {
           const delta = Math.max(raw - committed, 0);
           if (street !== "PREFLOP" && a.actor === "Hero" && pot > 0) {
             const g = heroBetGeom(delta, raw);
-            heroBets.push(heroBetFact(snapshot, street, delta, pot, g.heroRemAfterBet, g.effOppRem, g.oppCall));
+            heroBets.push(heroBetFact(snapshot, street, delta, pot, g.heroRemAfterBet, g.effOppRem, g.oppCall, liveOpponents()));
           } else if (street !== "PREFLOP" && pot > 0) {
             const size = pct(delta / pot);
             bets.push({ street, actor: a.actor, sizePctOfPot: size, sizeClass: sizeClass(size) });
@@ -548,7 +569,22 @@ function walkPot(snapshot: TableSnapshot, bigBlind: number | null): HandFacts {
         // Готовая рука Hero пара+ на этой улице → дро это апсайд, не основание колла: иначе факт звал
         // топ-пару «слабым дро 19%, нужны обратные оддсы» (ревью согласованности).
         const mhFacing = heroMadeHand(snapshot.heroCards, b);
-        if (mhFacing && mhFacing.strength !== "AIR" && mhFacing.category !== "HIGH") fact.madeValue = true;
+        if (mhFacing && mhFacing.strength !== "AIR" && mhFacing.category !== "HIGH") {
+          fact.madeValue = true;
+          fact.madeWeak = mhFacing.strength === "WEAK_PAIR";
+        }
+        // Сколько соперников УЖЕ в банке к этому решению (регресс 07.08, 66 на T♥K♣5♥: BB поставил,
+        // CO заколлировал ДО хода Hero, а вердикт рассуждал «против широкого диапазона BB», то есть
+        // как в хедз-апе, и назвал верный фолд «излишне осторожным»). Порядок хода парсер отдавал
+        // верно (action-order.ts), но модель его не ПРИМЕНЯЛА — значит нужен факт в самой точке
+        // решения, а не рядом. Считаем: не сброшен, и либо поддержал текущую ставку, либо ва-банк на
+        // меньшую сумму (его всё равно надо обойти). Блайнды сюда не попадают: их вклад < currentBet.
+        fact.oppsInPot = [...streetCommitted.entries()].filter(([label, c]) => {
+          if (label === "Hero" || folded.has(label)) return false;
+          if (c >= currentBet) return true;
+          const start = startingStack.get(label) ?? 0;
+          return start > 0 && (invested.get(label) ?? 0) >= start;
+        }).length;
         // один спот на улицу — оставляем последний (самый крупный to-call)
         if (last && last.street === street) heroFacing[heroFacing.length - 1] = fact;
         else heroFacing.push(fact);
@@ -1338,9 +1374,16 @@ export function renderHandFacts(snapshot: TableSnapshot): string {
     // Велью-рамка когда у Hero готовая рука (пара+), иначе блеф-рамка. foldsNeededPct — ДОЛЯ
     // ДИАПАЗОНА соперника, а не «частота раз» (правка Артёма 2026-07-10). Раньше велью-ставка (сет/
     // две пары) звалась ТОЛЬКО «как блеф окупается» — велью↔блеф перевёртыш (ревью согласованности).
+    // Порог фолд-эквити посчитан для ОДНОГО соперника. Когда живых двое и больше, сбросить обязаны
+    // ВСЕ — и та же цифра начинает означать совсем другое (та же дыра, что у колла мультивей:
+    // «диапазон соперника» в единственном числе там, где диапазонов несколько).
+    const many = (b.oppsToFold ?? 1) >= 2;
+    const whose = many ? `диапазона КАЖДОГО из ${b.oppsToFold} соперников` : "диапазона соперника";
     let line = b.madeValue
-      ? `Ставка Hero (${b.street}): ≈${b.sizePctOfPot}% банка (${SIZE_CLASS_RU[b.sizeClass]}) на ВЕЛЬЮ (готовая рука пара+); фолд-эквити как бонус - если сбросится ≥${b.foldsNeededPct}% диапазона, забираешь без вскрытия.`
-      : `Ставка Hero (${b.street}): ≈${b.sizePctOfPot}% банка (${SIZE_CLASS_RU[b.sizeClass]}); готовой руки нет - как блеф окупается, если сбросится ≥${b.foldsNeededPct}% диапазона соперника.`;
+      ? `Ставка Hero (${b.street}): ≈${b.sizePctOfPot}% банка (${SIZE_CLASS_RU[b.sizeClass]}) на ВЕЛЬЮ (готовая рука пара+); фолд-эквити как бонус - если сбросится ≥${b.foldsNeededPct}% ${whose}, забираешь без вскрытия.`
+      : `Ставка Hero (${b.street}): ≈${b.sizePctOfPot}% банка (${SIZE_CLASS_RU[b.sizeClass]}); готовой руки нет - как блеф окупается, если сбросится ≥${b.foldsNeededPct}% ${whose}.`;
+    if (many)
+      line += ` ⚠️Ставка идёт в ${b.oppsToFold} соперников: сбросить должны ВСЕ до одного, поэтому забрать банк сразу тут заметно труднее, чем говорит порог ≥${b.foldsNeededPct}% для одного. Блеф в мультивей-банк по умолчанию слабее - чем больше живых рук, тем выше шанс, что хоть одна попала в борд. Не оценивай эту ставку как ставку против одного соперника.`;
     // Сколько улиц соперники УЖЕ оплатили до этой ставки. Регресс 18.07 (Артём поймал, QTo на
     // борде J6A88): тренер отверг блеф-цели игрока доводом «он вряд ли выбросит KQ, KJ, десятки» —
     // а KQ на тузовой доске это король-хай, он сбрасывается ВСЕГДА. Настоящая причина провала блефа
@@ -1372,12 +1415,25 @@ export function renderHandFacts(snapshot: TableSnapshot): string {
   }
   for (const h of f.heroFacing) {
     let line = `Решение Hero на ${h.street}: доложить ${h.toCall} для колла; прибыльно при эквити от ≈${h.equityToCallPct}% (пот-оддс).`;
+    // Мультивей в точке решения: против скольких диапазонов реально играется колл. Пот-оддс считает
+    // ЦЕНУ и ничего не знает про число соперников — без этой строки модель берёт цену, видит «пара+»
+    // и объявляет колл стандартом (регресс 07.08). Единственное/множественное число дальше по строке
+    // тоже переключаем: «диапазон соперника» в единственном числе и есть та самая ошибка.
+    const multiway = (h.oppsInPot ?? 0) >= 2;
+    if (multiway) {
+      line += ` ⚠️Решение МУЛЬТИВЕЙ: в банке уже ${h.oppsInPot} соперника - ставку сделал один, а поддержали её и другие. Колл обязан обойти ВСЕ ${h.oppsInPot} диапазона сразу; пот-оддс этого не учитывает, он считает только цену. Тот, кто заколлировал ставку между вами, воздухом это делает редко - его диапазон уже сужен до готовых рук и дро. НЕ рассуждай о «диапазоне соперника» в единственном числе и не называй фолд осторожничаньем, опираясь на одну цену колла.`;
+    }
     if (h.madeValue) {
       // Готовая рука пара+: оценка колла — по силе руки против диапазона, дро (если есть) лишь апсайд.
       // НЕ гнать «слабое дро, обратные оддсы» — это перевёртыш для руки, которая часто уже впереди.
+      const vsWhom = multiway ? "диапазонов всех, кто уже в банке" : "диапазона соперника";
       line += h.drawEquityPct !== undefined
-        ? ` У Hero уже готовая рука (пара+) плюс дро сверху (≈${h.drawEquityPct}% к след. карте) - оценивай по силе руки против его диапазона, дро это апсайд, а не основание колла.`
-        : ` У Hero готовая рука (пара+) - оценивай колл по силе руки против диапазона соперника, не только по пот-оддсам.`;
+        ? ` У Hero уже готовая рука (пара+) плюс дро сверху (≈${h.drawEquityPct}% к след. карте) - оценивай по силе руки против ${vsWhom}, дро это апсайд, а не основание колла.`
+        : ` У Hero готовая рука (пара+) - оценивай колл по силе руки против ${vsWhom}, не только по пот-оддсам.`;
+      // «пара+» одинаково накрывает топ-пару и карманную шестёрку под K и T — а это разные руки.
+      // Слабую пару называем слабой ЯВНО, иначе мультивей-фолд превращается в «пассивность».
+      if (h.madeWeak)
+        line += ` ⚠️Но пара у Hero СЛАБАЯ (ниже двух карт борда) - это не «готовая рука, которой хватает эквити»${multiway ? ": против ставки и колла такая рука обычно позади обеих, и фолд здесь нормальная линия, а не осторожничанье" : ""}.`;
     } else if (h.drawEquityPct !== undefined) {
       if (h.impliedUnreachable)
         line += ` У Hero голое дро (эквити ≈${h.drawEquityPct}% к след. карте) — прямых пот-оддсов не хватает, а добрать недостающее нечем (остаток мал): по эквити это фолд.`;

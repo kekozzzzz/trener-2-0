@@ -15,6 +15,7 @@ import type {
 import type { Locale } from "@/i18n/config";
 import type { TableSnapshot } from "@/parser/types";
 import { heroFirstPostflop } from "@/parser/action-order";
+import { misreportedFold, misstatedBetSize } from "@/parser/retelling-guard";
 
 // Claude/DeepSeek иногда оборачивают JSON в markdown-код-блок несмотря на инструкцию — снимаем его.
 export function extractJson(text: string): string {
@@ -525,6 +526,18 @@ export function cleanCoachText(
   return out;
 }
 
+// Выдуманный размер ставки («полбанка» там, где парсер видит четверть) — брак, очередь ретраит.
+// Отдельной функцией, а не внутри cleanCoachText: сторожу нужен снимок, а cleanCoachText зовут
+// и оттуда, где снимка нет (обзор турнира, характеристика игрока). Снимка нет — молчим.
+function assertBetSize(text: string, snapshot?: TableSnapshot): string {
+  if (!snapshot) return text;
+  const bad = misstatedBetSize(text, snapshot);
+  if (bad !== null) {
+    throw new Error(`LLM выдумал размер ставки: назвал «${bad}», а ставки такого размера в раздаче не было`);
+  }
+  return text;
+}
+
 // Детерминированный вырез ритуального зачина «Ты прав» из НАЧАЛА вердикта (Артём, 17.07: «5 раздач
 // подряд каждый раз Ты прав, меня бесит»). Промпт запрещает это тремя абзацами (verdict.ts:25-28) и
 // НЕ помогает — 5/5 вердиктов открывались «Ты прав». Режем как чистку (не брак → без карантина):
@@ -591,13 +604,29 @@ export function validateHandAnalysis(
   // НЕ трогаем: на стадии вопроса карты соперника прячутся намеренно (см. validateVerdict).
   const noShowdown = noShowdownInHand(request.tableSnapshot);
 
+  // Сторож перевранного пересказа — только на played: это единственное поле, которое обязано
+  // ПОВТОРЯТЬ ход раздачи, и именно из него кривой факт утекает дальше в вердикт (регресс 07.08,
+  // CO заколлировал бет, а пересказ написал «сбросил» — и мультивей стал хедз-апом). В optimal/
+  // note/вердикт не тащим: там речь про альтернативы и гипотезы, база ложных срабатываний не
+  // измерена, а ложный брак = 3 ретрая = карантин у живого игрока. Проверяем ПОСЛЕ чистки:
+  // cleanCoachText уже убрал «Player N» и привёл текст к тому виду, что увидит игрок.
+  const playedText = cleanCoachText(result.played, request.locale, cards, fix, heroFirst, noShowdown, noPair);
+  const badFold = misreportedFold(playedText, request.tableSnapshot);
+  if (badFold !== null) {
+    throw new Error(`LLM переврал пересказ раздачи: написал, что ${badFold} сбросил, хотя парсер видит его действие без фолда`);
+  }
+  assertBetSize(playedText, request.tableSnapshot);
+
   if (request.importanceLevel === "CRITICAL") {
     if (typeof result.question !== "string" || typeof result.draftVerdict !== "string") {
       throw new Error("LLM вернул CRITICAL-разбор без question/draftVerdict");
     }
     return {
-      played: cleanCoachText(result.played, request.locale, cards, fix, heroFirst, noShowdown, noPair),
-      optimal: cleanCoachText(result.optimal, request.locale, cards, fix, heroFirst, noShowdown, noPair),
+      played: playedText,
+      optimal: assertBetSize(
+        cleanCoachText(result.optimal, request.locale, cards, fix, heroFirst, noShowdown, noPair),
+        request.tableSnapshot,
+      ),
       optimalAction: parseOptimalAction(result.optimalAction),
       question: cleanCoachText(result.question, request.locale, cards, fix, heroFirst, undefined, noPair),
       draftVerdict: cleanCoachText(result.draftVerdict, request.locale, cards, fix, heroFirst, undefined, noPair),
@@ -610,9 +639,15 @@ export function validateHandAnalysis(
     throw new Error(`LLM вернул ${request.importanceLevel}-разбор без note`);
   }
   return {
-    played: cleanCoachText(result.played, request.locale, cards, fix, heroFirst, noShowdown, noPair),
-    optimal: cleanCoachText(result.optimal, request.locale, cards, fix, heroFirst, noShowdown, noPair),
-    note: cleanCoachText(result.note, request.locale, cards, fix, heroFirst, noShowdown, noPair),
+    played: playedText,
+    optimal: assertBetSize(
+      cleanCoachText(result.optimal, request.locale, cards, fix, heroFirst, noShowdown, noPair),
+      request.tableSnapshot,
+    ),
+    note: assertBetSize(
+      cleanCoachText(result.note, request.locale, cards, fix, heroFirst, noShowdown, noPair),
+      request.tableSnapshot,
+    ),
   };
 }
 
@@ -630,11 +665,17 @@ export function validateVerdict(
   // оказался старший фулл» при пустом shownCards). Только вердикт и чат: там вскрытие уместно
   // обсуждать, а на стадии вопросов карты соперников прячутся намеренно.
   noShowdown?: boolean,
+  // Снимок нужен сторожу выдуманного размера ставки: именно в вердикте родилось «получишь ставку
+  // в полбанка» при бете в четверть банка (регресс 07.08). Не передан — сторож молчит.
+  snapshot?: TableSnapshot,
 ): VerdictResult {
   if (typeof result.verdict !== "string") {
     throw new Error("LLM вернул вердикт без поля verdict");
   }
-  const cleaned = cleanCoachText(result.verdict, locale, allowedCards, heroFix, heroFirstPostflop, noShowdown);
+  const cleaned = assertBetSize(
+    cleanCoachText(result.verdict, locale, allowedCards, heroFix, heroFirstPostflop, noShowdown),
+    snapshot,
+  );
   // Вырезаем ритуальный зачин «Ты прав» ПОСЛЕ общей чистки (иначе тире/латиница внутри зачина
   // могли бы сбить матч). Только для вердикта — в played/вопросе такого зачина не бывает.
   return { verdict: stripSycophanticOpener(cleaned) };
@@ -683,11 +724,17 @@ export function validateChatReply(
   heroFix?: Map<string, string>,
   heroFirstPostflop?: boolean,
   noShowdown?: boolean, // см. validateVerdict
+  snapshot?: TableSnapshot, // см. validateVerdict — сторож выдуманного размера ставки
 ): ChatReplyResult {
   if (typeof result.reply !== "string") {
     throw new Error("LLM вернул ответ без поля reply");
   }
-  return { reply: cleanCoachText(result.reply, locale, allowedCards, heroFix, heroFirstPostflop, noShowdown) };
+  return {
+    reply: assertBetSize(
+      cleanCoachText(result.reply, locale, allowedCards, heroFix, heroFirstPostflop, noShowdown),
+      snapshot,
+    ),
+  };
 }
 
 export function validateTournamentSummary(
