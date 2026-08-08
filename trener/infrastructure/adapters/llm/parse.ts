@@ -526,9 +526,12 @@ export function cleanCoachText(
   return out;
 }
 
-// Выдуманный размер ставки («полбанка» там, где парсер видит четверть) — брак, очередь ретраит.
-// Отдельной функцией, а не внутри cleanCoachText: сторожу нужен снимок, а cleanCoachText зовут
-// и оттуда, где снимка нет (обзор турнира, характеристика игрока). Снимка нет — молчим.
+// Выдуманный размер ставки — брак, очередь ретраит. Отдельной функцией, а не внутри cleanCoachText:
+// сторожу нужен снимок, а cleanCoachText зовут и оттуда, где снимка нет (обзор турнира).
+// ⚠️Вешать ТОЛЬКО на `played` — единственное поле, которое обязано ПЕРЕСКАЗЫВАТЬ случившееся.
+// В optimal/вердикте/чате тренер законно обсуждает альтернативные размеры («контбет в 1/3 банка
+// часто забирает банк сразу»), и там сторож бракует правду: эталонный прогон 08.08 дал на этих
+// полях 9 ложных браков из 30 раздач. Ложный брак = 3 ретрая = карантин у живого игрока.
 function assertBetSize(text: string, snapshot?: TableSnapshot): string {
   if (!snapshot) return text;
   const bad = misstatedBetSize(text, snapshot);
@@ -623,10 +626,7 @@ export function validateHandAnalysis(
     }
     return {
       played: playedText,
-      optimal: assertBetSize(
-        cleanCoachText(result.optimal, request.locale, cards, fix, heroFirst, noShowdown, noPair),
-        request.tableSnapshot,
-      ),
+      optimal: cleanCoachText(result.optimal, request.locale, cards, fix, heroFirst, noShowdown, noPair),
       optimalAction: parseOptimalAction(result.optimalAction),
       question: cleanCoachText(result.question, request.locale, cards, fix, heroFirst, undefined, noPair),
       draftVerdict: cleanCoachText(result.draftVerdict, request.locale, cards, fix, heroFirst, undefined, noPair),
@@ -640,14 +640,8 @@ export function validateHandAnalysis(
   }
   return {
     played: playedText,
-    optimal: assertBetSize(
-      cleanCoachText(result.optimal, request.locale, cards, fix, heroFirst, noShowdown, noPair),
-      request.tableSnapshot,
-    ),
-    note: assertBetSize(
-      cleanCoachText(result.note, request.locale, cards, fix, heroFirst, noShowdown, noPair),
-      request.tableSnapshot,
-    ),
+    optimal: cleanCoachText(result.optimal, request.locale, cards, fix, heroFirst, noShowdown, noPair),
+    note: cleanCoachText(result.note, request.locale, cards, fix, heroFirst, noShowdown, noPair),
   };
 }
 
@@ -672,10 +666,7 @@ export function validateVerdict(
   if (typeof result.verdict !== "string") {
     throw new Error("LLM вернул вердикт без поля verdict");
   }
-  const cleaned = assertBetSize(
-    cleanCoachText(result.verdict, locale, allowedCards, heroFix, heroFirstPostflop, noShowdown),
-    snapshot,
-  );
+  const cleaned = cleanCoachText(result.verdict, locale, allowedCards, heroFix, heroFirstPostflop, noShowdown);
   // Вырезаем ритуальный зачин «Ты прав» ПОСЛЕ общей чистки (иначе тире/латиница внутри зачина
   // могли бы сбить матч). Только для вердикта — в played/вопросе такого зачина не бывает.
   return { verdict: stripSycophanticOpener(cleaned) };
@@ -729,12 +720,7 @@ export function validateChatReply(
   if (typeof result.reply !== "string") {
     throw new Error("LLM вернул ответ без поля reply");
   }
-  return {
-    reply: assertBetSize(
-      cleanCoachText(result.reply, locale, allowedCards, heroFix, heroFirstPostflop, noShowdown),
-      snapshot,
-    ),
-  };
+  return { reply: cleanCoachText(result.reply, locale, allowedCards, heroFix, heroFirstPostflop, noShowdown) };
 }
 
 export function validateTournamentSummary(

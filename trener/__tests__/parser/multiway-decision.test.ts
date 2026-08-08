@@ -158,3 +158,40 @@ describe("факт мультивея в ставке Hero", () => {
     expect(line).not.toContain("сбросить должны ВСЕ");
   });
 });
+
+// Аудит 07.08: факты про улицы ПОСЛЕ фолда Hero — призрак. Он их не играл, а модель прикладывает
+// их к решению, которого не было («у тебя собран флеш» сброшенной руке).
+describe("улицы после фолда Hero не печатаются", () => {
+  const folded = snap({
+    seats: SEATS,
+    heroCards: ["Ah", "9h"],
+    // Hero сбросил на флопе; третья черва и пара приходят только на тёрне и ривере.
+    board: ["Th", "Kc", "5d", "2h", "Ks"],
+    actions: [
+      ...PREFLOP,
+      { street: "FLOP", actor: "Player 5", action: "BET", amount: 500 },
+      { street: "FLOP", actor: "Player 1", action: "FOLD" },
+      { street: "FLOP", actor: "Player 2", action: "FOLD" },
+      { street: "FLOP", actor: "Hero", action: "FOLD" },
+      { street: "TURN", actor: "Player 5", action: "CHECK" },
+      { street: "RIVER", actor: "Player 5", action: "CHECK" },
+    ],
+  });
+
+  it("текстура и опасности считаются только по флопу", () => {
+    const out = renderHandFacts(folded);
+    expect(out).toContain("Текстура борда на флопе");
+    expect(out).not.toContain("Текстура борда на тёрне");
+    expect(out).not.toContain("Текстура борда на ривере");
+    expect(out).not.toContain("Опасность борда на тёрне");
+    expect(out).not.toContain("Опасность борда на ривере");
+  });
+
+  it("флеш-сводка не выдаёт флеш-дро с карт, которых Hero не видел", () => {
+    // По итоговому борду у Hero было бы 2 черва в руке + 2 на борде (флеш-дро к риверу).
+    // На флопе черва одна — никакого дро не было, и говорить о нём нельзя.
+    const out = renderHandFacts(folded);
+    expect(out).not.toContain("флеш-дро червей");
+    expect(out).toContain("Флеш-угроза");
+  });
+});

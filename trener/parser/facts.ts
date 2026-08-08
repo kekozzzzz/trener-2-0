@@ -142,6 +142,11 @@ export type BetFact = {
   // доля банка ДО этого действия, %: для бета — betSize/pot; для рейза — добавленные фишки/pot
   sizePctOfPot: number;
   sizeClass: BetSizeClass;
+  // Сами фишки: сколько поставлено и КАКОЙ банк был ДО ставки. Без этой пары модель берёт банк из
+  // соседней строки «в точке твоего решения» (он уже ВКЛЮЧАЕТ ставку и коллы) и выдаёт игроку
+  // «в банке 23.4 BB он поставил 5.9 BB» — половина банка превращается в четверть (регресс 07.08).
+  amount: number;
+  potBefore: number;
 };
 
 // Спот, где Hero стоит перед ставкой соперника и должен решать колл/фолд.
@@ -194,6 +199,10 @@ export type HeroBet = {
   // как доля ОДНОГО диапазона; когда живых соперников двое и больше, сбросить обязаны ВСЕ, и
   // «≥40% диапазона соперника» перестаёт быть тем порогом, который модель читает (регресс 07.08).
   oppsToFold?: number;
+  // Готовая рука Hero — СЛАБАЯ пара (ниже двух карт борда). Без этого признака madeValue звал
+  // «ставкой на ВЕЛЬЮ» карманную шестёрку под K и T, и модель хвалила добор там, где ставка —
+  // чистый блеф, который коллирует всё, что Hero бьёт (аудит 07.08; у колла это уже починено).
+  madeWeak?: boolean;
   // у Hero УЖЕ есть готовая рука пара+ (тогда ставка с дро — велью с добором, НЕ полу-блеф).
   madeValue?: boolean;
   // геометрия второго барреля (свип): если эту ставку заколлируют, SPR на СЛЕДУЮЩЕЙ улице.
@@ -270,7 +279,10 @@ function heroBetFact(
   const eq = drawEquity(snapshot.heroCards, b, b.length === 3 ? 2 : 1);
   if (eq && eq.rawPct > 0) fact.drawEquityPct = eq.cleanPct > 0 ? eq.cleanPct : eq.rawPct;
   const mh = heroMadeHand(snapshot.heroCards, b);
-  if (mh && mh.strength !== "AIR" && mh.category !== "HIGH") fact.madeValue = true;
+  if (mh && mh.strength !== "AIR" && mh.category !== "HIGH") {
+    fact.madeValue = true;
+    fact.madeWeak = mh.strength === "WEAK_PAIR";
+  }
   return fact;
 }
 
@@ -464,7 +476,7 @@ function walkPot(snapshot: TableSnapshot, bigBlind: number | null): HandFacts {
           heroBets.push(heroBetFact(snapshot, street, amt, pot, g.heroRemAfterBet, g.effOppRem, g.oppCall, liveOpponents()));
         } else if (street !== "PREFLOP" && pot > 0) {
           const size = pct(amt / pot);
-          bets.push({ street, actor: a.actor, sizePctOfPot: size, sizeClass: sizeClass(size) });
+          bets.push({ street, actor: a.actor, sizePctOfPot: size, sizeClass: sizeClass(size), amount: amt, potBefore: pot });
         }
         streetCommitted.set(a.actor, committed + amt);
         pot += amt;
@@ -483,7 +495,7 @@ function walkPot(snapshot: TableSnapshot, bigBlind: number | null): HandFacts {
             heroBets.push(heroBetFact(snapshot, street, delta, pot, g.heroRemAfterBet, g.effOppRem, g.oppCall, liveOpponents()));
           } else if (street !== "PREFLOP" && pot > 0) {
             const size = pct(delta / pot);
-            bets.push({ street, actor: a.actor, sizePctOfPot: size, sizeClass: sizeClass(size) });
+            bets.push({ street, actor: a.actor, sizePctOfPot: size, sizeClass: sizeClass(size), amount: delta, potBefore: pot });
           }
           pot += delta;
           addInvested(a.actor, delta);
@@ -950,7 +962,12 @@ export function renderHandFacts(snapshot: TableSnapshot): string {
   }
 
   // Сводка флеш-угрозы — детерминированно, чтобы модель не выдумывала флеш/флеш-дро (регресс #85/#53).
-  const flushLine = renderFlushSummary(snapshot.heroCards, snapshot.board);
+  // ⚠️Борд обрезаем последней улицей, которую Hero РЕАЛЬНО играл (аудит 07.08): раньше сводка
+  // считалась по ИТОГОВОМУ борду, и сброшенной на префлопе руке A♥9♥ доставался «у тебя СОБРАН
+  // флеш червей» — карты, которых Hero не видел. Тот же класс, что чинили heroSawStreet ниже.
+  const lastSeen = (["RIVER", "TURN", "FLOP"] as const).find((st) => heroSawStreet(snapshot, st));
+  const seenBoard = lastSeen ? boardUpToStreet(snapshot.board, lastSeen) : [];
+  const flushLine = renderFlushSummary(snapshot.heroCards, seenBoard);
   if (flushLine) lines.push(flushLine);
 
   // Состав стола и позиция Hero — голые факты из снимка, чтобы модель не прикидывала «на глаз».
@@ -1086,6 +1103,9 @@ export function renderHandFacts(snapshot: TableSnapshot): string {
   // доска монотонная и спаренная», когда третью масть и пару приносил только ривер.
   let prevTexture = "";
   for (const street of ["FLOP", "TURN", "RIVER"] as const) {
+    // Улицы после фолда Hero — призрак (см. heroSawStreet): он их не играл, а «доска стала
+    // связанной на тёрне» модель приложит к решению, которого не было (аудит 07.08).
+    if (!heroSawStreet(snapshot, street)) continue;
     const b = boardUpToStreet(snapshot.board, street);
     if (b.length < 3) continue;
     const t = boardTexture(b);
@@ -1354,6 +1374,9 @@ export function renderHandFacts(snapshot: TableSnapshot): string {
   // содержанию: опасность, не изменившаяся с прошлой улицы, второй раз не повторяем.
   let prevDanger = "";
   for (const street of ["FLOP", "TURN", "RIVER"] as const) {
+    // Улицы после фолда Hero — призрак (см. heroSawStreet): «твой фулл-хаус НЕ старший» у руки,
+    // которую он выбросил на префлопе, модель достраивает в несуществующую карманную пару.
+    if (!heroSawStreet(snapshot, street)) continue;
     const b = boardUpToStreet(snapshot.board, street);
     if (b.length < 3) continue;
     const dangers = boardDangerFacts(snapshot.heroCards, b);
@@ -1364,10 +1387,18 @@ export function renderHandFacts(snapshot: TableSnapshot): string {
     for (const d of dangers) lines.push(d.replace("Опасность борда:", `Опасность борда на ${STREET_RU[street]}:`));
   }
 
-  for (const b of f.bets)
+  // Ставка соперника — с ПОЗИЦИЕЙ вместо служебного «Player N» (её модель и так обязана называть
+  // игроку) и с самими фишками: «5.9 BB в банк 11.7 BB». Банк ДО ставки нигде больше не написан,
+  // а соседняя строка «в точке твоего решения: банк 23.4 BB» его уже включает вместе с коллами —
+  // модель их складывала и объявляла полбанка четвертью (регресс 07.08, разбор реальной раздачи).
+  for (const b of f.bets) {
+    const who = snapshot.seats.find((s) => s.label === b.actor);
+    const pos = who ? (who.positionName ?? who.position) : b.actor;
+    const inBb = (chips: number) => (bb ? ` = ${Math.round((chips / bb) * 10) / 10} BB` : "");
     lines.push(
-      `Ставка соперника (${b.actor}, ${b.street}): ≈${b.sizePctOfPot}% банка (${SIZE_CLASS_RU[b.sizeClass]}).`,
+      `Ставка соперника (${pos}, ${b.street}): ${b.amount}${inBb(b.amount)} в банк ${b.potBefore}${inBb(b.potBefore)} до неё - ≈${b.sizePctOfPot}% банка (${SIZE_CLASS_RU[b.sizeClass]}). Долю банка бери ОТСЮДА и не пересчитывай её от банка в точке решения: там банк уже включает и эту ставку, и коллы после неё.`,
     );
+  }
   for (const b of f.heroBets) {
     // foldsNeededPct — ДОЛЯ ДИАПАЗОНА соперника, которая должна сброситься, а НЕ «частота
     // раз» (правка Артёма 2026-07-10, синхронизирована с цитатой порога в COACH_FRAMEWORK).
@@ -1379,9 +1410,14 @@ export function renderHandFacts(snapshot: TableSnapshot): string {
     // «диапазон соперника» в единственном числе там, где диапазонов несколько).
     const many = (b.oppsToFold ?? 1) >= 2;
     const whose = many ? `диапазона КАЖДОГО из ${b.oppsToFold} соперников` : "диапазона соперника";
-    let line = b.madeValue
+    // ⚠️Слабая пара — НЕ велью. «Пара+» одинаково накрывала топ-пару и карманную шестёрку под K и T,
+    // и ставка вторым случаем подписывалась «на ВЕЛЬЮ»: модель хвалила добор там, где ставку
+    // коллирует всё, что Hero бьёт. Велью-рамку даём только руке, которая реально впереди коллов.
+    let line = b.madeValue && !b.madeWeak
       ? `Ставка Hero (${b.street}): ≈${b.sizePctOfPot}% банка (${SIZE_CLASS_RU[b.sizeClass]}) на ВЕЛЬЮ (готовая рука пара+); фолд-эквити как бонус - если сбросится ≥${b.foldsNeededPct}% ${whose}, забираешь без вскрытия.`
-      : `Ставка Hero (${b.street}): ≈${b.sizePctOfPot}% банка (${SIZE_CLASS_RU[b.sizeClass]}); готовой руки нет - как блеф окупается, если сбросится ≥${b.foldsNeededPct}% ${whose}.`;
+      : b.madeWeak
+        ? `Ставка Hero (${b.street}): ≈${b.sizePctOfPot}% банка (${SIZE_CLASS_RU[b.sizeClass]}); готовая рука есть, но пара СЛАБАЯ (ниже двух карт борда) - это НЕ ставка на велью: коллируют её в основном руки, которые тебя уже бьют, а сбрасывают те, что и так позади. Окупается она как блеф - если сбросится ≥${b.foldsNeededPct}% ${whose}.`
+        : `Ставка Hero (${b.street}): ≈${b.sizePctOfPot}% банка (${SIZE_CLASS_RU[b.sizeClass]}); готовой руки нет - как блеф окупается, если сбросится ≥${b.foldsNeededPct}% ${whose}.`;
     if (many)
       line += ` ⚠️Ставка идёт в ${b.oppsToFold} соперников: сбросить должны ВСЕ до одного, поэтому забрать банк сразу тут заметно труднее, чем говорит порог ≥${b.foldsNeededPct}% для одного. Блеф в мультивей-банк по умолчанию слабее - чем больше живых рук, тем выше шанс, что хоть одна попала в борд. Не оценивай эту ставку как ставку против одного соперника.`;
     // Сколько улиц соперники УЖЕ оплатили до этой ставки. Регресс 18.07 (Артём поймал, QTo на

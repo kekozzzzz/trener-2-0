@@ -140,7 +140,19 @@ describe("computeHandFacts — арифметика банка", () => {
       heroCards: ["Td", "8d"],
       // флоп разномастный; тёрн вторая черва; ривер третья черва + пара девяток
       board: ["6s", "Qh", "9d", "7h", "9h"],
-      actions: s.actions,
+      // Hero доходит до ривера — иначе улицы после его фолда справедливо молчат (см. тест ниже).
+      actions: [
+        { street: "PREFLOP", actor: "Player 2", action: "POST_SB", amount: 10 },
+        { street: "PREFLOP", actor: "Hero", action: "POST_BB", amount: 20 },
+        { street: "PREFLOP", actor: "Player 2", action: "RAISE", amount: 60 },
+        { street: "PREFLOP", actor: "Hero", action: "CALL", amount: 40 },
+        { street: "FLOP", actor: "Hero", action: "CHECK" },
+        { street: "FLOP", actor: "Player 2", action: "CHECK" },
+        { street: "TURN", actor: "Hero", action: "CHECK" },
+        { street: "TURN", actor: "Player 2", action: "CHECK" },
+        { street: "RIVER", actor: "Hero", action: "CHECK" },
+        { street: "RIVER", actor: "Player 2", action: "CHECK" },
+      ],
     });
     const text = renderHandFacts(withRiver);
     expect(text).toContain("Текстура борда на флопе: разномастный");
