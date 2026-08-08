@@ -1,6 +1,6 @@
 import type { Street, TableAction, TableSnapshot } from "./types";
 import { bigBlindFromSnapshot } from "./big-blind";
-import { equityVsHandPreflop } from "./cooler";
+import { equityVsHandsPreflop, equityVsHandPreflop } from "./cooler";
 import { boardUpToStreet, tableStateUpTo } from "./table-state";
 import { lastAggressionIndex } from "./aggression";
 import { stageHint, SHORT_TABLE_SEATS } from "@/config/poker/tournament-stage";
@@ -788,7 +788,17 @@ function preflopAllInEquityLine(snapshot: TableSnapshot): string | null {
     parts.push(`против ${pos} (${s.shownCards!.join(" ")}${code ? ` ${code}` : ""}) ≈${eq}%${tag}`);
   }
   if (parts.length === 0) return null;
-  return `ТВОЁ ТОЧНОЕ ЭКВИТИ на момент олл-ина (ДО флопа, честный перебор — это то, что ты реально имел, когда РЕШАЛ, а не итог по борду): ${parts.join("; ")}. Суди СВОЁ решение по этим числам, а НЕ по результату: проиграл, будучи впереди или во флипе, — это дисперсия, а не ошибка; закинул стек, будучи далеко позади, — вопрос к самому заходу. «Хорошее эквити» тут выдумывать нельзя — вот оно, точное.`;
+  // Мультивей: попарные числа выше — НЕ ответ на вопрос «сколько у меня было». В банке на троих
+  // выиграть надо у ОБОИХ сразу, и настоящее эквити ниже любого попарного, иногда вдвое. Раньше
+  // печатались только попарные, и модель брала удобное («против CO 55% - ты был впереди»), выдавая
+  // игроку прямо вредный вывод про его заход (аудит 08.08). Считаем настоящее число и ставим ПЕРВЫМ.
+  const multi =
+    shown.length >= 2 ? equityVsHandsPreflop(hero, shown.map((s) => s.shownCards!)) : null;
+  const multiHead =
+    multi !== null
+      ? `Соперников на вскрытии ${shown.length}, и обойти надо ВСЕХ сразу: твоё настоящее эквити в этом банке ≈${multi}%. Именно это число описывает твой заход. Попарные ниже даны только чтобы видеть, кто конкретно тебя бил, — брать их как «сколько у меня было» НЕЛЬЗЯ, каждое из них выше настоящего. `
+      : "";
+  return `ТВОЁ ТОЧНОЕ ЭКВИТИ на момент олл-ина (ДО флопа, честный перебор — это то, что ты реально имел, когда РЕШАЛ, а не итог по борду): ${multiHead}${multi !== null ? "попарно — " : ""}${parts.join("; ")}. Суди СВОЁ решение по этим числам, а НЕ по результату: проиграл, будучи впереди или во флипе, — это дисперсия, а не ошибка; закинул стек, будучи далеко позади, — вопрос к самому заходу. «Хорошее эквити» тут выдумывать нельзя — вот оно, точное.`;
 }
 
 export function renderShowdownFacts(snapshot: TableSnapshot): string {
@@ -1255,31 +1265,30 @@ export function renderHandFacts(snapshot: TableSnapshot): string {
     // судит натсовость ниже. Раньше nut считался раньше и мерил старшинство ВНУТРИ категории —
     // отсюда «Твой стрит НАТСОВЫЙ» рядом с «тебя бьют 60» в одном и том же снимке (регресс #8).
     const odds = fullDeckOdds(snapshot.heroCards, b);
+    // ⚠️2026-08-08 (аудит): признаки руки печатались БЕЗ МЕТКИ УЛИЦЫ и с дедупом. Две беды разом.
+    // Первая: строка «Твой стрит НАТСОВЫЙ», выданная на флопе, висела в снимке голой — модель
+    // прикладывала её к риверу, где натс давно чужой. Вторая: если признак ПРОПАДАЛ (стал null —
+    // дошла масть, борд спарился), новой строки не печаталось вовсе, и старая оставалась
+    // последним словом парсера по теме. Теперь у каждой строки есть улица, а исчезновение
+    // признака печатается ЯВНО — молчание тут читается как подтверждение.
+    const feature = (
+      label: string,
+      value: string | null,
+      prev: string,
+    ): string => {
+      if (value && value !== prev) lines.push(`[${STREET_RU[street]}] ${value}`);
+      else if (!value && prev) lines.push(`[${STREET_RU[street]}] ${label} больше НЕ действует - то, что было сказано об этом на прошлой улице, к этой улице не относится.`);
+      return value ?? "";
+    };
     // Натсовость флеша/стрита (свип): старшинство считает парсер, не модель «на глаз».
-    const nut = madeHandNutStatus(snapshot.heroCards, b, odds);
-    if (nut && nut !== prevNut) {
-      prevNut = nut;
-      lines.push(nut);
-    }
+    prevNut = feature("натсовость руки", madeHandNutStatus(snapshot.heroCards, b, odds), prevNut);
     // Суб-бакет сильной руки (сет топ/не-топ, две пары уязвимы) — структурная сила, не ярлык «велью».
-    const vuln = madeHandVulnerability(snapshot.heroCards, b);
-    if (vuln && vuln !== prevVuln) {
-      prevVuln = vuln;
-      lines.push(vuln);
-    }
+    prevVuln = feature("оценка уязвимости", madeHandVulnerability(snapshot.heroCards, b), prevVuln);
     // Кикер-доминирование своей пары (свип): 72 на 7K4 - двойка бита любым 7x. Считает парсер,
     // чтобы модель не звала доминируемую пару «пригодной».
-    const kicker = madeHandKicker(snapshot.heroCards, b);
-    if (kicker && kicker !== prevKicker) {
-      prevKicker = kicker;
-      lines.push(kicker);
-    }
+    prevKicker = feature("замечание про кикер", madeHandKicker(snapshot.heroCards, b), prevKicker);
     // Постфлоп-блокер к натс-флешу соперника (свип): держишь старшую карту масти без своего флеша.
-    const blocker = nutFlushBlocker(snapshot.heroCards, b);
-    if (blocker && blocker !== prevBlocker) {
-      prevBlocker = blocker;
-      lines.push(blocker);
-    }
+    prevBlocker = feature("блокер к натс-флешу", nutFlushBlocker(snapshot.heroCards, b), prevBlocker);
     // Печать переписи (сама она посчитана выше — до натсовости): сколько ВООБЩЕ возможных раскладов
     // соперника бьют готовую руку Hero — структурный якорь уязвимости, не диапазон конкретного
     // соперника. Обобщает vuln/кикер на ЛЮБУЮ руку (включая одну пару/воздух, которым иначе нет ни

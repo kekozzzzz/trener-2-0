@@ -95,6 +95,58 @@ export function equityVsHandPreflop(hero: string[], villain: string[]): number |
   return Math.round(((wins + ties / 2) / MC_ITERATIONS) * 1000) / 10;
 }
 
+// Эквити Hero в МУЛЬТИВЕЙ-олл-ине: против ВСЕХ вскрывшихся сразу, а не попарно (аудит 08.08).
+// Зачем отдельная функция. Раньше при двух вскрывшихся факт печатал два ПОПАРНЫХ числа («против
+// CO ≈55%, против BB ≈48%»), и модель брала удобное: «ты был впереди». А в банке на троих выиграть
+// надо у ОБОИХ сразу, и настоящее эквити ниже любого из попарных — иногда вдвое. Игрок, посчитавший
+// свой заход правильным по «55%», получил бы прямо вредный совет.
+// Тот же детерминированный Монте-Карло, что и попарный: зерно из карт, результат воспроизводим.
+export function equityVsHandsPreflop(hero: string[], villains: string[][]): number | null {
+  if (hero.length !== 2 || villains.length === 0) return null;
+  if (villains.some((v) => v.length !== 2)) return null;
+  const all = [...hero, ...villains.flat()];
+  const dead = new Set(all);
+  if (dead.size !== all.length) return null; // дубль карты — снимок кривой, молчим
+
+  const deck: string[] = [];
+  for (const r of ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"]) {
+    for (const s of ["c", "d", "h", "s"]) {
+      const card = r + s;
+      if (!dead.has(card)) deck.push(card);
+    }
+  }
+
+  let seed = 0;
+  for (const ch of all.join("")) seed = (seed * 31 + ch.charCodeAt(0)) | 0;
+  const rng = mulberry32(seed);
+
+  let score = 0;
+  const board = new Array<string>(5);
+  for (let iter = 0; iter < MC_ITERATIONS; iter++) {
+    for (let i = 0; i < 5; i++) {
+      const j = i + Math.floor(rng() * (deck.length - i));
+      const tmp = deck[i];
+      deck[i] = deck[j];
+      deck[j] = tmp;
+      board[i] = deck[i];
+    }
+    const heroValue = cardSetValue([...hero, ...board]);
+    let tied = 0;
+    let beaten = false;
+    for (const v of villains) {
+      const c = compareValues(heroValue, cardSetValue([...v, ...board]));
+      if (c < 0) {
+        beaten = true;
+        break;
+      }
+      if (c === 0) tied += 1;
+    }
+    // Ничья делится на всех, кто её разделил (включая Hero) — иначе сплит считался бы победой.
+    if (!beaten) score += 1 / (tied + 1);
+  }
+  return Math.round((score / MC_ITERATIONS) * 1000) / 10;
+}
+
 // Эквити Hero против ДИАПАЗОНА на префлоп-олл-ине (план
 // 2026-07-26-эталонный-3бет-диапазон.md): эталонный чарт 3-бета вместо разметки
 // игрока, когда тот диапазон сам не отметил. Область применения узкая и осознанная

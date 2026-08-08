@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { renderHandFacts } from "@/parser/facts";
+import { equityVsHandsPreflop, equityVsHandPreflop } from "@/parser/cooler";
 import type { TableSnapshot } from "@/parser/types";
 
 function snap(partial: Partial<TableSnapshot>): TableSnapshot {
@@ -193,5 +194,87 @@ describe("улицы после фолда Hero не печатаются", () =
     const out = renderHandFacts(folded);
     expect(out).not.toContain("флеш-дро червей");
     expect(out).toContain("Флеш-угроза");
+  });
+});
+
+// Аудит 08.08: признаки руки печатались без метки улицы и молча пропадали. Строка с флопа
+// («кикер доминируется», «сет не топ») висела в снимке голой, и модель прикладывала её к улице,
+// где это уже неправда. Хуже: когда признак ПЕРЕСТАВАЛ действовать, парсер просто молчал —
+// а молчание читается как подтверждение.
+describe("признаки руки: метка улицы и явное снятие", () => {
+  const hand = (board: string[], tail: { street: "FLOP" | "TURN"; actor: string; action: "CHECK" }[]) =>
+    snap({
+      seats: SEATS,
+      heroCards: ["7c", "2d"],
+      board,
+      actions: [
+        ...PREFLOP,
+        { street: "FLOP", actor: "Player 1", action: "FOLD" },
+        { street: "FLOP", actor: "Player 2", action: "FOLD" },
+        ...tail,
+      ],
+    });
+
+  it("замечание про кикер помечено улицей", () => {
+    // 72 на 7K4: пара семёрок с двойкой-кикером — доминируется любым 7x получше.
+    const s = hand(["7h", "Kd", "4c"], [
+      { street: "FLOP", actor: "Player 5", action: "CHECK" },
+      { street: "FLOP", actor: "Hero", action: "CHECK" },
+    ]);
+    const line = renderHandFacts(s).split("\n").find((l) => l.includes("Кикер к паре"));
+    expect(line).toBeDefined();
+    expect(line?.startsWith("[флопе]")).toBe(true);
+  });
+
+  it("признак перестал действовать — печатается явное снятие, а не молчание", () => {
+    // На тёрне приходит третья семёрка: пара превращается в трипс, замечание про кикер отпадает.
+    const s = hand(["7h", "Kd", "4c", "7s"], [
+      { street: "FLOP", actor: "Player 5", action: "CHECK" },
+      { street: "FLOP", actor: "Hero", action: "CHECK" },
+      { street: "TURN", actor: "Player 5", action: "CHECK" },
+      { street: "TURN", actor: "Hero", action: "CHECK" },
+    ]);
+    const out = renderHandFacts(s);
+    expect(out).toContain("[флопе] Кикер к паре");
+    expect(out).toContain("[тёрне] замечание про кикер больше НЕ действует");
+  });
+
+  it("признака не было вовсе — строк снятия не появляется", () => {
+    const s = hand(["Ah", "Kd", "Qs"], [
+      { street: "FLOP", actor: "Player 5", action: "CHECK" },
+      { street: "FLOP", actor: "Hero", action: "CHECK" },
+    ]);
+    expect(renderHandFacts(s)).not.toContain("больше НЕ действует");
+  });
+});
+
+// Аудит 08.08: при двух вскрывшихся факт печатал только ПОПАРНОЕ эквити, и модель брала удобное
+// («против CO 55% - ты был впереди»), хотя в банке на троих выиграть надо у ОБОИХ сразу.
+describe("мультивей-олл-ин: настоящее эквити против всех сразу", () => {
+  it("считает эквити ниже любого попарного и ставит его первым", () => {
+    const hero = ["Ah", "Kh"];
+    const v1 = ["Qs", "Qd"];
+    const v2 = ["Jc", "Jd"];
+    const pair1 = equityVsHandPreflop(hero, v1)!;
+    const pair2 = equityVsHandPreflop(hero, v2)!;
+    const three = equityVsHandsPreflop(hero, [v1, v2])!;
+    expect(three).toBeGreaterThan(0);
+    expect(three).toBeLessThan(Math.min(pair1, pair2));
+  });
+
+  it("против одного соперника совпадает с попарным (в пределах шума Монте-Карло)", () => {
+    const hero = ["Ah", "Kh"];
+    const v = ["Qs", "Qd"];
+    expect(Math.abs(equityVsHandsPreflop(hero, [v])! - equityVsHandPreflop(hero, v)!)).toBeLessThan(2);
+  });
+
+  it("детерминирован: два вызова дают одно число", () => {
+    const a = equityVsHandsPreflop(["Ah", "Kh"], [["Qs", "Qd"], ["Jc", "Jd"]]);
+    const b = equityVsHandsPreflop(["Ah", "Kh"], [["Qs", "Qd"], ["Jc", "Jd"]]);
+    expect(a).toBe(b);
+  });
+
+  it("дубль карты в снимке — молчим, а не врём", () => {
+    expect(equityVsHandsPreflop(["Ah", "Kh"], [["Ah", "Qd"]])).toBeNull();
   });
 });

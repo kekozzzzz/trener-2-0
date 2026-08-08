@@ -32,6 +32,15 @@ const STREET_RU: Record<Street, string> = {
   RIVER: "ривере",
 };
 
+// Хвост про мультивей у порогов фолд-эквити: порог посчитан для ОДНОГО диапазона, а если живых
+// соперников двое и больше — сбросить обязаны ВСЕ. Та же правка, что в facts.ts 07.08, доведённая
+// до движка альтернатив (аудит 08.08).
+function oppTailFact(liveOpponents: number | undefined): string {
+  return (liveOpponents ?? 1) >= 2
+    ? ` КАЖДОГО из ${liveOpponents} живых соперников (сбросить обязаны ВСЕ - в мультивей-банк атака окупается заметно хуже, чем говорит порог для одного)`
+    : " соперника";
+}
+
 export function renderAltFacts(snapshot: TableSnapshot): string {
   const bb = bigBlindFromSnapshot(snapshot);
   if (!bb) return "";
@@ -59,15 +68,15 @@ export function renderAltFacts(snapshot: TableSnapshot): string {
     const head = `Непройденная ветка на ${STREET_RU[r.street]}: рейз до ${inBb(r.raiseTo)} вместо ${played}`;
     if (r.reason === "VALUE_RAISE") {
       lines.push(
-        `${head} с ${r.madeHand} (кандидат на велью-рейз); при колле банк ≈${inBb(r.potIfCalled)}; как чистая атака окупается, если сбросится ≥${r.foldsNeededPct}% диапазона соперника.`,
+        `${head} с ${r.madeHand} (кандидат на велью-рейз); при колле банк ≈${inBb(r.potIfCalled)}; как чистая атака окупается, если сбросится ≥${r.foldsNeededPct}% диапазона${oppTailFact(r.liveOpponents)}.`,
       );
     } else if (r.reason === "SEMI_BLUFF_DRAW") {
       lines.push(
-        `${head} как полу-блеф с ${r.drawKind} (${r.outsRaw} аутов${r.outsClean !== undefined && r.outsClean < (r.outsRaw ?? 0) ? `, чистых ${r.outsClean}` : ""}${r.drawEquityRawPct !== undefined ? `, эквити ≈${r.drawEquityCleanPct ?? r.drawEquityRawPct}–${r.drawEquityRawPct}%` : ""}): два пути к победе — сбросится ≥${r.foldsNeededPct}% диапазона соперника, либо при колле банк ≈${inBb(r.potIfCalled)} на доезд.`,
+        `${head} как полу-блеф с ${r.drawKind} (${r.outsRaw} аутов${r.outsClean !== undefined && r.outsClean < (r.outsRaw ?? 0) ? `, чистых ${r.outsClean}` : ""}${r.drawEquityRawPct !== undefined ? `, эквити ≈${r.drawEquityCleanPct ?? r.drawEquityRawPct}–${r.drawEquityRawPct}%` : ""}): два пути к победе — сбросится ≥${r.foldsNeededPct}% диапазона${oppTailFact(r.liveOpponents)}, либо при колле банк ≈${inBb(r.potIfCalled)} на доезд.`,
       );
     } else {
       lines.push(
-        `${head}: соперник поставил мелко, у Hero ${r.madeHand}${r.drawKind ? ` + ${r.drawKind}` : ""} — дешёвый рейз давит его слабый сайзинг; окупается, если сбросится ≥${r.foldsNeededPct}% его диапазона.`,
+        `${head}: соперник поставил мелко, у Hero ${r.madeHand}${r.drawKind ? ` + ${r.drawKind}` : ""} — дешёвый рейз давит его слабый сайзинг; окупается, если сбросится ≥${r.foldsNeededPct}% диапазона${oppTailFact(r.liveOpponents)}.`,
       );
     }
   }
@@ -75,7 +84,7 @@ export function renderAltFacts(snapshot: TableSnapshot): string {
   // Упущенный бет после чека (недобор / полу-блеф) — улица прочекана насквозь.
   for (const c of checkBetAlternatives(snapshot)) {
     lines.push(
-      `Непройденная ветка на ${STREET_RU[c.street]}: ${c.rationale}; при колле банк ≈${inBb(c.potIfCalled)}${c.foldsNeededPct !== undefined ? `, как атака окупается при сбросе ≥${c.foldsNeededPct}% диапазона соперника` : ""}.`,
+      `Непройденная ветка на ${STREET_RU[c.street]}: ${c.rationale}; при колле банк ≈${inBb(c.potIfCalled)}${c.foldsNeededPct !== undefined ? `, как атака окупается при сбросе ≥${c.foldsNeededPct}% диапазона${oppTailFact(c.liveOpponents)}` : ""}.`,
     );
   }
 

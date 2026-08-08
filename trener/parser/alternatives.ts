@@ -38,7 +38,23 @@ export type NodeState = {
   heroRemaining: number; // остаток стека Hero
   effectiveRemaining: number; // min(остаток Hero, остаток соперника-в-игре)
   spr: number | null; // SPR в узле = effectiveRemaining / pot (не только на флопе)
+  liveOpponents: number; // сколько соперников ещё в раздаче в этой точке (для мультивей-порогов)
 };
+
+// Порог окупаемости атаки для ставки в 2/3 банка — это ЧИСТАЯ АРИФМЕТИКА размера (2/3 ÷ (2/3+1) =
+// 40%), а не расчёт под конкретную раздачу: при любом банке и любых картах выйдет то же число.
+// Модель же подавала его как найденный в этом споте вывод — а игрок, увидев «40%» в трёх разных
+// разборах подряд, справедливо решит, что тренер повторяет заученное (аудит 08.08). Говорим прямо.
+const THRESHOLD_IS_ARITHMETIC =
+  "Порог тут не свойство раздачи, а арифметика размера: у ставки в 2/3 банка он всегда такой - не подавай его игроку как вывод, найденный именно здесь.";
+
+// Хвост про мультивей: порог «сбросится ≥X%» посчитан для ОДНОГО диапазона. Живых соперников
+// двое и больше — сбросить обязаны ВСЕ, и та же цифра означает совсем другое.
+function oppTail(liveOpponents: number): string {
+  return liveOpponents >= 2
+    ? ` КАЖДОГО из ${liveOpponents} живых соперников (сбросить обязаны ВСЕ до одного - в мультивей-банк атака окупается заметно хуже, чем говорит этот порог для одного)`
+    : " соперника";
+}
 
 export function nodeStateAt(snapshot: TableSnapshot, actionIndex: number): NodeState {
   const st = tableStateUpTo(snapshot, actionIndex);
@@ -65,6 +81,10 @@ export function nodeStateAt(snapshot: TableSnapshot, actionIndex: number): NodeS
     heroRemaining,
     effectiveRemaining,
     spr,
+    // Живых соперников в этой точке. Пороги веток («сбросится ≥X% диапазона») считались для
+    // ОДНОГО, а против двоих и больше сбросить обязаны ВСЕ — та же дыра, что чинили в facts.ts
+    // 07.08 для колла и ставки Hero, только в движке альтернатив (аудит 08.08).
+    liveOpponents: opps.length,
   };
 }
 
@@ -80,6 +100,9 @@ export type AltRaise = {
   // ДОЛЯ ДИАПАЗОНА соперника, которая должна сбросить, чтобы рейз окупился сразу (risk/(risk+банк)).
   // НЕ «частота раз». ВНУТРЕННЕЕ; тренер объясняет: «больше N% его диапазона должно сброситься».
   foldsNeededPct: number;
+  // Сколько соперников живо в этой точке: порог выше посчитан для ОДНОГО диапазона, а против
+  // двоих и больше сбросить обязаны ВСЕ (аудит 08.08, та же дыра что в facts.ts).
+  liveOpponents: number;
   potIfCalled: number; // корректный банк при колле рейза (соперник докладывает разницу)
   spr: number | null;
   reason: AltRaiseReason;
@@ -150,6 +173,7 @@ export function alternativeRaises(snapshot: TableSnapshot): AltRaise[] {
       raiseTo,
       risk,
       foldsNeededPct,
+      liveOpponents: node.liveOpponents,
       potIfCalled,
       spr: node.spr,
     } as const;
@@ -200,6 +224,7 @@ export type CheckBetAlt = {
   suggestedBet: number; // фишки
   potIfCalled: number; // банк, если бет заколлируют
   foldsNeededPct?: number; // доля диапазона, которая должна сброситься (для полу-блефа)
+  liveOpponents: number; // см. AltRaise.liveOpponents
   drawEquityRawPct?: number;
   drawEquityCleanPct?: number;
   rationale: string;
@@ -246,7 +271,8 @@ export function probeBetSpots(snapshot: TableSnapshot): ProbeSpot[] {
   const turnIdx = snapshot.actions.findIndex((a) => a.street === "TURN" && a.actor === "Hero");
   if (turnIdx < 0 || snapshot.actions[turnIdx].action !== "CHECK") return [];
 
-  const pot = nodeStateAt(snapshot, turnIdx).pot;
+  const node = nodeStateAt(snapshot, turnIdx);
+  const pot = node.pot;
   if (pot <= 0) return [];
   const bet = Math.round((pot * 2) / 3);
   const foldsNeededPct = Math.round((bet / (bet + pot)) * 100);
@@ -258,7 +284,7 @@ export function probeBetSpots(snapshot: TableSnapshot): ProbeSpot[] {
       suggestedBet: bet,
       suggestedBetPctOfPot: 67,
       foldsNeededPct,
-      rationale: `Соперник (префлоп-агрессор) НЕ поставил c-bet на флопе - сдал инициативу, показал слабость. Терн это стандартный probe/лид: бьёшь БОЛЬШЕЙ частью диапазона (не важно велью или блеф) и сдаёшься при сопротивлении. Ставка ~2/3 банка окупается как атака, если он сбрасывает больше ${foldsNeededPct}% своего диапазона - а он уже сдал флоп. Оговорка: против телефона (не сбрасывает) это не работает - там бей только на велью.`,
+      rationale: `Соперник (префлоп-агрессор) НЕ поставил c-bet на флопе - сдал инициативу, показал слабость. Терн это стандартный probe/лид: бьёшь БОЛЬШЕЙ частью диапазона (не важно велью или блеф) и сдаёшься при сопротивлении. Ставка ~2/3 банка окупается как атака, если сбрасывается больше ${foldsNeededPct}% диапазона${oppTail(node.liveOpponents)} - а он уже сдал флоп. ${THRESHOLD_IS_ARITHMETIC} Оговорка: против телефона (не сбрасывает) это не работает - там бей только на велью.`,
     },
   ];
 }
@@ -305,7 +331,8 @@ export function cbetSpots(snapshot: TableSnapshot): CbetSpot[] {
   if (flop.some((a) => a.action === "BET" || a.action === "RAISE")) return []; // чек-рейз - был агрессивен
 
   const checkIdx = snapshot.actions.findIndex((a) => a.street === "FLOP" && a.actor === "Hero" && a.action === "CHECK");
-  const pot = nodeStateAt(snapshot, checkIdx).pot;
+  const node = nodeStateAt(snapshot, checkIdx);
+  const pot = node.pot;
   if (pot <= 0) return [];
   const bet = Math.round((pot * 2) / 3);
   const foldsNeededPct = Math.round((bet / (bet + pot)) * 100);
@@ -317,7 +344,7 @@ export function cbetSpots(snapshot: TableSnapshot): CbetSpot[] {
       suggestedBet: bet,
       suggestedBetPctOfPot: 67,
       foldsNeededPct,
-      rationale: `Ты префлоп-агрессор на СВОЕЙ доске (высокая/бродвейная - преимущество диапазона у открывашки): c-bet стандартен большей частью руки, не важно велью или блеф. Прочекав, ты СДАЁШЬ инициативу - в твой чек часто прилетит ставка, и с мусором придётся сбросить банк, который ты забрал бы c-betом на флопе (у соперника тоже часто мусор - ты мог выиграть раздачу тут же). Ставка ~2/3 банка окупается, если он сбрасывает больше ${foldsNeededPct}% диапазона. Оговорка: против телефона (не сбрасывает) - c-bet только на велью.`,
+      rationale: `Ты префлоп-агрессор на СВОЕЙ доске (высокая/бродвейная - преимущество диапазона у открывашки): c-bet стандартен большей частью руки, не важно велью или блеф. Прочекав, ты СДАЁШЬ инициативу - в твой чек часто прилетит ставка, и с мусором придётся сбросить банк, который ты забрал бы c-betом на флопе (у соперника тоже часто мусор - ты мог выиграть раздачу тут же). Ставка ~2/3 банка окупается, если сбрасывается больше ${foldsNeededPct}% диапазона${oppTail(node.liveOpponents)}. ${THRESHOLD_IS_ARITHMETIC} Оговорка: против телефона (не сбрасывает) - c-bet только на велью.`,
     },
   ];
 }
@@ -345,7 +372,8 @@ export function checkBetAlternatives(snapshot: TableSnapshot): CheckBetAlt[] {
     const made = heroMadeHand(snapshot.heroCards, board);
     if (!made) continue;
 
-    const pot = nodeStateAt(snapshot, i).pot;
+    const node = nodeStateAt(snapshot, i);
+    const pot = node.pot;
     if (pot <= 0) continue;
     const bet = Math.round((pot * 2) / 3);
     const potIfCalled = pot + 2 * bet;
@@ -359,6 +387,7 @@ export function checkBetAlternatives(snapshot: TableSnapshot): CheckBetAlt[] {
         suggestedBetPctOfPot: 67,
         suggestedBet: bet,
         potIfCalled,
+        liveOpponents: node.liveOpponents,
         rationale: `${made.ru} - улицу прочекали, ставки не было: был велью-бет (~2/3 банка), который добрал бы с того, что слабее (недобор - на микро самая дорогая ошибка)`,
       });
       continue;
@@ -377,6 +406,7 @@ export function checkBetAlternatives(snapshot: TableSnapshot): CheckBetAlt[] {
         suggestedBet: bet,
         potIfCalled,
         foldsNeededPct: Math.round((bet / (bet + pot)) * 100),
+        liveOpponents: node.liveOpponents,
         drawEquityRawPct: eq?.rawPct,
         drawEquityCleanPct: eq?.cleanPct,
         rationale: `воздух + ${draw.kind} - улицу прочекали: был полу-блеф-бет (~2/3 банка) с двумя путями к победе (фолд сейчас или доезд)`,
@@ -427,13 +457,22 @@ export function facingRaiseAlternatives(snapshot: TableSnapshot): FacingRaiseAlt
 
     const equityToCallPct = Math.round((node.toCall / (node.pot + node.toCall)) * 100);
     const streetRu = a.street === "TURN" ? "тёрне" : "ривере";
+    // Размер рейза мы ЗНАЕМ (доплата против банка) — значит нечего утверждать «рейз в полбанка+»
+    // вслепую. Раньше эта фраза стояла КОНСТАНТОЙ и на мин-рейз тоже, а «мин-рейз это реальная
+    // сила, дефолт фолд» — плохой совет: мелкий рейз даёт цену и блефуют им заметно чаще
+    // (аудит 08.08). Теперь размер называем и вывод под него подстраиваем.
+    const raisePctOfPot = node.pot > 0 ? Math.round((node.toCall / node.pot) * 100) : 0;
+    const bigRaise = raisePctOfPot >= 45;
+    const sizeRead = bigRaise
+      ? `Рейз крупный (доплата ≈${raisePctOfPot}% банка) - на ${streetRu} это, как правило, реальная сила: дефолт тут ФОЛД.`
+      : `Рейз МЕЛКИЙ (доплата ≈${raisePctOfPot}% банка) - такой размер даёт хорошую цену и блефуют им чаще, чем крупным, поэтому автоматический фолд тут НЕ дефолт: считай по цене и по тому, что он этим размером хочет сказать.`;
     out.push({
       street: a.street,
       actionIndex: i,
       toCall: node.toCall,
       equityToCallPct,
       madeHand: made.ru,
-      rationale: `Ты поставил, соперник ПОДНЯЛ (чек-рейз/рейз) на ${streetRu}, у тебя ${made.ru} - слабая рука без дро. Рейз в полбанка+ на тёрне/ривере это, как правило, реальная сила: дефолт тут ФОЛД. Доплата ${node.toCall} требует ${equityToCallPct}% эквити - геройский колл оправдан ТОЛЬКО при конкретном чтении, что именно этот игрок так блефует. Без рида - фолд.`,
+      rationale: `Ты поставил, соперник ПОДНЯЛ (чек-рейз/рейз) на ${streetRu}, у тебя ${made.ru} - слабая рука без дро. ${sizeRead} Доплата ${node.toCall} требует ${equityToCallPct}% эквити - геройский колл оправдан ТОЛЬКО при конкретном чтении, что именно этот игрок так блефует.`,
     });
   }
 
