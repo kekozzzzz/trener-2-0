@@ -4,7 +4,6 @@ import { getCurrentPlayer } from "@/features/auth/queries";
 import { logoutAction } from "@/features/auth/actions";
 import { isAdminEmail } from "@/config/admin";
 import { buttonVariants } from "@/components/ui/button";
-import { LangSwitcher } from "@/components/lang-switcher";
 import { cn } from "@/lib/utils";
 
 export async function AuthNav() {
@@ -32,7 +31,6 @@ export async function AuthNav() {
         <Link href="/enter" className={cn(buttonVariants())}>
           {t("register")}
         </Link>
-        <LangSwitcher />
       </nav>
     );
   }
@@ -61,7 +59,6 @@ export async function AuthNav() {
           {t("logout")}
         </button>
       </form>
-      <LangSwitcher />
     </nav>
   );
 }

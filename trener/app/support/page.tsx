@@ -15,6 +15,7 @@ import { OPERATOR } from "@/config/legal";
 import { getTelegramBotUsername } from "@/config/notify";
 import { isAdminEmail } from "@/config/admin";
 import { SupportForm } from "./support-form";
+import { PageIntro } from "@/components/site/detail";
 
 export default async function SupportPage() {
   const t = await getTranslations("Support");
@@ -37,10 +38,12 @@ export default async function SupportPage() {
       <section className="mx-auto max-w-5xl px-8 py-16 sm:py-24">
         <BlurFade direction="up" offset={8} blur="0px" duration={0.3}>
           <div className="mx-auto max-w-md space-y-8">
-            <div className="space-y-2 text-center">
-              <h1 className="text-h1">{t("title")}</h1>
-              <p className="text-body text-muted-foreground">{t("subtitle")}</p>
-            </div>
+            <PageIntro
+              tag={t("sectionTag")}
+              title={t("title")}
+              subtitle={t("subtitle")}
+              className="text-center"
+            />
             <SupportForm
               defaultEmail={defaultEmail}
               supportEmail={OPERATOR.contactEmail}

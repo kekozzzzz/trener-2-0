@@ -3,6 +3,7 @@ import { Check } from "lucide-react";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/page-header";
+import { PageIntro, BigWordmark } from "@/components/site/detail";
 import { Wordmark } from "@/components/ui/wordmark";
 import { PricingCard } from "@/components/ui/pricing-card";
 import { CheckoutButton } from "@/components/subscription/checkout-button";
@@ -55,15 +56,13 @@ export default async function PricingPage() {
       <PageHeader />
 
       <section className="mx-auto max-w-5xl px-8 py-16 sm:py-24">
-        <div className="mx-auto max-w-2xl space-y-4 text-center">
-          <h1 className="text-h1">{t("title")}</h1>
-          <p className="text-body text-muted-foreground">
-            {t("subtitle")}
-          </p>
-          <p className="text-small text-muted-foreground">
-            {t("currencyNote")}
-          </p>
-        </div>
+        <PageIntro
+          tag={t("sectionTag")}
+          title={t("title")}
+          subtitle={t("subtitle")}
+          note={t("currencyNote")}
+          className="mx-auto max-w-2xl text-center"
+        />
 
         <div className="mx-auto mt-12 grid max-w-3xl items-stretch gap-4 lg:grid-cols-2">
           {plans.map((plan, planIndex) => {
@@ -159,6 +158,9 @@ export default async function PricingPage() {
             ),
           })}
         </p>
+
+        {/* Подвальный вордмарк — общий приём публичных страниц (§4.1 п. 11) */}
+        <BigWordmark />
       </section>
 
       <footer className="border-t border-border">

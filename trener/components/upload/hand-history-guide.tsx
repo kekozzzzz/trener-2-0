@@ -1,5 +1,6 @@
 import { CircleHelp, ChevronRight, ArrowRight } from "lucide-react";
 import { getTranslations } from "next-intl/server";
+import { SUPPORTED_ROOMS, type SupportedRoom } from "@/config/rooms";
 
 // Подсказка «Как выгрузить руки» — вложенные раскрывашки на нативном <details>
 // (без клиентского JS, доступно с клавиатуры, в стиле дизайн-системы). Верхний
@@ -13,26 +14,10 @@ import { getTranslations } from "next-intl/server";
 // словаре UploadGuide — здесь только стабильные id и имена румов. hasTag/hasNote/
 // hasPaths говорят, показывать ли соответствующий блок для рума.
 
-type Room = {
-  id: string;
-  name: string;
-  hasTag?: boolean;
-  hasPaths?: boolean;
-  hasNote?: boolean;
-};
-
-const HAND_HISTORY_ROOMS: Room[] = [
-  { id: "ggpoker", name: "GGPoker", hasNote: true },
-  { id: "pokerstars", name: "PokerStars", hasPaths: true, hasNote: true },
-  // PokerPlanets — преемник PokerStars Sochi (формат = клон PokerStars). Пока без
-  // скриншотов: клиент закрытый, публичных скринов нет — шаги текстом (как Chico).
-  { id: "pokerplanets", name: "PokerPlanets", hasTag: true, hasPaths: true, hasNote: true },
-  { id: "winamax", name: "Winamax", hasPaths: true, hasNote: true },
-  { id: "888poker", name: "888poker", hasPaths: true },
-  { id: "acr", name: "ACR / PokerKing / Black Chip", hasTag: true, hasPaths: true },
-  { id: "ipoker", name: "Red Star / Betfair / Betsson", hasTag: true, hasPaths: true, hasNote: true },
-  { id: "chico", name: "BetOnline / TigerGaming / SportsBetting", hasTag: true, hasPaths: true, hasNote: true },
-];
+// Список румов переехал в config/rooms.ts: он же кормит ленту на главной, чтобы
+// витрина и гайд не разошлись. PokerPlanets и Chico пока без скриншотов — клиенты
+// закрытые, публичных скринов нет, шаги текстом.
+const HAND_HISTORY_ROOMS = SUPPORTED_ROOMS;
 
 // Скриншоты к шагам: номер шага (с нуля) → файл в /public/help.
 // Обработаны: ники и чужие пометки убраны, наши метки — лаймовые.
@@ -58,7 +43,7 @@ const STEP_SHOTS: Record<string, Record<number, string>> = {
 };
 
 // Одна раскрывашка рума: клик по названию раскрывает шаги (пока не нажали — скрыто).
-async function RoomDetails({ room }: { room: Room }) {
+async function RoomDetails({ room }: { room: SupportedRoom }) {
   const t = await getTranslations("UploadGuide");
   const steps = t.raw(`steps.${room.id}`) as string[];
   const paths = room.hasPaths ? (t.raw(`paths.${room.id}`) as string[]) : null;

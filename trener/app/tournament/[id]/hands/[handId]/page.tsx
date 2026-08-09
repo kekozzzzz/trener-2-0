@@ -26,6 +26,8 @@ import { MarkViewed } from "./mark-viewed";
 import { ScrollToLatest } from "./scroll-to-latest";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { StackChart } from "@/components/site/stack-chart";
+import { buildStackCurve, fetchStackCurveRows } from "@/features/tournaments/stack-curve";
 
 // Стол в разборе: вписан в колонку целиком, без горизонтальной прокрутки.
 // Плашки мест торчат за край сукна (~52px), поэтому обычный режим со скроллом
@@ -135,6 +137,11 @@ export default async function HandDialoguePage({
   const chartSpot = heroChartRangeSpot(snapshot);
   const bbResult = bigBlind ? chipResult / bigBlind : null;
 
+  // Линия стека по всему турниру с отметкой этой раздачи (заказ Артёма 2026-08-08:
+  // приём с лендинга внедряем в сам разбор). Считает Postgres из снимков парсера —
+  // числа не от модели (правило 1). Короткий турнир линии не даёт: вернётся null.
+  const stackCurve = buildStackCurve(await fetchStackCurveRows(prisma, id), handId);
+
   // Стол перед каждым вопросом: новые диалоги несут метку действия {{table:N}} в
   // тексте вопроса. Если меток нет (старые диалоги / простые раздачи) — показываем
   // один общий стол на последнем действии раздачи (fallback).
@@ -215,6 +222,40 @@ export default async function HandDialoguePage({
               </p>
               <p className="mt-1 font-mono text-label uppercase tracking-label text-muted-foreground">{t("chips")}</p>
             </>
+          )}
+
+          {/* Линия стека за турнир: видно, на какой раздаче он посыпался и сколько
+              было в этот момент. Наведение показывает ту раздачу, клик открывает её
+              разбор — «стек упал, а что я тут сделал?». design-system.md §4.1 п. 9. */}
+          {stackCurve && (
+            <div className="mt-6 border-t border-border pt-4">
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-label uppercase tracking-label text-muted-foreground">
+                  {t("stackTitle")}
+                </span>
+                <span className="font-mono text-label uppercase tracking-label text-muted-foreground">
+                  {stackCurve.currentIndex !== null
+                    ? t("stackAt", { stack: stackCurve.points[stackCurve.currentIndex].stackBb })
+                    : t("stackUnit")}
+                </span>
+              </div>
+              <StackChart
+                className="mt-2"
+                points={stackCurve.points}
+                currentIndex={stackCurve.currentIndex}
+                hrefBase={`/tournament/${id}/hands/`}
+                labels={{
+                  hand: t("stackTipHand", { number: "{number}" }),
+                  stack: t("stackTipStack", { stack: "{stack}" }),
+                  delta: t("stackTipDelta", { sign: "{sign}", delta: "{delta}" }),
+                  open: t("stackTipOpen"),
+                  noReview: t("stackTipNoReview"),
+                  current: t("stackTipCurrent"),
+                }}
+              />
+              <p className="text-small text-muted-foreground">{t("stackHint")}</p>
+              <p className="mt-1 text-small text-muted-foreground">{t("stackNote")}</p>
+            </div>
           )}
         </div>
 

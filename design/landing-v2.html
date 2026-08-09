@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Whygrid — макет главной v2 (с деталями)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ─────────────────────────────────────────────────────────────
+   Макет главной v2. Токены строго из design/design-system.md:
+   палитра §1, шрифты §2, геометрия §3 (radius 0, линии 1px, шаг 8).
+   Новое здесь — только ПЛОТНОСТЬ и служебные детали, не новые цвета.
+   ───────────────────────────────────────────────────────────── */
+:root{
+  --bg:#0E0E0E;
+  --card:#1A1A1A;
+  --line:#2A2A2A;
+  --fg:#F5F5F5;
+  --mut:#8C8C8C;
+  --acc:#D4FF33;
+  --mono:"JetBrains Mono",monospace;
+  --sans:"Inter",system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;border-radius:0}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+
+/* Служебная типографика — моно-лейблы (§2, токен label) */
+.lbl{font-family:var(--mono);font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut)}
+.lbl-acc{color:var(--acc)}
+.mono{font-family:var(--mono)}
+.mut{color:var(--mut)}
+.acc{color:var(--acc)}
+.wrap{max-width:1200px;margin:0 auto;padding:0 32px}
+h1,h2{font-weight:900;letter-spacing:-.02em;line-height:1.05}
+h3{font-size:20px;font-weight:500;line-height:1.3}
+.h2{font-size:40px}
+.small{font-size:14px}
+
+/* ── Деталь 1: угловые засечки на ключевых блоках (HUD-рамка) ── */
+.corners{position:relative}
+.corners::before,.corners::after{content:"";position:absolute;width:12px;height:12px;pointer-events:none}
+.corners::before{top:-1px;left:-1px;border-top:1px solid var(--acc);border-left:1px solid var(--acc)}
+.corners::after{bottom:-1px;right:-1px;border-bottom:1px solid var(--acc);border-right:1px solid var(--acc)}
+
+/* ── Деталь 2: крестики на пересечениях сетки ── */
+.plus{position:absolute;width:9px;height:9px;color:var(--line);pointer-events:none}
+.plus::before,.plus::after{content:"";position:absolute;background:var(--line)}
+.plus::before{left:4px;top:0;width:1px;height:9px}
+.plus::after{top:4px;left:0;height:1px;width:9px}
+
+/* ── Кнопки (§4) ── */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;font-family:var(--mono);font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:.08em;border:1px solid var(--acc);background:var(--acc);color:#0E0E0E;transition:150ms ease-out}
+.btn:hover{background:transparent;color:var(--acc)}
+.btn-sec{background:transparent;color:var(--fg);border-color:var(--line)}
+.btn-sec:hover{border-color:var(--acc);color:var(--fg)}
+
+/* ── Верхняя статус-строка: «терминальность» ── */
+.statusbar{border-bottom:1px solid var(--line);background:#0B0B0B}
+.statusbar .wrap{display:flex;justify-content:space-between;gap:16px;padding-top:8px;padding-bottom:8px;font-size:11px}
+.dot{display:inline-block;width:6px;height:6px;background:var(--acc);margin-right:8px;vertical-align:middle}
+
+/* ── Шапка ── */
+header{border-bottom:1px solid var(--line)}
+header .wrap{display:flex;align-items:center;justify-content:space-between;padding-top:24px;padding-bottom:24px}
+.wordmark{font-weight:900;font-size:18px;letter-spacing:.02em}
+.mark{display:inline-grid;grid-template-columns:1fr 1fr;gap:1px;width:14px;height:14px;margin-right:8px;vertical-align:-1px}
+.mark i{border:1px solid var(--fg)}
+.mark i:nth-child(2){background:var(--acc);border-color:var(--acc)}
+nav{display:flex;gap:24px;align-items:center}
+
+/* ── HERO ── */
+.hero{position:relative;overflow:hidden;border-bottom:1px solid var(--line)}
+/* Деталь 3: фон-миллиметровка + лаймовое гало (глубина через свет, не тень) */
+.hero::before{content:"";position:absolute;inset:0;
+  background-image:linear-gradient(to right,rgba(245,245,245,.028) 1px,transparent 1px),
+                   linear-gradient(to bottom,rgba(245,245,245,.028) 1px,transparent 1px);
+  background-size:40px 40px;
+  -webkit-mask-image:radial-gradient(120% 80% at 50% 0%,#000 40%,transparent 100%);
+          mask-image:radial-gradient(120% 80% at 50% 0%,#000 40%,transparent 100%)}
+.hero::after{content:"";position:absolute;top:-160px;right:-120px;width:520px;height:520px;
+  background:radial-gradient(circle,rgba(212,255,51,.10),transparent 65%);pointer-events:none}
+.hero .wrap{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center;padding-top:80px;padding-bottom:80px}
+/* Деталь 4: вертикальная моно-метка секции по краю */
+.railtag{position:absolute;left:-8px;top:96px;transform:rotate(180deg);writing-mode:vertical-rl;font-family:var(--mono);font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:#5A5A5A}
+.tag{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);padding:6px 12px;font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut)}
+.hero h1{font-size:64px;margin:24px 0 16px}
+.hero p.sub{color:var(--mut);max-width:44ch}
+.cta-row{display:flex;gap:16px;margin:32px 0 16px}
+/* Деталь 5: строка «поддерживаемые румы» мелким моно прямо под CTA */
+/* Ровная сетка 5×2 вместо «рваного» переноса в две строки */
+.rooms-inline{display:grid;grid-template-columns:repeat(5,1fr);gap:8px 16px;margin-top:24px;padding-top:16px;border-top:1px solid var(--line)}
+.rooms-inline span{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:#6E6E6E}
+
+/* ── Карточка разбора в hero ── */
+.hand{border:1px solid var(--line);background:var(--card);position:relative}
+.hand-top{display:flex;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line);background:#151515}
+.hand-body{padding:24px}
+.cards{display:flex;gap:8px;margin:16px 0}
+.card-mini{width:40px;height:56px;border:1px solid var(--line);background:#101010;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--mono);font-size:14px;line-height:1.1}
+.card-mini.hero-card{border-color:var(--acc);color:var(--acc)}
+.card-mini s{font-size:12px;text-decoration:none;opacity:.8}
+.qbox{border-left:2px solid var(--acc);padding:8px 0 8px 16px;margin:24px 0}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line)}
+.metrics > div{background:var(--card);padding:16px}
+.metrics b{display:block;font-family:var(--mono);font-weight:400;font-size:20px;margin-top:8px}
+/* Деталь 6: полосы-бары вместо голых процентов */
+.bar{height:6px;background:#242424;margin-top:8px;position:relative}
+.bar i{position:absolute;left:0;top:0;bottom:0;background:var(--acc)}
+.bar.ghost i{background:#4A4A4A}
+
+/* ── Деталь 7: бегущая лента румов ── */
+.ticker{border-bottom:1px solid var(--line);overflow:hidden;background:#0B0B0B}
+.ticker-in{display:flex;gap:48px;padding:12px 0;white-space:nowrap;animation:run 40s linear infinite;font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:#6E6E6E}
+.ticker-in b{font-weight:400;color:var(--fg)}
+.ticker-in em{font-style:normal;color:var(--acc)}
+@keyframes run{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+/* ── Числа ── */
+.stats{border-bottom:1px solid var(--line)}
+.stats .wrap{display:grid;grid-template-columns:repeat(4,1fr);padding:0}
+.stat{padding:48px 32px;border-left:1px solid var(--line);position:relative}
+.stat:first-child{border-left:0}
+.stat u{display:block;text-decoration:none;font-family:var(--mono);font-size:56px;line-height:1;letter-spacing:-.02em}
+/* Подписи одной высоты — низ колонок выравнивается по общей линии */
+.stat p{margin-top:16px;color:var(--mut);font-size:14px;max-width:22ch;min-height:63px}
+
+/* ── Секции ── */
+section.blk{border-bottom:1px solid var(--line);position:relative}
+section.blk .wrap{padding-top:80px;padding-bottom:80px}
+.sec-head{display:flex;align-items:flex-end;justify-content:space-between;gap:32px;margin-bottom:48px;border-bottom:1px solid var(--line);padding-bottom:24px}
+.sec-head h2{font-size:40px}
+.sec-num{font-family:var(--mono);font-size:12px;letter-spacing:.08em;color:#5A5A5A;white-space:nowrap}
+
+/* ── «Окно» продукта ── */
+.window{border:1px solid var(--line);background:var(--card)}
+.window-bar{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--line);background:#151515}
+.window-bar .path{font-family:var(--mono);font-size:11px;color:var(--mut)}
+.window-bar .dots{display:flex;gap:6px}
+.window-bar .dots i{width:8px;height:8px;border:1px solid var(--line);display:block}
+/* Стол занимает окно целиком, без собственных полей — рамка ровно одна, внешняя.
+   На боевом сайте здесь будет живой компонент HandTable, а не картинка. */
+.window img{display:block;width:100%;padding:24px 32px}
+.caption{margin-top:12px;display:flex;gap:12px;align-items:flex-start}
+.caption .idx{font-family:var(--mono);font-size:11px;color:var(--acc);white-space:nowrap}
+
+/* ── Сетка 13×13 ── */
+.grid13{display:grid;grid-template-columns:repeat(13,1fr);gap:1px;width:100%;max-width:360px}
+.grid13 div{aspect-ratio:1;border:1px solid var(--line);background:var(--card);color:#4A4A4A;font-family:var(--mono);font-size:7px;display:flex;align-items:center;justify-content:center}
+.grid13 div.on{background:var(--acc);border-color:var(--acc);color:#0E0E0E}
+
+/* ── Бенто ── */
+.bento{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--line);border:1px solid var(--line)}
+/* flex-колонка: теги прижаты к низу карточки — нижняя линия у соседей общая */
+.cell{background:var(--card);padding:32px;position:relative;display:flex;flex-direction:column}
+.cell.w4{grid-column:span 4}.cell.w3{grid-column:span 3}.cell.w2{grid-column:span 2}
+.cell h3{margin:16px 0 8px}
+.cell p{color:var(--mut);font-size:14px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:auto;padding-top:24px}
+.chips span{border:1px solid var(--line);padding:4px 8px;font-family:var(--mono);font-size:11px;color:var(--mut)}
+.chips span.on{border-color:var(--acc);color:var(--acc)}
+
+/* ── Таймлайн шагов ── */
+/* Линия рельса стоит ровно на левом крае контента, текст отбит на 32px */
+.rail{position:relative;padding-left:32px}
+.rail::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:1px;background:var(--line)}
+.step{position:relative;padding:24px 0 32px}
+.step::before{content:"";position:absolute;left:-36px;top:30px;width:9px;height:9px;background:var(--acc)}
+.step .lbl{margin-bottom:8px}
+.step p{color:var(--mut);font-size:14px;max-width:70ch;margin-top:8px}
+
+/* ── Диалог ── */
+.chat{display:grid;gap:1px;background:var(--line);border:1px solid var(--line)}
+.msg{background:var(--card);padding:24px 32px;display:grid;grid-template-columns:120px 1fr;gap:24px;align-items:start}
+.msg.you{background:#151515}
+.msg .who{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);padding-top:2px}
+.msg.coach .who{color:var(--acc)}
+
+/* ── Возражения-аккордеон ── */
+details{border-bottom:1px solid var(--line)}
+details summary{list-style:none;cursor:pointer;padding:24px 0;display:flex;justify-content:space-between;align-items:center;gap:24px;font-size:20px;font-weight:500}
+details summary::-webkit-details-marker{display:none}
+details summary::after{content:"+";font-family:var(--mono);color:var(--acc);font-size:20px}
+details[open] summary::after{content:"−"}
+details p{padding:0 0 24px;color:var(--mut);max-width:80ch}
+
+/* ── CTA-«билет» ── */
+.ticket{border:1px solid var(--acc);background:var(--card);display:grid;grid-template-columns:1fr auto;position:relative}
+.ticket-main{padding:48px}
+.ticket-main h2{font-size:40px;max-width:18ch}
+.ticket-side{border-left:1px dashed var(--line);padding:48px 32px;display:flex;flex-direction:column;justify-content:space-between;gap:32px;min-width:260px}
+.field{margin-bottom:24px}
+.field b{display:block;font-family:var(--mono);font-size:20px;font-weight:400;margin-top:8px}
+/* Деталь 8: штрихкод из 1px-линий */
+.barcode{display:flex;gap:2px;align-items:flex-end;height:40px}
+.barcode i{background:var(--fg);width:2px;height:100%}
+.barcode i:nth-child(3n){width:4px}
+.barcode i:nth-child(4n){opacity:.5}
+.barcode i:nth-child(7n){width:1px}
+
+/* ── Футер ── */
+footer{padding-top:64px}
+.foot-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:32px;padding-bottom:48px}
+.foot-grid a{display:block;color:var(--mut);font-size:14px;padding:4px 0}
+.foot-grid a:hover{color:var(--fg)}
+/* Деталь 9: гигантский вордмарк внизу — «подпись» страницы */
+/* Ровно по центру контейнера: проверено замером — центр строки совпадает с центром
+   .wrap до долей пикселя. Никакого text-indent, он как раз и сбивал центровку. */
+.bigmark{font-weight:900;font-size:clamp(64px,15vw,200px);line-height:.85;letter-spacing:-.04em;color:#1A1A1A;padding:32px 0 0;user-select:none;text-align:center}
+.bigmark em{font-style:normal;color:#242424}
+.footbar{border-top:1px solid var(--line);margin-top:32px}
+.footbar .wrap{display:flex;justify-content:space-between;gap:16px;padding:16px 32px;font-size:11px}
+
+/* ── Появление по скроллу: элемент проявляется, когда доезжает до экрана ──
+   opacity 0→1 + сдвиг снизу на 16px, 450ms, СТРОГО ОДИН РАЗ (обратно не прячется).
+   Тумблер в статус-строке переключает body.noanim — можно сравнить с «без анимации». */
+.reveal{opacity:0;transform:translateY(16px);transition:opacity .45s ease-out,transform .45s ease-out}
+.reveal.in{opacity:1;transform:none}
+body.noanim .reveal{opacity:1;transform:none;transition:none}
+body.noticker .ticker-in{animation-play-state:paused}
+.switch{cursor:pointer;border:1px solid var(--line);padding:2px 8px;user-select:none}
+.switch:hover{border-color:var(--acc)}
+@media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}}
+
+@media (max-width:900px){
+  .hero .wrap,.stats .wrap{grid-template-columns:1fr;gap:48px}
+  .stat{border-left:0;border-top:1px solid var(--line);padding:32px}
+  .stat:first-child{border-top:0}
+  .hero h1{font-size:40px}.h2,.sec-head h2,.ticket-main h2{font-size:28px}
+  .cell.w4,.cell.w3,.cell.w2{grid-column:span 6}
+  .ticket{grid-template-columns:1fr}.ticket-side{border-left:0;border-top:1px dashed var(--line)}
+  .railtag{display:none}
+  .foot-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ 0. Статус-строка — деталь «терминала», её сейчас нет ═══ -->
+<div class="statusbar">
+  <div class="wrap lbl">
+    <span><span class="dot"></span>Whygrid // разбор MTT</span>
+    <span class="mut">
+      <!-- Тумблеры только для просмотра макета — на сайте их не будет -->
+      Появление: <b class="switch acc" id="sw-anim">ВКЛ</b>
+      &nbsp;&nbsp;Лента: <b class="switch acc" id="sw-ticker">БЕЖИТ</b>
+    </span>
+    <span><span class="acc">RU</span> / EN</span>
+  </div>
+</div>
+
+<!-- ═══ 1. Шапка ═══ -->
+<header>
+  <div class="wrap">
+    <div class="wordmark"><span class="mark"><i></i><i></i><i></i><i></i></span><span class="acc">WHY</span>GRID</div>
+    <nav class="lbl">
+      <a href="#">Разбор</a><a href="#">Чарты</a><a href="#">Тарифы</a><a href="#">Войти</a>
+      <a href="#" class="btn" style="padding:8px 16px">Загрузить турнир</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ═══ 2. HERO ═══ -->
+<section class="hero">
+  <div class="wrap">
+    <div class="railtag">Sec / 01 — Hero</div>
+    <div>
+      <span class="tag"><span class="acc">●</span> Сократовский AI-тренер</span>
+      <h1>Разбор <span class="acc">твоих раздач</span> — вместо дорогого тренера</h1>
+      <p class="sub">AI находит утечки в твоих турнирах и разбирает каждую спорную раздачу вместе с тобой — вопросами, а не готовым советом, чтобы ты сам увидел ошибку.</p>
+      <div class="cta-row">
+        <a href="#" class="btn">Загрузить турнир →</a>
+        <a href="#" class="btn btn-sec">Мои турниры</a>
+      </div>
+      <p class="lbl">Без карты — первый турнир разбираем бесплатно</p>
+      <div class="rooms-inline">
+        <span>GGPOKER</span><span>POKERSTARS</span><span>WINAMAX</span><span>888POKER</span>
+        <span>IPOKER</span><span>CHICO</span><span>ACR</span><span>POKERKING</span><span>POKERPLANETS</span>
+      </div>
+    </div>
+
+    <!-- Карточка разбора: те же данные, что сейчас, но с деталями -->
+    <div class="hand corners">
+      <div class="hand-top lbl">
+        <span>Разбор раздачи</span>
+        <span>MTT · поздняя стадия</span>
+      </div>
+      <div class="hand-body">
+        <p class="small mut"><span class="mono" style="color:var(--fg)">40 BB</span> в стеке, у тебя <span class="mono" style="color:var(--fg)">A♠ J♠</span> на BTN. Ты 3-бетишь, BB коллирует.</p>
+        <div class="cards">
+          <div class="card-mini hero-card">A<s>♠</s></div>
+          <div class="card-mini hero-card">J<s>♠</s></div>
+          <div style="width:16px"></div>
+          <div class="card-mini">K<s>♦</s></div>
+          <div class="card-mini">9<s>♠</s></div>
+          <div class="card-mini">4<s>♦</s></div>
+          <div class="card-mini">7<s>♣</s></div>
+          <div class="card-mini">Q<s>♦</s></div>
+        </div>
+        <p class="small mut">Оппонент ставит весь банк на ривере. Ты коллишь.</p>
+
+        <div class="qbox">
+          <p class="lbl lbl-acc">Вопрос тренера</p>
+          <p style="margin-top:8px">За что ты заплатил на ривере? Какие руки оппонента ты здесь бьёшь?</p>
+        </div>
+
+        <div class="metrics">
+          <div>
+            <p class="lbl">Потеря в раздаче</p>
+            <b class="acc">−18 BB</b>
+            <div class="bar"><i style="width:62%"></i></div>
+          </div>
+          <div>
+            <p class="lbl">Похожих решений за турнир</p>
+            <b>4</b>
+            <div class="bar ghost"><i style="width:33%"></i></div>
+          </div>
+        </div>
+
+        <!-- Деталь 10: спарклайн стека — видно, куда пришёлся провал -->
+        <div style="margin-top:24px;border-top:1px solid var(--line);padding-top:16px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+            <span class="lbl">Стек по ходу турнира</span>
+            <span class="lbl">BB</span>
+          </div>
+          <!-- Линия плавная, а не ломаная (правка Артёма 2026-08-09): кубические кривые -->
+          <svg viewBox="0 0 320 56" width="100%" height="56" preserveAspectRatio="none" aria-hidden="true">
+            <path d="M 0,40 C 9,38 17,32 26,31 C 35,30 43,29 52,30 C 61,31 69,26 78,25
+                     C 87,24 95,20 104,20 C 113,20 121,18 130,17 C 139,16 147,14 156,14
+                     C 165,14 173,13 182,13 C 191,13 199,11 208,11 C 217,11 226,20 234,28
+                     C 240,36 243,42 246,44 C 255,45 263,46 272,47 C 281,48 289,50 298,50 C 306,51 314,52 320,52"
+              fill="none" stroke="#D4FF33" stroke-width="1.5" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+            <line x1="240" y1="0" x2="240" y2="56" stroke="#2A2A2A" stroke-width="1" stroke-dasharray="2 3" vector-effect="non-scaling-stroke"/>
+          </svg>
+          <p class="lbl" style="margin-top:8px">Пунктир — раздача выше</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 3. Бегущая лента: какие румы читаем ═══ -->
+<div class="ticker">
+  <div class="ticker-in">
+    <span><b>GGPOKER</b></span><span>·</span><span><b>POKERSTARS</b></span><span>·</span><span><b>WINAMAX</b></span><span>·</span>
+    <span><b>888POKER</b></span><span>·</span><span><b>IPOKER</b></span><span>·</span><span><b>CHICO</b></span><span>·</span>
+    <span><b>ACR</b></span><span>·</span><span><b>POKERKING</b></span><span>·</span><span><b>POKERPLANETS</b></span><span>·</span>
+    <span><em>HH-ФАЙЛ → РАЗБОР</em></span><span>·</span>
+    <span><b>GGPOKER</b></span><span>·</span><span><b>POKERSTARS</b></span><span>·</span><span><b>WINAMAX</b></span><span>·</span>
+    <span><b>888POKER</b></span><span>·</span><span><b>IPOKER</b></span><span>·</span><span><b>CHICO</b></span><span>·</span>
+    <span><b>ACR</b></span><span>·</span><span><b>POKERKING</b></span><span>·</span><span><b>POKERPLANETS</b></span><span>·</span>
+    <span><em>HH-ФАЙЛ → РАЗБОР</em></span><span>·</span>
+  </div>
+</div>
+
+<!-- ═══ 4. Числа — крупные цифры, которых сейчас нет совсем ═══ -->
+<div class="stats">
+  <div class="wrap">
+    <div class="stat"><u class="acc">12</u><p>эталонных чартов открыто на сайте — сверяйся бесплатно</p></div>
+    <div class="stat"><u>0</u><p>чисел придумано моделью: считает детерминированный парсер</p></div>
+    <div class="stat"><u>$7</u><p>в месяц — дешевле одного часа с тренером</p></div>
+    <div class="stat"><u>1-й</u><p>турнир разбираем бесплатно, без карты</p></div>
+  </div>
+</div>
+
+<!-- ═══ 5. Разбор изнутри — «окно» продукта ═══ -->
+<section class="blk">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <p class="lbl lbl-acc">/ 01 — Продукт</p>
+        <h2 style="margin-top:16px">Разбор изнутри</h2>
+      </div>
+      <p class="sec-num">Настоящие экраны · не мокапы</p>
+    </div>
+
+    <div class="window corners">
+      <div class="window-bar">
+        <span class="path">whygrid.app / hand-review / раздача #12 — точка решения</span>
+        <span class="dots"><i></i><i></i><i></i></span>
+      </div>
+      <img src="refs/crop-table.png" alt="Стол в точке решения">
+    </div>
+    <div class="caption">
+      <span class="idx">[ РИС. 01 ]</span>
+      <p class="small mut">Стол в точке решения: карманные пятёрки, олл-ин от BTN на префлопе — разбор начинается отсюда.</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:360px 1fr;gap:48px;margin-top:64px;align-items:stretch">
+      <div>
+        <div class="grid13" id="grid13"></div>
+        <div class="caption">
+          <span class="idx">[ РИС. 02 ]</span>
+          <p class="small mut">На вопрос о диапазоне отвечаешь прямо на сетке — парсер сам посчитает комбо и эквити.</p>
+        </div>
+      </div>
+      <div style="border:1px solid var(--acc);background:var(--card);padding:32px;display:flex;flex-direction:column" class="corners">
+        <p class="lbl lbl-acc">Вердикт тренера</p>
+        <p style="margin-top:16px">Ты прав: колл с 55 здесь выгоден. Если он пушит 20-25% рук, у пятёрок около 54% эквити при цене колла 44%. Проигрыш не делает колл ошибкой — это верный кулер, просто не повезло.</p>
+        <div style="margin-top:auto;padding-top:32px;display:grid;gap:16px">
+          <div>
+            <div style="display:flex;justify-content:space-between"><span class="lbl">Эквити 55 против пуша</span><span class="mono acc">54%</span></div>
+            <div class="bar"><i style="width:54%"></i></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between"><span class="lbl">Цена колла</span><span class="mono mut">44%</span></div>
+            <div class="bar ghost"><i style="width:44%"></i></div>
+          </div>
+        </div>
+        <p class="lbl" style="margin-top:24px">Настоящий вердикт из разбора</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 6. Бенто вместо трёх одинаковых колонок ═══ -->
+<section class="blk">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <p class="lbl lbl-acc">/ 02 — Ценность</p>
+        <h2 style="margin-top:16px">Что ты получаешь</h2>
+      </div>
+      <p class="sec-num">03 блока · разный вес</p>
+    </div>
+
+    <div class="bento">
+      <div class="cell w4">
+        <p class="lbl lbl-acc">Точные числа</p>
+        <h3>Парсер, а не угадайка</h3>
+        <p>VPIP, потери в фишках, позиция — считает детерминированный парсер. Числа всегда верные, ИИ их не выдумывает.</p>
+        <div class="chips">
+          <span class="on">VPIP</span><span class="on">PFR</span><span>3-БЕТ</span><span>ПОТ-ОДДС</span>
+          <span>ЭКВИТИ</span><span>SPR</span><span>АУТЫ</span><span>ПОЗИЦИЯ</span><span>ICM-ДАВЛЕНИЕ</span>
+        </div>
+      </div>
+      <div class="cell w2">
+        <p class="lbl lbl-acc">Метод</p>
+        <h3>Вопрос, а не готовый ответ</h3>
+        <p>Тебя ведут к решению сократовскими вопросами — ты сам видишь ошибку и запоминаешь её.</p>
+      </div>
+      <div class="cell w2">
+        <p class="lbl lbl-acc">Твоя игра</p>
+        <h3>Разбор на твоих руках</h3>
+        <p>Не абстрактные споты из учебника, а конкретно те раздачи, которые ты сыграл сам.</p>
+      </div>
+      <div class="cell w4">
+        <p class="lbl lbl-acc">Норма</p>
+        <h3>12 открытых чартов — эталон, с которым сверяем</h3>
+        <p>Открытия по позициям, пуш-фолд, защита BB, 3-бет против опена, рестил, изоляция, сквиз. Всё, чем судит тренер, видно тебе — без регистрации.</p>
+        <div class="chips">
+          <span>RFI</span><span>ПУШ-ФОЛД</span><span>ЗАЩИТА BB</span><span>VS ОПЕН</span>
+          <span>РЕСТИЛ</span><span>ИЗОЛЯЦИЯ</span><span>СКВИЗ</span><span>BvB</span><span>4-БЕТ</span><span>ЛИМП SB</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 7. Как это работает — рельс вместо трёх колонок ═══ -->
+<section class="blk">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <p class="lbl lbl-acc">/ 03 — Процесс</p>
+        <h2 style="margin-top:16px">Как это работает</h2>
+      </div>
+      <p class="sec-num">Три шага · один вечер</p>
+    </div>
+
+    <div class="rail">
+      <div class="step">
+        <p class="lbl lbl-acc">/01 — Загрузка</p>
+        <h3>Загрузи турнир</h3>
+        <p>Зарегистрируйся и скинь HH-файл турнира с любого популярного рума — первый разберём бесплатно. Парсер пройдёт по каждой раздаче.</p>
+      </div>
+      <div class="step">
+        <p class="lbl lbl-acc">/02 — Вопрос</p>
+        <h3>Тебя спросят «почему»</h3>
+        <p>По паре самых спорных раздач тренер спросит, почему ты сыграл именно так — прежде чем дать оценку.</p>
+      </div>
+      <div class="step">
+        <p class="lbl lbl-acc">/03 — Разрыв</p>
+        <h3>Увидь разрыв</h3>
+        <p>Сравнишь свой ответ с разбором — и сам увидишь, где твоя логика не совпала с тем, что случилось на столе.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 8. Диалог — показываем сам разговор, а не описание ═══ -->
+<section class="blk">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <p class="lbl lbl-acc">/ 04 — Диалог</p>
+        <h2 style="margin-top:16px">Как выглядит разговор</h2>
+      </div>
+      <p class="sec-num">Пример · вопрос предшествует оценке</p>
+    </div>
+
+    <div class="chat">
+      <div class="msg coach">
+        <span class="who">Тренер</span>
+        <p>За что ты заплатил на ривере? Какие руки оппонента ты здесь бьёшь?</p>
+      </div>
+      <div class="msg you">
+        <span class="who">Ты</span>
+        <p>Думал, он может блефовать пропущенным дро — на тёрне у него было много бубён.</p>
+      </div>
+      <div class="msg coach">
+        <span class="who">Тренер</span>
+        <p>Хорошо, а какие бубновые дро дошли до ривера и не собрались? Ривер <span class="mono">Q♦</span> закрыл почти все — блефовать ему теперь нечем. Посмотри на его линию: чек-колл, чек-колл, банк на ривере.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 9. На чём основан разбор ═══ -->
+<section class="blk">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <p class="lbl lbl-acc">/ 05 — Доверие</p>
+        <h2 style="margin-top:16px">На чём основан разбор</h2>
+      </div>
+      <p class="sec-num">Числа · норма · роль ИИ</p>
+    </div>
+
+    <div class="bento">
+      <div class="cell w2">
+        <p class="lbl lbl-acc">01 — Числа</p>
+        <h3>Считает код, а не ИИ</h3>
+        <p>Эквити, пот-оддсы, ауты, размеры ставок, потери — всё считает детерминированный парсер по твоему файлу. Один расклад всегда даёт одно число.</p>
+      </div>
+      <div class="cell w2">
+        <p class="lbl lbl-acc">02 — Норма</p>
+        <h3>Оценка по открытым чартам</h3>
+        <p>Открывашки сверяются с чартами — это среднее рабочих чартов автора и публичных MTT-источников, а не «из головы» модели.</p>
+        <p style="margin-top:16px"><a href="#" class="lbl lbl-acc">Посмотреть эталоны →</a></p>
+      </div>
+      <div class="cell w2">
+        <p class="lbl lbl-acc">03 — Роль ИИ</p>
+        <h3>Объясняет и спрашивает</h3>
+        <p>ИИ ведёт вопросами «почему ты так сыграл» и, если не уверен, честно переспрашивает — а не рубит категоричным советом.</p>
+      </div>
+    </div>
+    <p class="small mut" style="margin-top:32px;max-width:80ch">Для микролимитного турнирного игрока (MTT) — того, кто играет каждый день, не готов платить за час коуча, но хочет разбирать каждый свой турнир на своих руках, а не примеры из учебника.</p>
+  </div>
+</section>
+
+<!-- ═══ 10. Возражения — аккордеон ═══ -->
+<section class="blk">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <p class="lbl lbl-acc">/ 06 — Сомнения</p>
+        <h2 style="margin-top:16px">Если сомневаешься</h2>
+      </div>
+      <p class="sec-num">Три частых возражения</p>
+    </div>
+
+    <details open>
+      <summary>«Дорого»</summary>
+      <p>Дешевле одной разовой консультации. Один не слитый банк на дистанции окупает месяц подписки.</p>
+    </details>
+    <details>
+      <summary>«Не верю»</summary>
+      <p>Не верь на слово. Загрузи турнир — первый разбор бесплатно, и суди по своим же раздачам.</p>
+    </details>
+    <details>
+      <summary>«Сам разберусь»</summary>
+      <p>Теорию ты знаешь. Вопрос в том, видишь ли ты свои повторяющиеся утечки на дистанции в десятки турниров — их и показывает разбор.</p>
+    </details>
+  </div>
+</section>
+
+<!-- ═══ 11. CTA-«билет» ═══ -->
+<section class="blk">
+  <div class="wrap">
+    <div class="ticket">
+      <div class="ticket-main">
+        <p class="lbl lbl-acc">Посадочный талон</p>
+        <h2 style="margin-top:16px">Перестань повторять одни и те же ошибки</h2>
+        <p class="mut" style="margin-top:16px;max-width:56ch">Первый турнир разберём бесплатно. Загрузи свой HH-файл — и сам увидишь, где сливаешь фишки, пока тренер ведёт тебя вопросами.</p>
+        <div class="cta-row" style="margin-bottom:0">
+          <a href="#" class="btn">Загрузить турнир →</a>
+          <a href="#" class="btn btn-sec">Все тарифы</a>
+        </div>
+      </div>
+      <div class="ticket-side">
+        <div>
+          <div class="field"><span class="lbl">Тариф</span><b class="acc">от $7 / мес</b></div>
+          <div class="field"><span class="lbl">Первый турнир</span><b>БЕСПЛАТНО</b></div>
+          <div class="field"><span class="lbl">Карта</span><b>НЕ НУЖНА</b></div>
+        </div>
+        <div class="barcode">
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          <i></i><i></i><i></i><i></i><i></i><i></i>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 12. Футер ═══ -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <div class="wordmark"><span class="mark"><i></i><i></i><i></i><i></i></span><span class="acc">WHY</span>GRID</div>
+        <p class="small mut" style="margin-top:16px;max-width:36ch">Сократовский разбор покерных турниров. Числа от парсера, вопросы от тренера.</p>
+      </div>
+      <div>
+        <p class="lbl" style="margin-bottom:8px">Продукт</p>
+        <a href="#">Разбор</a><a href="#">Чарты</a><a href="#">Тарифы</a><a href="#">Как выгрузить руки</a>
+      </div>
+      <div>
+        <p class="lbl" style="margin-bottom:8px">Материалы</p>
+        <a href="#">ICM</a><a href="#">Утечки</a><a href="#">Пуш-фолд</a><a href="#">Диапазоны</a>
+      </div>
+      <div>
+        <p class="lbl" style="margin-bottom:8px">Поддержка</p>
+        <a href="#">Написать в поддержку</a><a href="#">Документы</a><a href="#">Статус сервиса</a>
+      </div>
+    </div>
+    <div class="bigmark"><span class="acc" style="opacity:.18">WHY</span><em>GRID</em></div>
+  </div>
+  <div class="footbar">
+    <div class="wrap lbl" style="padding-left:0;padding-right:0">
+      <span>© 2026 Whygrid</span>
+      <span class="mut">Все числа рассчитаны парсером · ИИ их не вычисляет</span>
+      <span><span class="dot"></span>Сервис работает</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+// Сетка 13×13 с отмеченным диапазоном — те же данные, что на боевом лендинге.
+const R=['A','K','Q','J','T','9','8','7','6','5','4','3','2'];
+const on=new Set();
+// Тот же диапазон, что на боевом лендинге (DEMO_RANGE в app/page.tsx): широкий опен с BTN.
+// Запись «K6s+» = старшая K, младшая от 6 до валета включительно.
+const idx=r=>R.indexOf(r);
+const SUITED=[['A','2'],['K','2'],['Q','4'],['J','5'],['T','6'],['9','6'],['8','5'],['7','4'],['6','3'],['5','2'],['4','2']];
+const OFFSUIT=[['A','2'],['K','6'],['Q','7'],['J','8'],['T','8'],['9','8']];
+for(let i=0;i<13;i++) on.add(i+'-'+i);                       // 22+ — вся диагональ
+SUITED.forEach(([hi,lo])=>{ for(let j=idx(lo);j>idx(hi);j--) on.add(idx(hi)+'-'+j); });
+OFFSUIT.forEach(([hi,lo])=>{ for(let j=idx(lo);j>idx(hi);j--) on.add(j+'-'+idx(hi)); });
+const g=document.getElementById('grid13');
+for(let i=0;i<13;i++)for(let j=0;j<13;j++){
+  const d=document.createElement('div');
+  d.textContent=R[Math.min(i,j)]+R[Math.max(i,j)]+(i===j?'':(i<j?'s':'o'));
+  if(on.has(i+'-'+j))d.className='on';
+  g.appendChild(d);
+}
+
+/* ── Появление по скроллу ──────────────────────────────────────────────
+   Блок ждёт, пока доедет до нижней трети экрана, потом проявляется:
+   прозрачность 0→1 и сдвиг на 16px снизу вверх, 450 мс. Срабатывает ОДИН раз —
+   при скролле назад блоки уже не прячутся. Соседи в одном ряду выходят
+   лесенкой с шагом 60 мс, чтобы ряд не «мигал» целиком.
+   Уважает системную настройку «уменьшить движение» у пользователя. */
+const GROUPS = ['.sec-head','.stat','.window','.caption','.grid13','.bento .cell','.step','.msg','details','.ticket','.foot-grid > div'];
+GROUPS.forEach(sel=>{
+  document.querySelectorAll(sel).forEach((el,i)=>{
+    el.classList.add('reveal');
+    el.dataset.delay = (i % 4) * 60;   // лесенка внутри ряда
+  });
+});
+const io = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(!e.isIntersecting) return;
+    setTimeout(()=>e.target.classList.add('in'), Number(e.target.dataset.delay||0));
+    io.unobserve(e.target);            // один раз — и забыли
+  });
+}, {rootMargin:'0px 0px -12% 0px', threshold:0.12});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+
+/* ── Тумблеры для просмотра макета (на сайте их не будет) ── */
+const swA=document.getElementById('sw-anim'), swT=document.getElementById('sw-ticker');
+swA.onclick=()=>{
+  document.body.classList.toggle('noanim');
+  const off=document.body.classList.contains('noanim');
+  swA.textContent = off ? 'ВЫКЛ' : 'ВКЛ';
+  if(off) document.querySelectorAll('.reveal').forEach(el=>el.classList.add('in'));
+};
+swT.onclick=()=>{
+  document.body.classList.toggle('noticker');
+  swT.textContent = document.body.classList.contains('noticker') ? 'СТОИТ' : 'БЕЖИТ';
+};
+</script>
+</body>
+</html>

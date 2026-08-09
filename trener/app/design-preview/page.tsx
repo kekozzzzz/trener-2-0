@@ -1,4 +1,5 @@
 import { noindex } from "@/lib/seo";
+import { StackChart } from "@/components/site/stack-chart";
 export const metadata = noindex;
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -189,6 +190,20 @@ function FieldLabel({ children, htmlFor }: { children: React.ReactNode; htmlFor:
     </Label>
   );
 }
+
+// Демо-точки для превью линии стека: ровный подъём, обвал на 73-й раздаче, добивание.
+// Формула детерминированная — картинка одинакова на сервере и в браузере.
+const DEMO_STACK_POINTS = Array.from({ length: 120 }, (_, i) => {
+  const base = i < 72 ? 100 + i * 0.9 + Math.sin(i / 3) * 6 : 48 - (i - 72) * 0.25 + Math.sin(i / 4) * 3;
+  return {
+    handId: `demo-${i}`,
+    stackBb: Math.round(base),
+    deltaBb: i === 72 ? -116 : Math.round(Math.sin(i * 1.7) * 40) / 10,
+    number: i + 1,
+    hasReview: i % 9 === 0,
+    cards: i % 2 === 0 ? ["As", "Kd"] : ["7h", "7c"],
+  };
+});
 
 export default function DesignPreviewPage() {
   return (
@@ -522,6 +537,30 @@ export default function DesignPreviewPage() {
             </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
+      </section>
+      {/* Интерактивная линия стека — заказ Артёма 2026-08-09. Данные демонстрационные:
+          страница разбора требует логина, а посмотреть поведение надо без него. */}
+      <section className="space-y-4">
+        <h2 className="text-h2">Линия стека — наведение и переход</h2>
+        <p className="text-small text-muted-foreground">
+          Веди мышью вдоль линии: под курсором показывается раздача. Клик по точке с разбором
+          открывает её (здесь ссылки-заглушки). Стрелки ← → работают с клавиатуры.
+        </p>
+        <div className="border border-border bg-card p-6">
+          <StackChart
+            points={DEMO_STACK_POINTS}
+            currentIndex={72}
+            hrefBase="#hand-"
+            labels={{
+              hand: "Раздача {number}",
+              stack: "{stack} BB в стеке",
+              delta: "{sign}{delta} BB за раздачу",
+              open: "Открыть разбор",
+              noReview: "Эту раздачу не разбирали",
+              current: "ты здесь",
+            }}
+          />
+        </div>
       </section>
     </main>
   );

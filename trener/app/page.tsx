@@ -4,11 +4,12 @@ import { getTranslations } from "next-intl/server";
 import { indexablePage } from "@/lib/seo";
 import { getCurrentPlayer } from "@/features/auth/queries";
 import { getPlans, formatUsd } from "@/config/plans";
+import { ROOM_SHORT_NAMES } from "@/config/rooms";
+import { REFERENCE_CHART_COUNT } from "@/config/poker/reference-charts";
 import { AuthNav } from "@/components/auth-nav";
 import { Wordmark } from "@/components/ui/wordmark";
 import { StructuredData } from "@/components/structured-data";
 import { SiteFooter } from "@/components/site-footer";
-import { BlurFade } from "@/components/ui/blur-fade";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -17,11 +18,34 @@ import { ScaleToFit } from "@/components/scale-to-fit";
 import type { TableState } from "@/parser/table-state";
 import { GRID_RANKS, cellCode } from "@/config/poker/hand-grid";
 import { buildRange } from "@/config/poker/hand-range";
+import { StatusBar } from "@/components/site/status-bar";
+import { Ticker } from "@/components/site/ticker";
+import { Reveal } from "@/components/site/reveal";
+import { Sparkline } from "@/components/site/sparkline";
+import { TicketCta } from "@/components/site/ticket-cta";
+import {
+  Bento,
+  BentoCell,
+  BigWordmark,
+  Chips,
+  CornerMarks,
+  FigureCaption,
+  MeterBar,
+  ProductWindow,
+  SectionHead,
+  Step,
+  StepRail,
+  StatRow,
+} from "@/components/site/detail";
 
 // Лендинг — в белом списке индексации (заголовок и описание берёт из корневого layout).
 // canonical «/» склеивает http/https/www-дубли главной на один адрес.
 export const metadata = indexablePage("/");
 
+// Плотная вёрстка — design/design-system.md §4.1 (решение Артёма 2026-08-08):
+// служебная моно-мелочь, крупные числа, окна продукта, бенто и рельс вместо пяти
+// одинаковых секций «заголовок по центру + три карточки». Макет — design/landing-v2.html.
+//
 // Лендинг видят все, включая залогиненных. Призыв адаптируется: гостя ведём в
 // регистрацию, залогиненного — сразу в инструмент «Разбор» (/analyze).
 export default async function HomePage() {
@@ -61,25 +85,6 @@ export default async function HomePage() {
     },
   ];
 
-  // Явные плюсы продукта — отдельный ряд на лендинге.
-  const BENEFITS = [
-    {
-      label: t("benefitNumbersLabel"),
-      title: t("benefitNumbersTitle"),
-      description: t("benefitNumbersDescription"),
-    },
-    {
-      label: t("benefitMethodLabel"),
-      title: t("benefitMethodTitle"),
-      description: t("benefitMethodDescription"),
-    },
-    {
-      label: t("benefitGameLabel"),
-      title: t("benefitGameTitle"),
-      description: t("benefitGameDescription"),
-    },
-  ];
-
   // На чём основан разбор — довод доверия перед возражениями (числа от кода, норма от
   // открытых чартов, роль ИИ). Ответ на вопрос тестера «на чём основано / кто решил».
   const BASIS: {
@@ -111,76 +116,116 @@ export default async function HomePage() {
   return (
     <main>
       <StructuredData />
-      <BlurFade direction="up" offset={8} blur="0px" duration={0.3}>
-        <header className="border-b border-border">
-          {/* Мобайл: вордмарк и навигация в две центрированные строки — гостевая и
-              авторская навигация шире, чем влезает в одну строку на ≤375px, иначе
-              шапка переполняется по горизонтали (CTA уезжает за край экрана).
-              От sm — снова одна строка со space-between. */}
-          <div className="mx-auto flex max-w-5xl flex-col items-center gap-4 px-4 py-6 sm:flex-row sm:justify-between sm:px-8">
-            <Wordmark />
-            <AuthNav />
-          </div>
-        </header>
-      </BlurFade>
+      <StatusBar />
+
+      <header className="border-b border-border">
+        {/* Мобайл: вордмарк и навигация в две центрированные строки — гостевая и
+            авторская навигация шире, чем влезает в одну строку на ≤375px, иначе
+            шапка переполняется по горизонтали (CTA уезжает за край экрана).
+            От sm — снова одна строка со space-between. */}
+        <div className="mx-auto flex max-w-5xl flex-col items-center gap-4 px-4 py-6 sm:flex-row sm:justify-between sm:px-8">
+          <Wordmark />
+          <AuthNav />
+        </div>
+      </header>
 
       {/* HERO — текст слева, живая карточка разбора справа (показываем продукт, а не
-          описываем словами; design-system.md §6: героическая единица — данные, не фото). */}
-      <section className="mx-auto max-w-5xl px-8 py-16 sm:py-24">
-        <div className="grid items-center gap-12 lg:grid-cols-2">
-          <BlurFade direction="up" offset={8} blur="0px" duration={0.3} delay={0.05}>
-            <div className="flex flex-col items-center space-y-6 text-center lg:items-start lg:text-left">
-              <Badge variant="outline">{t("badge")}</Badge>
-              {/* Резиновый размер: плавно от ~h1 на узком окне до display (4rem) на широком. */}
-              <h1 className="font-black leading-[1.05] tracking-[-0.02em] text-balance text-[clamp(2.25rem,6vw,3.75rem)]">
-                {t("heroTitle")}
-              </h1>
-              <p className="text-body text-muted-foreground">
-                {t("heroSubtitle")}
+          описываем словами; design-system.md §6: героическая единица — данные, не фото).
+          Первый экран не анимируется по скроллу — он и так виден при загрузке (§5 п. 4). */}
+      <section className="relative overflow-hidden border-b border-border">
+        <div aria-hidden className="bg-grid pointer-events-none absolute inset-0" />
+        {/* Глубина через свет, а не тень (design-system.md §3) */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-32 -top-40 size-[520px] bg-[radial-gradient(circle,rgba(212,255,51,0.10),transparent_65%)]"
+        />
+
+        <div className="relative mx-auto grid max-w-5xl items-center gap-12 px-8 py-16 sm:py-24 lg:grid-cols-2">
+          <div className="flex flex-col items-center space-y-6 text-center lg:items-start lg:text-left">
+            <Badge variant="outline">{t("badge")}</Badge>
+            {/* Резиновый размер: плавно от ~h1 на узком окне до display (4rem) на широком.
+                Ключевые слова акцентом — «твои раздачи» и есть предмет продажи. */}
+            <h1 className="font-black leading-[1.05] tracking-[-0.02em] text-balance text-[clamp(2.25rem,6vw,3.75rem)]">
+              {t("heroTitleBefore")}
+              <span className="text-primary">{t("heroTitleAccent")}</span>
+              {t("heroTitleAfter")}
+            </h1>
+            <p className="text-body text-muted-foreground">{t("heroSubtitle")}</p>
+            <div className="flex flex-col items-center gap-3 pt-2 lg:items-start">
+              <div className="flex flex-wrap items-center justify-center gap-4">
+                <Link href={ctaHref} className={cn(buttonVariants(), "gap-2")}>
+                  {t("ctaUpload")}
+                  <ArrowRight className="size-4" />
+                </Link>
+                <Link
+                  href={player ? "/tournaments" : "/enter"}
+                  className={cn(buttonVariants({ variant: "outline" }))}
+                >
+                  {player ? t("myTournaments") : t("signIn")}
+                </Link>
+              </div>
+              {!player && (
+                <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
+                  {t("freeFirstNote")}
+                </p>
+              )}
+            </div>
+
+            {/* Статичный список румов — лента внизу его лишь повторяет (§5 п. 5:
+                бегущая строка не может быть единственным носителем информации). */}
+            <div className="w-full border-t border-border pt-4">
+              <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
+                {t("roomsLine")}
               </p>
-              <div className="flex flex-col items-center gap-3 pt-2 lg:items-start">
-                <div className="flex flex-wrap items-center justify-center gap-4">
-                  <Link href={ctaHref} className={cn(buttonVariants(), "gap-2")}>
-                    {t("ctaUpload")}
-                    <ArrowRight className="size-4" />
-                  </Link>
-                  <Link
-                    href={player ? "/tournaments" : "/enter"}
-                    className={cn(buttonVariants({ variant: "outline" }))}
-                  >
-                    {player ? t("myTournaments") : t("signIn")}
-                  </Link>
-                </div>
-                {!player && (
-                  <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
-                    {t("freeFirstNote")}
-                  </p>
-                )}
+              <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
+                {ROOM_SHORT_NAMES.map((room) => (
+                  <span key={room} className="font-mono text-[0.6875rem] uppercase text-[#6E6E6E]">
+                    {room}
+                  </span>
+                ))}
               </div>
             </div>
-          </BlurFade>
+          </div>
 
-          {/* Карточка разбора — иллюстративная, в духе реального продукта. */}
-          <BlurFade direction="up" offset={8} blur="0px" duration={0.3} delay={0.1}>
-            <HandPreview />
-          </BlurFade>
+          <HandPreview />
         </div>
       </section>
+
+      <Ticker items={ROOM_SHORT_NAMES.map((r) => r.toUpperCase())} highlight={t("tickerHighlight")} />
+
+      {/* Крупные числа — только проверяемое: число открытых чартов из конфига,
+          цена из тарифов. «0» — правило 1 проекта: модель не считает метрики. */}
+      <Reveal>
+        <div className="mx-auto max-w-5xl border-b border-border">
+          <StatRow
+            items={[
+              { value: String(REFERENCE_CHART_COUNT), caption: t("statChartsCaption"), accent: true },
+              { value: t("statZeroValue"), caption: t("statZeroCaption") },
+              { value: priceFrom, caption: t("statPriceCaption") },
+              { value: t("statFirstValue"), caption: t("statFirstCaption") },
+            ]}
+          />
+        </div>
+      </Reveal>
 
       <ProductShowcase />
 
       <section className="border-t border-border">
         <div className="mx-auto max-w-5xl px-8 py-16">
-          <BlurFade direction="up" offset={8} blur="0px" duration={0.3} delay={0.08}>
-            <h2 className="text-h2 text-center">{t("alternativesTitle")}</h2>
-            <p className="mx-auto mt-4 max-w-2xl text-center text-body text-muted-foreground">
+          <Reveal>
+            <SectionHead
+              tag={t("secAlternativesTag")}
+              title={t("alternativesTitle")}
+              note={t("secAlternativesNote")}
+            />
+            <p className="-mt-6 mb-8 max-w-2xl text-body text-muted-foreground">
               {t("alternativesSubtitle")}
             </p>
-          </BlurFade>
-          <BlurFade direction="up" offset={8} blur="0px" duration={0.3} delay={0.12}>
-            <div className="mt-8 grid divide-y divide-border border border-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+          </Reveal>
+          <Reveal delay={60}>
+            <div className="grid divide-y divide-border border border-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
               {ALTERNATIVES.map((alt) => (
-                <div key={alt.tag} className="p-8 text-center">
+                <div key={alt.tag} className="p-8">
                   <p
                     className={cn(
                       "font-mono text-label uppercase tracking-label",
@@ -196,65 +241,131 @@ export default async function HomePage() {
                 </div>
               ))}
             </div>
-          </BlurFade>
+          </Reveal>
         </div>
       </section>
 
+      {/* Что получаешь — бенто вместо трёх одинаковых карточек (§4.1 п. 6) */}
       <section className="border-t border-border">
         <div className="mx-auto max-w-5xl px-8 py-16">
-          <BlurFade direction="up" offset={8} blur="0px" duration={0.3} delay={0.08}>
-            <h2 className="text-h2 text-center">{t("benefitsTitle")}</h2>
-          </BlurFade>
-          <BlurFade direction="up" offset={8} blur="0px" duration={0.3} delay={0.12}>
-            <div className="mt-8 grid divide-y divide-border border border-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-              {BENEFITS.map((benefit) => (
-                <div key={benefit.label} className="p-8 text-center">
-                  <p className="font-mono text-label uppercase tracking-label text-primary">
-                    {benefit.label}
-                  </p>
-                  <h3 className="mt-4 text-h3">{benefit.title}</h3>
-                  <p className="mt-2 text-small text-muted-foreground">{benefit.description}</p>
-                </div>
-              ))}
-            </div>
-          </BlurFade>
+          <Reveal>
+            <SectionHead tag={t("secValueTag")} title={t("benefitsTitle")} note={t("secValueNote")} />
+          </Reveal>
+          <Reveal delay={60}>
+            <Bento>
+              <BentoCell label={t("benefitNumbersLabel")} title={t("benefitNumbersTitle")} span={4}>
+                <p className="mt-2 text-small text-muted-foreground">
+                  {t("benefitNumbersDescription")}
+                </p>
+                <Chips
+                  items={[
+                    { text: t("chipVpip"), on: true },
+                    { text: t("chipPfr"), on: true },
+                    { text: t("chip3bet") },
+                    { text: t("chipPotOdds") },
+                    { text: t("chipEquity") },
+                    { text: t("chipSpr") },
+                    { text: t("chipOuts") },
+                    { text: t("chipPosition") },
+                    { text: t("chipIcm") },
+                  ]}
+                />
+              </BentoCell>
+
+              <BentoCell label={t("benefitMethodLabel")} title={t("benefitMethodTitle")}>
+                <p className="mt-2 text-small text-muted-foreground">
+                  {t("benefitMethodDescription")}
+                </p>
+              </BentoCell>
+
+              <BentoCell label={t("benefitGameLabel")} title={t("benefitGameTitle")}>
+                <p className="mt-2 text-small text-muted-foreground">{t("benefitGameDescription")}</p>
+              </BentoCell>
+
+              <BentoCell
+                label={t("basisChartsLabel")}
+                title={t("chartsTitle", { count: REFERENCE_CHART_COUNT })}
+                span={4}
+              >
+                <p className="mt-2 text-small text-muted-foreground">{t("chartsDescription")}</p>
+                <Chips
+                  items={[
+                    { text: t("chipRfi") },
+                    { text: t("chipPushFold") },
+                    { text: t("chipBbDefense") },
+                    { text: t("chipVsOpen") },
+                    { text: t("chipResteal") },
+                    { text: t("chipIso") },
+                    { text: t("chipSqueeze") },
+                    { text: t("chipBvb") },
+                    { text: t("chip4bet") },
+                    { text: t("chipSbLimp") },
+                  ]}
+                />
+              </BentoCell>
+            </Bento>
+          </Reveal>
         </div>
       </section>
 
+      {/* Как это работает — рельс с маркерами (§4.1 п. 7) */}
       <section className="border-t border-border">
         <div className="mx-auto max-w-5xl px-8 py-16">
-          <BlurFade direction="up" offset={8} blur="0px" duration={0.3} delay={0.1}>
-            <h2 className="text-h2 text-center">{t("howTitle")}</h2>
-          </BlurFade>
-          <BlurFade direction="up" offset={8} blur="0px" duration={0.3} delay={0.15}>
-            <div className="mt-8 grid divide-y divide-border border border-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+          <Reveal>
+            <SectionHead tag={t("secProcessTag")} title={t("howTitle")} note={t("secProcessNote")} />
+          </Reveal>
+          <Reveal delay={60}>
+            <StepRail>
               {STEPS.map((step) => (
-                <div key={step.number} className="p-8 text-center">
-                  <p className="font-mono text-label uppercase tracking-label text-primary">
-                    {step.number}
-                  </p>
-                  <h3 className="mt-4 text-h3">{step.title}</h3>
-                  <p className="mt-2 text-small text-muted-foreground">{step.description}</p>
-                </div>
+                <Step
+                  key={step.number}
+                  label={step.number}
+                  title={step.title}
+                  description={step.description}
+                />
               ))}
+            </StepRail>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* Разговор — показываем метод, а не описываем его словами */}
+      <section className="border-t border-border">
+        <div className="mx-auto max-w-5xl px-8 py-16">
+          <Reveal>
+            <SectionHead
+              tag={t("secDialogTag")}
+              title={t("secDialogTitle")}
+              note={t("secDialogNote")}
+            />
+          </Reveal>
+          <Reveal delay={60}>
+            <div className="grid gap-px border border-border bg-border">
+              <ChatLine who={t("dialogCoach")} coach>
+                {t("previewCoachQuestion")}
+              </ChatLine>
+              <ChatLine who={t("dialogYou")}>{t("dialogAnswer")}</ChatLine>
+              <ChatLine who={t("dialogCoach")} coach>
+                {t("dialogReply")}
+              </ChatLine>
             </div>
-          </BlurFade>
+          </Reveal>
         </div>
       </section>
 
       {/* На чём основан разбор — доверие перед возражениями: числа от кода, норма от
-          открытых чартов, роль ИИ. Отвечает на вопрос «на чём основано / кто решил, что точно». */}
+          открытых чартов, роль ИИ. Отвечает на вопрос «на чём основано / кто решил». */}
       <section className="border-t border-border">
         <div className="mx-auto max-w-5xl px-8 py-16">
-          <BlurFade direction="up" offset={8} blur="0px" duration={0.3} delay={0.08}>
-            <h2 className="text-h2 text-center">{t("basisTitle")}</h2>
-          </BlurFade>
-          <BlurFade direction="up" offset={8} blur="0px" duration={0.3} delay={0.12}>
-            <div className="mt-8 grid divide-y divide-border border border-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-              {BASIS.map((item) => (
-                <div key={item.label} className="p-8 text-center">
+          <Reveal>
+            <SectionHead tag={t("secBasisTag")} title={t("basisTitle")} note={t("secBasisNote")} />
+          </Reveal>
+          <Reveal delay={60}>
+            <div className="grid divide-y divide-border border border-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+              {BASIS.map((item, i) => (
+                <div key={item.label} className="p-8">
                   <p className="font-mono text-label uppercase tracking-label text-primary">
-                    {item.label}
+                    {`0${i + 1} — ${item.label}`}
                   </p>
                   <h3 className="mt-4 text-h3">{item.title}</h3>
                   <p className="mt-2 text-small text-muted-foreground">{item.description}</p>
@@ -270,71 +381,109 @@ export default async function HomePage() {
                 </div>
               ))}
             </div>
-          </BlurFade>
-          <BlurFade direction="up" offset={8} blur="0px" duration={0.3} delay={0.16}>
-            <p className="mx-auto mt-8 max-w-2xl text-center text-small text-muted-foreground">
-              {t("basisAudience")}
-            </p>
-          </BlurFade>
+          </Reveal>
+          <Reveal delay={120}>
+            <p className="mt-8 max-w-[80ch] text-small text-muted-foreground">{t("basisAudience")}</p>
+          </Reveal>
         </div>
       </section>
 
-      {/* Отработка возражений — снимаем сомнения перед финальным призывом. */}
+      {/* Возражения — раскрывашки на нативном <details>: без клиентского JS,
+          доступно с клавиатуры (тот же приём, что в гайде загрузки). */}
       <section className="border-t border-border">
         <div className="mx-auto max-w-5xl px-8 py-16">
-          <BlurFade direction="up" offset={8} blur="0px" duration={0.3} delay={0.08}>
-            <h2 className="text-h2 text-center">{t("objectionsTitle")}</h2>
-          </BlurFade>
-          <BlurFade direction="up" offset={8} blur="0px" duration={0.3} delay={0.12}>
-            <div className="mt-8 grid divide-y divide-border border border-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-              {OBJECTIONS.map((item) => (
-                <div key={item.label} className="p-8">
-                  <p className="font-mono text-label uppercase tracking-label text-primary">
+          <Reveal>
+            <SectionHead
+              tag={t("secObjectionsTag")}
+              title={t("objectionsTitle")}
+              note={t("secObjectionsNote")}
+            />
+          </Reveal>
+          <Reveal delay={60}>
+            <div>
+              {OBJECTIONS.map((item, i) => (
+                <details key={item.label} className="group border-b border-border" open={i === 0}>
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-6 py-6 text-h3 [&::-webkit-details-marker]:hidden">
                     {item.label}
-                  </p>
-                  <p className="mt-4 text-body text-muted-foreground">{item.answer}</p>
-                </div>
+                    <span
+                      aria-hidden
+                      className="font-mono text-h3 text-primary group-open:hidden"
+                    >
+                      +
+                    </span>
+                    <span
+                      aria-hidden
+                      className="hidden font-mono text-h3 text-primary group-open:inline"
+                    >
+                      −
+                    </span>
+                  </summary>
+                  <p className="max-w-[80ch] pb-6 text-body text-muted-foreground">{item.answer}</p>
+                </details>
               ))}
             </div>
-          </BlurFade>
+          </Reveal>
         </div>
       </section>
 
+      {/* Финальный призыв — посадочный талон (§4.1, макет landing-v2.html) */}
       <section className="border-t border-border">
-        <BlurFade direction="up" offset={8} blur="0px" duration={0.3} delay={0.1}>
-          <div className="mx-auto flex max-w-2xl flex-col items-center space-y-6 px-8 py-16 text-center sm:py-24">
-            <h2 className="text-h2">{t("finalTitle")}</h2>
-            <p className="text-body text-muted-foreground">
-              {t("finalSubtitle")}
-            </p>
-            <div className="flex flex-col items-center gap-3 pt-2">
-              <div className="flex flex-wrap items-center justify-center gap-4">
-                <Link href={ctaHref} className={cn(buttonVariants(), "gap-2")}>
-                  {t("ctaUpload")}
-                  <ArrowRight className="size-4" />
-                </Link>
-                <Link href="/pricing" className={cn(buttonVariants({ variant: "outline" }))}>
-                  {t("allPlans")}
-                </Link>
-              </div>
-              {!player && (
-                <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
-                  {t("freeFirstNote")}
-                </p>
-              )}
-            </div>
-          </div>
-        </BlurFade>
+        <div className="mx-auto max-w-5xl px-8 py-16">
+          <Reveal>
+            <TicketCta
+              label={t("ticketLabel")}
+              title={t("finalTitle")}
+              description={t("finalSubtitle")}
+              primary={{ href: ctaHref, text: t("ctaUpload") }}
+              secondary={{ href: "/pricing", text: t("allPlans") }}
+              fields={[
+                { label: t("ticketPlanLabel"), value: t("ticketPlanValue", { price: priceFrom }), accent: true },
+                { label: t("ticketFirstLabel"), value: t("ticketFirstValue") },
+                { label: t("ticketCardLabel"), value: t("ticketCardValue") },
+              ]}
+            />
+          </Reveal>
+        </div>
       </section>
 
+      <div className="mx-auto max-w-5xl px-8">
+        <BigWordmark />
+      </div>
       <SiteFooter />
     </main>
   );
 }
 
-// Иллюстративная карточка разбора для hero. Не настоящие данные пользователя — показывает
-// форму продукта: спот → сократовский вопрос → числа парсера. Числа в JetBrains Mono
-// (design-system.md §2), ключевые — акцентным лаймом. Некликабельная: без hover-состояния.
+// Реплика диалога: слева роль моно-лейблом, справа текст. Реплика тренера помечена
+// акцентом — сократовский вопрос всегда предшествует оценке (правило 2 проекта).
+function ChatLine({
+  who,
+  coach = false,
+  children,
+}: {
+  who: string;
+  coach?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className={cn(
+        "grid gap-6 p-6 sm:grid-cols-[120px_1fr] sm:p-8",
+        coach ? "bg-card" : "bg-[#151515]"
+      )}
+    >
+      <span
+        className={cn(
+          "font-mono text-label uppercase tracking-label",
+          coach ? "text-primary" : "text-muted-foreground"
+        )}
+      >
+        {who}
+      </span>
+      <p className="text-body">{children}</p>
+    </div>
+  );
+}
 
 // ── Витрина продукта (QA 2026-07-05, п.16): настоящие экраны, а не описания. ───
 // Демо-раздача для стола: реальный спот (карманные пятёрки против олл-ина BTN
@@ -411,51 +560,92 @@ function DemoRangeGrid() {
 async function ProductShowcase() {
   const t = await getTranslations("Landing");
   const demoTable = buildDemoTable(t("demoPlayerLabel"));
+
   return (
     <section className="border-t border-border bg-background">
       <div className="mx-auto max-w-5xl px-8 py-16 sm:py-24">
-        <div className="mx-auto max-w-2xl space-y-4 text-center">
-          <h2 className="text-h1">{t("showcaseTitle")}</h2>
-          <p className="text-body text-muted-foreground">{t("showcaseSubtitle")}</p>
-        </div>
-
-        <div className="mx-auto mt-12 max-w-4xl">
-          <ScaleToFit baseWidth={896}>
-            <HandTable state={demoTable} nick={null} fit />
-          </ScaleToFit>
-          <p className="mt-3 font-mono text-label uppercase tracking-label text-muted-foreground">
-            {t("showcaseTableCaption")}
+        <Reveal>
+          <SectionHead
+            tag={t("secProductTag")}
+            title={t("showcaseTitle")}
+            note={t("secProductNote")}
+          />
+          <p className="-mt-6 mb-8 max-w-2xl text-body text-muted-foreground">
+            {t("showcaseSubtitle")}
           </p>
-        </div>
+        </Reveal>
 
-        <div className="mt-12 grid gap-8 lg:grid-cols-2">
-          <div>
-            <DemoRangeGrid />
-            <p className="mt-3 max-w-[360px] font-mono text-label uppercase tracking-label text-muted-foreground">
-              {t("showcaseGridCaption")}
-            </p>
-          </div>
-          <div className="border border-primary bg-card p-6">
-            <p className="font-mono text-label uppercase tracking-label text-primary">
-              {t("showcaseVerdictLabel")}
-            </p>
-            <p className="mt-3 text-body text-foreground">{t("showcaseVerdictText")}</p>
-            <p className="mt-4 font-mono text-label uppercase tracking-label text-muted-foreground">
-              {t("showcaseVerdictNote")}
-            </p>
-          </div>
+        <Reveal delay={60}>
+          {/* Стол вставлен без собственной рамки: у окна ровно одна обводка, иначе
+              содержимое выглядит стоящим криво (правка Артёма 2026-08-08). */}
+          <ProductWindow path={t("windowPath")}>
+            <ScaleToFit baseWidth={896}>
+              <HandTable state={demoTable} nick={null} fit />
+            </ScaleToFit>
+          </ProductWindow>
+          <FigureCaption index={t("figureTable")}>{t("showcaseTableCaption")}</FigureCaption>
+        </Reveal>
+
+        <div className="mt-16 grid items-stretch gap-12 lg:grid-cols-[360px_1fr]">
+          <Reveal>
+            <div>
+              <DemoRangeGrid />
+              <FigureCaption index={t("figureGrid")}>{t("showcaseGridCaption")}</FigureCaption>
+            </div>
+          </Reveal>
+
+          <Reveal delay={60} className="h-full">
+            <div className="relative flex h-full flex-col border border-primary bg-card p-8">
+              <CornerMarks />
+              <p className="font-mono text-label uppercase tracking-label text-primary">
+                {t("showcaseVerdictLabel")}
+              </p>
+              <p className="mt-4 text-body text-foreground">{t("showcaseVerdictText")}</p>
+
+              {/* Полосы вместо голых процентов (§4.1 п. 10): числа те же, что в вердикте */}
+              <div className="mt-auto grid gap-4 pt-8">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-label uppercase tracking-label text-muted-foreground">
+                      {t("showcaseEquityLabel")}
+                    </span>
+                    <span className="font-mono text-label text-primary">54%</span>
+                  </div>
+                  <MeterBar percent={54} />
+                </div>
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-label uppercase tracking-label text-muted-foreground">
+                      {t("showcaseCallPriceLabel")}
+                    </span>
+                    <span className="font-mono text-label text-muted-foreground">44%</span>
+                  </div>
+                  <MeterBar percent={44} muted />
+                </div>
+              </div>
+
+              <p className="mt-6 font-mono text-label uppercase tracking-label text-muted-foreground">
+                {t("showcaseVerdictNote")}
+              </p>
+            </div>
+          </Reveal>
         </div>
       </div>
     </section>
   );
 }
 
+// Иллюстративная карточка разбора для hero. Не настоящие данные пользователя — показывает
+// форму продукта: спот → сократовский вопрос → числа парсера. Числа в JetBrains Mono
+// (design-system.md §2), ключевые — акцентным лаймом. Некликабельная: без hover-состояния.
 async function HandPreview() {
   const t = await getTranslations("Landing");
 
   return (
-    <div className="border border-border bg-card p-6 sm:p-8">
-      <div className="flex items-center justify-between">
+    <div className="relative border border-border bg-card">
+      <CornerMarks />
+
+      <div className="flex items-center justify-between border-b border-border bg-[#151515] px-4 py-3">
         <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
           {t("previewHandTitle")}
         </p>
@@ -464,44 +654,67 @@ async function HandPreview() {
         </p>
       </div>
 
-      <div className="mt-6 space-y-2 text-small text-muted-foreground">
-        <p>
-          <span className="font-mono text-foreground">{t("previewSituationStack")}</span>
-          {t("previewSituationLine1Suffix")}
-          <span className="font-mono text-foreground">{t("previewSituationHand")}</span>
-          {t("previewSituationLine1End")}
-        </p>
-        <p>
-          {t("previewSituationFlopLabel")}<span className="font-mono text-foreground">K♦ 9♠ 4♦</span>
-          {t("previewSituationTurnLabel")}<span className="font-mono text-foreground">7♣</span>
-          {t("previewSituationRiverLabel")}<span className="font-mono text-foreground">Q♦</span>
-          {t("previewSituationLine2End")}
-        </p>
-      </div>
-
-      {/* Сердце продукта — вопрос предшествует оценке. Акцент лаймом. */}
-      <div className="mt-6 border-l-2 border-primary pl-4">
-        <p className="font-mono text-label uppercase tracking-label text-primary">
-          {t("previewCoachLabel")}
-        </p>
-        <p className="mt-2 text-body text-foreground">
-          {t("previewCoachQuestion")}
-        </p>
-      </div>
-
-      {/* Числа парсера — детерминированно, не выдумано ИИ. */}
-      <div className="mt-6 grid grid-cols-2 gap-px border border-border bg-border">
-        <div className="bg-card p-4">
-          <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
-            {t("previewLossLabel")}
+      <div className="p-6 sm:p-8">
+        <div className="space-y-2 text-small text-muted-foreground">
+          <p>
+            <span className="font-mono text-foreground">{t("previewSituationStack")}</span>
+            {t("previewSituationLine1Suffix")}
+            <span className="font-mono text-foreground">{t("previewSituationHand")}</span>
+            {t("previewSituationLine1End")}
           </p>
-          <p className="mt-2 font-mono text-h3 text-primary">{t("previewLossValue")}</p>
+          <p>
+            {t("previewSituationFlopLabel")}<span className="font-mono text-foreground">K♦ 9♠ 4♦</span>
+            {t("previewSituationTurnLabel")}<span className="font-mono text-foreground">7♣</span>
+            {t("previewSituationRiverLabel")}<span className="font-mono text-foreground">Q♦</span>
+            {t("previewSituationLine2End")}
+          </p>
         </div>
-        <div className="bg-card p-4">
-          <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
-            {t("previewSimilarLabel")}
+
+        {/* Сердце продукта — вопрос предшествует оценке. Акцент лаймом. */}
+        <div className="mt-6 border-l-2 border-primary pl-4">
+          <p className="font-mono text-label uppercase tracking-label text-primary">
+            {t("previewCoachLabel")}
           </p>
-          <p className="mt-2 font-mono text-h3 text-foreground">4</p>
+          <p className="mt-2 text-body text-foreground">{t("previewCoachQuestion")}</p>
+        </div>
+
+        {/* Числа парсера — детерминированно, не выдумано ИИ. */}
+        <div className="mt-6 grid grid-cols-2 gap-px border border-border bg-border">
+          <div className="bg-card p-4">
+            <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
+              {t("previewLossLabel")}
+            </p>
+            <p className="mt-2 font-mono text-h3 text-primary">{t("previewLossValue")}</p>
+            <MeterBar percent={62} />
+          </div>
+          <div className="bg-card p-4">
+            <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
+              {t("previewSimilarLabel")}
+            </p>
+            <p className="mt-2 font-mono text-h3 text-foreground">4</p>
+            <MeterBar percent={33} muted />
+          </div>
+        </div>
+
+        {/* Спарклайн стека (§4.1 п. 9): видно, куда пришёлся провал. Значения
+            иллюстративные — в самом разборе линия строится по данным парсера. */}
+        <div className="mt-6 border-t border-border pt-4">
+          <div className="flex items-center justify-between">
+            <span className="font-mono text-label uppercase tracking-label text-muted-foreground">
+              {t("stackLabel")}
+            </span>
+            <span className="font-mono text-label uppercase tracking-label text-muted-foreground">
+              {t("stackUnit")}
+            </span>
+          </div>
+          <Sparkline
+            className="mt-2"
+            values={[22, 26, 32, 29, 40, 36, 48, 44, 52, 46, 18, 16, 12, 10]}
+            markAt={10}
+          />
+          <p className="mt-2 font-mono text-label uppercase tracking-label text-muted-foreground">
+            {t("stackNote")}
+          </p>
         </div>
       </div>
     </div>

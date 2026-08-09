@@ -32,12 +32,14 @@
     "ggpokerGuideDescription": "GGPoker is the main platform for micro-stakes MTTs. How Whygrid reviews your GGPoker tournaments and where to start."
   },
   "HowToExport": {
+    "sectionTag": "/ How-to",
     "title": "How to export your hands",
     "intro": "A review is built from the hand-history files from your poker client. It's nearly the same everywhere: you turn on history saving in the settings once, find the folder with the files, and upload them to us. The room is detected automatically, opponents' nicknames are anonymized, and the first review is free. You can upload several files at once. Pick your room:",
     "ctaNote": "Found the files - upload a tournament, the first review is free.",
     "ctaButton": "Upload a tournament"
   },
   "RangeGuide": {
+    "sectionTag": "/ Theory — ranges",
     "title": "What is a poker range",
     "intro": "A range isn't one hand - it's the whole set of hands a player could hold given a specific action in a specific spot. When someone says \"they open wide\", they don't mean one hand, they mean dozens of possible ones - some they'll continue with, some they'll fold.",
     "whyTitle": "Why think in ranges at all",
@@ -54,6 +56,7 @@
     "ctaButton": "Upload a tournament"
   },
   "PushFoldGuide": {
+    "sectionTag": "/ Theory — push-fold",
     "title": "Push-fold chart - when to shove short-stacked",
     "intro": "Once your stack drops under 15 big blinds, your first move into the pot usually isn't a sized raise - it's straight to all-in or fold: there's barely anything left to play post-flop, so splitting the bet doesn't make sense. That's push-fold - one decision, no streets after it. Below is a reference chart for which hands to shove first into the pot, by position and stack depth.",
     "whenTitle": "When this chart applies",
@@ -68,6 +71,7 @@
     "ctaButton": "Upload a tournament"
   },
   "HandReviewGuide": {
+    "sectionTag": "/ Theory — hand review",
     "title": "How a poker hand review actually works",
     "intro": "Replaying a hand yourself - opening the history, trying to remember what happened - almost always ends at \"eh, seemed fine\" or \"ugh, just bad luck\". A real review starts with exact numbers for every decision, not a feeling in hindsight, and someone asking why you did what you did - not just calling it wrong.",
     "numbersTitle": "First, the numbers - no guessing",
@@ -88,6 +92,7 @@
     "ctaButton": "Upload a tournament"
   },
   "IcmGuide": {
+    "sectionTag": "/ Theory — ICM",
     "title": "What is ICM in poker tournaments",
     "intro": "In a cash game, a chip is worth a chip. In a tournament it isn't - you can't cash out your stack at face value, you only have a shot at reaching the payouts and getting your share. ICM (Independent Chip Model) is the standard way to convert a chip stack into the real $ value of your position in the tournament, based on how many players are left and how the payouts are structured.",
     "whyTitle": "Why chips aren't dollars",
@@ -112,6 +117,7 @@
     "ctaButton": "Upload a tournament"
   },
   "LeaksGuide": {
+    "sectionTag": "/ Theory — leaks",
     "title": "Common leaks in tournament poker at micro stakes",
     "intro": "A leak isn't a one-off mistake in a single hand - it's a decision you keep making wrong, over and over, without even noticing. One such hand costs almost nothing; a leak that repeats tournament after tournament quietly bleeds more chips over time than any single bad hand ever could.",
     "kindsTitle": "Eight categories Whygrid catches",
@@ -140,6 +146,7 @@
     "ctaButton": "Upload a tournament"
   },
   "GgpokerGuide": {
+    "sectionTag": "/ Theory — GGPoker",
     "title": "GGPoker tournament strategy at micro stakes",
     "intro": "GGPoker is one of the largest poker platforms in the world, and for micro-stakes players it's one of the most accessible entry points into tournament poker. Whygrid was built with exactly this player in mind: the parser reads GGPoker hand-history files natively, the format is detected automatically.",
     "whyMicroTitle": "What matters at micro-stakes MTTs",
@@ -303,7 +310,13 @@
     "documents": "Legal",
     "support": "Support"
   },
+  "StatusBar": {
+    "brand": "Whygrid // MTT review",
+    "sectionPrefix": "Whygrid // {section}",
+    "promise": "The parser does the math · the AI never computes it"
+  },
   "Support": {
+    "sectionTag": "/ Support",
     "title": "Support",
     "subtitle": "A question, an upload problem, or a payment issue - write to us, we reply personally within a day.",
     "emailLabel": "Email for the reply",
@@ -410,7 +423,73 @@
     "previewCoachQuestion": "What did you pay for on the river? Which of your opponent's hands do you beat here?",
     "previewLossLabel": "Loss on this hand",
     "previewLossValue": "−18 BB",
-    "previewSimilarLabel": "Similar decisions this tournament"
+    "previewSimilarLabel": "Similar decisions this tournament",
+    "heroTitleBefore": "Review of ",
+    "heroTitleAccent": "your own hands",
+    "heroTitleAfter": " - instead of an expensive coach",
+    "roomsLine": "We read hand histories from these rooms",
+    "tickerHighlight": "Hand history → review",
+    "statChartsCaption": "reference charts open on the site - check yours for free",
+    "statZeroValue": "0",
+    "statZeroCaption": "numbers invented by the model: a deterministic parser does the math",
+    "statPriceCaption": "per month - cheaper than a single hour with a coach",
+    "statFirstValue": "1st",
+    "statFirstCaption": "tournament reviewed for free, no card required",
+    "secProductTag": "/ 01 - Product",
+    "secProductNote": "Real screens · not mockups",
+    "secValueTag": "/ 02 - Value",
+    "secValueNote": "Blocks of different weight",
+    "secProcessTag": "/ 03 - Process",
+    "secProcessNote": "Three steps · one evening",
+    "secDialogTag": "/ 04 - Dialogue",
+    "secDialogTitle": "What the conversation looks like",
+    "secDialogNote": "Example · the question comes before the verdict",
+    "secBasisTag": "/ 05 - Trust",
+    "secBasisNote": "Numbers · baseline · the AI's role",
+    "secObjectionsTag": "/ 06 - Doubts",
+    "secObjectionsNote": "Three common objections",
+    "secAlternativesTag": "/ 00 - Comparison",
+    "secAlternativesNote": "Why this beats the usual options",
+    "figureTable": "[ Fig. 01 ]",
+    "figureGrid": "[ Fig. 02 ]",
+    "windowPath": "whygrid.app / hand-review / hand #12 - decision point",
+    "stackLabel": "Stack through the tournament",
+    "stackUnit": "BB",
+    "stackNote": "Dashed line - the hand under review",
+    "chipVpip": "VPIP",
+    "chipPfr": "PFR",
+    "chip3bet": "3-bet",
+    "chipPotOdds": "Pot odds",
+    "chipEquity": "Equity",
+    "chipSpr": "SPR",
+    "chipOuts": "Outs",
+    "chipPosition": "Position",
+    "chipIcm": "ICM pressure",
+    "chartsTitle": "{count} open charts - the baseline we compare against",
+    "chartsDescription": "Opening ranges by position, push-fold, BB defense, 3-bet vs open, resteal, isolation, squeeze. Everything the coach judges by is visible to you - no signup.",
+    "chipRfi": "RFI",
+    "chipPushFold": "Push-fold",
+    "chipBbDefense": "BB defense",
+    "chipVsOpen": "vs open",
+    "chipResteal": "Resteal",
+    "chipIso": "Isolation",
+    "chipSqueeze": "Squeeze",
+    "chipBvb": "BvB",
+    "chip4bet": "4-bet",
+    "chipSbLimp": "SB limp",
+    "dialogCoach": "Coach",
+    "dialogYou": "You",
+    "dialogAnswer": "I thought he could be bluffing a missed draw - there were a lot of diamonds out there on the turn.",
+    "dialogReply": "Fair enough, but which diamond draws reached the river unmade? The Q♦ river completed almost all of them - he has nothing left to bluff with. Look at his line: check-call, check-call, pot-sized bet on the river.",
+    "ticketLabel": "Boarding pass",
+    "ticketPlanLabel": "Plan",
+    "ticketPlanValue": "from {price} / mo",
+    "ticketFirstLabel": "First tournament",
+    "ticketFirstValue": "Free",
+    "ticketCardLabel": "Card",
+    "ticketCardValue": "Not required",
+    "showcaseEquityLabel": "Equity of 55 vs the shove",
+    "showcaseCallPriceLabel": "Price of the call"
   },
   "Register": {
     "title": "Create account",
@@ -432,6 +511,7 @@
     "signIn": "Sign in"
   },
   "Pricing": {
+    "sectionTag": "/ Plans",
     "recommended": "Recommended",
     "legalNote": "By paying for a subscription you accept the <oferta>offer</oferta>; cancellation and refund terms are in the <refund>refund policy</refund>.",
     "title": "Plans",
@@ -839,6 +919,17 @@
     "retrying": "Trying again"
   },
   "HandReview": {
+    "stackTitle": "Stack through the tournament",
+    "stackUnit": "BB",
+    "stackNote": "Dashed line - this hand. Stack in big blinds: blinds go up, so a chip count would tell a different story.",
+    "stackAt": "At this hand: {stack} BB",
+    "stackHint": "Hover the line - I'll show what happened in that hand",
+    "stackTipHand": "Hand {number}",
+    "stackTipStack": "{stack} BB stack",
+    "stackTipDelta": "{sign}{delta} BB this hand",
+    "stackTipOpen": "Open the review",
+    "stackTipNoReview": "This hand wasn't reviewed",
+    "stackTipCurrent": "you are here",
     "lockedTitle": "Review locked",
     "lockedBody": "This tournament's review isn't open yet. The metrics are available on the tournament page - you can unlock the review there with a subscription.",
     "backToTournament": "← Back to tournament",
@@ -1100,6 +1191,7 @@
     "goal_FOURBET_WIDE": "No wide 4-bets"
   },
   "ReferenceCharts": {
+    "sectionTag": "/ Reference charts",
     "bvbTitle": "Blind versus blind",
     "bvbIntro": "Everyone folded, the small blind open-raised - how to defend the BB. The widest defence in the game: the SB opens very wide.",
     "restealTitle": "Resteal - 3-bet all-in at 10-25 BB",

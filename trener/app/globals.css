@@ -207,3 +207,42 @@
     @apply font-heading;
     }
 }
+/* ─────────────────────────────────────────────────────────────────────────
+   Детали плотности — design/design-system.md §4.1 и §5 пп. 4–5
+   (решение Артёма 2026-08-08). Здесь только то, что нельзя выразить
+   классами Tailwind: фон-сетка, лента и появление по скроллу.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Фон-«миллиметровка» в hero: сетка 1px через 40px, к низу растворяется.
+   Это буквальная отсылка к названию бренда (grid). */
+.bg-grid {
+  background-image:
+    linear-gradient(to right, rgba(245, 245, 245, 0.028) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(245, 245, 245, 0.028) 1px, transparent 1px);
+  background-size: 40px 40px;
+  -webkit-mask-image: radial-gradient(120% 80% at 50% 0%, #000 40%, transparent 100%);
+  mask-image: radial-gradient(120% 80% at 50% 0%, #000 40%, transparent 100%);
+}
+
+/* Бегущая лента — §5 п. 5. Одна на страницу, цикл не быстрее 40 секунд.
+   Содержимое дублируется в разметке дважды, поэтому сдвиг на -50% бесшовный. */
+@keyframes ticker-run {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.ticker-run { animation: ticker-run 40s linear infinite; }
+
+/* Появление по скроллу — §5 п. 4. Атрибут проставляет скрипт ПОСЛЕ гидрации:
+   без JS (поисковый робот, отключённый JS) блок остаётся видимым. */
+[data-reveal="hidden"] { opacity: 0; transform: translateY(16px); }
+[data-reveal="shown"] {
+  opacity: 1;
+  transform: none;
+  transition: opacity 450ms ease-out, transform 450ms ease-out;
+}
+
+/* Уважаем системную настройку «уменьшить движение»: ни ленты, ни появления. */
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] { opacity: 1 !important; transform: none !important; transition: none !important; }
+  .ticker-run { animation: none; }
+}

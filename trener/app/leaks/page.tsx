@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/page-header";
+import { PageIntro, BigWordmark } from "@/components/site/detail";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { indexablePage } from "@/lib/seo";
@@ -37,10 +38,7 @@ export default async function LeaksGuidePage() {
       <PageHeader />
 
       <section className="mx-auto max-w-5xl px-8 py-16 sm:py-24">
-        <div className="max-w-2xl space-y-4">
-          <h1 className="text-h1">{t("title")}</h1>
-          <p className="text-body text-muted-foreground">{t("intro")}</p>
-        </div>
+        <PageIntro tag={t("sectionTag")} title={t("title")} subtitle={t("intro")} className="max-w-2xl" />
 
         <div className="mt-16 border-t border-border pt-16">
           <h2 className="text-h2">{t("kindsTitle")}</h2>
@@ -76,6 +74,8 @@ export default async function LeaksGuidePage() {
             {t("ctaButton")}
           </Link>
         </div>
+        {/* Подвальный вордмарк — общий приём публичных страниц (§4.1 п. 11) */}
+        <BigWordmark />
       </section>
     </main>
   );

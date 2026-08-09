@@ -19,6 +19,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { getSession } from "@/features/auth/session";
 import { PageHeader } from "@/components/page-header";
+import { PageIntro, BigWordmark } from "@/components/site/detail";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ReferenceChartsPanel } from "@/components/charts/reference-charts-panel";
@@ -50,8 +51,12 @@ export default async function ChartsPage() {
     <main>
       <PageHeader />
       <section className="mx-auto max-w-5xl px-8 py-16">
-        <h1 className="text-h1">{t("title")}</h1>
-        <p className="mt-4 max-w-2xl text-body text-muted-foreground">{t("intro")}</p>
+        <PageIntro
+          tag={t("sectionTag")}
+          title={t("title")}
+          subtitle={t("intro")}
+          className="max-w-2xl"
+        />
 
         <div className="mt-12" id="open">
           <h2 className="text-h2">{t("openTitle")}</h2>
@@ -163,6 +168,9 @@ export default async function ChartsPage() {
             {t("ctaButton")}
           </Link>
         </div>
+
+        {/* Подвальный вордмарк — общий приём публичных страниц (§4.1 п. 11) */}
+        <BigWordmark />
       </section>
     </main>
   );
