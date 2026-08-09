@@ -12,16 +12,16 @@
 
 import type { ChatReplyRequest, ChatMessageSummary } from "@/infrastructure/adapters/llm/types";
 import type { Locale } from "@/i18n/config";
-import { coachFramework, renderTableSnapshot, renderOpponents, resultInBb, renderTournamentContext } from "./hand-analysis";
+import { coachFramework, type FrameworkScope, renderTableSnapshot, renderOpponents, resultInBb, renderTournamentContext } from "./hand-analysis";
 import { renderPlayerCard } from "./player-card";
 import { renderShowdownFacts } from "@/parser/facts";
 
 // Системный промпт чата под язык игрока: роль и «## Как отвечать в чате» — русские
 // (внутренние инструкции), язык ответа задаёт coachFramework(locale).
-export function buildChatReplySystemPrompt(locale: Locale): string {
+export function buildChatReplySystemPrompt(locale: Locale, scope: FrameworkScope = {}): string {
   return `Ты — сократовский тренер по покеру для игрока микролимитных турниров (MTT) на GGPoker. Игрок уже прошёл сократовский диалог по этой раздаче и получил итоговый вердикт. Теперь он задаёт свободные вопросы по этой же раздаче — отвечай по существу, в контексте уже сделанного разбора.
 
-${coachFramework(locale)}
+${coachFramework(locale, { retelling: false, postflop: scope.postflop })}
 
 ## Как отвечать в чате
 

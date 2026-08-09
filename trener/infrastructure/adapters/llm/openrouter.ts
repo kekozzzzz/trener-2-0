@@ -11,7 +11,7 @@ import {
 import { resilientFetch } from "@/infrastructure/adapters/http/resilient-fetch";
 import { heroFirstPostflop } from "@/parser/action-order";
 import { getHealthCheckTimeoutMs } from "@/config/health";
-import { buildHandAnalysisPrompt, buildHandAnalysisSystemPrompt } from "@/config/prompts/hand-analysis";
+import { buildHandAnalysisPrompt, buildHandAnalysisSystemPrompt, handSawPostflop } from "@/config/prompts/hand-analysis";
 import { buildDialogueQuestionPrompt, buildDialogueQuestionSystemPrompt } from "@/config/prompts/dialogue-question";
 import { buildVerdictPrompt, buildVerdictSystemPrompt } from "@/config/prompts/verdict";
 import { buildChatReplyPrompt, buildChatReplySystemPrompt } from "@/config/prompts/chat-reply";
@@ -186,7 +186,7 @@ const TEMP_DIALOGUE = 0.6;
 export const openRouterLlmAdapter: LlmPort = {
   async generateHandAnalysis(request: HandAnalysisRequest, meta?: LlmCallMeta): Promise<HandAnalysisResult> {
     const parsed = await callOpenRouter(
-      buildHandAnalysisSystemPrompt(request.locale),
+      buildHandAnalysisSystemPrompt(request.locale, { postflop: handSawPostflop(request.tableSnapshot), socratic: request.importanceLevel === "CRITICAL" }),
       buildHandAnalysisPrompt(request),
       { step: "HAND_ANALYSIS", playerId: meta?.playerId },
       undefined,
@@ -197,7 +197,7 @@ export const openRouterLlmAdapter: LlmPort = {
 
   async generateNextQuestion(request: NextQuestionRequest, meta?: LlmCallMeta): Promise<NextQuestionResult> {
     const parsed = await callOpenRouter(
-      buildDialogueQuestionSystemPrompt(request.locale),
+      buildDialogueQuestionSystemPrompt(request.locale, { postflop: handSawPostflop(request.tableSnapshot) }),
       buildDialogueQuestionPrompt(request),
       { step: "DIALOGUE_QUESTION", playerId: meta?.playerId },
       undefined,
@@ -208,7 +208,7 @@ export const openRouterLlmAdapter: LlmPort = {
 
   async generateVerdict(request: VerdictRequest, meta?: LlmCallMeta): Promise<VerdictResult> {
     const parsed = await callOpenRouter(
-      buildVerdictSystemPrompt(request.locale),
+      buildVerdictSystemPrompt(request.locale, { postflop: handSawPostflop(request.tableSnapshot) }),
       buildVerdictPrompt(request),
       { step: "VERDICT", playerId: meta?.playerId },
       undefined,
@@ -219,7 +219,7 @@ export const openRouterLlmAdapter: LlmPort = {
 
   async generateChatReply(request: ChatReplyRequest, meta?: LlmCallMeta): Promise<ChatReplyResult> {
     const parsed = await callOpenRouter(
-      buildChatReplySystemPrompt(request.locale),
+      buildChatReplySystemPrompt(request.locale, { postflop: handSawPostflop(request.tableSnapshot) }),
       buildChatReplyPrompt(request),
       { step: "CHAT_REPLY", playerId: meta?.playerId },
       undefined,

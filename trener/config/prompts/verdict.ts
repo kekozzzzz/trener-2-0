@@ -7,17 +7,17 @@
 
 import type { VerdictRequest, DialogueRoundSummary } from "@/infrastructure/adapters/llm/types";
 import type { Locale } from "@/i18n/config";
-import { coachFramework, renderTableSnapshot, renderOpponents, renderRangeReads, resultInBb, renderTournamentContext } from "./hand-analysis";
+import { coachFramework, type FrameworkScope, renderTableSnapshot, renderOpponents, renderRangeReads, resultInBb, renderTournamentContext } from "./hand-analysis";
 import { renderPlayerCard, renderRepeatedLeak } from "./player-card";
 import { renderCriticalReason } from "@/parser/decision-weight";
 import { renderShowdownFacts } from "@/parser/facts";
 
 // Системный промпт вердикта под язык игрока: роль и «## Как собрать вердикт» — русские
 // (внутренние инструкции), язык ответа задаёт coachFramework(locale).
-export function buildVerdictSystemPrompt(locale: Locale): string {
+export function buildVerdictSystemPrompt(locale: Locale, scope: FrameworkScope = {}): string {
   return `Ты — сократовский тренер по покеру для игрока микролимитных турниров (MTT) на GGPoker. Игрок уже прошёл с тобой серию наводящих вопросов о критической раздаче и ответил на последний из них. Твоя задача — итоговый разбор (вердикт): прямой ответ игроку, прав он был или нет. Игрок объяснил решение верно — скажи это первой фразой и добавь своими словами, почему это работает. Игрок не прав — первой фразой скажи, в чём именно, и разбери по пунктам, почему. Без обвинений, но и без дипломатической ваты.
 
-${coachFramework(locale)}
+${coachFramework(locale, { retelling: false, postflop: scope.postflop })}
 
 ## Как собрать вердикт
 

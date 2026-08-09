@@ -24,6 +24,7 @@ import {
   buildHandAnalysisSystemPrompt,
   buildHandAnalysisPrompt,
   renderTableSnapshot,
+  handSawPostflop,
 } from "@/config/prompts/hand-analysis";
 import { buildDialogueQuestionSystemPrompt, buildDialogueQuestionPrompt } from "@/config/prompts/dialogue-question";
 import { buildVerdictSystemPrompt, buildVerdictPrompt } from "@/config/prompts/verdict";
@@ -147,7 +148,15 @@ const STREET_WORD: Record<string, RegExp> = {
 // Вопрос про улицу, до которой Hero не дожил: «что бы ты делал на тёрне, если бы заколлировал»
 // после его фолда на флопе. Промпт это запрещает (dialogue-question.ts, «без гипотетики про
 // несыгранные улицы»), а модель срывается — баг пойман на реальной раздаче 07.08.
+//
+// ⚠️Требуем ГИПОТЕТИЧЕСКУЮ рамку рядом, а не просто упоминание улицы. Первая версия метрики
+// (08.08) ловила любое слово «тёрн» и забраковала совершенно законный вопрос: «Ты сбросил на
+// овербет, не дожидаясь тёрна. Что именно на этом ФЛОПЕ заставило тебя поверить…» — вопрос про
+// реальную точку решения, улица там лишь контекст. Метрика, которая кричит волками, хуже
+// отсутствующей: по ней я чуть не откатил здоровую правку.
+const HYPOTHETICAL_FRAME = /(?:если\s+бы|что\s+бы\s+ты|как\s+бы\s+ты|планирова|собирался|намеревал|стал\s+бы|дошло\s+бы|был\s+бы\s+план)/i;
 function asksUnplayedStreet(question: string, snapshot: TableSnapshot): boolean {
+  if (!HYPOTHETICAL_FRAME.test(question)) return false;
   return (["TURN", "RIVER"] as const).some((st) => !heroSawStreet(snapshot, st) && STREET_WORD[st].test(question));
 }
 
@@ -220,7 +229,7 @@ function classifyBrake(msg: string): string {
         };
         const analysis = await llmJson(
           key,
-          buildHandAnalysisSystemPrompt("ru"),
+          buildHandAnalysisSystemPrompt("ru", { postflop: handSawPostflop(snapshot), socratic: h.importanceLevel === "CRITICAL" }),
           buildHandAnalysisPrompt(req),
           (raw) => validateHandAnalysis(raw as Parameters<typeof validateHandAnalysis>[0], req),
           row.brakes,
@@ -256,7 +265,7 @@ function classifyBrake(msg: string): string {
           const nq: NextQuestionRequest = { locale: "ru", history, draftVerdict, chipResult: h.chipResult, tableSnapshot: snapshot, tournament };
           const next = await llmJson(
             key,
-            buildDialogueQuestionSystemPrompt("ru"),
+            buildDialogueQuestionSystemPrompt("ru", { postflop: handSawPostflop(snapshot) }),
             buildDialogueQuestionPrompt(nq),
             (r) => validateNextQuestion(r as Parameters<typeof validateNextQuestion>[0], "ru", allowedCardSet(snapshot), heroSuitFixMap(snapshot), heroFirstPostflop(snapshot)),
             row.brakes,
@@ -271,7 +280,7 @@ function classifyBrake(msg: string): string {
         const vq: VerdictRequest = { locale: "ru", history, draftVerdict, chipResult: h.chipResult, tableSnapshot: snapshot, tournament };
         const verdict = await llmJson(
           key,
-          buildVerdictSystemPrompt("ru"),
+          buildVerdictSystemPrompt("ru", { postflop: handSawPostflop(snapshot) }),
           buildVerdictPrompt(vq),
           (r) => validateVerdict(r as Parameters<typeof validateVerdict>[0], "ru", allowedCardSet(snapshot), heroSuitFixMap(snapshot), heroFirstPostflop(snapshot), noShowdownInHand(snapshot), snapshot),
           row.brakes,

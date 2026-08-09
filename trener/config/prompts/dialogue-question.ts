@@ -8,7 +8,7 @@
 
 import type { NextQuestionRequest, PriorSpot } from "@/infrastructure/adapters/llm/types";
 import type { Locale } from "@/i18n/config";
-import { coachFramework, renderTableSnapshot, renderOpponents, renderRangeReads, resultInBb, renderTournamentContext } from "./hand-analysis";
+import { coachFramework, type FrameworkScope, renderTableSnapshot, renderOpponents, renderRangeReads, resultInBb, renderTournamentContext } from "./hand-analysis";
 import { renderCriticalReason } from "@/parser/decision-weight";
 import { renderPlayerCard, renderRepeatedLeak } from "./player-card";
 
@@ -20,10 +20,10 @@ const DIALOGUE_LANGUAGE_EN = `- Write in natural, fluent English, not a machine 
 
 // Системный промпт диалога под язык игрока: роль и сократовские инструкции — русские,
 // вставляется coachFramework(locale) и языковая строка по locale.
-export function buildDialogueQuestionSystemPrompt(locale: Locale): string {
+export function buildDialogueQuestionSystemPrompt(locale: Locale, scope: FrameworkScope = {}): string {
   return `Ты — сократовский тренер по покеру для игрока микролимитных турниров (MTT) на GGPoker. Вы разбираете одну критическую раздачу, игрок только что ответил на твой вопрос. Твоя задача — решить, завершён ли диалог, и если нет — задать один следующий вопрос.
 
-${coachFramework(locale)}
+${coachFramework(locale, { retelling: false, postflop: scope.postflop })}
 
 ## Как вести диалог
 
