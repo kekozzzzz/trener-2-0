@@ -246,3 +246,60 @@
   [data-reveal] { opacity: 1 !important; transform: none !important; transition: none !important; }
   .ticker-run { animation: none; }
 }
+
+/* ── Свет за курсором и отзывчивые карточки ─────────────────────────────────
+   Приёмы из стороннего макета (Артём 2026-08-09). Это свет и микродвижение,
+   а не новые формы: скруглений у элементов интерфейса не прибавилось,
+   цвет только акцентный. */
+
+/* Пятно света под курсором. mix-blend-mode: screen осветляет фон, но не мылит
+   текст поверх — на светлых буквах эффект практически незаметен. */
+.cursor-glow {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 500px;
+  height: 500px;
+  pointer-events: none;
+  z-index: 30;
+  opacity: 0;
+  transition: opacity 400ms ease-out;
+  mix-blend-mode: screen;
+  background: radial-gradient(circle, rgba(212, 255, 51, 0.08), transparent 55%);
+  filter: blur(10px);
+  will-change: transform;
+}
+
+/* Наклон карточки под курсором */
+.tilt {
+  transition: transform 500ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  transform-style: preserve-3d;
+}
+
+/* Подсветка внутри карточки в точке курсора. Живёт на ::after, поэтому не мешает
+   содержимому и не требует лишней обёртки. */
+.tilt-glow {
+  position: relative;
+}
+.tilt-glow::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 400ms ease-out;
+  background: radial-gradient(600px circle at var(--gx, 50%) var(--gy, 50%), rgba(212, 255, 51, 0.07), transparent 40%);
+}
+.tilt-glow:hover::after { opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cursor-glow { display: none; }
+  .tilt { transition: none; transform: none !important; }
+  .tilt-glow::after { display: none; }
+}
+
+/* На тач-экранах ни курсора, ни наведения — эффекты просто не нужны. */
+@media (hover: none) {
+  .cursor-glow { display: none; }
+  .tilt-glow::after { display: none; }
+}

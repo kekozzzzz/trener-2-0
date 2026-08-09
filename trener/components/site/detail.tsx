@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { Tilt } from "@/components/site/tilt";
 
 // Кирпичи плотности — design-system.md §4.1. Обязательны на всех страницах,
 // чтобы разделы сайта выглядели одной системой, а не набором разных вёрсток.
@@ -180,11 +181,12 @@ export function BentoCell({
   return (
     // flex-колонка: содержимое, прижатое к низу (чипы), выравнивает соседей по
     // общей нижней линии — иначе карточки разной длины выглядят рвано.
-    <div className={cn("flex flex-col bg-card p-8", spanClass)}>
+    // Tilt даёт лёгкий отклик на курсор (§4.1 п. 12).
+    <Tilt className={cn("flex flex-col bg-card p-8", spanClass)}>
       <p className="font-mono text-label uppercase tracking-label text-primary">{label}</p>
       <h3 className="mt-4 text-h3">{title}</h3>
       {children}
-    </div>
+    </Tilt>
   );
 }
 

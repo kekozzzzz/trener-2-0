@@ -23,6 +23,8 @@ import { Ticker } from "@/components/site/ticker";
 import { Reveal } from "@/components/site/reveal";
 import { Sparkline } from "@/components/site/sparkline";
 import { TicketCta } from "@/components/site/ticket-cta";
+import { Tilt } from "@/components/site/tilt";
+import { HeroDemo } from "@/components/site/hero-demo";
 import {
   Bento,
   BentoCell,
@@ -624,7 +626,8 @@ async function HandPreview() {
   const t = await getTranslations("Landing");
 
   return (
-    <div className="relative border border-border bg-card">
+    // Главный объект первого экрана — отзывается на курсор наклоном и подсветкой
+    <Tilt className="relative border border-border bg-card">
       <CornerMarks />
 
       <div className="flex items-center justify-between border-b border-border bg-[#151515] px-4 py-3">
@@ -652,13 +655,19 @@ async function HandPreview() {
           </p>
         </div>
 
-        {/* Сердце продукта — вопрос предшествует оценке. Акцент лаймом. */}
-        <div className="mt-6 border-l-2 border-primary pl-4">
-          <p className="font-mono text-label uppercase tracking-label text-primary">
-            {t("previewCoachLabel")}
-          </p>
-          <p className="mt-2 text-body text-foreground">{t("previewCoachQuestion")}</p>
-        </div>
+        {/* Сердце продукта — вопрос предшествует оценке. Здесь его можно потрогать:
+            выбираешь ответ, тренер спрашивает дальше (заказ Артёма 2026-08-09). */}
+        <HeroDemo
+          question={t("previewCoachQuestion")}
+          prompt={t("demoPrompt")}
+          answers={[t("demoAnswerBluff"), t("demoAnswerValue")]}
+          replies={[t("dialogReply"), t("demoReplyValue")]}
+          youLabel={t("dialogYou")}
+          coachLabel={t("previewCoachLabel")}
+          exampleLabel={t("demoExample")}
+          afterText={t("demoAfter")}
+          retryLabel={t("demoRetry")}
+        />
 
         {/* Числа парсера — детерминированно, не выдумано ИИ. */}
         <div className="mt-6 grid grid-cols-2 gap-px border border-border bg-border">
@@ -697,6 +706,6 @@ async function HandPreview() {
           </p>
         </div>
       </div>
-    </div>
+    </Tilt>
   );
 }
