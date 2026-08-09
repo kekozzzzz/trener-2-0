@@ -487,9 +487,7 @@
     "ticketFirstLabel": "First tournament",
     "ticketFirstValue": "Free",
     "ticketCardLabel": "Card",
-    "ticketCardValue": "Not required",
-    "showcaseEquityLabel": "Equity of 55 vs the shove",
-    "showcaseCallPriceLabel": "Price of the call"
+    "ticketCardValue": "Not required"
   },
   "Register": {
     "title": "Create account",
@@ -924,6 +922,10 @@
     "stackNote": "Dashed line - this hand. Stack in big blinds: blinds go up, so a chip count would tell a different story.",
     "stackAt": "At this hand: {stack} BB",
     "stackHint": "Hover the line - I'll show what happened in that hand",
+    "stackTipChips": "{chips} chips",
+    "stackTipLegend": "Dots on the line are reviewed hands - those are clickable",
+    "stackTipDeltaChips": "{sign}{delta} this hand",
+    "stackUnitChips": "chips",
     "stackTipHand": "Hand {number}",
     "stackTipStack": "{stack} BB stack",
     "stackTipDelta": "{sign}{delta} BB this hand",

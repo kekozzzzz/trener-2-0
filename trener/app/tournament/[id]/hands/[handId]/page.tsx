@@ -234,9 +234,10 @@ export default async function HandDialoguePage({
                   {t("stackTitle")}
                 </span>
                 <span className="font-mono text-label uppercase tracking-label text-muted-foreground">
-                  {stackCurve.currentIndex !== null
-                    ? t("stackAt", { stack: stackCurve.points[stackCurve.currentIndex].stackBb })
-                    : t("stackUnit")}
+                  {stackCurve.currentIndex !== null &&
+                  stackCurve.points[stackCurve.currentIndex].stackBb !== null
+                    ? t("stackAt", { stack: stackCurve.points[stackCurve.currentIndex].stackBb! })
+                    : t("stackUnitChips")}
                 </span>
               </div>
               <StackChart
@@ -246,11 +247,13 @@ export default async function HandDialoguePage({
                 hrefBase={`/tournament/${id}/hands/`}
                 labels={{
                   hand: t("stackTipHand", { number: "{number}" }),
+                  chips: t("stackTipChips", { chips: "{chips}" }),
                   stack: t("stackTipStack", { stack: "{stack}" }),
-                  delta: t("stackTipDelta", { sign: "{sign}", delta: "{delta}" }),
+                  delta: t("stackTipDeltaChips", { sign: "{sign}", delta: "{delta}" }),
                   open: t("stackTipOpen"),
                   noReview: t("stackTipNoReview"),
                   current: t("stackTipCurrent"),
+                  legend: t("stackTipLegend"),
                 }}
               />
               <p className="text-small text-muted-foreground">{t("stackHint")}</p>

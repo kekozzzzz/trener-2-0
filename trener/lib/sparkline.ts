@@ -17,13 +17,23 @@ export const MAX_SPARKLINE_POINTS = 60;
  * сглаживается в ровную горку. Первая, последняя и отмеченная точки сохраняются
  * всегда: иначе маркер съедет с реального значения.
  */
-export function pickIndexes(values: number[], markAt?: number): number[] {
-  if (values.length <= MAX_SPARKLINE_POINTS) return values.map((_, i) => i);
+export function pickIndexes(
+  values: number[],
+  markAt?: number,
+  required: number[] = [],
+  max = MAX_SPARKLINE_POINTS
+): number[] {
+  if (values.length <= max) return values.map((_, i) => i);
 
-  const step = Math.ceil(values.length / MAX_SPARKLINE_POINTS);
+  const step = Math.ceil(values.length / max);
   const average = values.reduce((sum, v) => sum + v, 0) / values.length;
   const keep = new Set<number>([0, values.length - 1]);
   if (markAt != null) keep.add(markAt);
+  // Точки, которые нельзя потерять при прореживании: на линии стека это разобранные
+  // раздачи — они помечены и кликабельны, выброшенная метка означала бы пропавшую дверь.
+  for (const index of required) {
+    if (index >= 0 && index < values.length) keep.add(index);
+  }
 
   for (let start = 0; start < values.length; start += step) {
     let peak = start;
@@ -49,21 +59,35 @@ export function thinPoints(
 }
 
 /**
- * Лёгкое усреднение по трём соседям — снимает мелкую пилу, которую даёт списание
- * блайндов и анте каждую раздачу. Форма турнира (рост, обвал, восстановление)
- * остаётся: окно всего в одну точку по краям.
+ * Усреднение по соседям — снимает мелкую пилу, которую даёт списание блайндов и анте
+ * каждую раздачу. Форма турнира (рост, обвал, восстановление) остаётся.
  *
- * Три значения не сглаживаются никогда: первое, последнее и отмеченное. Отмеченное —
- * принципиально: рядом с линией подписью стоит настоящий стек на этой раздаче, и
- * маркер обязан лежать ровно на нём, а не на усреднённом соседями числе.
+ * Окно тем шире, чем длиннее ряд: на двух сотнях раздач трёх соседей не хватает,
+ * пила остаётся. Концы не трогаем никогда — линия обязана начинаться и заканчиваться
+ * на настоящих числах. `keepIndex` оставляет нетронутой ещё одну точку (нужно там,
+ * где маркер стоит без прореживания и должен совпасть со значением до знака).
  */
-export function smoothValues(values: number[], keepIndex?: number): number[] {
+export function smoothValues(values: number[], keepIndex?: number, window = 3): number[] {
   if (values.length < 3) return values;
+
+  const radius = Math.max(1, Math.floor(window / 2));
 
   return values.map((value, i) => {
     if (i === 0 || i === values.length - 1 || i === keepIndex) return value;
-    return (values[i - 1] + value + values[i + 1]) / 3;
+
+    // У краёв окно сжимается симметрично, иначе линия «подтягивается» к середине.
+    const reach = Math.min(radius, i, values.length - 1 - i);
+    let sum = 0;
+    for (let j = i - reach; j <= i + reach; j++) sum += values[j];
+    return sum / (reach * 2 + 1);
   });
+}
+
+/** Ширина окна усреднения под длину ряда: чем больше раздач, тем шире. */
+export function smoothingWindow(length: number): number {
+  if (length > 150) return 7;
+  if (length > 60) return 5;
+  return 3;
 }
 
 /**

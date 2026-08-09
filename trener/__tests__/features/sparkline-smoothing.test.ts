@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { thinPoints, smoothPath, smoothValues } from "@/lib/sparkline";
+import { thinPoints, smoothPath, smoothValues, smoothingWindow } from "@/lib/sparkline";
 
 describe("thinPoints", () => {
   it("не трогает короткие ряды", () => {
@@ -63,6 +63,23 @@ describe("smoothValues", () => {
 
   it("короткий ряд оставляет как есть", () => {
     expect(smoothValues([10, 20])).toEqual([10, 20]);
+  });
+
+  it("широкое окно глушит пилу сильнее узкого", () => {
+    // Пила ±10 вокруг сотни: чем шире окно, тем ближе середина ряда к ровной линии.
+    const saw = Array.from({ length: 41 }, (_, i) => (i % 2 === 0 ? 90 : 110));
+    const spread = (values: number[]) => {
+      const middle = values.slice(5, -5);
+      return Math.max(...middle) - Math.min(...middle);
+    };
+
+    expect(spread(smoothValues(saw, undefined, 7))).toBeLessThan(spread(smoothValues(saw, undefined, 3)));
+  });
+
+  it("окно расширяется с длиной ряда", () => {
+    expect(smoothingWindow(40)).toBe(3);
+    expect(smoothingWindow(100)).toBe(5);
+    expect(smoothingWindow(225)).toBe(7);
   });
 });
 

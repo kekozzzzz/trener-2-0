@@ -6,14 +6,11 @@ import { CornerMarks } from "@/components/site/detail";
 
 // Финальный призыв в виде посадочного талона — приём из референса
 // perasperadastra.ru (design/refs/2026-08-08). Слева обещание и кнопки, справа
-// отрывной корешок с полями и штрихкодом.
+// отрывной корешок с полями.
 //
-// Ширина штрихов задана по остатку от деления индекса — рисунок одинаковый на
-// сервере и в браузере (случайные числа развалили бы гидрацию).
-const BARCODE = Array.from({ length: 30 }, (_, i) => ({
-  width: i % 3 === 0 ? 4 : i % 7 === 0 ? 1 : 2,
-  faded: i % 4 === 0,
-}));
+// Штрихкод отсюда убран (решение Артёма 2026-08-09): полоски ничего не кодировали
+// и не сканировались, то есть притворялись данными, будучи украшением. Талон
+// узнаётся и без него — по пунктиру отрыва и полям «тариф / первый турнир / карта».
 
 export function TicketCta({
   label,
@@ -69,15 +66,6 @@ export function TicketCta({
           ))}
         </div>
 
-        <div aria-hidden className="flex h-10 items-end gap-0.5">
-          {BARCODE.map((bar, i) => (
-            <i
-              key={i}
-              className={cn("block h-full bg-foreground", bar.faded && "opacity-50")}
-              style={{ width: bar.width }}
-            />
-          ))}
-        </div>
       </div>
     </div>
   );

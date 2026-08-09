@@ -194,10 +194,14 @@ function FieldLabel({ children, htmlFor }: { children: React.ReactNode; htmlFor:
 // Демо-точки для превью линии стека: ровный подъём, обвал на 73-й раздаче, добивание.
 // Формула детерминированная — картинка одинакова на сервере и в браузере.
 const DEMO_STACK_POINTS = Array.from({ length: 120 }, (_, i) => {
-  const base = i < 72 ? 100 + i * 0.9 + Math.sin(i / 3) * 6 : 48 - (i - 72) * 0.25 + Math.sin(i / 4) * 3;
+  const bb = i < 72 ? 100 + i * 0.9 + Math.sin(i / 3) * 6 : 48 - (i - 72) * 0.25 + Math.sin(i / 4) * 3;
+  // Блайнды растут по ходу турнира — поэтому фишки и BB расходятся, как в жизни.
+  const blind = 100 + Math.floor(i / 12) * 150;
   return {
     handId: `demo-${i}`,
-    stackBb: Math.round(base),
+    stackChips: Math.round(bb * blind),
+    stackBb: Math.round(bb),
+    deltaChips: i === 72 ? -116 * blind : Math.round(Math.sin(i * 1.7) * 4 * blind),
     deltaBb: i === 72 ? -116 : Math.round(Math.sin(i * 1.7) * 40) / 10,
     number: i + 1,
     hasReview: i % 9 === 0,
@@ -553,11 +557,13 @@ export default function DesignPreviewPage() {
             hrefBase="#hand-"
             labels={{
               hand: "Раздача {number}",
+              chips: "{chips} фишек",
               stack: "{stack} BB в стеке",
-              delta: "{sign}{delta} BB за раздачу",
+              delta: "{sign}{delta} за раздачу",
               open: "Открыть разбор",
               noReview: "Эту раздачу не разбирали",
               current: "ты здесь",
+              legend: "Точки на линии - разобранные раздачи, по ним можно кликнуть",
             }}
           />
         </div>

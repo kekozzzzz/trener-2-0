@@ -30,7 +30,6 @@ import {
   Chips,
   CornerMarks,
   FigureCaption,
-  MeterBar,
   ProductWindow,
   SectionHead,
   Step,
@@ -602,29 +601,12 @@ async function ProductShowcase() {
               </p>
               <p className="mt-4 text-body text-foreground">{t("showcaseVerdictText")}</p>
 
-              {/* Полосы вместо голых процентов (§4.1 п. 10): числа те же, что в вердикте */}
-              <div className="mt-auto grid gap-4 pt-8">
-                <div>
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-label uppercase tracking-label text-muted-foreground">
-                      {t("showcaseEquityLabel")}
-                    </span>
-                    <span className="font-mono text-label text-primary">54%</span>
-                  </div>
-                  <MeterBar percent={54} />
-                </div>
-                <div>
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-label uppercase tracking-label text-muted-foreground">
-                      {t("showcaseCallPriceLabel")}
-                    </span>
-                    <span className="font-mono text-label text-muted-foreground">44%</span>
-                  </div>
-                  <MeterBar percent={44} muted />
-                </div>
-              </div>
+              {/* Здесь стояли полосы «эквити 54% / цена колла 44%». Убраны 2026-08-09:
+                  таких полос в разборе нет, а подпись «настоящий вердикт из разбора»
+                  выдавала нарисованную деталь за экран продукта. Витрина показывает
+                  только то, что существует. */}
 
-              <p className="mt-6 font-mono text-label uppercase tracking-label text-muted-foreground">
+              <p className="mt-auto pt-8 font-mono text-label uppercase tracking-label text-muted-foreground">
                 {t("showcaseVerdictNote")}
               </p>
             </div>
@@ -685,14 +667,12 @@ async function HandPreview() {
               {t("previewLossLabel")}
             </p>
             <p className="mt-2 font-mono text-h3 text-primary">{t("previewLossValue")}</p>
-            <MeterBar percent={62} />
           </div>
           <div className="bg-card p-4">
             <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
               {t("previewSimilarLabel")}
             </p>
             <p className="mt-2 font-mono text-h3 text-foreground">4</p>
-            <MeterBar percent={33} muted />
           </div>
         </div>
 

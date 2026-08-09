@@ -487,9 +487,7 @@
     "ticketFirstLabel": "Первый турнир",
     "ticketFirstValue": "Бесплатно",
     "ticketCardLabel": "Карта",
-    "ticketCardValue": "Не нужна",
-    "showcaseEquityLabel": "Эквити 55 против пуша",
-    "showcaseCallPriceLabel": "Цена колла"
+    "ticketCardValue": "Не нужна"
   },
   "Register": {
     "title": "Регистрация",
@@ -924,6 +922,10 @@
     "stackNote": "Пунктир - эта раздача. Стек в больших блайндах: блайнды растут, поэтому в фишках линия соврала бы.",
     "stackAt": "На этой раздаче: {stack} BB",
     "stackHint": "Наведи на линию - покажу, что было в той раздаче",
+    "stackTipChips": "{chips} фишек",
+    "stackTipLegend": "Точки на линии - разобранные раздачи, по ним можно кликнуть",
+    "stackTipDeltaChips": "{sign}{delta} за раздачу",
+    "stackUnitChips": "фишки",
     "stackTipHand": "Раздача {number}",
     "stackTipStack": "{stack} BB в стеке",
     "stackTipDelta": "{sign}{delta} BB за раздачу",
