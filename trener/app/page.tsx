@@ -25,6 +25,7 @@ import { Sparkline } from "@/components/site/sparkline";
 import { TicketCta } from "@/components/site/ticket-cta";
 import { Tilt } from "@/components/site/tilt";
 import { HeroDemo } from "@/components/site/hero-demo";
+import { Backdrop } from "@/components/site/backdrop";
 import {
   Bento,
   BentoCell,
@@ -115,7 +116,9 @@ export default async function HomePage() {
   ];
 
   return (
-    <main>
+    <main className="relative">
+      {/* Общий фон страницы: сетка, крестики на узлах, два источника света */}
+      <Backdrop />
       <StructuredData />
       <StatusBar />
 
@@ -132,14 +135,18 @@ export default async function HomePage() {
 
       {/* HERO — текст слева, живая карточка разбора справа (показываем продукт, а не
           описываем словами; design-system.md §6: героическая единица — данные, не фото).
-          Первый экран не анимируется по скроллу — он и так виден при загрузке (§5 п. 4). */}
+          Первый экран не анимируется по скроллу — он и так виден при загрузке (§5 п. 4).
+          Сетка и свет живут в общем фоне страницы (<Backdrop/>), здесь только
+          технические подписи по углам — с проверяемыми числами из конфига. */}
       <section className="relative overflow-hidden border-b border-border">
-        <div aria-hidden className="bg-grid pointer-events-none absolute inset-0" />
-        {/* Глубина через свет, а не тень (design-system.md §3) */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-32 -top-40 size-[520px] bg-[radial-gradient(circle,rgba(212,255,51,0.10),transparent_65%)]"
-        />
+        <span className="hero-corner left-8 top-4">{t("heroCornerBrand")}</span>
+        <span className="hero-corner right-8 top-4">
+          {t("heroCornerRooms", { count: ROOM_SHORT_NAMES.length })}
+        </span>
+        <span className="hero-corner bottom-4 left-8">{t("heroCornerSection")}</span>
+        <span className="hero-corner bottom-4 right-8">
+          {t("heroCornerCharts", { count: REFERENCE_CHART_COUNT })}
+        </span>
 
         <div className="relative mx-auto grid max-w-5xl items-center gap-12 px-8 py-16 sm:py-24 lg:grid-cols-2">
           <div className="flex flex-col items-center space-y-6 text-center lg:items-start lg:text-left">
@@ -226,7 +233,7 @@ export default async function HomePage() {
           <Reveal delay={60}>
             <div className="grid divide-y divide-border border border-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
               {ALTERNATIVES.map((alt) => (
-                <div key={alt.tag} className="p-8">
+                <Tilt key={alt.tag} className="p-8">
                   <p
                     className={cn(
                       "font-mono text-label uppercase tracking-label",
@@ -239,7 +246,7 @@ export default async function HomePage() {
                     {alt.accent ? t("altWhygridPrice", { price: priceFrom }) : alt.verdict}
                   </h3>
                   <p className="mt-2 text-small text-muted-foreground">{alt.description}</p>
-                </div>
+                </Tilt>
               ))}
             </div>
           </Reveal>
@@ -364,7 +371,7 @@ export default async function HomePage() {
           <Reveal delay={60}>
             <div className="grid divide-y divide-border border border-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
               {BASIS.map((item, i) => (
-                <div key={item.label} className="p-8">
+                <Tilt key={item.label} className="p-8">
                   <p className="font-mono text-label uppercase tracking-label text-primary">
                     {`0${i + 1} — ${item.label}`}
                   </p>
@@ -379,7 +386,7 @@ export default async function HomePage() {
                       <ArrowRight className="size-3" />
                     </Link>
                   )}
-                </div>
+                </Tilt>
               ))}
             </div>
           </Reveal>
@@ -419,7 +426,16 @@ export default async function HomePage() {
                       −
                     </span>
                   </summary>
-                  <p className="max-w-[80ch] pb-6 text-body text-muted-foreground">{item.answer}</p>
+                  {/* Плавное раскрытие на чистом CSS: grid-rows 0fr → 1fr. Работает
+                      без единой строчки JS, поэтому <details> остаётся доступным
+                      с клавиатуры и раскрытым для поисковика. */}
+                  <div className="acc-body">
+                    <div>
+                      <p className="max-w-[80ch] pb-6 text-body text-muted-foreground">
+                        {item.answer}
+                      </p>
+                    </div>
+                  </div>
                 </details>
               ))}
             </div>
@@ -545,7 +561,7 @@ function DemoRangeGrid() {
             <div
               key={code}
               className={cn(
-                "flex aspect-square items-center justify-center border font-mono leading-none",
+                "grid-cell flex aspect-square items-center justify-center border font-mono leading-none",
                 on ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground/40"
               )}
             >
@@ -563,7 +579,7 @@ async function ProductShowcase() {
   const demoTable = buildDemoTable(t("demoPlayerLabel"));
 
   return (
-    <section className="border-t border-border bg-background">
+    <section className="relative border-t border-border">
       <div className="mx-auto max-w-5xl px-8 py-16 sm:py-24">
         <Reveal>
           <SectionHead

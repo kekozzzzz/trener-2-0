@@ -303,3 +303,117 @@
   .cursor-glow { display: none; }
   .tilt-glow::after { display: none; }
 }
+
+/* ── Движение ниже первого экрана ───────────────────────────────────────────
+   Правка Артёма 2026-08-09: «двигается только карточка разбора вверху, дальше
+   ничего, весь дизайн заканчивается на бегущей строке». Ниже — четыре отклика,
+   все дешёвые и без JS. */
+
+/* Плавное раскрытие ответа в аккордеоне: 0fr → 1fr вместо мгновенного скачка.
+   Работает на нативном <details>, поэтому доступность и индексация целы. */
+.acc-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 400ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+details[open] .acc-body { grid-template-rows: 1fr; }
+.acc-body > div { overflow: hidden; }
+
+/* Ячейка сетки диапазона отзывается на курсор: чуть подрастает и подсвечивается.
+   Сетка перестаёт быть картинкой — её хочется потрогать. */
+.grid-cell {
+  transition: transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 200ms ease-out;
+}
+.grid-cell:hover {
+  transform: scale(1.35);
+  z-index: 3;
+  box-shadow: 0 0 16px rgba(212, 255, 51, 0.45);
+}
+
+/* Линия стека прочерчивается при загрузке. Длина пути заведомо больше реальной —
+   для 320px-полотна этого достаточно, а измерять путь скриптом ради анимации незачем. */
+@keyframes spark-draw {
+  from { stroke-dashoffset: 1200; }
+  to   { stroke-dashoffset: 0; }
+}
+.spark-draw {
+  stroke-dasharray: 1200;
+  animation: spark-draw 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .acc-body { transition: none; }
+  .grid-cell { transition: none; }
+  .grid-cell:hover { transform: none; box-shadow: none; }
+  .spark-draw { animation: none; stroke-dasharray: none; }
+}
+
+/* ── Фон страницы (вариант B, выбран Артёмом 2026-08-09) ────────────────────
+   Раньше в hero висело одно световое пятно справа сверху — читалось как случайный
+   блик. Теперь фон системный и проходит через ВСЮ страницу: сетка-миллиметровка,
+   крестики на её узлах (как метки на чертеже) и два источника света по диагонали.
+
+   Слой fixed: он не скроллится вместе с контентом, поэтому свет остаётся на месте,
+   а страница едет поверх — это дёшево (ничего не перерисовывается при скролле). */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Сетка 40px — буквальная отсылка к названию бренда */
+.backdrop-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(245, 245, 245, 0.022) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(245, 245, 245, 0.022) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Крестики на пересечениях каждой четвёртой линии: маска вырезает из сплошной
+   сетки только короткие штрихи вокруг узла. */
+.backdrop-crosses {
+  position: absolute;
+  inset: 0;
+  opacity: 0.5;
+  background-image:
+    linear-gradient(to right, rgba(245, 245, 245, 0.16) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(245, 245, 245, 0.16) 1px, transparent 1px);
+  background-size: 160px 160px;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Crect x='75' y='79' width='11' height='2' fill='%23fff'/%3E%3Crect x='79' y='75' width='2' height='11' fill='%23fff'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Crect x='75' y='79' width='11' height='2' fill='%23fff'/%3E%3Crect x='79' y='75' width='2' height='11' fill='%23fff'/%3E%3C/svg%3E");
+  -webkit-mask-size: 160px 160px;
+  mask-size: 160px 160px;
+}
+
+/* Два источника света по диагонали: сильный сверху справа, приглушённый снизу слева */
+.backdrop-glow-tr,
+.backdrop-glow-bl {
+  position: absolute;
+  width: 520px;
+  height: 520px;
+}
+.backdrop-glow-tr {
+  top: -160px;
+  right: -120px;
+  background: radial-gradient(circle, rgba(212, 255, 51, 0.1), transparent 65%);
+}
+.backdrop-glow-bl {
+  bottom: -220px;
+  left: -160px;
+  background: radial-gradient(circle, rgba(212, 255, 51, 0.05), transparent 65%);
+}
+
+/* Технические подписи по углам первого экрана. Не декор: в них проверяемые числа
+   из конфига — сколько румов читаем и сколько чартов открыто. */
+.hero-corner {
+  position: absolute;
+  z-index: 2;
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #4a4a4a;
+}

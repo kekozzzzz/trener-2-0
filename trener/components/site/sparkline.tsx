@@ -54,6 +54,9 @@ export function Sparkline({
         className="block"
       >
         <path
+          // Линия прочерчивается один раз при загрузке — тот же приём, что у появления
+          // результатов парсера (§5 п. 3). Без JS: чистая CSS-анимация по stroke-dashoffset.
+          className="spark-draw"
           d={smoothPath(points)}
           fill="none"
           stroke="#D4FF33"
