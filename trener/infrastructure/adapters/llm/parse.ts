@@ -15,7 +15,7 @@ import type {
 import type { Locale } from "@/i18n/config";
 import type { TableSnapshot } from "@/parser/types";
 import { heroFirstPostflop } from "@/parser/action-order";
-import { misreportedFold, misstatedBetSize } from "@/parser/retelling-guard";
+import { misreportedFold, misstatedBetSize, disputesFoldWithoutPrice } from "@/parser/retelling-guard";
 
 // Claude/DeepSeek иногда оборачивают JSON в markdown-код-блок несмотря на инструкцию — снимаем его.
 export function extractJson(text: string): string {
@@ -450,6 +450,15 @@ export function cleanCoachText(
     // модель пишет десятку по-бытовому, хотя весь снимок и вся карточка знают её только как «T» —
     // латинский бэкстоп бракует «10d» целиком, а карта-то настоящая, просто записана иначе).
     out = out.replace(/\b10([cdhs])\b/gi, (_, suit: string) => `T${suit.toLowerCase()}`);
+    // Математическая запись карт «$K_d 7_s 2_c$», «$9_h$» — модель уходит в LaTeX-режим и печатает
+    // борд формулой (эталонный прогон 09.08, раздача #3: игрок читает это как «нижний поручерк D7»).
+    // Мимо всех сторожей: латинский бэкстоп режет текст на токены и одиночные буквы пропускает,
+    // а конвертер карт ждёт слитное «Kd». Снимаем подчёркивание и доллары ДО конвертера — дальше
+    // карта пойдёт обычным путём и станет значком масти.
+    out = out.replace(/\$([^$\n]{1,40})\$/g, (m, inner: string) =>
+      /^[\s,]*(?:(?:10|[AKQJT2-9])_[cdhs][\s,]*)+$/i.test(inner) ? inner.replace(/_/g, "") : m,
+    );
+    out = out.replace(/\b(10|[AKQJT2-9])_([cdhs])\b/gi, (_, rank: string, suit: string) => `${rank}${suit}`);
     // Буквенный код масти из снимка («на борде 4c 5c 8c 6c Kd») игроку непонятен — переводим в
     // значок. Промпт этого просит прямым текстом, но модель регулярно срывается (Артём 19.07:
     // «в описании раздачи всё ещё буквами»), а просьбы у нас держат плохо — делаем кодом.
@@ -552,6 +561,21 @@ function assertBetSize(text: string, snapshot?: TableSnapshot): string {
   return text;
 }
 
+// Спор с фолдом без названной цены — брак, очередь ретраит. Вешаем на тексты, которые СОВЕТУЮТ
+// (optimal и вердикт): именно там родился совет заплатить 25 BB в банк 6 BB с парой десяток.
+// Промпт это запрещает дважды, модель запрет проигнорировала — значит нужен код (см. подробности
+// в parser/retelling-guard.ts). Спорить не запрещено: назови порог, который парсер уже посчитал.
+function assertFoldDispute(text: string, snapshot?: TableSnapshot): string {
+  if (!snapshot) return text;
+  const need = disputesFoldWithoutPrice(text, snapshot);
+  if (need !== null) {
+    throw new Error(
+      `LLM спорит с фолдом игрока, не назвав цену колла: по пот-оддсам нужно ≈${need}% эквити, а порог в тексте не назван`,
+    );
+  }
+  return text;
+}
+
 // Детерминированный вырез ритуального зачина «Ты прав» из НАЧАЛА вердикта (Артём, 17.07: «5 раздач
 // подряд каждый раз Ты прав, меня бесит»). Промпт запрещает это тремя абзацами (verdict.ts:25-28) и
 // НЕ помогает — 5/5 вердиктов открывались «Ты прав». Режем как чистку (не брак → без карантина):
@@ -637,7 +661,10 @@ export function validateHandAnalysis(
     }
     return {
       played: playedText,
-      optimal: cleanCoachText(result.optimal, request.locale, cards, fix, heroFirst, noShowdown, noPair),
+      optimal: assertFoldDispute(
+        cleanCoachText(result.optimal, request.locale, cards, fix, heroFirst, noShowdown, noPair),
+        request.tableSnapshot,
+      ),
       optimalAction: parseOptimalAction(result.optimalAction),
       question: cleanCoachText(result.question, request.locale, cards, fix, heroFirst, undefined, noPair),
       draftVerdict: cleanCoachText(result.draftVerdict, request.locale, cards, fix, heroFirst, undefined, noPair),
@@ -651,8 +678,14 @@ export function validateHandAnalysis(
   }
   return {
     played: playedText,
-    optimal: cleanCoachText(result.optimal, request.locale, cards, fix, heroFirst, noShowdown, noPair),
-    note: cleanCoachText(result.note, request.locale, cards, fix, heroFirst, noShowdown, noPair),
+    optimal: assertFoldDispute(
+      cleanCoachText(result.optimal, request.locale, cards, fix, heroFirst, noShowdown, noPair),
+      request.tableSnapshot,
+    ),
+    note: assertFoldDispute(
+      cleanCoachText(result.note, request.locale, cards, fix, heroFirst, noShowdown, noPair),
+      request.tableSnapshot,
+    ),
   };
 }
 
@@ -677,7 +710,10 @@ export function validateVerdict(
   if (typeof result.verdict !== "string") {
     throw new Error("LLM вернул вердикт без поля verdict");
   }
-  const cleaned = cleanCoachText(result.verdict, locale, allowedCards, heroFix, heroFirstPostflop, noShowdown);
+  const cleaned = assertFoldDispute(
+    cleanCoachText(result.verdict, locale, allowedCards, heroFix, heroFirstPostflop, noShowdown),
+    snapshot,
+  );
   // Вырезаем ритуальный зачин «Ты прав» ПОСЛЕ общей чистки (иначе тире/латиница внутри зачина
   // могли бы сбить матч). Только для вердикта — в played/вопросе такого зачина не бывает.
   return { verdict: stripSycophanticOpener(cleaned) };

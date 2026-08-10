@@ -38,6 +38,7 @@ import {
   noShowdownInHand,
 } from "@/infrastructure/adapters/llm/parse";
 import { heroFirstPostflop } from "@/parser/action-order";
+import { disputesFoldWithoutPrice } from "@/parser/retelling-guard";
 import type { HandAnalysisRequest, NextQuestionRequest, VerdictRequest, DialogueRoundSummary } from "@/infrastructure/adapters/llm/types";
 import type { TableSnapshot } from "@/parser/types";
 
@@ -287,6 +288,9 @@ function classifyBrake(msg: string): string {
         );
         out.push(`\n**ВЕРДИКТ:** ${verdict.verdict}`);
         row.verdictLen = verdict.verdict.length;
+        // Спорит с фолдом, не назвав цену колла. Метрика устойчивая: условие считает парсер,
+        // а не сэмплирование модели (регресс 09.08 — тренер звал платить 25 BB в банк 6 BB).
+        if (disputesFoldWithoutPrice(verdict.verdict, snapshot) !== null) row.flags.push("спорит с фолдом без цены");
         row.ok = true;
         if (verdict.verdict.length > VERDICT_LIMIT) row.flags.push("вердикт длиннее лимита");
         if (MARKDOWN_RE.test(verdict.verdict)) row.flags.push("markdown в вердикте");
@@ -324,6 +328,7 @@ function classifyBrake(msg: string): string {
         среднее_раундов: done.length ? Math.round((done.reduce((s, r) => s + r.rounds, 0) / done.length) * 10) / 10 : 0,
         вопрос_про_несыгранную_улицу: count("вопрос про несыгранную улицу"),
         два_задания_в_вопросе: count("два задания в вопросе"),
+        спор_с_фолдом_без_цены: count("спорит с фолдом без цены"),
         markdown: count("markdown в вердикте") + count("markdown в played"),
         ритуальное_ты_прав: count("ритуальное «Ты прав»"),
         браков_сторожей_всего: rows.reduce((s, r) => s + r.brakes.length, 0),

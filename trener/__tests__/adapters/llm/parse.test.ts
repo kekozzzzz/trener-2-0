@@ -593,3 +593,35 @@ describe("латиница: собственный жаргон чиним, а �
     expect(() => cleanCoachText("Тут был classic showdown value.")).toThrow(/латиниц/);
   });
 });
+
+// Эталонный прогон 09.08, раздача #3: модель ушла в LaTeX и напечатала борд формулой —
+// «$K_d 7_s 2_c$». Игрок читает это вслух как «нижний поручерк D7». Мимо всех сторожей:
+// латинский бэкстоп режет на токены и одиночные буквы пропускает, конвертер ждёт слитное «Kd».
+describe("математическая запись карт превращается в нормальные карты", () => {
+  const board = new Set(["Kd", "7s", "2c", "9h"]);
+
+  it("«$K_d 7_s 2_c$» становится значками мастей", () => {
+    const out = cleanCoachText("На флопе $K_d 7_s 2_c$ вы оба чекаете.", "ru", board);
+    expect(out).toContain("K♦");
+    expect(out).toContain("7♠");
+    expect(out).toContain("2♣");
+    expect(out).not.toContain("_");
+    expect(out).not.toContain("$");
+  });
+
+  it("одиночная карта «$9_h$» тоже", () => {
+    expect(cleanCoachText("На тёрне выходит $9_h$.", "ru", board)).toContain("9♥");
+  });
+
+  it("подчёркивание без долларов тоже снимается", () => {
+    expect(cleanCoachText("Борд K_d 7_s 2_c.", "ru", board)).toContain("K♦");
+  });
+
+  it("выдуманная карта в этой записи по-прежнему бракуется", () => {
+    expect(() => cleanCoachText("На флопе $A_s$.", "ru", board)).toThrow(/вне снимка/);
+  });
+
+  it("обычный доллар (деньги) не трогаем", () => {
+    expect(cleanCoachText("Турнир за $5 с ребаями.", "ru", board)).toContain("$5");
+  });
+});

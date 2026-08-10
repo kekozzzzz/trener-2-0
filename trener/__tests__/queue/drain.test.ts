@@ -96,7 +96,12 @@ describe("kickWorker", () => {
 
     await Promise.all([first, second]);
 
-    expect(await db.task.count({ where: { status: "PENDING" } })).toBe(0);
+    // Считаем ТОЛЬКО свои задачи. Раньше здесь стоял счёт по всей таблице, и тест мигал: падал
+    // примерно раз в шесть полных прогонов с «8 вместо 0», а по отдельности всегда был зелёным
+    // (09.08, ловил восемью прогонами подряд). Файлы идут серийно, но фоновый дренаж соседнего
+    // файла — fire-and-forget: он доживает до нашего beforeEach и успевает вставить свои строки
+    // уже после очистки. К single-flight, который тут и проверяется, это отношения не имеет.
+    expect(await db.task.count({ where: { type: "SLOW_NOOP", status: "PENDING" } })).toBe(0);
     expect(await db.task.count({ where: { type: "SLOW_NOOP", status: "DONE" } })).toBe(6);
   });
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { misreportedFold, misstatedBetSize } from "@/parser/retelling-guard";
+import { misreportedFold, misstatedBetSize, disputesFoldWithoutPrice, heroFoldedFacingBet } from "@/parser/retelling-guard";
 import type { TableSnapshot } from "@/parser/types";
 
 function snap(partial: Partial<TableSnapshot>): TableSnapshot {
@@ -169,5 +169,93 @@ describe("misstatedBetSize — обратные случаи с эталонно
   it("но настоящий пересказ факта по-прежнему ловит", () => {
     expect(misstatedBetSize("На флопе BB поставил полбанка, и ты сбросил.", REGRESSION)).toBe("полбанка");
     expect(misstatedBetSize("Его ставка была в две трети банка.", REGRESSION)).toBe("две трети банка");
+  });
+});
+
+// Регресс 09.08 (раздачи эталона 2/3/4): TT на K♦7♠2♣, овербет 25 BB в банк 6 BB, Hero сбросил.
+// Колл требует ≈45% эквити. На тёрне и ривере тренер звал фолд верным, а на флопе — «подарком
+// сопернику» и советовал коллировать, ни разу не назвав цену. Совет стоит игроку четверти стека.
+const FOLD_VS_OVERBET = snap({
+  seats: [
+    { label: "Player 2", position: "BB", positionName: "BB", startingStack: 5000 },
+    { label: "Hero", position: "BTN", positionName: "BTN", startingStack: 5000 },
+  ],
+  heroCards: ["Tc", "Td"],
+  board: ["Kd", "7s", "2c"],
+  actions: [
+    { street: "PREFLOP", actor: "Player 2", action: "POST_BB", amount: 100 },
+    { street: "PREFLOP", actor: "Hero", action: "RAISE", amount: 300 },
+    { street: "PREFLOP", actor: "Player 2", action: "CALL", amount: 200 },
+    { street: "FLOP", actor: "Player 2", action: "BET", amount: 2500 },
+    { street: "FLOP", actor: "Hero", action: "FOLD" },
+  ],
+});
+
+describe("disputesFoldWithoutPrice — спорить с фолдом только с ценой в руках", () => {
+  it("ловит «фолд - это подарок сопернику» без названного порога", () => {
+    const v = "Здесь не соглашусь: фолд на такой доске - это подарок сопернику. Твоя пара десяток бьёт весь его воздух.";
+    expect(disputesFoldWithoutPrice(v, FOLD_VS_OVERBET)).toBeGreaterThan(0);
+  });
+
+  it("ловит «колл здесь выглядит оправданным»", () => {
+    expect(disputesFoldWithoutPrice("Колл здесь выглядит оправданным.", FOLD_VS_OVERBET)).toBeGreaterThan(0);
+  });
+
+  it("ловит «фолд выглядит поспешным»", () => {
+    expect(disputesFoldWithoutPrice("Твой фолд выглядит поспешным.", FOLD_VS_OVERBET)).toBeGreaterThan(0);
+  });
+
+  it("НЕ бракует, если цена названа — это и есть разрешённый спор", () => {
+    const v = "Колл тут был бы оправдан, но только против игрока, который так блефует: цена требует 45% эквити.";
+    expect(disputesFoldWithoutPrice(v, FOLD_VS_OVERBET)).toBeNull();
+  });
+
+  it("НЕ бракует согласие с фолдом", () => {
+    const v = "Фолд здесь верное решение: против овербета твоя пара десяток превращается в блеф-кэтчер.";
+    expect(disputesFoldWithoutPrice(v, FOLD_VS_OVERBET)).toBeNull();
+  });
+
+  it("НЕ бракует отрицание: «колл здесь не оправдан»", () => {
+    expect(disputesFoldWithoutPrice("Колл здесь не оправдан, слишком дорого.", FOLD_VS_OVERBET)).toBeNull();
+  });
+
+  it("НЕ бракует, когда игрок вовсе не сбрасывал", () => {
+    const called = snap({
+      ...FOLD_VS_OVERBET,
+      actions: FOLD_VS_OVERBET.actions.map((a) =>
+        a.actor === "Hero" && a.action === "FOLD" ? { ...a, action: "CALL" as const, amount: 2500 } : a,
+      ),
+    });
+    expect(disputesFoldWithoutPrice("Твой фолд выглядит поспешным.", called)).toBeNull();
+  });
+
+  it("порог берётся из парсера и близок к арифметике пот-оддсов", () => {
+    const spot = heroFoldedFacingBet(FOLD_VS_OVERBET);
+    expect(spot).not.toBeNull();
+    // Доложить 2500 в банк, который станет 600+2500+2500 = 5600 → ≈45%.
+    expect(spot!.equityPct).toBeGreaterThanOrEqual(43);
+    expect(spot!.equityPct).toBeLessThanOrEqual(47);
+  });
+});
+
+// Щель, найденная прогоном 09.08: вердикт уже называл цену, а разбор всё ещё звал платить
+// мягкой формой — «можно рассмотреть колл». Формулировка другая, вред тот же.
+describe("disputesFoldWithoutPrice — мягкие формы того же совета", () => {
+  it("ловит «можно рассмотреть колл»", () => {
+    const t = "Твой фолд выглядит дисциплинированным, но можно рассмотреть колл: соперник часто блефует.";
+    expect(disputesFoldWithoutPrice(t, FOLD_VS_OVERBET)).toBeGreaterThan(0);
+  });
+
+  it("ловит «колл позволяет реализовать эквити»", () => {
+    expect(disputesFoldWithoutPrice("Колл позволяет реализовать эквити твоей пары.", FOLD_VS_OVERBET)).toBeGreaterThan(0);
+  });
+
+  it("но с названной ценой обе формы законны", () => {
+    const t = "Можно рассмотреть колл, но он требует 45% эквити - против его овербета столько не набирается.";
+    expect(disputesFoldWithoutPrice(t, FOLD_VS_OVERBET)).toBeNull();
+  });
+
+  it("и «колл не позволяет ничего реализовать» — не спор", () => {
+    expect(disputesFoldWithoutPrice("Колл не позволяет тут ничего реализовать.", FOLD_VS_OVERBET)).toBeNull();
   });
 });
