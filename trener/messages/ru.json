@@ -445,7 +445,7 @@
     "secProductTag": "/ 01 - Продукт",
     "secProductNote": "Настоящие экраны · не мокапы",
     "secValueTag": "/ 03 - Ценность",
-    "secValueNote": "Разный вес блоков",
+    "secValueNote": "Числа · метод · твои руки",
     "secProcessTag": "/ 04 - Процесс",
     "secProcessNote": "Три шага · один вечер",
     "secDialogTag": "/ 05 - Диалог",
@@ -456,7 +456,7 @@
     "secObjectionsTag": "/ 07 - Сомнения",
     "secObjectionsNote": "Три частых возражения",
     "secAlternativesTag": "/ 02 - Сравнение",
-    "secAlternativesNote": "Чем это лучше привычного",
+    "secAlternativesNote": "Разовый коуч · сам · Whygrid",
     "figureTable": "[ Рис. 01 ]",
     "figureGrid": "[ Рис. 02 ]",
     "windowPath": "whygrid.app / hand-review / раздача #12 - точка решения",
@@ -498,7 +498,9 @@
     "heroCornerBrand": "Whygrid / MTT",
     "heroCornerRooms": "{count} румов читаем",
     "heroCornerSection": "Sec / 01 — Разбор",
-    "heroCornerCharts": "{count} чартов открыто"
+    "heroCornerCharts": "{count} чартов открыто",
+    "windowPathGrid": "whygrid.app / hand-review / ответ диапазоном",
+    "windowPathChat": "whygrid.app / hand-review / диалог с тренером"
   },
   "Register": {
     "title": "Регистрация",

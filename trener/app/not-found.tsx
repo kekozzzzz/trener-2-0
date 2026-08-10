@@ -14,13 +14,13 @@ export default async function NotFound() {
   return (
     <main className="flex min-h-screen flex-col">
       <header className="border-b border-border">
-        <div className="mx-auto flex w-full max-w-5xl items-center px-8 py-6">
+        <div className="mx-auto flex w-full site-wrap items-center px-8 py-6">
           <Link href="/">
             <Wordmark />
           </Link>
         </div>
       </header>
-      <section className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-start justify-center px-8 py-16">
+      <section className="mx-auto flex w-full site-wrap flex-1 flex-col items-start justify-center px-8 py-16">
         <p className="font-mono text-label uppercase tracking-label text-muted-foreground">404</p>
         <h1 className="mt-4 text-h1">{en ? "This page folded" : "Такой страницы нет"}</h1>
         <p className="mt-4 max-w-xl text-body text-muted-foreground">

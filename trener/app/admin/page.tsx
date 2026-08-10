@@ -37,7 +37,7 @@ export default async function AdminPage() {
   return (
     <main>
       <PageHeader />
-      <section className="mx-auto max-w-5xl px-8 py-16">
+      <section className="mx-auto site-wrap px-8 py-16">
         <h1 className="text-h1">{t("title")}</h1>
         <p className="mt-2 font-mono text-label uppercase tracking-label text-muted-foreground">
           {t("generatedAt")}{" "}

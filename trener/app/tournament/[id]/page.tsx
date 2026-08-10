@@ -179,7 +179,7 @@ export default async function TournamentPage({
     return (
       <main>
         <PageHeader />
-        <section className="mx-auto max-w-5xl px-8 py-16 sm:py-24">
+        <section className="mx-auto site-wrap px-8 py-16 sm:py-24">
           <div className="max-w-2xl space-y-6">
             <h1 className="text-h1">{t("parsingTitle")}</h1>
             <ParsingWaitClient tournamentId={tournament.id} />
@@ -196,7 +196,7 @@ export default async function TournamentPage({
     return (
       <main>
         <PageHeader />
-        <section className="mx-auto max-w-5xl px-8 py-16 sm:py-24">
+        <section className="mx-auto site-wrap px-8 py-16 sm:py-24">
           <div className="max-w-2xl space-y-6">
             <h1 className="text-h1">{t("failedTitle")}</h1>
             <div className="border border-destructive p-4">
@@ -241,7 +241,7 @@ export default async function TournamentPage({
     return (
       <main>
         <PageHeader />
-        <section className="mx-auto max-w-5xl px-8 py-16">
+        <section className="mx-auto site-wrap px-8 py-16">
           <h1 className="text-h1">{tournament.name ?? t("resultsTitle")}</h1>
           <p className="mt-2 font-mono text-label uppercase tracking-label text-muted-foreground">
             {dateFormat.format(tournament.playedAt)}
@@ -471,7 +471,7 @@ export default async function TournamentPage({
     <main>
       <PageHeader />
       <FloatingGlossary />
-      <section className="mx-auto max-w-5xl px-8 py-16">
+      <section className="mx-auto site-wrap px-8 py-16">
 
         {duplicate && (
           <div className="mb-8 border border-border bg-card p-4">

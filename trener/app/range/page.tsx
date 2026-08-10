@@ -30,7 +30,7 @@ export default async function RangeGuidePage() {
     <main>
       <PageHeader />
 
-      <section className="mx-auto max-w-5xl px-8 py-16 sm:py-24">
+      <section className="mx-auto site-wrap px-8 py-16 sm:py-24">
         <PageIntro tag={t("sectionTag")} title={t("title")} subtitle={t("intro")} className="max-w-2xl" />
 
         <div className="mt-16 border-t border-border pt-16">

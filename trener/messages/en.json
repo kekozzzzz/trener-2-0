@@ -445,7 +445,7 @@
     "secProductTag": "/ 01 - Product",
     "secProductNote": "Real screens · not mockups",
     "secValueTag": "/ 03 - Value",
-    "secValueNote": "Blocks of different weight",
+    "secValueNote": "Numbers · method · your hands",
     "secProcessTag": "/ 04 - Process",
     "secProcessNote": "Three steps · one evening",
     "secDialogTag": "/ 05 - Dialogue",
@@ -456,7 +456,7 @@
     "secObjectionsTag": "/ 07 - Doubts",
     "secObjectionsNote": "Three common objections",
     "secAlternativesTag": "/ 02 - Comparison",
-    "secAlternativesNote": "Why this beats the usual options",
+    "secAlternativesNote": "One-off coach · yourself · Whygrid",
     "figureTable": "[ Fig. 01 ]",
     "figureGrid": "[ Fig. 02 ]",
     "windowPath": "whygrid.app / hand-review / hand #12 - decision point",
@@ -498,7 +498,9 @@
     "heroCornerBrand": "Whygrid / MTT",
     "heroCornerRooms": "{count} rooms supported",
     "heroCornerSection": "Sec / 01 — Review",
-    "heroCornerCharts": "{count} charts open"
+    "heroCornerCharts": "{count} charts open",
+    "windowPathGrid": "whygrid.app / hand-review / answering with a range",
+    "windowPathChat": "whygrid.app / hand-review / dialogue with the coach"
   },
   "Register": {
     "title": "Create account",

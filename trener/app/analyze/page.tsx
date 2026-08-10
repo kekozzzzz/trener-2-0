@@ -126,7 +126,7 @@ export default async function AnalyzePage({
     <main>
       <PageHeader />
 
-      <section className="mx-auto max-w-5xl px-8 py-16">
+      <section className="mx-auto site-wrap px-8 py-16">
         <div className="mx-auto max-w-2xl space-y-8 text-center">
           <div className="space-y-2">
             <h1 className="text-h1">{t("title")}</h1>
@@ -152,7 +152,7 @@ export default async function AnalyzePage({
       </section>
 
       <section className="border-t border-border">
-        <div className="mx-auto max-w-5xl px-8 py-16">
+        <div className="mx-auto site-wrap px-8 py-16">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <h2 className="text-h2">{t("recentTitle")}</h2>
             {recent.length > 0 && (

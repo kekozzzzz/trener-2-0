@@ -28,7 +28,7 @@ export function CursorGlow() {
     // сотни раз в секунду, и без этого браузер пересчитывает стили вхолостую.
     const draw = () => {
       frame = 0;
-      el.style.transform = `translate3d(${x - 250}px, ${y - 250}px, 0)`;
+      el.style.transform = `translate3d(${x - 125}px, ${y - 125}px, 0)`;
     };
 
     const onMove = (event: MouseEvent) => {

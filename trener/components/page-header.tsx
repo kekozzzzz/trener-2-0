@@ -17,7 +17,7 @@ export function PageHeader({ section }: { section?: string }) {
       {/* Мобайл: вордмарк и навигация в две центрированные строки — навигация
           (особенно у авторизованного) шире, чем влезает в одну строку на ≤375px,
           иначе шапка переполняется по горизонтали. От sm — одна строка. */}
-      <div className="mx-auto flex max-w-5xl flex-col items-center gap-4 px-4 py-6 sm:flex-row sm:justify-between sm:px-8">
+      <div className="mx-auto flex site-wrap flex-col items-center gap-4 px-4 py-6 sm:flex-row sm:justify-between sm:px-8">
         <Link href="/">
           <Wordmark />
         </Link>

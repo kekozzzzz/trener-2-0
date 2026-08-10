@@ -55,7 +55,7 @@ export default async function PricingPage() {
     <main>
       <PageHeader />
 
-      <section className="mx-auto max-w-5xl px-8 py-16 sm:py-24">
+      <section className="mx-auto site-wrap px-8 py-16 sm:py-24">
         <PageIntro
           tag={t("sectionTag")}
           title={t("title")}
@@ -164,7 +164,7 @@ export default async function PricingPage() {
       </section>
 
       <footer className="border-t border-border">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-8 py-8">
+        <div className="mx-auto flex site-wrap flex-wrap items-center justify-between gap-4 px-8 py-8">
           <Wordmark />
           <div className="flex items-center gap-6 font-mono text-label uppercase tracking-label text-muted-foreground">
             <Link href="/support" className="transition-colors hover:text-foreground">

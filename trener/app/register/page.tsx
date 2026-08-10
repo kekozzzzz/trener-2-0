@@ -18,14 +18,14 @@ export default async function RegisterPage() {
   return (
     <main>
       <header className="border-b border-border">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-8 py-6">
+        <div className="mx-auto flex site-wrap items-center justify-between px-8 py-6">
           <Link href="/">
             <Wordmark />
           </Link>
         </div>
       </header>
 
-      <section className="mx-auto max-w-5xl px-8 py-16 sm:py-24">
+      <section className="mx-auto site-wrap px-8 py-16 sm:py-24">
         <BlurFade direction="up" offset={8} blur="0px" duration={0.3}>
           <div className="mx-auto max-w-md space-y-8">
             <div className="space-y-2 text-center">

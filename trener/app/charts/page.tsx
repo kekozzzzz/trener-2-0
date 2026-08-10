@@ -50,7 +50,7 @@ export default async function ChartsPage() {
   return (
     <main>
       <PageHeader />
-      <section className="mx-auto max-w-5xl px-8 py-16">
+      <section className="mx-auto site-wrap px-8 py-16">
         <PageIntro
           tag={t("sectionTag")}
           title={t("title")}

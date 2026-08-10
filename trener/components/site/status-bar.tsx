@@ -12,7 +12,7 @@ export async function StatusBar({ section }: { section?: string }) {
 
   return (
     <div className="border-b border-border bg-[#0B0B0B]">
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-8 gap-y-2 px-4 py-2 font-mono text-[0.6875rem] uppercase tracking-label text-muted-foreground sm:px-8">
+      <div className="mx-auto flex site-wrap flex-wrap items-center justify-between gap-x-8 gap-y-2 px-4 py-2 font-mono text-[0.6875rem] uppercase tracking-label text-muted-foreground sm:px-8">
         <span className="flex items-center gap-2">
           <i aria-hidden className="block size-1.5 bg-primary" />
           {section ? t("sectionPrefix", { section }) : t("brand")}

@@ -157,8 +157,11 @@ export function StatRow({
   );
 }
 
-// ── §4.1 п. 6. Бенто-сетка ──────────────────────────────────────────────────
-// Шесть колонок, ячейки веса 4+2 и 2+4 — вместо трёх одинаковых карточек в ряд.
+// ── §4.1 п. 6. Бенто — ряд из четырёх, ячейки разного веса ──────────────────
+// Вернулось по прямому выбору Артёма 2026-08-09 («такой вариант понравился»).
+// Шесть колонок, ячейки 4+2 и 2+4: широкая для того, где есть чипы и подробность,
+// узкая для короткой мысли. Для рядов из трёх пунктов остаётся TileRow — обе
+// раскладки живут на одной сетке с разделителями в 1px и различаются только весом.
 export function Bento({ children }: { children: ReactNode }) {
   return (
     <div className="grid gap-px border border-border bg-border sm:grid-cols-6">{children}</div>
@@ -179,12 +182,53 @@ export function BentoCell({
 }) {
   const spanClass = span === 4 ? "sm:col-span-4" : span === 3 ? "sm:col-span-3" : "sm:col-span-2";
   return (
-    // flex-колонка: содержимое, прижатое к низу (чипы), выравнивает соседей по
-    // общей нижней линии — иначе карточки разной длины выглядят рвано.
-    // Tilt даёт лёгкий отклик на курсор (§4.1 п. 12).
+    // Tilt — ячейка отзывается на курсор, как и остальные плитки страницы
     <Tilt className={cn("flex flex-col bg-card p-8", spanClass)}>
       <p className="font-mono text-label uppercase tracking-label text-primary">{label}</p>
       <h3 className="mt-4 text-h3">{title}</h3>
+      {children}
+    </Tilt>
+  );
+}
+
+// ── §4.1 п. 6. Плитки — ЕДИНСТВЕННАЯ раскладка для рядов ────────────────────
+// Правка Артёма 2026-08-09: «каждый пункт на главной — это разные по дизайну
+// решения, давай что-то одно». Раньше здесь жили бенто (ячейки 4+2 и 2+4) и рельс
+// шагов, рядом — обычные тройки: три разных ритма на одной странице. Теперь ряд
+// один: равные плитки, разделённые линией в 1px. Отличается только содержимое.
+export function TileRow({ children }: { children: ReactNode }) {
+  return (
+    <div className="grid divide-y divide-border border border-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+      {children}
+    </div>
+  );
+}
+
+export function Tile({
+  label,
+  title,
+  accent = false,
+  children,
+}: {
+  label: string;
+  title?: string;
+  /** Лейбл акцентом — для колонки, на которую хотим направить взгляд. */
+  accent?: boolean;
+  children?: ReactNode;
+}) {
+  return (
+    // flex-колонка: прижатое к низу содержимое (чипы) выравнивает соседей по общей
+    // нижней линии — иначе плитки разной длины выглядят рвано.
+    <Tilt className="flex flex-col p-8">
+      <p
+        className={cn(
+          "font-mono text-label uppercase tracking-label",
+          accent ? "text-primary" : "text-muted-foreground"
+        )}
+      >
+        {label}
+      </p>
+      {title && <h3 className="mt-4 text-h3">{title}</h3>}
       {children}
     </Tilt>
   );
@@ -205,37 +249,6 @@ export function Chips({ items }: { items: { text: string; on?: boolean }[] }) {
           {chip.text}
         </span>
       ))}
-    </div>
-  );
-}
-
-// ── §4.1 п. 7. Рельс шагов ──────────────────────────────────────────────────
-// Линия ровно по левому краю контента, маркеры по её центру — иначе блок
-// визуально съезжает вправо относительно заголовков (правка Артёма 2026-08-08).
-export function StepRail({ children }: { children: ReactNode }) {
-  return (
-    <div className="relative pl-8">
-      <span aria-hidden className="absolute bottom-2 left-0 top-2 w-px bg-border" />
-      {children}
-    </div>
-  );
-}
-
-export function Step({
-  label,
-  title,
-  description,
-}: {
-  label: string;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="relative py-6 pb-8">
-      <span aria-hidden className="absolute -left-9 top-[30px] size-[9px] bg-primary" />
-      <p className="font-mono text-label uppercase tracking-label text-primary">{label}</p>
-      <h3 className="mt-2 text-h3">{title}</h3>
-      <p className="mt-2 max-w-[70ch] text-small text-muted-foreground">{description}</p>
     </div>
   );
 }

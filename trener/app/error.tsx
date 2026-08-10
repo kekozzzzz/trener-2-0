@@ -25,7 +25,7 @@ export default function AppError({
   }, [error]);
 
   return (
-    <main className="mx-auto flex min-h-[60vh] max-w-5xl flex-col items-start justify-center px-8 py-16">
+    <main className="mx-auto flex min-h-[60vh] site-wrap flex-col items-start justify-center px-8 py-16">
       <p className="font-mono text-label uppercase tracking-label text-muted-foreground">Ошибка</p>
       <h1 className="mt-4 text-h2">Что-то сорвалось</h1>
       <p className="mt-4 max-w-xl text-body text-muted-foreground">

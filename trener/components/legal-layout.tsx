@@ -16,7 +16,7 @@ export function LegalLayout({
   return (
     <main>
       <header className="border-b border-border">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-8 py-6">
+        <div className="mx-auto flex site-wrap items-center justify-between px-8 py-6">
           <Link href="/">
             <Wordmark />
           </Link>

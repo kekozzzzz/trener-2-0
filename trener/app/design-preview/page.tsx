@@ -211,7 +211,7 @@ const DEMO_STACK_POINTS = Array.from({ length: 120 }, (_, i) => {
 
 export default function DesignPreviewPage() {
   return (
-    <main className="mx-auto max-w-5xl space-y-16 px-8 py-16">
+    <main className="mx-auto site-wrap space-y-16 px-8 py-16">
       <header className="space-y-3">
         <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
           Design Preview

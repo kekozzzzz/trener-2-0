@@ -96,7 +96,7 @@ export default async function TournamentsPage({
   return (
     <main>
       <PageHeader />
-      <section className="mx-auto max-w-5xl px-8 py-16">
+      <section className="mx-auto site-wrap px-8 py-16">
         {/* Профиль игры — наверху (сводная характеристика по всей дистанции), ниже турниры. */}
         {characteristic && (
           <div className="mb-16 border-b border-border pb-16">

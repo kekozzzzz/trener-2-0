@@ -106,7 +106,7 @@ export default async function HandDialoguePage({
       return (
         <main>
           <PageHeader />
-          <section className="mx-auto max-w-5xl px-8 py-16">
+          <section className="mx-auto site-wrap px-8 py-16">
             <h1 className="text-h1">{t("lockedTitle")}</h1>
             <p className="mt-4 max-w-2xl text-body text-muted-foreground">
               {t("lockedBody")}
@@ -174,7 +174,7 @@ export default async function HandDialoguePage({
       <FloatingGlossary />
       <PageHeader />
 
-      <section className="mx-auto max-w-5xl px-8 py-16">
+      <section className="mx-auto site-wrap px-8 py-16">
         {/* Фоновая отметка «просмотрено» при открытии разбора (см. mark-viewed.tsx). */}
         <MarkViewed handId={handId} />
         <h1 className="text-h1">{t("title")}</h1>

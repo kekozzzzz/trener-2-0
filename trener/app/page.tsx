@@ -35,9 +35,9 @@ import {
   FigureCaption,
   ProductWindow,
   SectionHead,
-  Step,
-  StepRail,
   StatRow,
+  Tile,
+  TileRow,
 } from "@/components/site/detail";
 
 // Лендинг — в белом списке индексации (заголовок и описание берёт из корневого layout).
@@ -127,7 +127,7 @@ export default async function HomePage() {
             авторская навигация шире, чем влезает в одну строку на ≤375px, иначе
             шапка переполняется по горизонтали (CTA уезжает за край экрана).
             От sm — снова одна строка со space-between. */}
-        <div className="mx-auto flex max-w-5xl flex-col items-center gap-4 px-4 py-6 sm:flex-row sm:justify-between sm:px-8">
+        <div className="mx-auto flex site-wrap flex-col items-center gap-4 px-4 py-6 sm:flex-row sm:justify-between sm:px-8">
           <Wordmark />
           <AuthNav />
         </div>
@@ -148,12 +148,12 @@ export default async function HomePage() {
           {t("heroCornerCharts", { count: REFERENCE_CHART_COUNT })}
         </span>
 
-        <div className="relative mx-auto grid max-w-5xl items-center gap-12 px-8 py-16 sm:py-24 lg:grid-cols-2">
+        <div className="relative mx-auto grid site-wrap items-center gap-12 px-8 py-16 sm:py-24 lg:grid-cols-[1fr_minmax(0,34rem)] 2xl:gap-20">
           <div className="flex flex-col items-center space-y-6 text-center lg:items-start lg:text-left">
             <Badge variant="outline">{t("badge")}</Badge>
             {/* Резиновый размер: плавно от ~h1 на узком окне до display (4rem) на широком.
                 Ключевые слова акцентом — «твои раздачи» и есть предмет продажи. */}
-            <h1 className="font-black leading-[1.05] tracking-[-0.02em] text-balance text-[clamp(2.25rem,6vw,3.75rem)]">
+            <h1 className="font-black leading-[1.05] tracking-[-0.02em] text-balance text-[clamp(2.25rem,5vw,4.75rem)]">
               {t("heroTitleBefore")}
               <span className="text-primary">{t("heroTitleAccent")}</span>
               {t("heroTitleAfter")}
@@ -204,7 +204,7 @@ export default async function HomePage() {
       {/* Крупные числа — только проверяемое: число открытых чартов из конфига,
           цена из тарифов. «0» — правило 1 проекта: модель не считает метрики. */}
       <Reveal>
-        <div className="mx-auto max-w-5xl border-b border-border">
+        <div className="mx-auto site-wrap border-b border-border">
           <StatRow
             items={[
               { value: String(REFERENCE_CHART_COUNT), caption: t("statChartsCaption"), accent: true },
@@ -219,7 +219,7 @@ export default async function HomePage() {
       <ProductShowcase />
 
       <section className="border-t border-border">
-        <div className="mx-auto max-w-5xl px-8 py-16">
+        <div className="mx-auto site-wrap px-8 py-16">
           <Reveal>
             <SectionHead
               tag={t("secAlternativesTag")}
@@ -231,31 +231,25 @@ export default async function HomePage() {
             </p>
           </Reveal>
           <Reveal delay={60}>
-            <div className="grid divide-y divide-border border border-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+            <TileRow>
               {ALTERNATIVES.map((alt) => (
-                <Tilt key={alt.tag} className="p-8">
-                  <p
-                    className={cn(
-                      "font-mono text-label uppercase tracking-label",
-                      alt.accent ? "text-primary" : "text-muted-foreground"
-                    )}
-                  >
-                    {alt.tag}
-                  </p>
-                  <h3 className="mt-4 text-h3">
-                    {alt.accent ? t("altWhygridPrice", { price: priceFrom }) : alt.verdict}
-                  </h3>
+                <Tile
+                  key={alt.tag}
+                  label={alt.tag}
+                  accent={alt.accent}
+                  title={alt.accent ? t("altWhygridPrice", { price: priceFrom }) : alt.verdict}
+                >
                   <p className="mt-2 text-small text-muted-foreground">{alt.description}</p>
-                </Tilt>
+                </Tile>
               ))}
-            </div>
+            </TileRow>
           </Reveal>
         </div>
       </section>
 
       {/* Что получаешь — бенто вместо трёх одинаковых карточек (§4.1 п. 6) */}
       <section className="border-t border-border">
-        <div className="mx-auto max-w-5xl px-8 py-16">
+        <div className="mx-auto site-wrap px-8 py-16">
           <Reveal>
             <SectionHead tag={t("secValueTag")} title={t("benefitsTitle")} note={t("secValueNote")} />
           </Reveal>
@@ -316,30 +310,27 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Как это работает — рельс с маркерами (§4.1 п. 7) */}
+      {/* Как это работает — те же плитки, что и в остальных рядах */}
       <section className="border-t border-border">
-        <div className="mx-auto max-w-5xl px-8 py-16">
+        <div className="mx-auto site-wrap px-8 py-16">
           <Reveal>
             <SectionHead tag={t("secProcessTag")} title={t("howTitle")} note={t("secProcessNote")} />
           </Reveal>
           <Reveal delay={60}>
-            <StepRail>
+            <TileRow>
               {STEPS.map((step) => (
-                <Step
-                  key={step.number}
-                  label={step.number}
-                  title={step.title}
-                  description={step.description}
-                />
+                <Tile key={step.number} label={step.number} title={step.title} accent>
+                  <p className="mt-2 text-small text-muted-foreground">{step.description}</p>
+                </Tile>
               ))}
-            </StepRail>
+            </TileRow>
           </Reveal>
         </div>
       </section>
 
       {/* Разговор — показываем метод, а не описываем его словами */}
       <section className="border-t border-border">
-        <div className="mx-auto max-w-5xl px-8 py-16">
+        <div className="mx-auto site-wrap px-8 py-16">
           <Reveal>
             <SectionHead
               tag={t("secDialogTag")}
@@ -348,15 +339,17 @@ export default async function HomePage() {
             />
           </Reveal>
           <Reveal delay={60}>
-            <div className="grid gap-px border border-border bg-border">
-              <ChatLine who={t("dialogCoach")} coach>
-                {t("previewCoachQuestion")}
-              </ChatLine>
-              <ChatLine who={t("dialogYou")}>{t("dialogAnswer")}</ChatLine>
-              <ChatLine who={t("dialogCoach")} coach>
-                {t("dialogReply")}
-              </ChatLine>
-            </div>
+            <ProductWindow path={t("windowPathChat")}>
+              <div className="grid gap-px bg-border">
+                <ChatLine who={t("dialogCoach")} coach>
+                  {t("previewCoachQuestion")}
+                </ChatLine>
+                <ChatLine who={t("dialogYou")}>{t("dialogAnswer")}</ChatLine>
+                <ChatLine who={t("dialogCoach")} coach>
+                  {t("dialogReply")}
+                </ChatLine>
+              </div>
+            </ProductWindow>
           </Reveal>
         </div>
       </section>
@@ -364,18 +357,14 @@ export default async function HomePage() {
       {/* На чём основан разбор — доверие перед возражениями: числа от кода, норма от
           открытых чартов, роль ИИ. Отвечает на вопрос «на чём основано / кто решил». */}
       <section className="border-t border-border">
-        <div className="mx-auto max-w-5xl px-8 py-16">
+        <div className="mx-auto site-wrap px-8 py-16">
           <Reveal>
             <SectionHead tag={t("secBasisTag")} title={t("basisTitle")} note={t("secBasisNote")} />
           </Reveal>
           <Reveal delay={60}>
-            <div className="grid divide-y divide-border border border-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+            <TileRow>
               {BASIS.map((item, i) => (
-                <Tilt key={item.label} className="p-8">
-                  <p className="font-mono text-label uppercase tracking-label text-primary">
-                    {`0${i + 1} — ${item.label}`}
-                  </p>
-                  <h3 className="mt-4 text-h3">{item.title}</h3>
+                <Tile key={item.label} label={`0${i + 1} — ${item.label}`} title={item.title} accent>
                   <p className="mt-2 text-small text-muted-foreground">{item.description}</p>
                   {item.linkHref && (
                     <Link
@@ -386,9 +375,9 @@ export default async function HomePage() {
                       <ArrowRight className="size-3" />
                     </Link>
                   )}
-                </Tilt>
+                </Tile>
               ))}
-            </div>
+            </TileRow>
           </Reveal>
           <Reveal delay={120}>
             <p className="mt-8 max-w-[80ch] text-small text-muted-foreground">{t("basisAudience")}</p>
@@ -399,7 +388,7 @@ export default async function HomePage() {
       {/* Возражения — раскрывашки на нативном <details>: без клиентского JS,
           доступно с клавиатуры (тот же приём, что в гайде загрузки). */}
       <section className="border-t border-border">
-        <div className="mx-auto max-w-5xl px-8 py-16">
+        <div className="mx-auto site-wrap px-8 py-16">
           <Reveal>
             <SectionHead
               tag={t("secObjectionsTag")}
@@ -445,7 +434,7 @@ export default async function HomePage() {
 
       {/* Финальный призыв — посадочный талон (§4.1, макет landing-v2.html) */}
       <section className="border-t border-border">
-        <div className="mx-auto max-w-5xl px-8 py-16">
+        <div className="mx-auto site-wrap px-8 py-16">
           <Reveal>
             <TicketCta
               label={t("ticketLabel")}
@@ -463,7 +452,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <div className="mx-auto max-w-5xl px-8">
+      <div className="mx-auto site-wrap px-8">
         <BigWordmark />
       </div>
       <SiteFooter />
@@ -550,7 +539,7 @@ const DEMO_GRID_SIZE = GRID_RANKS.length;
 function DemoRangeGrid() {
   return (
     <div
-      className="grid w-full max-w-[360px] select-none gap-px"
+      className="grid w-full select-none gap-px"
       style={{ gridTemplateColumns: `repeat(${DEMO_GRID_SIZE}, minmax(0, 1fr))` }}
     >
       {Array.from({ length: DEMO_GRID_SIZE }).map((_, row) =>
@@ -580,7 +569,7 @@ async function ProductShowcase() {
 
   return (
     <section className="relative border-t border-border">
-      <div className="mx-auto max-w-5xl px-8 py-16 sm:py-24">
+      <div className="mx-auto site-wrap px-8 py-16 sm:py-24">
         <Reveal>
           <SectionHead
             tag={t("secProductTag")}
@@ -603,7 +592,7 @@ async function ProductShowcase() {
           <FigureCaption index={t("figureTable")}>{t("showcaseTableCaption")}</FigureCaption>
         </Reveal>
 
-        <div className="mt-16 grid items-stretch gap-12 lg:grid-cols-[360px_1fr]">
+        <div className="mt-16 grid items-start gap-12 lg:grid-cols-[minmax(280px,30%)_1fr]">
           <Reveal>
             <div>
               <DemoRangeGrid />
@@ -611,8 +600,8 @@ async function ProductShowcase() {
             </div>
           </Reveal>
 
-          <Reveal delay={60} className="h-full">
-            <div className="relative flex h-full flex-col border border-primary bg-card p-8">
+          <Reveal delay={60}>
+            <div className="relative flex flex-col border border-primary bg-card p-8">
               <CornerMarks />
               <p className="font-mono text-label uppercase tracking-label text-primary">
                 {t("showcaseVerdictLabel")}

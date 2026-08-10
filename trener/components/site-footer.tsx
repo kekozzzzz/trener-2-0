@@ -10,7 +10,7 @@ export async function SiteFooter() {
 
   return (
     <footer className="border-t border-border">
-      <div className="mx-auto flex max-w-5xl flex-col gap-4 px-8 py-6 font-mono text-label uppercase tracking-label text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+      <div className="mx-auto flex site-wrap flex-col gap-4 px-8 py-6 font-mono text-label uppercase tracking-label text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
         <Wordmark />
         <div className="flex items-center gap-4">
           <Link href="/support" className="hover:text-foreground">
