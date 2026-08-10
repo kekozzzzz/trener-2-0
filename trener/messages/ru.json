@@ -500,7 +500,15 @@
     "heroCornerSection": "Sec / 01 — Разбор",
     "heroCornerCharts": "{count} чартов открыто",
     "windowPathGrid": "whygrid.app / hand-review / ответ диапазоном",
-    "windowPathChat": "whygrid.app / hand-review / диалог с тренером"
+    "windowPathChat": "whygrid.app / hand-review / диалог с тренером",
+    "tickerQ1": "За что ты заплатил на ривере?",
+    "tickerQ2": "Какие руки соперника ты здесь бьёшь?",
+    "tickerQ3": "Почему именно такой размер ставки?",
+    "tickerQ4": "Что он может коллировать с этой доской?",
+    "tickerQ5": "Ты сыграл бы так же, не зная исхода?",
+    "tickerQ6": "Какой диапазон ты ему даёшь?",
+    "tickerQ7": "Что меняется, если он не блефует никогда?",
+    "tickerQuestionsHighlight": "Тренер спрашивает — ты отвечаешь"
   },
   "Register": {
     "title": "Регистрация",

@@ -232,6 +232,14 @@
 }
 .ticker-run { animation: ticker-run 40s linear infinite; }
 
+/* Встречная лента: вторая на странице бежит в другую сторону, иначе две одинаково
+   ползущие строки читаются как повтор одного элемента. */
+@keyframes ticker-run-back {
+  from { transform: translateX(-50%); }
+  to   { transform: translateX(0); }
+}
+.ticker-run-back { animation: ticker-run-back 50s linear infinite; }
+
 /* Появление по скроллу — §5 п. 4. Атрибут проставляет скрипт ПОСЛЕ гидрации:
    без JS (поисковый робот, отключённый JS) блок остаётся видимым. */
 [data-reveal="hidden"] { opacity: 0; transform: translateY(16px); }
@@ -244,7 +252,7 @@
 /* Уважаем системную настройку «уменьшить движение»: ни ленты, ни появления. */
 @media (prefers-reduced-motion: reduce) {
   [data-reveal] { opacity: 1 !important; transform: none !important; transition: none !important; }
-  .ticker-run { animation: none; }
+  .ticker-run, .ticker-run-back { animation: none; }
 }
 
 /* ── Свет за курсором и отзывчивые карточки ─────────────────────────────────

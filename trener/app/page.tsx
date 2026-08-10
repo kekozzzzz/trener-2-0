@@ -432,6 +432,24 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Вторая (и последняя) лента страницы — вопросы тренера. Бежит навстречу
+          первой. Смысл: перед кнопкой человек читает не лозунг, а то, что его
+          реально спросят. */}
+      <Ticker
+        direction="right"
+        items={[
+          t("tickerQ1"),
+          t("tickerQ2"),
+          t("tickerQ3"),
+          t("tickerQ4"),
+          t("tickerQ5"),
+          t("tickerQ6"),
+          t("tickerQ7"),
+        ]}
+        highlight={t("tickerQuestionsHighlight")}
+        className="border-t"
+      />
+
       {/* Финальный призыв — посадочный талон (§4.1, макет landing-v2.html) */}
       <section className="border-t border-border">
         <div className="mx-auto site-wrap px-8 py-16">

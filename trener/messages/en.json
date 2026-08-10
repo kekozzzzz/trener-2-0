@@ -500,7 +500,15 @@
     "heroCornerSection": "Sec / 01 — Review",
     "heroCornerCharts": "{count} charts open",
     "windowPathGrid": "whygrid.app / hand-review / answering with a range",
-    "windowPathChat": "whygrid.app / hand-review / dialogue with the coach"
+    "windowPathChat": "whygrid.app / hand-review / dialogue with the coach",
+    "tickerQ1": "What did you pay for on the river?",
+    "tickerQ2": "Which of his hands do you beat here?",
+    "tickerQ3": "Why this bet size exactly?",
+    "tickerQ4": "What can he call with on this board?",
+    "tickerQ5": "Would you play it the same not knowing the result?",
+    "tickerQ6": "What range do you put him on?",
+    "tickerQ7": "What changes if he never bluffs?",
+    "tickerQuestionsHighlight": "The coach asks — you answer"
   },
   "Register": {
     "title": "Create account",
