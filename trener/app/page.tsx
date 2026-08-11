@@ -461,8 +461,7 @@ export default async function HomePage() {
               primary={{ href: ctaHref, text: t("ctaUpload") }}
               secondary={{ href: "/pricing", text: t("allPlans") }}
               fields={[
-                { label: t("ticketPlanLabel"), value: t("ticketPlanValue", { price: priceFrom }), accent: true },
-                { label: t("ticketFirstLabel"), value: t("ticketFirstValue") },
+                { label: t("ticketFirstLabel"), value: t("ticketFirstValue"), accent: true },
                 { label: t("ticketCardLabel"), value: t("ticketCardValue") },
               ]}
             />
