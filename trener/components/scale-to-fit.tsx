@@ -15,6 +15,10 @@ export function ScaleToFit({ baseWidth, children }: { baseWidth: number; childre
   const inner = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const [height, setHeight] = useState<number | undefined>(undefined);
+  // Когда контейнер шире эталонной ширины (scale упирается в 1), блок иначе
+  // прилипает к левому краю, а не стоит по центру окна (правка Артёма 2026-08-13,
+  // криво на широком мониторе). Свободную ширину добавляем как сдвиг вправо.
+  const [offset, setOffset] = useState(0);
 
   useLayoutEffect(() => {
     const outerEl = outer.current;
@@ -22,8 +26,10 @@ export function ScaleToFit({ baseWidth, children }: { baseWidth: number; childre
     if (!outerEl || !innerEl) return;
 
     const update = () => {
-      const s = Math.min(1, outerEl.clientWidth / baseWidth);
+      const containerWidth = outerEl.clientWidth;
+      const s = Math.min(1, containerWidth / baseWidth);
       setScale(s);
+      setOffset(Math.max(0, (containerWidth - baseWidth * s) / 2));
       setHeight(innerEl.offsetHeight * s);
     };
 
@@ -41,7 +47,11 @@ export function ScaleToFit({ baseWidth, children }: { baseWidth: number; childre
     <div ref={outer} style={{ height, overflow: "hidden" }}>
       <div
         ref={inner}
-        style={{ width: baseWidth, transformOrigin: "top left", transform: `scale(${scale})` }}
+        style={{
+          width: baseWidth,
+          transformOrigin: "top left",
+          transform: `translateX(${offset}px) scale(${scale})`,
+        }}
       >
         {children}
       </div>
