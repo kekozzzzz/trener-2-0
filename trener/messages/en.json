@@ -150,7 +150,7 @@
     "title": "GGPoker tournament strategy at micro stakes",
     "intro": "GGPoker is one of the largest poker platforms in the world, and for micro-stakes players it's one of the most accessible entry points into tournament poker. Whygrid was built with exactly this player in mind: the parser reads GGPoker hand-history files natively, the format is detected automatically.",
     "whyMicroTitle": "What matters at micro-stakes MTTs",
-    "whyMicroBody": "Micro-stakes tournaments tend to run faster and rougher than mid and high stakes: blind structures climb quickly, stacks get short sooner than you'd like, and \"shove or wait\" decisions come up more often than at deep tables. That's exactly why we have a dedicated reference chart for short-stack play.",
+    "whyMicroBody": "Micro-stakes tournaments tend to run faster and rougher than mid and high stakes. Blind structures climb quickly, stacks get short sooner than you'd like, and \"shove or wait\" decisions come up more often than at deep tables. That's exactly why we have a dedicated reference chart for short-stack play.",
     "pushFoldLinkText": "See the",
     "pushFoldLinkCta": "push-fold chart",
     "parseTitle": "How Whygrid reviews your GGPoker tournaments",
