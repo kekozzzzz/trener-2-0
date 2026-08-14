@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { ArrowRight } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { indexablePage } from "@/lib/seo";
@@ -6,6 +7,9 @@ import { getCurrentPlayer } from "@/features/auth/queries";
 import { getPlans, formatUsd } from "@/config/plans";
 import { ROOM_SHORT_NAMES } from "@/config/rooms";
 import { REFERENCE_CHART_COUNT } from "@/config/poker/reference-charts";
+import { HEADLINE_VARIANT_COOKIE, isHeadlineVariant, type HeadlineVariant } from "@/config/growth";
+import { HeadlineImpression } from "@/components/site/headline-impression";
+import { HeadlineCtaLink } from "@/components/site/headline-cta-link";
 import { AuthNav } from "@/components/auth-nav";
 import { Wordmark } from "@/components/ui/wordmark";
 import { StructuredData } from "@/components/structured-data";
@@ -57,6 +61,14 @@ export default async function HomePage() {
   const priceFrom = formatUsd(Math.min(...getPlans().map((p) => p.priceUsd)));
   // Гостя обе кнопки ведут на /enter — вход по ссылке первым (пароль — запасной путь).
   const ctaHref = player ? "/analyze" : "/enter";
+
+  // A/B-тест заголовка hero (config/growth.ts): вариант назначает middleware при первом
+  // заходе и кладёт в куку — здесь только читаем, ничего не решаем и не пишем.
+  const cookieJar = await cookies();
+  const rawHeadlineVariant = cookieJar.get(HEADLINE_VARIANT_COOKIE)?.value;
+  const headlineVariant: HeadlineVariant = isHeadlineVariant(rawHeadlineVariant)
+    ? rawHeadlineVariant
+    : "A";
 
   const STEPS = [
     { number: "/01", title: t("step1Title"), description: t("step1Description") },
@@ -154,17 +166,32 @@ export default async function HomePage() {
             {/* Резиновый размер: плавно от ~h1 на узком окне до display (4rem) на широком.
                 Ключевые слова акцентом — «твои раздачи» и есть предмет продажи. */}
             <h1 className="font-black leading-[1.05] tracking-[-0.02em] text-balance text-[clamp(2.25rem,5vw,4.75rem)]">
-              {t("heroTitleBefore")}
-              <span className="text-primary">{t("heroTitleAccent")}</span>
-              {t("heroTitleAfter")}
+              {headlineVariant === "B" ? (
+                <>
+                  {t("heroTitleBeforeB")}
+                  <span className="text-primary">{t("heroTitleAccentB")}</span>
+                  {t("heroTitleAfterB")}
+                </>
+              ) : (
+                <>
+                  {t("heroTitleBefore")}
+                  <span className="text-primary">{t("heroTitleAccent")}</span>
+                  {t("heroTitleAfter")}
+                </>
+              )}
             </h1>
+            <HeadlineImpression variant={headlineVariant} />
             <p className="text-body text-muted-foreground">{t("heroSubtitle")}</p>
             <div className="flex flex-col items-center gap-3 pt-2 lg:items-start">
               <div className="flex flex-wrap items-center justify-center gap-4">
-                <Link href={ctaHref} className={cn(buttonVariants(), "gap-2")}>
+                <HeadlineCtaLink
+                  href={ctaHref}
+                  variant={headlineVariant}
+                  className={cn(buttonVariants(), "gap-2")}
+                >
                   {t("ctaUpload")}
                   <ArrowRight className="size-4" />
-                </Link>
+                </HeadlineCtaLink>
                 <Link
                   href={player ? "/tournaments" : "/enter"}
                   className={cn(buttonVariants({ variant: "outline" }))}

@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { getAppBaseUrl } from "@/config/app";
 import { SiteVisitTracker } from "@/components/site-visit-tracker";
 import { CursorGlow } from "@/components/site/cursor-glow";
+import { Metrika } from "@/components/site/metrika";
 
 const inter = localFont({
   src: "../public/fonts/inter-variable.ttf",
@@ -74,6 +75,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body>
         <NextIntlClientProvider messages={messages}>
           <SiteVisitTracker />
+          <Metrika />
           {/* Свет за курсором — на всех страницах, только для мыши (см. cursor-glow.tsx) */}
           <CursorGlow />
           {children}
