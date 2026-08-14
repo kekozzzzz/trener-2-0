@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root{
+    --bg:#0E0E0E; --surface:#1A1A1A; --line:#2A2A2A;
+    --text:#F5F5F5; --muted:#8C8C8C; --lime:#D4FF33;
+  }
+  html,body{ width:1080px; height:1080px; background:var(--bg); }
+  #card{
+    width:1080px; height:1080px; background:var(--bg); color:var(--text);
+    font-family: 'Golos Text', sans-serif;
+    padding:64px; display:flex; flex-direction:column;
+  }
+  .top{ display:flex; justify-content:space-between; align-items:center; }
+  .wm{ font-weight:900; letter-spacing:1px; font-size:30px; }
+  .wm .w{ color:var(--lime); }
+  .tag{
+    font-family:'JetBrains Mono', monospace; font-size:22px; letter-spacing:3px;
+    color:var(--muted); text-transform:uppercase;
+  }
+  .step{ font-family:'JetBrains Mono', monospace; font-size:22px; color:var(--muted); letter-spacing:2px; }
+
+  .mid{ flex:1; display:flex; flex-direction:column; justify-content:center; }
+
+  /* kind=hook — крупное утверждение по центру */
+  .hook-text{ font-weight:900; font-size:64px; line-height:1.12; }
+  .hook-text .lime{ color:var(--lime); }
+  .hook-sub{ margin-top:28px; font-size:34px; line-height:1.4; color:var(--muted); }
+
+  /* kind=bar — факт с диапазоном (как post-card-fact.html) */
+  .setup{ font-family:'JetBrains Mono', monospace; font-size:34px; color:var(--muted); }
+  .setup b{ color:var(--lime); font-weight:700; }
+  .axis{ margin-top:36px; font-family:'JetBrains Mono', monospace; font-size:20px; letter-spacing:3px;
+         color:var(--muted); text-transform:uppercase; }
+  .mrow{ margin-top:12px; display:flex; align-items:flex-end; }
+  .zone{ display:flex; flex-direction:column; align-items:center; text-align:center; }
+  .zone.a{ padding-right:32px; }
+  .zone .zlabel{ font-family:'JetBrains Mono', monospace; font-weight:700; font-size:84px; line-height:0.9; color:var(--text); }
+  .zone.b .zlabel{ color:var(--lime); }
+  .zone .zaction{ font-family:'JetBrains Mono', monospace; font-size:26px; letter-spacing:2px; text-transform:uppercase;
+                  margin-top:10px; color:var(--muted); }
+  .zone.b .zaction{ color:var(--lime); font-weight:700; }
+  .track{ margin-top:20px; height:16px; display:flex; }
+  .seg{ height:100%; }
+  .segA{ background:var(--line); }
+  .segB{ background:var(--lime); }
+  .fact{ margin-top:56px; font-size:36px; line-height:1.45; color:var(--text); max-width:960px; }
+
+  /* kind=image — реальный скриншот продукта в рамке */
+  .shot-wrap{ display:flex; flex-direction:column; align-items:center; }
+  .shot-frame{
+    border:1px solid var(--line); background:var(--surface);
+    width:940px; height:640px; overflow:hidden;
+  }
+  .shot-frame img{ display:block; width:940px; height:640px; object-fit:cover; }
+  .shot-caption{ margin-top:32px; font-size:32px; line-height:1.4; color:var(--text); text-align:center; max-width:880px; }
+
+  /* kind=cta — финальный слайд */
+  .cta-line{ font-weight:900; font-size:56px; line-height:1.15; }
+  .cta-line .lime{ color:var(--lime); }
+  .cta-sub{ margin-top:24px; font-size:32px; line-height:1.4; color:var(--muted); }
+  .cta-arrow{ margin-top:48px; font-family:'JetBrains Mono', monospace; font-size:26px; color:var(--lime); letter-spacing:2px; }
+
+  .foot{ display:flex; justify-content:space-between; align-items:flex-end; }
+  .dots{ display:flex; gap:10px; }
+  .dot{ width:10px; height:10px; border-radius:50%; background:var(--line); }
+  .dot.on{ background:var(--lime); }
+  .foot svg{ width:36px; height:36px; }
+</style>
+</head>
+<body>
+<div id="card">
+  <div class="top">
+    <div class="wm"><span class="w">WHY</span>GRID</div>
+    <div class="tag" id="tag">Факт</div>
+  </div>
+
+  <div class="mid" id="mid"></div>
+
+  <div class="foot">
+    <div class="dots" id="dots"></div>
+    <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+      <rect x="6.5" y="6.5" width="8" height="8" fill="none" stroke="#F5F5F5" stroke-width="2"/>
+      <rect x="17.5" y="6.5" width="8" height="8" fill="#D4FF33"/>
+      <rect x="6.5" y="17.5" width="8" height="8" fill="none" stroke="#F5F5F5" stroke-width="2"/>
+      <rect x="17.5" y="17.5" width="8" height="8" fill="none" stroke="#F5F5F5" stroke-width="2"/>
+    </svg>
+  </div>
+</div>
+<script>
+  const p = new URLSearchParams(location.search);
+  const kind = p.get('kind') || 'hook';
+  const tag = p.has('tag') ? p.get('tag') : 'Факт';
+  document.getElementById('tag').textContent = tag;
+
+  const mid = document.getElementById('mid');
+
+  function esc(s){ return (s||'').replace(/</g,'&lt;'); }
+
+  if (kind === 'hook') {
+    const text = esc(p.get('text') || '');
+    const sub = esc(p.get('sub') || '');
+    mid.innerHTML = `
+      <div class="hook-text">${text}</div>
+      ${sub ? `<div class="hook-sub">${sub}</div>` : ''}
+    `;
+  } else if (kind === 'bar') {
+    const setup = esc(p.get('setup') || '');
+    const axis = esc(p.get('axis') || '');
+    const labelA = esc(p.get('labelA') || '');
+    const actionA = esc(p.get('actionA') || '');
+    const pctA = parseFloat(p.get('pctA') || '50');
+    const labelB = esc(p.get('labelB') || '');
+    const actionB = esc(p.get('actionB') || '');
+    const pctB = 100 - pctA;
+    const fact = esc(p.get('fact') || '');
+    mid.innerHTML = `
+      <div class="setup">${setup}</div>
+      <div class="axis">${axis}</div>
+      <div class="mrow">
+        <div class="zone a" style="flex:${pctA}">
+          <div class="zlabel">${labelA}</div>
+          <div class="zaction">${actionA}</div>
+        </div>
+        <div class="zone b" style="flex:${pctB}">
+          <div class="zlabel">${labelB}</div>
+          <div class="zaction">${actionB}</div>
+        </div>
+      </div>
+      <div class="track">
+        <div class="seg segA" style="flex:${pctA}"></div>
+        <div class="seg segB" style="flex:${pctB}"></div>
+      </div>
+      <div class="fact">${fact}</div>
+    `;
+  } else if (kind === 'image') {
+    const img = p.get('img') || '';
+    const pos = p.get('pos') || 'top';
+    const caption = esc(p.get('caption') || '');
+    mid.innerHTML = `
+      <div class="shot-wrap">
+        <div class="shot-frame"><img src="${img}" style="object-position: center ${pos};"></div>
+        ${caption ? `<div class="shot-caption">${caption}</div>` : ''}
+      </div>
+    `;
+  } else if (kind === 'cta') {
+    const text = esc(p.get('text') || '');
+    const sub = esc(p.get('sub') || '');
+    const arrow = esc(p.get('arrow') || '');
+    mid.innerHTML = `
+      <div class="cta-line">${text}</div>
+      ${sub ? `<div class="cta-sub">${sub}</div>` : ''}
+      ${arrow ? `<div class="cta-arrow">${arrow}</div>` : ''}
+    `;
+  }
+
+  const total = parseInt(p.get('total') || '4', 10);
+  const step = parseInt(p.get('step') || '1', 10);
+  const dotsEl = document.getElementById('dots');
+  for (let i = 1; i <= total; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === step ? ' on' : '');
+    dotsEl.appendChild(d);
+  }
+</script>
+</body>
+</html>
