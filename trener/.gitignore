@@ -28,6 +28,10 @@ out/
 tsconfig.tsbuildinfo
 *.tsbuildinfo
 
+# Python build artifacts (trener/scripts/content-qc)
+__pycache__/
+*.pyc
+
 # OS
 .DS_Store
 Thumbs.db
