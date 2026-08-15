@@ -1,7 +1,8 @@
 // IndexNow — протокол мгновенного оповещения поисковиков (Bing, Yandex, Seznam) о том,
 // что публичная страница изменилась, вместо ожидания планового обхода краулером.
 // Спецификация: https://www.indexnow.org/
-//
+import { SUPPORTED_ROOMS } from "./rooms";
+
 // Ключ — не секрет (это код подтверждения владения сайтом, как у Google Search Console),
 // но правило 3 держит такие значения в конфиге, а не хардкодом внутри адаптера. Подтверждение
 // владения — статический файл public/<ключ>.txt с этим же значением внутри (см. адаптер).
@@ -23,5 +24,7 @@ export function getIndexNowUrls(base: string): string[] {
     `${base}/leaks`,
     `${base}/ggpoker`,
     `${base}/how-to-export`,
+    ...SUPPORTED_ROOMS.map((room) => `${base}/how-to-export/${room.id}`),
+    `${base}/legal`,
   ];
 }

@@ -156,6 +156,51 @@ export default async function ChartsPage() {
           </div>
         </div>
 
+        {/* Хаб гайд-кластера (SEO-аудит 2026-08-15): /charts — самая авторитетная
+            публичная страница сайта, но раньше не ссылалась ни на одну гайд-страницу —
+            бот и человек находили их только через sitemap, без пути дальше по сайту. */}
+        <div className="mt-16 border-t border-border pt-16">
+          <h2 className="text-h2">{t("relatedTitle")}</h2>
+          <p className="mt-4 max-w-2xl text-body text-muted-foreground">{t("relatedIntro")}</p>
+          <ul className="mt-8 grid gap-3 sm:grid-cols-2">
+            <li>
+              <Link href="/range" className="text-primary underline underline-offset-4">
+                {t("relatedRangeCta")}
+              </Link>
+            </li>
+            <li>
+              <Link href="/push-fold" className="text-primary underline underline-offset-4">
+                {t("relatedPushFoldCta")}
+              </Link>
+            </li>
+            <li>
+              <Link href="/icm" className="text-primary underline underline-offset-4">
+                {t("relatedIcmCta")}
+              </Link>
+            </li>
+            <li>
+              <Link href="/leaks" className="text-primary underline underline-offset-4">
+                {t("relatedLeaksCta")}
+              </Link>
+            </li>
+            <li>
+              <Link href="/hand-review" className="text-primary underline underline-offset-4">
+                {t("relatedHandReviewCta")}
+              </Link>
+            </li>
+            <li>
+              <Link href="/ggpoker" className="text-primary underline underline-offset-4">
+                {t("relatedGgpokerCta")}
+              </Link>
+            </li>
+            <li>
+              <Link href="/how-to-export" className="text-primary underline underline-offset-4">
+                {t("relatedHowToExportCta")}
+              </Link>
+            </li>
+          </ul>
+        </div>
+
         {/* Дверь в продукт: норма выше — а дальше сравнение с СОБСТВЕННОЙ игрой.
             Загрузка и «Твои чарты» бесплатны (считает парсер, без ИИ) — зазыв честный. */}
         <div className="mt-16 border-t border-border pt-16">

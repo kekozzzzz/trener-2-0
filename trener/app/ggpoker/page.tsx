@@ -38,6 +38,17 @@ export default async function GgpokerGuidePage() {
         </div>
 
         <div className="mt-16 border-t border-border pt-16">
+          <h2 className="text-h2">{t("formatsTitle")}</h2>
+          <p className="mt-4 max-w-2xl text-body text-muted-foreground">{t("formatsBody")}</p>
+          <p className="mt-6 max-w-2xl text-small text-muted-foreground">
+            {t("icmLinkText")}{" "}
+            <Link href="/icm" className="text-primary underline underline-offset-4">
+              {t("icmLinkCta")}
+            </Link>
+          </p>
+        </div>
+
+        <div className="mt-16 border-t border-border pt-16">
           <h2 className="text-h2">{t("parseTitle")}</h2>
           <p className="mt-4 max-w-2xl text-body text-muted-foreground">{t("parseBody")}</p>
           <p className="mt-6 max-w-2xl text-small text-muted-foreground">

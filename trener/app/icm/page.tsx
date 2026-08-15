@@ -60,6 +60,17 @@ export default async function IcmGuidePage() {
         </div>
 
         <div className="mt-16 border-t border-border pt-16">
+          <h2 className="text-h2">{t("bountyTitle")}</h2>
+          <p className="mt-4 max-w-2xl text-body text-muted-foreground">{t("bountyBody")}</p>
+          <p className="mt-6 max-w-2xl text-small text-muted-foreground">
+            {t("ggpokerLinkText")}{" "}
+            <Link href="/ggpoker" className="text-primary underline underline-offset-4">
+              {t("ggpokerLinkCta")}
+            </Link>
+          </p>
+        </div>
+
+        <div className="mt-16 border-t border-border pt-16">
           <h2 className="text-h2">{t("inProductTitle")}</h2>
           <p className="mt-4 max-w-2xl text-body text-muted-foreground">{t("inProductBody")}</p>
           <p className="mt-6 max-w-2xl text-small text-muted-foreground">

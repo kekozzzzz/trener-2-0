@@ -64,8 +64,19 @@ export default async function LeaksGuidePage() {
         </div>
 
         <div className="mt-16 border-t border-border pt-16">
+          <h2 className="text-h2">{t("notLuckTitle")}</h2>
+          <p className="mt-4 max-w-2xl text-body text-muted-foreground">{t("notLuckBody")}</p>
+        </div>
+
+        <div className="mt-16 border-t border-border pt-16">
           <h2 className="text-h2">{t("inProductTitle")}</h2>
           <p className="mt-4 max-w-2xl text-body text-muted-foreground">{t("inProductBody")}</p>
+          <p className="mt-6 max-w-2xl text-small text-muted-foreground">
+            {t("pushFoldLinkText")}{" "}
+            <Link href="/push-fold" className="text-primary underline underline-offset-4">
+              {t("pushFoldLinkCta")}
+            </Link>
+          </p>
         </div>
 
         <div className="mt-16 flex flex-col items-start gap-4 border border-border bg-card p-8 sm:flex-row sm:items-center sm:justify-between">

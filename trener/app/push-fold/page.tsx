@@ -57,6 +57,12 @@ export default async function PushFoldGuidePage() {
               {t("chartsLinkCta")}
             </Link>
           </p>
+          <p className="mt-2 max-w-2xl text-small text-muted-foreground">
+            {t("icmLinkText")}{" "}
+            <Link href="/icm" className="text-primary underline underline-offset-4">
+              {t("icmLinkCta")}
+            </Link>
+          </p>
         </div>
 
         <div className="mt-16 flex flex-col items-start gap-4 border border-border bg-card p-8 sm:flex-row sm:items-center sm:justify-between">

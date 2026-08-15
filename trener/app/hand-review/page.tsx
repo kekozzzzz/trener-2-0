@@ -54,6 +54,27 @@ export default async function HandReviewGuidePage() {
         </div>
 
         <div className="mt-16 border-t border-border pt-16">
+          <h2 className="text-h2">{t("notTitle")}</h2>
+
+          <div className="mt-8 grid gap-4 sm:grid-cols-3">
+            {(
+              [
+                ["notSolverLabel", "notSolverDesc"],
+                ["notRtaLabel", "notRtaDesc"],
+                ["notPromiseLabel", "notPromiseDesc"],
+              ] as const
+            ).map(([labelKey, descKey]) => (
+              <div key={labelKey} className="border border-border bg-card p-6">
+                <p className="font-mono text-label uppercase tracking-label text-primary">
+                  {t(labelKey)}
+                </p>
+                <p className="mt-3 text-small text-muted-foreground">{t(descKey)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-16 border-t border-border pt-16">
           <h2 className="text-h2">{t("startTitle")}</h2>
           <p className="mt-4 max-w-2xl text-body text-muted-foreground">{t("startBody")}</p>
           <p className="mt-6 max-w-2xl text-small text-muted-foreground">

@@ -42,11 +42,76 @@ const STEP_SHOTS: Record<string, Record<number, string>> = {
   // pokerplanets: публичных скринов клиента нет (рум закрытый) — добавим, когда снимем сами
 };
 
-// Одна раскрывашка рума: клик по названию раскрывает шаги (пока не нажали — скрыто).
-async function RoomDetails({ room }: { room: SupportedRoom }) {
+// Тело инструкции по руму — шаги, скриншоты, путь к папке, расширение, примечание.
+// Без обёртки <details>: переиспользуется и внутри раскрывашки (RoomDetails, ниже),
+// и открытым текстом на отдельной странице /how-to-export/[room] (SEO — там нужен
+// видимый, а не спрятанный за кликом контент под конкретный запрос вида «как
+// выгрузить историю раздач <рум>»).
+export async function RoomSteps({ room }: { room: SupportedRoom }) {
   const t = await getTranslations("UploadGuide");
   const steps = t.raw(`steps.${room.id}`) as string[];
   const paths = room.hasPaths ? (t.raw(`paths.${room.id}`) as string[]) : null;
+
+  return (
+    <div className="px-6 pb-8 pt-6">
+      <ol className="space-y-4">
+        {steps.map((step, i) => {
+          const shot = STEP_SHOTS[room.id]?.[i];
+          return (
+            <li key={i} className="flex items-start gap-4">
+              <span className="flex size-6 shrink-0 items-center justify-center bg-primary font-mono text-label font-medium text-background">
+                {i + 1}
+              </span>
+              <div className="min-w-0 flex-1 space-y-3">
+                <span className="text-body">{step}</span>
+                {shot && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={shot}
+                    alt={step}
+                    loading="lazy"
+                    decoding="async"
+                    className="w-full border border-border"
+                  />
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+
+      {paths && (
+        <div className="mt-6 flex items-start gap-2">
+          <ArrowRight className="mt-1 size-4 shrink-0 text-primary" aria-hidden />
+          <div className="space-y-1">
+            <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
+              {t("folderLabel")}
+            </p>
+            {paths.map((p, i) => (
+              <p key={i} className="break-all font-mono text-small text-foreground">
+                {p}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <p className="mt-6 font-mono text-label uppercase tracking-label text-muted-foreground">
+        {t("uploadLabelPrefix")} <span className="text-primary">{t(`ext.${room.id}`)}</span>
+      </p>
+
+      {room.hasNote && (
+        <p className="mt-4 border-l border-primary pl-4 text-small text-muted-foreground">
+          {t(`notes.${room.id}`)}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// Одна раскрывашка рума: клик по названию раскрывает шаги (пока не нажали — скрыто).
+async function RoomDetails({ room }: { room: SupportedRoom }) {
+  const t = await getTranslations("UploadGuide");
 
   return (
     <details className="group/room border-t border-border first:border-t-0">
@@ -65,59 +130,7 @@ async function RoomDetails({ room }: { room: SupportedRoom }) {
         />
       </summary>
 
-      <div className="px-6 pb-8 pt-2">
-        <ol className="space-y-4">
-          {steps.map((step, i) => {
-            const shot = STEP_SHOTS[room.id]?.[i];
-            return (
-              <li key={i} className="flex items-start gap-4">
-                <span className="flex size-6 shrink-0 items-center justify-center bg-primary font-mono text-label font-medium text-background">
-                  {i + 1}
-                </span>
-                <div className="min-w-0 flex-1 space-y-3">
-                  <span className="text-body">{step}</span>
-                  {shot && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={shot}
-                      alt={step}
-                      loading="lazy"
-                      decoding="async"
-                      className="w-full border border-border"
-                    />
-                  )}
-                </div>
-              </li>
-            );
-          })}
-        </ol>
-
-        {paths && (
-          <div className="mt-6 flex items-start gap-2">
-            <ArrowRight className="mt-1 size-4 shrink-0 text-primary" aria-hidden />
-            <div className="space-y-1">
-              <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
-                {t("folderLabel")}
-              </p>
-              {paths.map((p, i) => (
-                <p key={i} className="break-all font-mono text-small text-foreground">
-                  {p}
-                </p>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <p className="mt-6 font-mono text-label uppercase tracking-label text-muted-foreground">
-          {t("uploadLabelPrefix")} <span className="text-primary">{t(`ext.${room.id}`)}</span>
-        </p>
-
-        {room.hasNote && (
-          <p className="mt-4 border-l border-primary pl-4 text-small text-muted-foreground">
-            {t(`notes.${room.id}`)}
-          </p>
-        )}
-      </div>
+      <RoomSteps room={room} />
     </details>
   );
 }
