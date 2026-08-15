@@ -112,14 +112,15 @@ export function ProductWindow({
   );
 }
 
-// Подпись к рисунку: моно-индекс акцентом + пояснение. Нумерация как в
-// техдокументации — часть тона «инженерный инструмент».
-export function FigureCaption({ index, children }: { index: string; children: ReactNode }) {
+// Подпись к рисунку: маркер-квадрат акцентом + пояснение. Раньше был текстовый
+// индекс «[ Рис. 01 ]» как в техдокументации — убран (правка Артёма 2026-08-15):
+// нумерация нигде в тексте не используется для перекрёстной ссылки («см. рис. 1»
+// в прозе нет), поэтому несёт только тон, без функции — маркер тот же тон даёт
+// без притворства на техдокументацию, которой здесь на самом деле нет.
+export function FigureCaption({ children }: { children: ReactNode }) {
   return (
     <div className="mt-3 flex gap-3">
-      <span className="shrink-0 font-mono text-label uppercase tracking-label text-primary">
-        {index}
-      </span>
+      <i aria-hidden className="mt-1.5 block size-1.5 shrink-0 bg-primary" />
       <p className="text-small text-muted-foreground">{children}</p>
     </div>
   );

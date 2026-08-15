@@ -633,14 +633,14 @@ async function ProductShowcase() {
               <HandTable state={demoTable} nick={null} fit />
             </ScaleToFit>
           </ProductWindow>
-          <FigureCaption index={t("figureTable")}>{t("showcaseTableCaption")}</FigureCaption>
+          <FigureCaption>{t("showcaseTableCaption")}</FigureCaption>
         </Reveal>
 
         <div className="mt-16 grid items-start gap-12 lg:grid-cols-[minmax(280px,30%)_1fr]">
           <Reveal>
             <div>
               <DemoRangeGrid />
-              <FigureCaption index={t("figureGrid")}>{t("showcaseGridCaption")}</FigureCaption>
+              <FigureCaption>{t("showcaseGridCaption")}</FigureCaption>
             </div>
           </Reveal>
 
