@@ -15,6 +15,7 @@ export const ACQUISITION_SOURCES: AcquisitionSource[] = [
   { code: "630452", slug: "telegram", label: "Telegram" },
   { code: "759042", slug: "instagram", label: "Instagram" },
   { code: "406738", slug: "youtube", label: "YouTube" },
+  { code: "618930", slug: "tiktok", label: "TikTok" },
 ];
 
 export function findAcquisitionSourceByCode(code: string): AcquisitionSource | undefined {
