@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { indexablePage } from "@/lib/seo";
 import { SUPPORTED_ROOMS } from "@/config/rooms";
 import { RoomSteps } from "@/components/upload/hand-history-guide";
+import { HowToStructuredData } from "@/components/structured-data";
 
 type Params = { room: string };
 
@@ -49,6 +50,7 @@ export default async function ExportRoomPage({ params }: { params: Promise<Param
   return (
     <main>
       <PageHeader />
+      <HowToStructuredData room={room} />
 
       <section className="mx-auto site-wrap px-8 py-16 sm:py-24">
         <PageIntro

@@ -21,7 +21,9 @@ const HAND_HISTORY_ROOMS = SUPPORTED_ROOMS;
 
 // Скриншоты к шагам: номер шага (с нуля) → файл в /public/help.
 // Обработаны: ники и чужие пометки убраны, наши метки — лаймовые.
-const STEP_SHOTS: Record<string, Record<number, string>> = {
+// Экспортирован: та же карта кормит HowTo-разметку (components/structured-data.tsx)
+// на страницах /how-to-export/[room] — один источник, скрины не разъедутся с шагами.
+export const STEP_SHOTS: Record<string, Record<number, string>> = {
   ggpoker: {
     2: "/help/01-pokercraft.png",
     3: "/help/02-tournament.png",
