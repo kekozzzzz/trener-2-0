@@ -11,7 +11,7 @@ import {
   getLlmCallRetries,
 } from "@/config/llm";
 import { getHealthCheckTimeoutMs } from "@/config/health";
-import { buildHandAnalysisPrompt, buildHandAnalysisSystemPrompt, handSawPostflop } from "@/config/prompts/hand-analysis";
+import { buildHandAnalysisPrompt, buildHandAnalysisSystemPrompt, handSawPostflop, spotScope } from "@/config/prompts/hand-analysis";
 import { buildDialogueQuestionPrompt, buildDialogueQuestionSystemPrompt } from "@/config/prompts/dialogue-question";
 import { buildVerdictPrompt, buildVerdictSystemPrompt } from "@/config/prompts/verdict";
 import { buildChatReplyPrompt, buildChatReplySystemPrompt } from "@/config/prompts/chat-reply";
@@ -169,7 +169,7 @@ const TEMP_DIALOGUE = 0.6;
 
 export const anthropicLlmAdapter: LlmPort = {
   async generateHandAnalysis(request: HandAnalysisRequest, meta?: LlmCallMeta): Promise<HandAnalysisResult> {
-    const parsed = await callClaude(buildHandAnalysisSystemPrompt(request.locale, { postflop: handSawPostflop(request.tableSnapshot), socratic: request.importanceLevel === "CRITICAL" }), buildHandAnalysisPrompt(request), {
+    const parsed = await callClaude(buildHandAnalysisSystemPrompt(request.locale, { ...spotScope(request.tableSnapshot), socratic: request.importanceLevel === "CRITICAL" }), buildHandAnalysisPrompt(request), {
       step: "HAND_ANALYSIS",
       playerId: meta?.playerId,
     }, TEMP_PRECISE);
@@ -177,7 +177,7 @@ export const anthropicLlmAdapter: LlmPort = {
   },
 
   async generateNextQuestion(request: NextQuestionRequest, meta?: LlmCallMeta): Promise<NextQuestionResult> {
-    const parsed = await callClaude(buildDialogueQuestionSystemPrompt(request.locale, { postflop: handSawPostflop(request.tableSnapshot) }), buildDialogueQuestionPrompt(request), {
+    const parsed = await callClaude(buildDialogueQuestionSystemPrompt(request.locale, { ...spotScope(request.tableSnapshot) }), buildDialogueQuestionPrompt(request), {
       step: "DIALOGUE_QUESTION",
       playerId: meta?.playerId,
     }, TEMP_DIALOGUE);
@@ -185,7 +185,7 @@ export const anthropicLlmAdapter: LlmPort = {
   },
 
   async generateVerdict(request: VerdictRequest, meta?: LlmCallMeta): Promise<VerdictResult> {
-    const parsed = await callClaude(buildVerdictSystemPrompt(request.locale, { postflop: handSawPostflop(request.tableSnapshot) }), buildVerdictPrompt(request), {
+    const parsed = await callClaude(buildVerdictSystemPrompt(request.locale, { ...spotScope(request.tableSnapshot) }), buildVerdictPrompt(request), {
       step: "VERDICT",
       playerId: meta?.playerId,
     }, TEMP_PRECISE);
@@ -193,7 +193,7 @@ export const anthropicLlmAdapter: LlmPort = {
   },
 
   async generateChatReply(request: ChatReplyRequest, meta?: LlmCallMeta): Promise<ChatReplyResult> {
-    const parsed = await callClaude(buildChatReplySystemPrompt(request.locale, { postflop: handSawPostflop(request.tableSnapshot) }), buildChatReplyPrompt(request), {
+    const parsed = await callClaude(buildChatReplySystemPrompt(request.locale, { ...spotScope(request.tableSnapshot) }), buildChatReplyPrompt(request), {
       step: "CHAT_REPLY",
       playerId: meta?.playerId,
     }, TEMP_DIALOGUE);

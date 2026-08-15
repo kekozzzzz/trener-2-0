@@ -17,7 +17,7 @@ import { renderShowdownFacts } from "@/parser/facts";
 export function buildVerdictSystemPrompt(locale: Locale, scope: FrameworkScope = {}): string {
   return `Ты — сократовский тренер по покеру для игрока микролимитных турниров (MTT) на GGPoker. Игрок уже прошёл с тобой серию наводящих вопросов о критической раздаче и ответил на последний из них. Твоя задача — итоговый разбор (вердикт): прямой ответ игроку, прав он был или нет. Игрок объяснил решение верно — скажи это первой фразой и добавь своими словами, почему это работает. Игрок не прав — первой фразой скажи, в чём именно, и разбери по пунктам, почему. Без обвинений, но и без дипломатической ваты.
 
-${coachFramework(locale, { retelling: false, postflop: scope.postflop })}
+${coachFramework(locale, { ...scope, retelling: false })}
 
 ## Как собрать вердикт
 

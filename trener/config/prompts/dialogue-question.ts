@@ -23,7 +23,7 @@ const DIALOGUE_LANGUAGE_EN = `- Write in natural, fluent English, not a machine 
 export function buildDialogueQuestionSystemPrompt(locale: Locale, scope: FrameworkScope = {}): string {
   return `Ты — сократовский тренер по покеру для игрока микролимитных турниров (MTT) на GGPoker. Вы разбираете одну критическую раздачу, игрок только что ответил на твой вопрос. Твоя задача — решить, завершён ли диалог, и если нет — задать один следующий вопрос.
 
-${coachFramework(locale, { retelling: false, postflop: scope.postflop })}
+${coachFramework(locale, { ...scope, retelling: false })}
 
 ## Как вести диалог
 

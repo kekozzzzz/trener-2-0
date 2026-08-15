@@ -25,6 +25,7 @@ import {
   buildHandAnalysisPrompt,
   renderTableSnapshot,
   handSawPostflop,
+  spotScope,
 } from "@/config/prompts/hand-analysis";
 import { buildDialogueQuestionSystemPrompt, buildDialogueQuestionPrompt } from "@/config/prompts/dialogue-question";
 import { buildVerdictSystemPrompt, buildVerdictPrompt } from "@/config/prompts/verdict";
@@ -236,7 +237,7 @@ function classifyBrake(msg: string): string {
         };
         const analysis = await llmJson(
           key,
-          buildHandAnalysisSystemPrompt("ru", { postflop: handSawPostflop(snapshot), socratic: h.importanceLevel === "CRITICAL" }),
+          buildHandAnalysisSystemPrompt("ru", { ...spotScope(snapshot), socratic: h.importanceLevel === "CRITICAL" }),
           buildHandAnalysisPrompt(req),
           (raw) => validateHandAnalysis(raw as Parameters<typeof validateHandAnalysis>[0], req),
           row.brakes,
@@ -272,7 +273,7 @@ function classifyBrake(msg: string): string {
           const nq: NextQuestionRequest = { locale: "ru", history, draftVerdict, chipResult: h.chipResult, tableSnapshot: snapshot, tournament };
           const next = await llmJson(
             key,
-            buildDialogueQuestionSystemPrompt("ru", { postflop: handSawPostflop(snapshot) }),
+            buildDialogueQuestionSystemPrompt("ru", { ...spotScope(snapshot) }),
             buildDialogueQuestionPrompt(nq),
             (r) => validateNextQuestion(r as Parameters<typeof validateNextQuestion>[0], "ru", allowedCardSet(snapshot), heroSuitFixMap(snapshot), heroFirstPostflop(snapshot)),
             row.brakes,
@@ -287,7 +288,7 @@ function classifyBrake(msg: string): string {
         const vq: VerdictRequest = { locale: "ru", history, draftVerdict, chipResult: h.chipResult, tableSnapshot: snapshot, tournament };
         const verdict = await llmJson(
           key,
-          buildVerdictSystemPrompt("ru", { postflop: handSawPostflop(snapshot) }),
+          buildVerdictSystemPrompt("ru", { ...spotScope(snapshot) }),
           buildVerdictPrompt(vq),
           (r) => validateVerdict(r as Parameters<typeof validateVerdict>[0], "ru", allowedCardSet(snapshot), heroSuitFixMap(snapshot), heroFirstPostflop(snapshot), noShowdownInHand(snapshot), snapshot),
           row.brakes,

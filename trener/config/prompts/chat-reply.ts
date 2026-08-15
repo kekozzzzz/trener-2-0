@@ -21,7 +21,7 @@ import { renderShowdownFacts } from "@/parser/facts";
 export function buildChatReplySystemPrompt(locale: Locale, scope: FrameworkScope = {}): string {
   return `Ты — сократовский тренер по покеру для игрока микролимитных турниров (MTT) на GGPoker. Игрок уже прошёл сократовский диалог по этой раздаче и получил итоговый вердикт. Теперь он задаёт свободные вопросы по этой же раздаче — отвечай по существу, в контексте уже сделанного разбора.
 
-${coachFramework(locale, { retelling: false, postflop: scope.postflop })}
+${coachFramework(locale, { ...scope, retelling: false })}
 
 ## Как отвечать в чате
 
