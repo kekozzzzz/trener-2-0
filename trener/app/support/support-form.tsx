@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { LoadingDots } from "@/components/ui/loading-dots";
+import { TelegramIcon } from "@/components/ui/social-icons";
 
 const initialState: SupportFormState = {};
 
@@ -117,14 +118,7 @@ export function SupportForm({
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1 text-foreground underline"
         >
-          <svg
-            aria-hidden="true"
-            viewBox="0 0 24 24"
-            className="h-4 w-4 shrink-0"
-            fill="currentColor"
-          >
-            <path d="M21.94 4.6 18.6 20.24c-.25 1.1-.9 1.38-1.83.86l-5.06-3.73-2.44 2.35c-.27.27-.5.5-1.02.5l.36-5.15 9.38-8.48c.41-.36-.09-.56-.63-.2L6.1 12.9 1.1 11.33c-1.08-.34-1.1-1.08.23-1.6L20.6 3.05c.9-.33 1.68.2 1.34 1.55Z" />
-          </svg>
+          <TelegramIcon className="h-4 w-4 shrink-0" />
           {t("telegramCta")}
         </a>
       </p>

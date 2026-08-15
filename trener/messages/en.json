@@ -333,7 +333,9 @@
   },
   "Footer": {
     "documents": "Legal",
-    "support": "Support"
+    "support": "Support",
+    "telegramLabel": "Whygrid Telegram channel",
+    "instagramLabel": "Whygrid Instagram"
   },
   "StatusBar": {
     "brand": "Whygrid // MTT review",
