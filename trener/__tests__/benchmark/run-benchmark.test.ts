@@ -161,10 +161,15 @@ function asksUnplayedStreet(question: string, snapshot: TableSnapshot): boolean 
   return (["TURN", "RIVER"] as const).some((st) => !heroSawStreet(snapshot, st) && STREET_WORD[st].test(question));
 }
 
-// Два задания в одном вопросе: промпт требует ОДНО. Считаем грубо — по второму вопросительному
-// знаку либо по связке «и» между двумя вопросительными оборотами.
+// Два ЗАДАНИЯ в одном вопросе: промпт требует одно. Считаем не вопросительные знаки, а задания —
+// разница принципиальна. Второе предложение-вопрос со словом «или» это ВАРИАНТЫ ОТВЕТА к тому же
+// заданию («ты видел там блеф, добор с Kx или только натсы?»), а промпт такую опору прямо
+// поощряет — особенно новичку. Настоящее второе задание идёт без «или»: «…и что ты думал о его
+// диапазоне?» (замысел + рид). Прогон 09.08: из двух срабатываний одно было ложным именно так.
 function hasTwoTasks(question: string): boolean {
-  return (question.match(/\?/g) ?? []).length > 1;
+  const asks = question.split(/(?<=\?)\s+/).filter((part) => part.includes("?"));
+  if (asks.length < 2) return false;
+  return asks.slice(1).some((part) => !/\sили\s/i.test(part));
 }
 
 type Row = {
@@ -182,6 +187,7 @@ function classifyBrake(msg: string): string {
   if (msg.includes("выдумал вскрытие")) return "выдуманное вскрытие";
   if (msg.includes("карманную пару")) return "выдуманная пара";
   if (msg.includes("карту вне снимка")) return "выдуманная карта";
+  if (msg.includes("спорит с фолдом")) return "спор с фолдом без цены";
   if (msg.includes("порядок хода")) return "перевранный порядок";
   if (msg.includes("латиницу")) return "латиница";
   if (msg.includes("CJK")) return "иероглифы";

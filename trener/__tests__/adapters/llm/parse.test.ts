@@ -625,3 +625,45 @@ describe("математическая запись карт превращае�
     expect(cleanCoachText("Турнир за $5 с ребаями.", "ru", board)).toContain("$5");
   });
 });
+
+// Эталон iPoker 09.08: три раздачи из 30 не сдались вовсе — модель выдумывала масти карманных
+// карт. #21: у Hero K♣K♥, написано «с K♠ K♥». #26: у Hero A♥K♠, написано «A♠ K♦» (обе масти
+// взяты с борда). Точечный автофикс тут молчит намеренно: ранг не уникален или есть на борде.
+// У ПАРЫ карт двусмысленности нет — если рядом стоят две карты с рангами Hero, это его рука.
+describe("пара карманных карт Hero чинится целиком", () => {
+  it("KK: выдуманная масть заменяется на настоящую, совпавшая остаётся", () => {
+    const allowed = new Set(["Kc", "Kh", "Kd", "8s", "8c"]);
+    const out = cleanCoachText("Ты на SB с K♠ K♥ открываешься до 3 BB.", "ru", allowed, undefined,
+      undefined, undefined, undefined, undefined, ["Kc", "Kh"]);
+    expect(out).toContain("K♣ K♥");
+    expect(out).not.toContain("K♠");
+  });
+
+  it("AKo: обе масти перепутаны с бордом — чинятся обе", () => {
+    const allowed = new Set(["Ah", "Ks", "Ac", "Kd", "4h"]);
+    const out = cleanCoachText("Ты на CO открываешься с A♠ K♦.", "ru", allowed, undefined,
+      undefined, undefined, undefined, undefined, ["Ah", "Ks"]);
+    expect(out).toContain("A♥ K♠");
+  });
+
+  it("ОБРАТНЫЙ случай: верно названные карты борда не переписываются", () => {
+    // У Hero 88, на борде тоже 8♠ 8♣ — ранги совпадают, но обе карты НАСТОЯЩИЕ, трогать нельзя.
+    const allowed = new Set(["8h", "8d", "8s", "8c", "Kd"]);
+    const out = cleanCoachText("На флопе 8♠ 8♣ K♦ ты собрал каре.", "ru", allowed, undefined,
+      undefined, undefined, undefined, undefined, ["8h", "8d"]);
+    expect(out).toContain("8♠ 8♣");
+  });
+
+  it("ранги не совпадают с рукой Hero — не трогаем", () => {
+    const allowed = new Set(["Ah", "Ks", "Qd", "Jc"]);
+    const out = cleanCoachText("На флопе Q♦ J♣ пришли.", "ru", allowed, undefined,
+      undefined, undefined, undefined, undefined, ["Ah", "Ks"]);
+    expect(out).toContain("Q♦ J♣");
+  });
+
+  it("после починки выдуманных карт не остаётся — брака нет", () => {
+    const allowed = new Set(["Kc", "Kh", "Kd"]);
+    expect(() => cleanCoachText("У тебя K♠ K♥.", "ru", allowed, undefined,
+      undefined, undefined, undefined, undefined, ["Kc", "Kh"])).not.toThrow();
+  });
+});

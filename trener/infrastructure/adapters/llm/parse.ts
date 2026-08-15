@@ -252,6 +252,38 @@ export function heroSuitFixMap(snapshot: { heroCards?: string[]; board?: string[
   return fix;
 }
 
+// ── Починка ПАРЫ карманных карт Hero целиком ────────────────────────────────────────────────
+// Эталон iPoker 09.08: три раздачи из 30 не сдались вовсе, потому что модель выдумывала масти
+// карманных карт. #21 — у Hero K♣ K♥, написано «с K♠ K♥»; #26 — у Hero A♥ K♠, написано «A♠ K♦»
+// (обе масти взяты с борда). Снимок показывает масти прямым текстом, но модель всё равно мажет.
+//
+// Точечный автофикс (heroSuitFixMap) тут молчит НАМЕРЕННО: он чинит только ранг, уникальный у Hero
+// и отсутствующий на борде, — иначе неясно, о чьей карте речь. Но у ПАРЫ карт есть признак, снимающий
+// всякую двусмысленность: если рядом стоят ровно две карты и их РАНГИ совпадают с рангами Hero, это
+// его рука и ничья больше. Тогда переписываем группу на настоящие карты: совпавшие масти оставляем
+// на месте, остальные раздаём из недостающих.
+//
+// ⚠️Условие «хотя бы одна карта группы выдумана» обязательно. Без него мы бы переписывали ПРАВИЛЬНО
+// названные карты борда, когда у Hero карманная пара того же ранга (борд 8♠ 8♣ при 88 у Hero) — то
+// есть сами вносили бы враньё вместо модели.
+function fixHeroHandGroup(text: string, heroCards: string[], allowed: Set<string>): string {
+  const hero = heroCards.filter((c) => c && c.length >= 2);
+  if (hero.length !== 2) return text;
+  const heroRanks = hero.map((c) => c[0].toUpperCase()).sort().join("");
+  const pairRe = /([AKQJT2-9])([♠♥♦♣])(\s*,?\s*)([AKQJT2-9])([♠♥♦♣])/g;
+  return text.replace(pairRe, (m, r1: string, s1: string, gap: string, r2: string, s2: string) => {
+    if ([r1, r2].map((r) => r.toUpperCase()).sort().join("") !== heroRanks) return m;
+    const written = [`${r1.toUpperCase()}${s1}`, `${r2.toUpperCase()}${s2}`];
+    const real = hero.map((c) => `${c[0].toUpperCase()}${SYM_BY_LETTER[c[1].toLowerCase()] ?? ""}`);
+    const invented = written.some((w) => !allowed.has(w[0] + SUIT_SYM[w[1]]));
+    if (!invented || real.some((c) => c.length !== 2)) return m;
+    // Совпавшие карты остаются на своих местах, несовпавшие добираем из оставшихся настоящих.
+    const rest = real.filter((c) => !written.includes(c));
+    const out = written.map((w) => (real.includes(w) ? w : (rest.shift() ?? w)));
+    return `${out[0]}${gap}${out[1]}`;
+  });
+}
+
 // Первая карта-со-значком-масти в тексте, которой НЕТ в снимке (выдуманная), или null.
 function strayCard(text: string, allowed: Set<string>): string | null {
   const re = /([AKQJT2-9])\s*([♠♥♦♣])/g;
@@ -420,6 +452,8 @@ export function cleanCoachText(
   noShowdown?: boolean,
   noPocketPair?: boolean,
   internalDiary?: boolean,
+  // Карманные карты Hero в записи снимка («Kc», «Kh») — для починки ПАРЫ целиком (см. fixHeroHandGroup).
+  heroCards?: string[],
 ): string {
   if (CJK_RE.test(text)) {
     throw new Error("LLM вернул CJK-иероглифы в тексте для игрока");
@@ -515,6 +549,8 @@ export function cleanCoachText(
   // Автофикс масти карманной карты Hero ДО браковки: выдуманную масть однозначной карты Hero
   // (ранг уникален у Hero и не на борде) исправляем на настоящую, а не отправляем в карантин
   // (регресс #41). Карты борда и неоднозначные ранги это не затрагивает — их выдумку ловит strayCard.
+  // Пара карманных карт целиком — ДО точечного автофикса и до браковки выдуманных карт.
+  if (heroCards && allowedCards) out = fixHeroHandGroup(out, heroCards, allowedCards);
   if (heroFix && heroFix.size > 0) {
     out = out.replace(/([AKQJT2-9])([♠♥♦♣])/g, (m, rank: string, suit: string) => {
       const correct = heroFix.get(rank.toUpperCase());
@@ -648,7 +684,7 @@ export function validateHandAnalysis(
   // note/вердикт не тащим: там речь про альтернативы и гипотезы, база ложных срабатываний не
   // измерена, а ложный брак = 3 ретрая = карантин у живого игрока. Проверяем ПОСЛЕ чистки:
   // cleanCoachText уже убрал «Player N» и привёл текст к тому виду, что увидит игрок.
-  const playedText = cleanCoachText(result.played, request.locale, cards, fix, heroFirst, noShowdown, noPair);
+  const playedText = cleanCoachText(result.played, request.locale, cards, fix, heroFirst, noShowdown, noPair, undefined, request.tableSnapshot.heroCards);
   const badFold = misreportedFold(playedText, request.tableSnapshot);
   if (badFold !== null) {
     throw new Error(`LLM переврал пересказ раздачи: написал, что ${badFold} сбросил, хотя парсер видит его действие без фолда`);
@@ -662,12 +698,12 @@ export function validateHandAnalysis(
     return {
       played: playedText,
       optimal: assertFoldDispute(
-        cleanCoachText(result.optimal, request.locale, cards, fix, heroFirst, noShowdown, noPair),
+        cleanCoachText(result.optimal, request.locale, cards, fix, heroFirst, noShowdown, noPair, undefined, request.tableSnapshot.heroCards),
         request.tableSnapshot,
       ),
       optimalAction: parseOptimalAction(result.optimalAction),
-      question: cleanCoachText(result.question, request.locale, cards, fix, heroFirst, undefined, noPair),
-      draftVerdict: cleanCoachText(result.draftVerdict, request.locale, cards, fix, heroFirst, undefined, noPair),
+      question: cleanCoachText(result.question, request.locale, cards, fix, heroFirst, undefined, noPair, undefined, request.tableSnapshot.heroCards),
+      draftVerdict: cleanCoachText(result.draftVerdict, request.locale, cards, fix, heroFirst, undefined, noPair, undefined, request.tableSnapshot.heroCards),
       answerMode: parseAnswerMode(result.answerMode),
       tableActionIndex: parseTableActionIndex(result.tableActionIndex),
     };
@@ -679,11 +715,11 @@ export function validateHandAnalysis(
   return {
     played: playedText,
     optimal: assertFoldDispute(
-      cleanCoachText(result.optimal, request.locale, cards, fix, heroFirst, noShowdown, noPair),
+      cleanCoachText(result.optimal, request.locale, cards, fix, heroFirst, noShowdown, noPair, undefined, request.tableSnapshot.heroCards),
       request.tableSnapshot,
     ),
     note: assertFoldDispute(
-      cleanCoachText(result.note, request.locale, cards, fix, heroFirst, noShowdown, noPair),
+      cleanCoachText(result.note, request.locale, cards, fix, heroFirst, noShowdown, noPair, undefined, request.tableSnapshot.heroCards),
       request.tableSnapshot,
     ),
   };
@@ -711,7 +747,7 @@ export function validateVerdict(
     throw new Error("LLM вернул вердикт без поля verdict");
   }
   const cleaned = assertFoldDispute(
-    cleanCoachText(result.verdict, locale, allowedCards, heroFix, heroFirstPostflop, noShowdown),
+    cleanCoachText(result.verdict, locale, allowedCards, heroFix, heroFirstPostflop, noShowdown, undefined, undefined, snapshot?.heroCards),
     snapshot,
   );
   // Вырезаем ритуальный зачин «Ты прав» ПОСЛЕ общей чистки (иначе тире/латиница внутри зачина
@@ -767,7 +803,7 @@ export function validateChatReply(
   if (typeof result.reply !== "string") {
     throw new Error("LLM вернул ответ без поля reply");
   }
-  return { reply: cleanCoachText(result.reply, locale, allowedCards, heroFix, heroFirstPostflop, noShowdown) };
+  return { reply: cleanCoachText(result.reply, locale, allowedCards, heroFix, heroFirstPostflop, noShowdown, undefined, undefined, snapshot?.heroCards) };
 }
 
 export function validateTournamentSummary(
