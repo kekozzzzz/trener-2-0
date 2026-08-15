@@ -335,7 +335,8 @@
     "documents": "Документы",
     "support": "Поддержка",
     "telegramLabel": "Telegram-канал Whygrid",
-    "instagramLabel": "Instagram Whygrid"
+    "instagramLabel": "Instagram Whygrid",
+    "tiktokLabel": "TikTok Whygrid"
   },
   "StatusBar": {
     "brand": "Whygrid // разбор MTT",

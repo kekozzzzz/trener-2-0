@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { Wordmark } from "@/components/ui/wordmark";
-import { TelegramIcon, InstagramIcon } from "@/components/ui/social-icons";
-import { TELEGRAM_URL, INSTAGRAM_URL } from "@/config/social";
+import { TelegramIcon, InstagramIcon, TikTokIcon } from "@/components/ui/social-icons";
+import { TELEGRAM_URL, INSTAGRAM_URL, TIKTOK_URL } from "@/config/social";
 
 // Общий подвал сайта. Все юр-документы (оферта, политика ПДн, возврат, реквизиты) — на
 // одной странице /legal по одной ссылке «Документы» рядом с годом (требование модерации
@@ -32,6 +32,15 @@ export async function SiteFooter() {
             className="hover:text-foreground"
           >
             <InstagramIcon className="size-4" />
+          </a>
+          <a
+            href={TIKTOK_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={t("tiktokLabel")}
+            className="hover:text-foreground"
+          >
+            <TikTokIcon className="size-4" />
           </a>
           <Link href="/support" className="hover:text-foreground">
             {t("support")}
