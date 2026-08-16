@@ -3,4 +3,5 @@
 // Только реально существующие, живые аккаунты — не «когда-нибудь заведём».
 export const TELEGRAM_URL = "https://t.me/whygrid";
 export const INSTAGRAM_URL = "https://www.instagram.com/why.grid/";
-export const TIKTOK_URL = "https://www.tiktok.com/@whygrid";
+// TikTok убран (решение Артёма 2026-08-15): даже ролики без единого упоминания покера
+// или ставок не набирали дистрибуции — политика площадки режет тему целиком, не текст.

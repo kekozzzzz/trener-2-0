@@ -1,7 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { getAppBaseUrl } from "@/config/app";
 import type { SupportedRoom } from "@/config/rooms";
-import { TELEGRAM_URL, INSTAGRAM_URL, TIKTOK_URL } from "@/config/social";
+import { TELEGRAM_URL, INSTAGRAM_URL } from "@/config/social";
 import { STEP_SHOTS } from "@/components/upload/hand-history-guide";
 
 // Микроразметка JSON-LD (schema.org) для главной: Organization + WebSite. Помогает
@@ -16,7 +16,7 @@ import { STEP_SHOTS } from "@/components/upload/hand-history-guide";
 // и живые, не «когда-нибудь заведём»). Помогает Google связать сущность «Whygrid» с её
 // присутствием за пределами домена.
 const BRAND_ALT_NAMES = ["Вайгрид", "вай грид"];
-const BRAND_SAME_AS = [TELEGRAM_URL, INSTAGRAM_URL, TIKTOK_URL];
+const BRAND_SAME_AS = [TELEGRAM_URL, INSTAGRAM_URL];
 
 // Без dangerouslySetInnerHTML (запрещён проектом, architecture/07-безопасность.md).
 // React экранирует символы < > & в текстовом содержимом <script>, поэтому голый

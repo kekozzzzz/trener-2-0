@@ -15,7 +15,10 @@ export const ACQUISITION_SOURCES: AcquisitionSource[] = [
   { code: "630452", slug: "telegram", label: "Telegram" },
   { code: "759042", slug: "instagram", label: "Instagram" },
   { code: "406738", slug: "youtube", label: "YouTube" },
-  { code: "618930", slug: "tiktok", label: "TikTok" },
+  // TikTok убран 2026-08-15 — канал закрыт (площадка режет любой контент, не только
+  // покерный). Код "618930" больше не выдаётся, старые заходы по нему остаются в
+  // истории БД под slug "tiktok" — это нормально, /admin группирует по факту, не по
+  // этому списку.
 ];
 
 export function findAcquisitionSourceByCode(code: string): AcquisitionSource | undefined {

@@ -1,7 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { LangSwitcher } from "@/components/lang-switcher";
-import { TelegramIcon, InstagramIcon, TikTokIcon } from "@/components/ui/social-icons";
-import { TELEGRAM_URL, INSTAGRAM_URL, TIKTOK_URL } from "@/config/social";
+import { TelegramIcon, InstagramIcon } from "@/components/ui/social-icons";
+import { TELEGRAM_URL, INSTAGRAM_URL } from "@/config/social";
 
 // Верхняя статус-строка — design-system.md §4.1 п. 1.
 // Тонкая полоса над шапкой: раздел слева, главное обещание продукта по центру,
@@ -40,15 +40,6 @@ export async function StatusBar({ section }: { section?: string }) {
               className="text-muted-foreground transition-colors hover:text-primary"
             >
               <InstagramIcon className="size-3.5" />
-            </a>
-            <a
-              href={TIKTOK_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={tFooter("tiktokLabel")}
-              className="text-muted-foreground transition-colors hover:text-primary"
-            >
-              <TikTokIcon className="size-3.5" />
             </a>
           </span>
           <i aria-hidden className="block h-3 w-px bg-border" />
