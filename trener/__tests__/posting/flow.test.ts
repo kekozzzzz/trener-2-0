@@ -204,6 +204,29 @@ describe("полный цикл постинга", () => {
     expect(sendMessage).toHaveBeenNthCalledWith(2, ADMIN, expect.stringContaining("Не удалось доставить"));
   });
 
+  it("доставка человеку прошла, но отчёт-галочка Артёму сбойнул — ложную «не удалось доставить» НЕ шлём", async () => {
+    await handleTelegramUpdate({
+      message: { from: { id: 999999, username: "stranger" }, text: "вопрос" },
+    });
+    const forwardedText = vi.mocked(sendMessage).mock.calls[0][1];
+    vi.clearAllMocks();
+    // Первый вызов (доставка человеку) проходит успешно, второй (отчёт "✅" Артёму) падает.
+    vi.mocked(sendMessage).mockResolvedValueOnce(undefined);
+    vi.mocked(sendMessage).mockRejectedValueOnce(new Error("relay timeout"));
+
+    await handleTelegramUpdate({
+      message: {
+        from: { id: 440359604 },
+        text: "ответ",
+        reply_to_message: { text: forwardedText },
+      },
+    });
+
+    expect(sendMessage).toHaveBeenNthCalledWith(1, "999999", "ответ");
+    expect(sendMessage).toHaveBeenCalledTimes(2);
+    expect(sendMessage).not.toHaveBeenCalledWith(ADMIN, expect.stringContaining("Не удалось доставить"));
+  });
+
   it("обычное сообщение Артёма без Reply на поддержку — ничего не релеит", async () => {
     await handleTelegramUpdate({
       message: { from: { id: 440359604 }, text: "просто пишу боту" },

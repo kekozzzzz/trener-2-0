@@ -142,14 +142,23 @@ async function handleAdminReply(msg: TgMessage): Promise<void> {
   const senderId = extractForwardedSenderId(msg.reply_to_message?.text);
   if (senderId === null) return;
 
+  // Отдельные try/catch: сбой самой доставки человеку — это ❌. Сбой ПОСЛЕДУЮЩЕГО
+  // отчёта-галочки Артёму — техническая мелочь (не путать со сбоем доставки), тихо
+  // логируем и НЕ шлём ложную тревогу «не удалось доставить», когда на деле доставили.
   try {
     await sendMessage(String(senderId), text);
-    await sendMessage(getTelegramAdminChatId(), "✅ Ответ доставлен.");
   } catch (err) {
     console.error("[support] не удалось доставить ответ пользователю:", err);
     await sendMessage(
       getTelegramAdminChatId(),
       "❌ Не удалось доставить ответ — человек мог не запускать бота или заблокировал его.",
     );
+    return;
+  }
+
+  try {
+    await sendMessage(getTelegramAdminChatId(), "✅ Ответ доставлен.");
+  } catch (err) {
+    console.error("[support] ответ доставлен, но не удалось отчитаться:", err);
   }
 }
