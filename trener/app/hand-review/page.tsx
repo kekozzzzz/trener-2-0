@@ -33,16 +33,19 @@ export default async function HandReviewGuidePage() {
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
             {(
               [
-                ["exampleVpipLabel", "exampleVpipDesc"],
-                ["examplePotOddsLabel", "examplePotOddsDesc"],
-                ["exampleEquityLabel", "exampleEquityDesc"],
+                ["exampleVpipLabel", "exampleVpipDesc", "exampleVpipFormula"],
+                ["examplePotOddsLabel", "examplePotOddsDesc", "examplePotOddsFormula"],
+                ["exampleEquityLabel", "exampleEquityDesc", "exampleEquityFormula"],
               ] as const
-            ).map(([labelKey, descKey]) => (
+            ).map(([labelKey, descKey, formulaKey]) => (
               <div key={labelKey} className="border border-border bg-card p-6">
                 <p className="font-mono text-label uppercase tracking-label text-primary">
                   {t(labelKey)}
                 </p>
                 <p className="mt-3 text-small text-muted-foreground">{t(descKey)}</p>
+                <p className="mt-3 border-t border-border pt-3 font-mono text-[0.6875rem] text-muted-foreground">
+                  {t(formulaKey)}
+                </p>
               </div>
             ))}
           </div>

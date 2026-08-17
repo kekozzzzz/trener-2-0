@@ -210,9 +210,9 @@ export default async function HomePage() {
                     (label) => (
                       <span
                         key={label}
-                        className="flex items-center gap-1.5 border border-border px-2 py-1 font-mono text-[0.6875rem] uppercase tracking-label text-muted-foreground transition-colors group-hover:border-primary group-hover:text-primary"
+                        className="flex items-center gap-1.5 border border-border px-2 py-1 font-mono text-[0.6875rem] uppercase tracking-label text-foreground transition-colors group-hover:border-primary"
                       >
-                        <Check className="size-3" />
+                        <Check className="size-3 text-primary" />
                         {label}
                       </span>
                     )
@@ -650,15 +650,16 @@ async function ProductShowcase() {
         </div>
 
         {/* Демо-стол выше иллюстративный (форма продукта). Тем, кому мало формы и
-            нужно доказательство — ссылка на настоящую пройденную раздачу целиком. */}
+            нужно доказательство — кнопка на настоящую пройденную раздачу целиком.
+            Настоящая кнопка, а не мелкая ссылка (правка Артёма 2026-08-17: искал
+            глазами и еле нашёл) — по центру, отдельным акцентом после витрины. */}
         <Reveal delay={120}>
-          <Link
-            href="/example"
-            className="mt-12 inline-flex items-center gap-2 font-mono text-label uppercase tracking-label text-primary transition-colors hover:text-foreground"
-          >
-            {t("showcaseExampleLink")}
-            <ArrowRight className="size-3" />
-          </Link>
+          <div className="mt-12 flex justify-center">
+            <Link href="/example" className={cn(buttonVariants({ variant: "outline" }), "gap-2")}>
+              {t("showcaseExampleLink")}
+              <ArrowRight className="size-4" />
+            </Link>
+          </div>
         </Reveal>
       </div>
     </section>

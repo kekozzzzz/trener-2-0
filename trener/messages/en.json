@@ -33,7 +33,9 @@
     "exampleTitle": "A real hand review - full example",
     "exampleDescription": "Hero holds ace-king, bets the flop with no pair and no draw - the opponent calls all-in with a pair of sixes. The full review: the coach's question, the player's answer, the verdict with real numbers from the algorithm. No signup required.",
     "aboutTitle": "Why I built Whygrid",
-    "aboutDescription": "A personal story: why a tracker and one-off coaching sessions didn't help me understand my own mistakes, and how that led to a Socratic coach that asks \"why\" instead of handing you the answer."
+    "aboutDescription": "A personal story: why a tracker and one-off coaching sessions didn't help me understand my own mistakes, and how that led to a Socratic coach that asks \"why\" instead of handing you the answer.",
+    "changelogTitle": "Changelog",
+    "changelogDescription": "What actually changed in Whygrid - dated, concrete entries, no vague phrases."
   },
   "HowToExport": {
     "sectionTag": "/ How-to",
@@ -86,6 +88,9 @@
     "intro": "Replaying a hand yourself - opening the history, trying to remember what happened - almost always ends at \"eh, seemed fine\" or \"ugh, just bad luck\". A real review starts with exact numbers for every decision, not a feeling in hindsight, and someone asking why you did what you did - not just calling it wrong.",
     "numbersTitle": "First, the numbers - no guessing",
     "numbersBody": "A hand-history file is an exact record: who bet how much and when, which cards showed up. From it you can compute, not estimate: how often you enter a pot voluntarily, how many chips a specific decision cost you, what the pot odds were at the moment you called, what your hand's equity was against the villain's range. We do this with a precise algorithm, not the coach and not a language model: the numbers come out the same every run, they're never just a \"feeling\".",
+    "exampleVpipFormula": "Formula: (hands with money voluntarily in the pot / total hands) × 100",
+    "examplePotOddsFormula": "Formula: call amount / (pot + call amount)",
+    "exampleEquityFormula": "Not a formula - exact enumeration: every possible runout against the villain's hand or range, no rounding",
     "exampleVpipLabel": "VPIP",
     "exampleVpipDesc": "How often you voluntarily enter a pot pre-flop - by calling or raising. High means you're playing lots of hands, low means you're tight.",
     "examplePotOddsLabel": "Pot odds",
@@ -360,6 +365,8 @@
     "documents": "Legal",
     "support": "Support",
     "about": "About",
+    "changelog": "Changelog",
+    "uptime": "Status",
     "telegramLabel": "Whygrid Telegram channel",
     "instagramLabel": "Whygrid Instagram"
   },
@@ -371,7 +378,7 @@
   "Support": {
     "sectionTag": "/ Support",
     "title": "Support",
-    "subtitle": "A question, an upload problem, or a payment issue - write to us, we reply personally within a day.",
+    "subtitle": "A question, a feature idea, an upload or payment issue - or you think a number in a review was calculated wrong - write to us, we reply within a day.",
     "emailLabel": "Email for the reply",
     "emailPlaceholder": "so we know where to answer (optional)",
     "messageLabel": "Message",
@@ -616,6 +623,24 @@
     "p3": "So I started reviewing my own hands - not giving myself the answer, but asking why I played it that way, what I was thinking at that moment. After a couple of months I started repeating old mistakes less often. Not because I memorized a list - because each time I actually understood where I messed up.",
     "p4": "That's how Whygrid grew out of it. The numbers - VPIP, chip losses, position - are calculated by an algorithm, no guessing. The questions are the same method I used on myself: not \"here's your mistake,\" but \"why did you play it that way.\"",
     "p5": "The product is young, I'm improving it as I go. If something isn't working the way it should - reach out, I answer myself."
+  },
+  "Uptime": {
+    "sectionTag": "/ Status",
+    "title": "Is the service up right now",
+    "subtitle": "A public, real-time check - the same thing our independent outside monitoring sees.",
+    "allOk": "Working",
+    "problem": "There's a problem",
+    "unknown": "Couldn't check",
+    "siteLabel": "Site and data",
+    "queueLabel": "Tournament processing",
+    "statusOk": "OK",
+    "statusDown": "Down",
+    "lastCheck": "Checked: {time}"
+  },
+  "Changelog": {
+    "sectionTag": "/ Changelog",
+    "title": "What changed",
+    "subtitle": "Only concrete product changes, dated."
   },
   "MagicLink": {
     "title": "Sign in with a link",
