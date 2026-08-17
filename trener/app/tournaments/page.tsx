@@ -21,6 +21,7 @@ import {
   TOURNAMENTS_PER_PAGE_COOKIE,
 } from "@/config/tournaments";
 import { PageHeader } from "@/components/page-header";
+import { ReachGoalOnMount } from "@/components/site/reach-goal-on-mount";
 import { TournamentRow } from "@/components/tournaments/tournament-row";
 import { TournamentsPagination } from "@/components/tournaments/pagination";
 import { TournamentsAutoRefresh } from "@/components/tournaments/auto-refresh";
@@ -96,6 +97,9 @@ export default async function TournamentsPage({
   return (
     <main>
       <PageHeader />
+      {/* Цель воронки (funnel.md): пачка турниров загружена — тот же параметр,
+          что уже используется для сводки ниже, просто заодно шлём в Метрику. */}
+      {uploaded > 0 && <ReachGoalOnMount target="tournament_uploaded" params={{ count: uploaded }} />}
       <section className="mx-auto site-wrap px-8 py-16">
         {/* Профиль игры — наверху (сводная характеристика по всей дистанции), ниже турниры. */}
         {characteristic && (

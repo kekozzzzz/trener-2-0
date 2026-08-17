@@ -28,6 +28,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { StackChart } from "@/components/site/stack-chart";
 import { buildStackCurve, fetchStackCurveRows } from "@/features/tournaments/stack-curve";
+import { ReachGoalOnMount } from "@/components/site/reach-goal-on-mount";
 
 // Стол в разборе: вписан в колонку целиком, без горизонтальной прокрутки.
 // Плашки мест торчат за край сукна (~52px), поэтому обычный режим со скроллом
@@ -320,6 +321,9 @@ export default async function HandDialoguePage({
 
             {dialogue.state === "VERDICT_SHOWN" && (
               <div className="space-y-4">
+                {/* Цель воронки (funnel.md): игрок дошёл до вердикта — момент истины,
+                    ради которого продукт вообще существует. */}
+                <ReachGoalOnMount target="verdict_shown" />
                 <ScrollToLatest handId={handId} />
                 <h2 className="text-h2">{t("verdictTitle")}</h2>
                 <div className="border border-primary bg-card p-6">

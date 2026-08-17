@@ -30,6 +30,7 @@ import { getQueueConcurrency } from "@/config/queue";
 import { StartHereCard, SessionDoneCard, type FocusHand } from "@/components/tournament/focus-slot";
 import { FloatingGlossary } from "@/components/metrics/glossary";
 import { LoadingDots } from "@/components/ui/loading-dots";
+import { ReachGoalOnMount } from "@/components/site/reach-goal-on-mount";
 
 // Заголовок вкладки (QA 2026-07-05, п.10). Локаль — из next-intl.
 export async function generateMetadata() {
@@ -151,10 +152,10 @@ export default async function TournamentPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ duplicate?: string; error?: string }>;
+  searchParams: Promise<{ duplicate?: string; error?: string; uploaded?: string }>;
 }) {
   const { id } = await params;
-  const { duplicate, error } = await searchParams;
+  const { duplicate, error, uploaded } = await searchParams;
   const t = await getTranslations("Tournament");
   // Уровень важности раздачи → подпись. Неизвестный уровень выводим кодом как есть.
   const importanceLabel = (level: string) =>
@@ -470,6 +471,9 @@ export default async function TournamentPage({
   return (
     <main>
       <PageHeader />
+      {/* Цель воронки (funnel.md): турнир загружен — метка ставится один раз через
+          ?uploaded=1 на редиректе из app/analyze/page.tsx, а не на каждый визит. */}
+      {uploaded === "1" && <ReachGoalOnMount target="tournament_uploaded" />}
       <FloatingGlossary />
       <section className="mx-auto site-wrap px-8 py-16">
 

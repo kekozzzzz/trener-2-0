@@ -10,6 +10,7 @@ import { useTranslations } from "next-intl";
 import { startCheckout, switchPlan } from "@/features/subscription/actions";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
+import { reachGoal } from "@/lib/metrika";
 
 type Mode = "new" | "switch";
 
@@ -46,6 +47,10 @@ export function CheckoutButton({
       const res =
         mode === "switch" ? await switchPlan(planCode) : await startCheckout(planCode, recurring);
       if (res.ok && "confirmationUrl" in res) {
+        // Цель воронки (funnel.md): клиент реально дошёл до формы оплаты, не просто
+        // посмотрел тарифы. Настоящее «оплатил» подтверждает вебхук ЮKassa на сервере —
+        // это лишь маркетинговая метка момента для Метрики, не источник истины по деньгам.
+        reachGoal("checkout_started", { planCode, recurring });
         // Апгрейд / новая подписка — уводим на оплату ЮKassa.
         window.location.href = res.confirmationUrl;
       } else if (res.ok && "applied" in res) {

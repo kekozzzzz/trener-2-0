@@ -66,7 +66,7 @@ async function handleUpload(formData: FormData) {
   // Одиночная загрузка — поведение как раньше: сразу на страницу турнира (или дубль/ошибка).
   if (picked.length === 1) {
     const r = summary.singleResult;
-    if (r?.ok) redirect(`/tournament/${r.tournamentId}`);
+    if (r?.ok) redirect(`/tournament/${r.tournamentId}?uploaded=1`);
     if (r && !r.ok && r.error === "DUPLICATE") redirect(`/tournament/${r.existingTournamentId}?duplicate=1`);
     if (oversize === 1) redirect(`/analyze?error=TOO_LARGE`);
     redirect(`/analyze?error=${r && !r.ok ? r.error : "PARSE_FAILED"}`);
