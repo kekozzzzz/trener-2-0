@@ -29,7 +29,11 @@
     "leaksGuideTitle": "Common leaks in tournament poker at micro stakes",
     "leaksGuideDescription": "A leak isn't one mistake - it's a recurring deviation from the norm. Eight categories Whygrid tracks automatically, and when a leak counts as systemic.",
     "ggpokerGuideTitle": "GGPoker tournament strategy at micro stakes",
-    "ggpokerGuideDescription": "GGPoker is the main platform for micro-stakes MTTs. How Whygrid reviews your GGPoker tournaments and where to start."
+    "ggpokerGuideDescription": "GGPoker is the main platform for micro-stakes MTTs. How Whygrid reviews your GGPoker tournaments and where to start.",
+    "exampleTitle": "A real hand review - full example",
+    "exampleDescription": "Hero holds ace-king, bets the flop with no pair and no draw - the opponent calls all-in with a pair of sixes. The full review: the coach's question, the player's answer, the verdict with real numbers from the algorithm. No signup required.",
+    "aboutTitle": "Why I built Whygrid",
+    "aboutDescription": "A personal story: why a tracker and one-off coaching sessions didn't help me understand my own mistakes, and how that led to a Socratic coach that asks \"why\" instead of handing you the answer."
   },
   "HowToExport": {
     "sectionTag": "/ How-to",
@@ -103,6 +107,27 @@
     "howToExportLinkCta": "room-by-room guide",
     "ctaNote": "The first tournament review is free, no card required.",
     "ctaButton": "Upload a tournament"
+  },
+  "ExamplePage": {
+    "sectionTag": "/ Example review",
+    "title": "One hand. Question to verdict.",
+    "subtitle": "Not a mockup and not a form illustration - a real hand from a real tournament, run through the same machinery a paying player sees. The numbers are computed by the algorithm right on this page.",
+    "trustNote": "How Whygrid earns trust in its numbers -",
+    "trustLinkText": "see \"What the review is based on\"",
+    "statsTag": "/ 02 - Numbers from the algorithm",
+    "statsTitle": "Not an estimate - an exact enumeration",
+    "statEquityLabel": "Equity at the moment of the bet",
+    "statEquityNote": "against the hand that called",
+    "statResultLabel": "Hand result",
+    "dialogTag": "/ 01 - The hand",
+    "dialogTitle": "The coach's question, the player's answer, the verdict",
+    "tableCaption": "Flop 6-7-4 rainbow: Hero (ace-king) bets 11,100 with no pair and no draw - the decision point the coach's question is about.",
+    "questionLabel": "Question 1",
+    "question": "What did you want out of that flop bet?",
+    "answer": "I was counting on getting paid by AK, AQ, AJ, KQ, KJ - especially suited ones, since I either dominate them or at worst flip against them. Plus I was counting on getting paid by flush draws. And since the bet put him in a fold-or-jam spot either way, that also answered where I stood in the hand.",
+    "verdictLabel": "Verdict",
+    "verdict": "I'll push back here: the range you sized this bet for was reasoned out correctly - against AK, AQ, AJ, KQ, KJ you really are either dominating or flipping, and that's a fair reason to want them to pay you. But that list - and the flush draws behind it - is entirely big cards, and you never included the third, most ordinary continuing group at all: any pair, even the bottom one. That's exactly what stuck around - the villain showed 5♠6♠, a pair of sixes, about the most ordinary call there is at this size. You had no pair and no draw - your equity against that exact hand on the flop was 18.5%, and even though the sizing really did put him in a fold-or-jam spot, that doesn't change the fact that your \"who pays me\" list never accounted for a bare pair. The river (a king) won this pot, not the decision - the +14,398 (28.8bb) result doesn't change that you were risking chips on the flop with almost no chance. Next time, when you're counting the range that pays you off, add the bare pair too - it calls sizes like this more often than it looks.",
+    "rawFileToggle": "View the raw hand-history file"
   },
   "IcmGuide": {
     "sectionTag": "/ Theory — ICM",
@@ -334,6 +359,7 @@
   "Footer": {
     "documents": "Legal",
     "support": "Support",
+    "about": "About",
     "telegramLabel": "Whygrid Telegram channel",
     "instagramLabel": "Whygrid Instagram"
   },
@@ -379,13 +405,16 @@
     "showcaseVerdictLabel": "Coach's verdict",
     "showcaseVerdictText": "You are right: calling with 55 is profitable here. If he shoves 20-25% of hands, the fives have about 54% equity at a 44% price. Losing does not make the call a mistake - it was a correct cooler, just bad luck.",
     "showcaseVerdictNote": "A real verdict from a review",
+    "showcaseExampleLink": "See the full real review",
     "badge": "Socratic AI coach",
     "heroTitle": "Your hands, reviewed - instead of an expensive coach",
     "heroSubtitle": "AI finds the leaks in your tournaments and walks you through each tricky hand - with questions, not ready-made advice, so you spot the mistake yourself.",
     "ctaUpload": "Upload a tournament",
     "myTournaments": "My tournaments",
     "signIn": "Sign in",
-    "freeFirstNote": "No card required - your first tournament review is free",
+    "heroBadgeNoPassword": "No password",
+    "heroBadgeNoCard": "No card",
+    "heroBadgeFreeFirst": "First review - free",
     "alternativesTitle": "Why this beats the usual ways",
     "alternativesSubtitle": "Poker mistakes get fixed by review. The only question is which kind.",
     "altConsultationTag": "One-off coaching",
@@ -578,6 +607,15 @@
     "paymentNote": "By card - renews automatically every month. One-time - any method, no auto-renewal.",
     "ctaSubscribe": "Subscribe",
     "includedTitle": "Included in every plan"
+  },
+  "About": {
+    "sectionTag": "/ About",
+    "title": "Why I built Whygrid",
+    "p1": "I play micro-stakes tournaments - usually with buy-ins up to $10. Year after year I catch myself doing the same thing: it feels like bad luck, but really I keep bleeding chips in the same spots. I review the hand the next day - and I don't always spot the mistake myself.",
+    "p2": "So I tried a tracker - it honestly shows what I did: VPIP, graphs. But it doesn't explain why I keep making the same call in the same spot, tournament after tournament. I paid for a one-off coaching session - $80, we went through a couple of specific hands, the rest was general advice about my game. It stuck for a couple of weeks - then I hit the same spot again and didn't remember I'd already gotten it wrong there.",
+    "p3": "So I started reviewing my own hands - not giving myself the answer, but asking why I played it that way, what I was thinking at that moment. After a couple of months I started repeating old mistakes less often. Not because I memorized a list - because each time I actually understood where I messed up.",
+    "p4": "That's how Whygrid grew out of it. The numbers - VPIP, chip losses, position - are calculated by an algorithm, no guessing. The questions are the same method I used on myself: not \"here's your mistake,\" but \"why did you play it that way.\"",
+    "p5": "The product is young, I'm improving it as I go. If something isn't working the way it should - reach out, I answer myself."
   },
   "MagicLink": {
     "title": "Sign in with a link",

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { indexablePage } from "@/lib/seo";
 import { getCurrentPlayer } from "@/features/auth/queries";
@@ -34,6 +34,7 @@ import {
   Bento,
   BentoCell,
   BigWordmark,
+  ChatLine,
   Chips,
   CornerMarks,
   FigureCaption,
@@ -199,10 +200,24 @@ export default async function HomePage() {
                   {player ? t("myTournaments") : t("signIn")}
                 </Link>
               </div>
+              {/* Значки-подсказки под CTA: снимают трение до клика (нет пароля/карты,
+                  первый разбор бесплатен) и сами ведут туда же, куда основная кнопка —
+                  весь ряд обёрнут в одну ссылку, а не три одинаковых рядом (§8 деталей
+                  плотности переиспользован под кликабельный вариант). */}
               {!player && (
-                <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
-                  {t("freeFirstNote")}
-                </p>
+                <Link href={ctaHref} className="group flex flex-wrap items-center gap-2">
+                  {[t("heroBadgeNoPassword"), t("heroBadgeNoCard"), t("heroBadgeFreeFirst")].map(
+                    (label) => (
+                      <span
+                        key={label}
+                        className="flex items-center gap-1.5 border border-border px-2 py-1 font-mono text-[0.6875rem] uppercase tracking-label text-muted-foreground transition-colors group-hover:border-primary group-hover:text-primary"
+                      >
+                        <Check className="size-3" />
+                        {label}
+                      </span>
+                    )
+                  )}
+                </Link>
               )}
             </div>
 
@@ -382,8 +397,9 @@ export default async function HomePage() {
       </section>
 
       {/* На чём основан разбор — доверие перед возражениями: числа от кода, норма от
-          открытых чартов, роль ИИ. Отвечает на вопрос «на чём основано / кто решил». */}
-      <section className="border-t border-border">
+          открытых чартов, роль ИИ. Отвечает на вопрос «на чём основано / кто решил».
+          id — якорь для ссылки со страницы-примера (/example). */}
+      <section id="basis" className="border-t border-border">
         <div className="mx-auto site-wrap px-8 py-16">
           <Reveal>
             <SectionHead tag={t("secBasisTag")} title={t("basisTitle")} note={t("secBasisNote")} />
@@ -501,37 +517,6 @@ export default async function HomePage() {
       </div>
       <SiteFooter />
     </main>
-  );
-}
-
-// Реплика диалога: слева роль моно-лейблом, справа текст. Реплика тренера помечена
-// акцентом — сократовский вопрос всегда предшествует оценке (правило 2 проекта).
-function ChatLine({
-  who,
-  coach = false,
-  children,
-}: {
-  who: string;
-  coach?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <div
-      className={cn(
-        "grid gap-6 p-6 sm:grid-cols-[120px_1fr] sm:p-8",
-        coach ? "bg-card" : "bg-[#151515]"
-      )}
-    >
-      <span
-        className={cn(
-          "font-mono text-label uppercase tracking-label",
-          coach ? "text-primary" : "text-muted-foreground"
-        )}
-      >
-        {who}
-      </span>
-      <p className="text-body">{children}</p>
-    </div>
   );
 }
 
@@ -663,6 +648,18 @@ async function ProductShowcase() {
             </div>
           </Reveal>
         </div>
+
+        {/* Демо-стол выше иллюстративный (форма продукта). Тем, кому мало формы и
+            нужно доказательство — ссылка на настоящую пройденную раздачу целиком. */}
+        <Reveal delay={120}>
+          <Link
+            href="/example"
+            className="mt-12 inline-flex items-center gap-2 font-mono text-label uppercase tracking-label text-primary transition-colors hover:text-foreground"
+          >
+            {t("showcaseExampleLink")}
+            <ArrowRight className="size-3" />
+          </Link>
+        </Reveal>
       </div>
     </section>
   );

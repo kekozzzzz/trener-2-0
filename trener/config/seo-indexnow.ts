@@ -15,6 +15,8 @@ export const INDEXNOW_KEY = "637b592de8f7ec5d263633d2eb733afc"; // gitleaks:allo
 export function getIndexNowUrls(base: string): string[] {
   return [
     `${base}/`,
+    `${base}/about`,
+    `${base}/example`,
     `${base}/pricing`,
     `${base}/charts`,
     `${base}/range`,

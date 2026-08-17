@@ -254,6 +254,39 @@ export function Chips({ items }: { items: { text: string; on?: boolean }[] }) {
   );
 }
 
+// ── Реплика диалога тренер/игрок ────────────────────────────────────────────
+// Слева роль моно-лейблом, справа текст. Реплика тренера помечена акцентом —
+// сократовский вопрос всегда предшествует оценке (правило 2 проекта). Общий
+// компонент для главной (иллюстративный обмен) и страницы-примера (настоящий).
+export function ChatLine({
+  who,
+  coach = false,
+  children,
+}: {
+  who: string;
+  coach?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className={cn(
+        "grid gap-6 p-6 sm:grid-cols-[120px_1fr] sm:p-8",
+        coach ? "bg-card" : "bg-[#151515]"
+      )}
+    >
+      <span
+        className={cn(
+          "font-mono text-label uppercase tracking-label",
+          coach ? "text-primary" : "text-muted-foreground"
+        )}
+      >
+        {who}
+      </span>
+      <p className="text-body">{children}</p>
+    </div>
+  );
+}
+
 // ── §4.1 п. 10. Полоса вместо голого процента ───────────────────────────────
 // Число всё равно рядом: полоса — иллюстрация, а не единственный носитель.
 export function MeterBar({ percent, muted = false }: { percent: number; muted?: boolean }) {

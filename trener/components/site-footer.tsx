@@ -33,6 +33,9 @@ export async function SiteFooter() {
           >
             <InstagramIcon className="size-4" />
           </a>
+          <Link href="/about" className="hover:text-foreground">
+            {t("about")}
+          </Link>
           <Link href="/support" className="hover:text-foreground">
             {t("support")}
           </Link>
