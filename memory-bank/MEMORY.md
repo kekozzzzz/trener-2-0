@@ -77,7 +77,7 @@
 - [Бот-сторож](project_watchdog_bot.md) — тревога при карантине задачи + утренний дайджест; @kekoz_bot · [Telegram-мост](project_telegram_bridge.md) — управление с телефона, мост на релее 24/7
 - [Мониторинг здоровья](project_health_monitoring.md) — /api/health + UptimeRobot; серт следим сами
 - [Очередь](project_queue_latency.md) — concurrency 10; узкое место — сама LLM · [Рычаги масштабирования](project_scaling_triggers.md) — №1 параллельный воркер
-- [Админка](project_admin_stats.md) — /admin владельцу: регистрации/входы/страны; ⚠️prisma migrate dev портит ручные partial-индексы — SQL чистить руками
+- [Админка](project_admin_stats.md) — /admin владельцу: регистрации/входы/страны; ⚠️prisma migrate dev портит ручные partial-индексы — SQL чистить руками; 📌 владелец исключён из «Входы»/«Заходы», не запушено
 - [Лимит загрузки nginx](project_nginx_upload_limit.md) — client_max_body_size 50m на обоих; осталось global-error.tsx
 - [База](project_db_setup.md) — PostgreSQL 17 локально, trener_dev · [Инфра-roadmap](project_infra_roadmap.md) — переезд ~лето 2027 → Hetzner+Stripe+R2
 - [Бот-постинг](project_posting_bot.md) — @whygrid_bot; ждёт перевыпуск токена + админство в канале
@@ -102,10 +102,12 @@
 - [Репо для маркетолога](project_marketing_partner_repo.md) — отдельный приватный whygrid-marketing (БЕЗ кода); доступ ещё НЕ выдан
 - [Комьюнити-чат](project_community_chat_growth.md) — ЧЕРНОВИК привлечения (НЕ одобрено): чат + открытый бот-раздатчик разборов
 - [Имя и бренд](project_naming_branding.md) — Whygrid, логотип концепт B; ребрендинг кода впереди
+- [Сканирующая подсветка при скролле](project_scroll_highlight_feature.md) — LIVE на главной с 18.08.2026, два уровня (аура/рамка), переиспользуемый проп scrollGlow
 
 ## Разное
 
 - [Звук уведомлений](reference_sound_notifications.md) — хуки в глобальном settings.json; как менять/убрать
+- [IntersectionObserver ненадёжен для узкой зоны](reference_scroll_zone_intersectionobserver_unreliable.md) — колбэки опаздывают/пропускаются при обычном скролле; фикс — requestAnimationFrame + getBoundingClientRect напрямую
 - [Диск C / NVIDIA](user_disk_c_nvidia_bloat.md) — NVIDIA копит драйверы (77 ГБ/год); rm -rf в deny-листе — спрашивать; 10.07 освобождено 80 ГБ
 
 <!-- Архив (свершилось, держим для истории, в работе не нужно):

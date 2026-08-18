@@ -5,7 +5,7 @@
 // plans/2026-07-02-админ-статистика.md
 
 import type { PrismaClient } from "@prisma/client";
-import { getAdminTzOffsetHours, getExcludedTestPlayerIds } from "@/config/admin";
+import { getAdminTzOffsetHours, getExcludedTestPlayerIds, getAdminEmails } from "@/config/admin";
 import { buildCostReport, type CostReport } from "@/features/usage/cost-report";
 import { ACQUISITION_SOURCES } from "@/config/acquisition-sources";
 import { getAppBaseUrl } from "@/config/app";
@@ -178,6 +178,16 @@ export async function buildAdminStats(db: PrismaClient, now = new Date()): Promi
   // Свои тестовые аккаунты (оплата и т.п.) не должны искажать воронку/регистрации/деньги.
   const excludedIds = getExcludedTestPlayerIds();
   const notTestPlayer = { notIn: excludedIds };
+
+  // Собственные входы владельца (проверка сайта) не должны раздувать «Входы» —
+  // тот же принцип, что и у notTestPlayer выше, но список считается по email,
+  // не хардкодится: владелец может входить с разных Player-записей со временем.
+  const adminPlayers = await db.player.findMany({
+    where: { email: { in: getAdminEmails() } },
+    select: { id: true },
+  });
+  const adminIds = new Set(adminPlayers.map((p) => p.id));
+  const notAdminOrTestPlayer = { notIn: [...excludedIds, ...adminIds] };
   const t0 = dayStartUtc(now, tz, 0); // начало сегодня
   const t1 = dayStartUtc(now, tz, 1); // начало вчера
   const t7 = dayStartUtc(now, tz, 6); // «за 7 дней» = 7 календарных суток с сегодняшними
@@ -226,7 +236,9 @@ export async function buildAdminStats(db: PrismaClient, now = new Date()): Promi
       where: { createdAt: { gte: t30 } },
       select: { kind: true, playerId: true, country: true, createdAt: true },
     }),
-    db.authEvent.count({ where: { kind: { in: [...successKinds] } } }),
+    db.authEvent.count({
+      where: { kind: { in: [...successKinds] }, playerId: notAdminOrTestPlayer },
+    }),
     db.authEvent.count({ where: { kind: "LOGIN_FAILED", createdAt: { gte: t30 } } }),
     db.siteVisit.findMany({ where: { createdAt: { gte: t30 } }, select: { createdAt: true } }),
     db.siteVisit.count(),
@@ -316,11 +328,18 @@ export async function buildAdminStats(db: PrismaClient, now = new Date()): Promi
     total: playersTotal,
   };
 
-  // Входы: успешные события журнала (пароль + волшебная ссылка).
-  const loginEvents = authEvents30.filter((e) =>
-    (successKinds as readonly string[]).includes(e.kind),
+  // Входы: успешные события журнала (пароль + волшебная ссылка), без своих
+  // тестовых/владельческих аккаунтов — фильтр в JS, а не в самом запросе:
+  // playerId у AuthEvent нулевой для неудачных попыток по чужому email, и
+  // notIn на нулевом поле в SQL молча роняет такие строки из выборки.
+  const isExcludedPlayer = (playerId: string | null) =>
+    playerId !== null && (excludedIds.includes(playerId) || adminIds.has(playerId));
+  const loginEvents = authEvents30.filter(
+    (e) => (successKinds as readonly string[]).includes(e.kind) && !isExcludedPlayer(e.playerId),
   );
-  const registerEvents = authEvents30.filter((e) => e.kind === "REGISTER");
+  const registerEvents = authEvents30.filter(
+    (e) => e.kind === "REGISTER" && !isExcludedPlayer(e.playerId),
+  );
   const loginDates = loginEvents.map((e) => e.createdAt);
   const logins: AdminStats["logins"] = {
     counts: {
