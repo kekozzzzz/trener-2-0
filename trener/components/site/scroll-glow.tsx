@@ -2,58 +2,54 @@
 
 import { useEffect } from "react";
 
-// Сканирующая подсветка — design-system.md §4.1 п. 14. Прототип одобрен Артёмом
-// 2026-08-18 (design/scroll-highlight-preview.html): полоса чуть ниже статус-строки
-// «сканирует» страницу — любой элемент с data-glow, проезжая через неё, получает
-// класс is-lit (цвет/аура из globals.css), а уезжая — теряет его. Работает в обе
-// стороны скролла и на тач-экранах — это не курсорный эффект.
+// Сканирующая подсветка — design-system.md §4.1 п. 14. Полоса чуть ниже
+// статус-строки «сканирует» страницу: элемент с data-glow, проезжая через
+// неё, получает класс is-lit, уезжает — теряет его.
 //
-// Один IntersectionObserver с узким rootMargin вместо scroll-листенера: браузер
-// сам решает, когда пересчитывать пересечения, а не мы на каждый пиксель скролла.
+// Первая версия строилась на IntersectionObserver с узким rootMargin (80px).
+// На практике браузер не гарантирует своевременную доставку колбэков для
+// такой тонкой полосы при обычной скорости скролла: часть блоков вообще не
+// успевала загореться, другие «залипали» подсвеченными на сотни лишних
+// пикселей после того, как реально покинули зону (баг найден Артёмом
+// 2026-08-18: «проходит линию, и всё — выше линии уже не работает», причём
+// и на телефоне, и на компьютере — не Safari-специфика).
+//
+// Теперь позиция каждого элемента считается на каждом кадре скролла
+// (requestAnimationFrame) и сравнивается с фиксированной зоной напрямую —
+// детерминированно, не зависит от скорости скролла и throttling браузера.
 const ZONE_TOP = 186;
 const ZONE_HEIGHT = 80;
+const ZONE_BOTTOM = ZONE_TOP + ZONE_HEIGHT;
 
 export function ScrollGlow() {
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    let observer: IntersectionObserver | null = null;
+    const els = Array.from(document.querySelectorAll<HTMLElement>("[data-glow]"));
+    if (els.length === 0) return;
 
-    function setup() {
-      observer?.disconnect();
-      const bottomMargin = window.innerHeight - (ZONE_TOP + ZONE_HEIGHT);
-      observer = new IntersectionObserver(
-        (entries) => {
-          for (const entry of entries) {
-            entry.target.classList.toggle("is-lit", entry.isIntersecting);
-          }
-        },
-        {
-          root: null,
-          rootMargin: `-${ZONE_TOP}px 0px -${Math.max(bottomMargin, 0)}px 0px`,
-          threshold: 0,
-        }
-      );
-      document.querySelectorAll("[data-glow]").forEach((el) => observer!.observe(el));
+    let frame = 0;
+
+    function check() {
+      frame = 0;
+      for (const el of els) {
+        const rect = el.getBoundingClientRect();
+        const inZone = rect.bottom > ZONE_TOP && rect.top < ZONE_BOTTOM;
+        el.classList.toggle("is-lit", inZone);
+      }
     }
 
-    setup();
-
-    // На iOS Safari скрытие/появление адресной строки у самого верха страницы
-    // при скролле само по себе стреляет resize — без задержки это пересобирало
-    // наблюдатель на каждый пиксель анимации панели, и подсветка мигала/гасла
-    // ровно в этой зоне (баг найден Артёмом 2026-08-18). Пересобираем только
-    // после того, как resize затих.
-    let resizeTimer: ReturnType<typeof setTimeout> | undefined;
-    function onResize() {
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(setup, 200);
+    function onScroll() {
+      if (!frame) frame = requestAnimationFrame(check);
     }
-    window.addEventListener("resize", onResize);
+
+    check();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
     return () => {
-      observer?.disconnect();
-      clearTimeout(resizeTimer);
-      window.removeEventListener("resize", onResize);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (frame) cancelAnimationFrame(frame);
     };
   }, []);
 
