@@ -49,7 +49,7 @@ export default async function ChangelogPage() {
         <BigWordmark />
       </section>
 
-      <SiteFooter />
+      <SiteFooter hideWordmark />
     </main>
   );
 }

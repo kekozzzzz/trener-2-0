@@ -38,7 +38,7 @@ export default async function AboutPage() {
         <BigWordmark />
       </section>
 
-      <SiteFooter />
+      <SiteFooter hideWordmark />
     </main>
   );
 }

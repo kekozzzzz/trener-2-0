@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { getAppBaseUrl } from "@/config/app";
 import { SiteVisitTracker } from "@/components/site-visit-tracker";
 import { CursorGlow } from "@/components/site/cursor-glow";
+import { ScrollGlow } from "@/components/site/scroll-glow";
 import { Metrika } from "@/components/site/metrika";
 
 const inter = localFont({
@@ -78,6 +79,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <Metrika />
           {/* Свет за курсором — на всех страницах, только для мыши (см. cursor-glow.tsx) */}
           <CursorGlow />
+          {/* Сканирующая подсветка при скролле — на всех страницах (см. scroll-glow.tsx) */}
+          <ScrollGlow />
           {children}
         </NextIntlClientProvider>
       </body>

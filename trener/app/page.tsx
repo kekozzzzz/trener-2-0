@@ -224,7 +224,10 @@ export default async function HomePage() {
             {/* Статичный список румов — лента внизу его лишь повторяет (§5 п. 5:
                 бегущая строка не может быть единственным носителем информации). */}
             <div className="w-full border-t border-border pt-4">
-              <p className="font-mono text-label uppercase tracking-label text-muted-foreground">
+              <p
+                data-glow
+                className="scroll-glow-text font-mono text-label uppercase tracking-label text-muted-foreground"
+              >
                 {t("roomsLine")}
               </p>
               <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
@@ -280,6 +283,7 @@ export default async function HomePage() {
                   label={alt.tag}
                   accent={alt.accent}
                   title={alt.accent ? t("altWhygridPrice", { price: priceFrom }) : alt.verdict}
+                  scrollGlow={alt.accent ? "strong" : "soft"}
                 >
                   <p className="mt-2 text-small text-muted-foreground">{alt.description}</p>
                 </Tile>
@@ -330,6 +334,7 @@ export default async function HomePage() {
                 label={t("basisChartsLabel")}
                 title={t("chartsTitle", { count: REFERENCE_CHART_COUNT })}
                 span={4}
+                scrollGlow="strong"
               >
                 <p className="mt-2 text-small text-muted-foreground">{t("chartsDescription")}</p>
                 <Chips
@@ -361,7 +366,13 @@ export default async function HomePage() {
           <Reveal delay={60}>
             <TileRow>
               {STEPS.map((step) => (
-                <Tile key={step.number} label={step.number} title={step.title} accent>
+                <Tile
+                  key={step.number}
+                  label={step.number}
+                  title={step.title}
+                  accent
+                  scrollGlow="soft"
+                >
                   <p className="mt-2 text-small text-muted-foreground">{step.description}</p>
                 </Tile>
               ))}
@@ -381,7 +392,7 @@ export default async function HomePage() {
             />
           </Reveal>
           <Reveal delay={60}>
-            <ProductWindow path={t("windowPathChat")}>
+            <ProductWindow path={t("windowPathChat")} scrollGlow="soft">
               <div className="grid gap-px bg-border">
                 <ChatLine who={t("dialogCoach")} coach>
                   {t("previewCoachQuestion")}
@@ -407,7 +418,13 @@ export default async function HomePage() {
           <Reveal delay={60}>
             <TileRow>
               {BASIS.map((item, i) => (
-                <Tile key={item.label} label={`0${i + 1} — ${item.label}`} title={item.title} accent>
+                <Tile
+                  key={item.label}
+                  label={`0${i + 1} — ${item.label}`}
+                  title={item.title}
+                  accent
+                  scrollGlow="soft"
+                >
                   <p className="mt-2 text-small text-muted-foreground">{item.description}</p>
                   {item.linkHref && (
                     <Link
@@ -515,7 +532,7 @@ export default async function HomePage() {
       <div className="mx-auto site-wrap px-8">
         <BigWordmark />
       </div>
-      <SiteFooter />
+      <SiteFooter hideWordmark />
     </main>
   );
 }
@@ -613,7 +630,7 @@ async function ProductShowcase() {
         <Reveal delay={60}>
           {/* Стол вставлен без собственной рамки: у окна ровно одна обводка, иначе
               содержимое выглядит стоящим криво (правка Артёма 2026-08-08). */}
-          <ProductWindow path={t("windowPath")}>
+          <ProductWindow path={t("windowPath")} scrollGlow="soft">
             <ScaleToFit baseWidth={896}>
               <HandTable state={demoTable} nick={null} fit />
             </ScaleToFit>
@@ -655,7 +672,12 @@ async function ProductShowcase() {
             глазами и еле нашёл) — по центру, отдельным акцентом после витрины. */}
         <Reveal delay={120}>
           <div className="mt-12 flex justify-center">
-            <Link href="/example" className={cn(buttonVariants({ variant: "outline" }), "gap-2")}>
+            <Link
+              href="/example"
+              data-glow
+              data-tier="strong"
+              className={cn(buttonVariants({ variant: "outline" }), "scroll-glow-block gap-2")}
+            >
               {t("showcaseExampleLink")}
               <ArrowRight className="size-4" />
             </Link>

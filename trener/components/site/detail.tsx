@@ -92,13 +92,24 @@ export function ProductWindow({
   path,
   children,
   className,
+  scrollGlow,
 }: {
   path: string;
   children: ReactNode;
   className?: string;
+  /** Сканирующая подсветка при скролле — design-system.md §4.1 п. 14. */
+  scrollGlow?: "soft" | "strong";
 }) {
   return (
-    <div className={cn("relative border border-border bg-card", className)}>
+    <div
+      data-glow={scrollGlow ? "" : undefined}
+      data-tier={scrollGlow === "strong" ? "strong" : undefined}
+      className={cn(
+        "relative border border-border bg-card",
+        scrollGlow && "scroll-glow-block",
+        className
+      )}
+    >
       <div className="flex items-center justify-between border-b border-border bg-[#151515] px-4 py-2.5">
         <span className="truncate font-mono text-label text-muted-foreground">{path}</span>
         <span aria-hidden className="flex shrink-0 gap-1.5">
@@ -139,11 +150,13 @@ export function StatRow({
       {items.map((item) => (
         <div
           key={item.caption}
-          className="border-t border-border px-8 py-12 first:border-t-0 sm:border-t-0 sm:border-l sm:first:border-l-0 lg:border-l"
+          data-glow
+          data-tier="strong"
+          className="scroll-glow-block border-t border-border px-8 py-12 first:border-t-0 sm:border-t-0 sm:border-l sm:first:border-l-0 lg:border-l"
         >
           <p
             className={cn(
-              "font-mono text-[3.5rem] leading-none tracking-[-0.02em]",
+              "scroll-glow-title font-mono text-[3.5rem] leading-none tracking-[-0.02em]",
               item.accent ? "text-primary" : "text-foreground"
             )}
           >
@@ -173,20 +186,23 @@ export function BentoCell({
   label,
   title,
   span = 2,
+  scrollGlow,
   children,
 }: {
   label: string;
   title: string;
   /** Ширина в колонках сетки из шести. */
   span?: 2 | 3 | 4;
+  /** Сканирующая подсветка при скролле — design-system.md §4.1 п. 14. */
+  scrollGlow?: "soft" | "strong";
   children?: ReactNode;
 }) {
   const spanClass = span === 4 ? "sm:col-span-4" : span === 3 ? "sm:col-span-3" : "sm:col-span-2";
   return (
     // Tilt — ячейка отзывается на курсор, как и остальные плитки страницы
-    <Tilt className={cn("flex flex-col bg-card p-8", spanClass)}>
+    <Tilt className={cn("flex flex-col bg-card p-8", spanClass)} scrollGlow={scrollGlow}>
       <p className="font-mono text-label uppercase tracking-label text-primary">{label}</p>
-      <h3 className="mt-4 text-h3">{title}</h3>
+      <h3 className={cn("mt-4 text-h3", scrollGlow === "strong" && "scroll-glow-title")}>{title}</h3>
       {children}
     </Tilt>
   );
@@ -209,18 +225,21 @@ export function Tile({
   label,
   title,
   accent = false,
+  scrollGlow,
   children,
 }: {
   label: string;
   title?: string;
   /** Лейбл акцентом — для колонки, на которую хотим направить взгляд. */
   accent?: boolean;
+  /** Сканирующая подсветка при скролле — design-system.md §4.1 п. 14. */
+  scrollGlow?: "soft" | "strong";
   children?: ReactNode;
 }) {
   return (
     // flex-колонка: прижатое к низу содержимое (чипы) выравнивает соседей по общей
     // нижней линии — иначе плитки разной длины выглядят рвано.
-    <Tilt className="flex flex-col p-8">
+    <Tilt className="flex flex-col p-8" scrollGlow={scrollGlow}>
       <p
         className={cn(
           "font-mono text-label uppercase tracking-label",
@@ -229,7 +248,11 @@ export function Tile({
       >
         {label}
       </p>
-      {title && <h3 className="mt-4 text-h3">{title}</h3>}
+      {title && (
+        <h3 className={cn("mt-4 text-h3", scrollGlow === "strong" && "scroll-glow-title")}>
+          {title}
+        </h3>
+      )}
       {children}
     </Tilt>
   );

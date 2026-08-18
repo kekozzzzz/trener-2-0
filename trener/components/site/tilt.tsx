@@ -19,11 +19,14 @@ export function Tilt({
   children,
   className,
   glow = true,
+  scrollGlow,
 }: {
   children: ReactNode;
   className?: string;
   /** Подсветка в точке курсора внутри карточки. */
   glow?: boolean;
+  /** Сканирующая подсветка при скролле — design-system.md §4.1 п. 14. */
+  scrollGlow?: "soft" | "strong";
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const frame = useRef(0);
@@ -60,7 +63,9 @@ export function Tilt({
       ref={ref}
       onMouseMove={onMove}
       onMouseLeave={onLeave}
-      className={cn("tilt", glow && "tilt-glow", className)}
+      data-glow={scrollGlow ? "" : undefined}
+      data-tier={scrollGlow === "strong" ? "strong" : undefined}
+      className={cn("tilt", glow && "tilt-glow", scrollGlow && "scroll-glow-block", className)}
     >
       {children}
     </div>

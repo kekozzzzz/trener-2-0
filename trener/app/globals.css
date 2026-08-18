@@ -91,6 +91,7 @@
     /* Анимации — раздел 5 */
     --shadow-focus: 0 0 0 3px rgba(212, 255, 51, 0.15);
     --shadow-glow: 0 0 24px rgba(212, 255, 51, 0.25);
+    --shadow-glow-soft: 0 0 24px rgba(212, 255, 51, 0.12);
     --animate-shine: shine var(--duration) infinite linear;
   @keyframes shine {
   0% {
@@ -314,6 +315,39 @@
   .tilt-glow::after { display: none; }
 }
 
+/* ── Сканирующая подсветка при скролле — design-system.md §4.1 п. 14 ────────
+   Прототип одобрен Артёмом 2026-08-18 (design/scroll-highlight-preview.html).
+   Полоса под статус-строкой «сканирует» страницу: элемент с data-glow
+   проезжает через неё и загорается, уезжает — гаснет. Работает и на тач-
+   экранах (это не курсорный эффект, а следствие обычного скролла), поэтому
+   в отличие от .cursor-glow/.tilt-glow не гасится в @media (hover: none).
+   Класс .is-lit переключает components/site/scroll-glow.tsx. */
+.scroll-glow-text,
+.scroll-glow-block,
+.scroll-glow-title {
+  transition: color 220ms ease-out, border-color 220ms ease-out, box-shadow 220ms ease-out;
+}
+
+/* Текстовая строка — просто меняет цвет на акцентный */
+.scroll-glow-text.is-lit { color: var(--primary); }
+
+/* Блок — по умолчанию только аура (второстепенное содержимое, например пример
+   раздачи); data-tier="strong" зажигает ещё и рамку с заголовком — только для
+   того, что реально хотим подчеркнуть (цифра, доказательство). Не «через
+   один»: уровень выбирается осознанно на каждом блоке. */
+.scroll-glow-block.is-lit { box-shadow: var(--shadow-glow-soft); }
+.scroll-glow-block[data-tier="strong"].is-lit {
+  border-color: var(--primary);
+  box-shadow: var(--shadow-glow);
+}
+.scroll-glow-block[data-tier="strong"].is-lit .scroll-glow-title { color: var(--primary); }
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-glow-text,
+  .scroll-glow-block,
+  .scroll-glow-title { transition: none; }
+}
+
 /* ── Движение ниже первого экрана ───────────────────────────────────────────
    Правка Артёма 2026-08-09: «двигается только карточка разбора вверху, дальше
    ничего, весь дизайн заканчивается на бегущей строке». Ниже — четыре отклика,
@@ -396,24 +430,6 @@ details[open] .acc-body { grid-template-rows: 1fr; }
   mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Crect x='75' y='79' width='11' height='2' fill='%23fff'/%3E%3Crect x='79' y='75' width='2' height='11' fill='%23fff'/%3E%3C/svg%3E");
   -webkit-mask-size: 160px 160px;
   mask-size: 160px 160px;
-}
-
-/* Два источника света по диагонали: сильный сверху справа, приглушённый снизу слева */
-.backdrop-glow-tr,
-.backdrop-glow-bl {
-  position: absolute;
-  width: 520px;
-  height: 520px;
-}
-.backdrop-glow-tr {
-  top: -160px;
-  right: -120px;
-  background: radial-gradient(circle, rgba(212, 255, 51, 0.1), transparent 65%);
-}
-.backdrop-glow-bl {
-  bottom: -220px;
-  left: -160px;
-  background: radial-gradient(circle, rgba(212, 255, 51, 0.05), transparent 65%);
 }
 
 /* Технические подписи по углам первого экрана. Не декор: в них проверяемые числа

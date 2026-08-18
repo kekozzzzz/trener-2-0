@@ -92,7 +92,7 @@ export default async function UptimePage() {
         <BigWordmark />
       </section>
 
-      <SiteFooter />
+      <SiteFooter hideWordmark />
     </main>
   );
 }
