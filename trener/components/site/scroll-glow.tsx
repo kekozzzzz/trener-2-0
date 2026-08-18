@@ -38,10 +38,22 @@ export function ScrollGlow() {
     }
 
     setup();
-    window.addEventListener("resize", setup);
+
+    // На iOS Safari скрытие/появление адресной строки у самого верха страницы
+    // при скролле само по себе стреляет resize — без задержки это пересобирало
+    // наблюдатель на каждый пиксель анимации панели, и подсветка мигала/гасла
+    // ровно в этой зоне (баг найден Артёмом 2026-08-18). Пересобираем только
+    // после того, как resize затих.
+    let resizeTimer: ReturnType<typeof setTimeout> | undefined;
+    function onResize() {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(setup, 200);
+    }
+    window.addEventListener("resize", onResize);
     return () => {
       observer?.disconnect();
-      window.removeEventListener("resize", setup);
+      clearTimeout(resizeTimer);
+      window.removeEventListener("resize", onResize);
     };
   }, []);
 
