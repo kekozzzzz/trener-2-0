@@ -126,6 +126,7 @@ export default async function HomePage() {
     { label: t("objectionExpensiveLabel"), answer: t("objectionExpensiveAnswer") },
     { label: t("objectionDoubtLabel"), answer: t("objectionDoubtAnswer") },
     { label: t("objectionSelfLabel"), answer: t("objectionSelfAnswer") },
+    { label: t("objectionPrivacyLabel"), answer: t("objectionPrivacyAnswer") },
   ];
 
   return (
@@ -206,7 +207,12 @@ export default async function HomePage() {
                   плотности переиспользован под кликабельный вариант). */}
               {!player && (
                 <Link href={ctaHref} className="group flex flex-wrap items-center gap-2">
-                  {[t("heroBadgeNoPassword"), t("heroBadgeNoCard"), t("heroBadgeFreeFirst")].map(
+                  {[
+                    t("heroBadgeNoPassword"),
+                    t("heroBadgeNoCard"),
+                    t("heroBadgeFreeFirst"),
+                    t("heroBadgeNoLeak"),
+                  ].map(
                     (label) => (
                       <span
                         key={label}

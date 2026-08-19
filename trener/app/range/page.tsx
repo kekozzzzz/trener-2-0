@@ -36,6 +36,12 @@ export default async function RangeGuidePage() {
         <div className="mt-16 border-t border-border pt-16">
           <h2 className="text-h2">{t("whyTitle")}</h2>
           <p className="mt-4 max-w-2xl text-body text-muted-foreground">{t("whyBody")}</p>
+          <p className="mt-6 max-w-2xl text-small text-muted-foreground">
+            {t("leaksLinkText")}{" "}
+            <Link href="/leaks" className="text-primary underline underline-offset-4">
+              {t("leaksLinkCta")}
+            </Link>
+          </p>
         </div>
 
         <div className="mt-16 border-t border-border pt-16">

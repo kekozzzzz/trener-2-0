@@ -54,6 +54,12 @@ export default async function LeaksGuidePage() {
               </div>
             ))}
           </div>
+          <p className="mt-6 max-w-2xl text-small text-muted-foreground">
+            {t("rangeLinkText")}{" "}
+            <Link href="/range" className="text-primary underline underline-offset-4">
+              {t("rangeLinkCta")}
+            </Link>
+          </p>
         </div>
 
         <div className="mt-16 border-t border-border pt-16">
