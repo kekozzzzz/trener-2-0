@@ -147,6 +147,10 @@ export type BetFact = {
   // «в банке 23.4 BB он поставил 5.9 BB» — половина банка превращается в четверть (регресс 07.08).
   amount: number;
   potBefore: number;
+  // Остаток СОПЕРНИКА после этой ставки, BB — насколько ставка коммитит его собственный стек
+  // (независимо от доли банка): 79% банка при 40 BB за спиной и те же 79% при 5 BB за спиной
+  // читаются по-разному. null, если BB неизвестен.
+  remainingAfterBetBb?: number;
 };
 
 // Спот, где Hero стоит перед ставкой соперника и должен решать колл/фолд.
@@ -418,6 +422,15 @@ function walkPot(snapshot: TableSnapshot, bigBlind: number | null): HandFacts {
     return { heroRemAfterBet, effOppRem: eff.rem, oppCall };
   };
 
+  // Остаток СОПЕРНИКА после его ставки/рейза, BB — сколько у него ещё за спиной ПОСЛЕ этого
+  // вложения. invested на момент вызова ещё БЕЗ этой ставки (addInvested идёт следом), поэтому
+  // delta вычитаем явно, как и в heroBetGeom выше.
+  const oppRemainingAfterBb = (actor: string, delta: number): number | undefined => {
+    if (!bigBlind) return undefined;
+    const remaining = (startingStack.get(actor) ?? 0) - (invested.get(actor) ?? 0) - delta;
+    return round1(remaining / bigBlind);
+  };
+
   // Сколько соперников ещё живы и МОГУТ сбросить в ответ на ставку Hero. Порог фолд-эквити
   // («сбросится ≥X% диапазона») посчитан для ОДНОГО — против двоих и больше сбросить обязаны все,
   // и тот же X перестаёт означать то, что читает модель. Ва-банк исключаем: сбросить он не может.
@@ -476,7 +489,15 @@ function walkPot(snapshot: TableSnapshot, bigBlind: number | null): HandFacts {
           heroBets.push(heroBetFact(snapshot, street, amt, pot, g.heroRemAfterBet, g.effOppRem, g.oppCall, liveOpponents()));
         } else if (street !== "PREFLOP" && pot > 0) {
           const size = pct(amt / pot);
-          bets.push({ street, actor: a.actor, sizePctOfPot: size, sizeClass: sizeClass(size), amount: amt, potBefore: pot });
+          bets.push({
+            street,
+            actor: a.actor,
+            sizePctOfPot: size,
+            sizeClass: sizeClass(size),
+            amount: amt,
+            potBefore: pot,
+            remainingAfterBetBb: oppRemainingAfterBb(a.actor, amt),
+          });
         }
         streetCommitted.set(a.actor, committed + amt);
         pot += amt;
@@ -495,7 +516,15 @@ function walkPot(snapshot: TableSnapshot, bigBlind: number | null): HandFacts {
             heroBets.push(heroBetFact(snapshot, street, delta, pot, g.heroRemAfterBet, g.effOppRem, g.oppCall, liveOpponents()));
           } else if (street !== "PREFLOP" && pot > 0) {
             const size = pct(delta / pot);
-            bets.push({ street, actor: a.actor, sizePctOfPot: size, sizeClass: sizeClass(size), amount: delta, potBefore: pot });
+            bets.push({
+              street,
+              actor: a.actor,
+              sizePctOfPot: size,
+              sizeClass: sizeClass(size),
+              amount: delta,
+              potBefore: pot,
+              remainingAfterBetBb: oppRemainingAfterBb(a.actor, delta),
+            });
           }
           pot += delta;
           addInvested(a.actor, delta);
@@ -1404,8 +1433,9 @@ export function renderHandFacts(snapshot: TableSnapshot): string {
     const who = snapshot.seats.find((s) => s.label === b.actor);
     const pos = who ? (who.positionName ?? who.position) : b.actor;
     const inBb = (chips: number) => (bb ? ` = ${Math.round((chips / bb) * 10) / 10} BB` : "");
+    const behind = b.remainingAfterBetBb != null ? ` У него остаётся ≈${b.remainingAfterBetBb} BB за спиной после этой ставки.` : "";
     lines.push(
-      `Ставка соперника (${pos}, ${b.street}): ${b.amount}${inBb(b.amount)} в банк ${b.potBefore}${inBb(b.potBefore)} до неё - ≈${b.sizePctOfPot}% банка (${SIZE_CLASS_RU[b.sizeClass]}). Долю банка бери ОТСЮДА и не пересчитывай её от банка в точке решения: там банк уже включает и эту ставку, и коллы после неё.`,
+      `Ставка соперника (${pos}, ${b.street}): ${b.amount}${inBb(b.amount)} в банк ${b.potBefore}${inBb(b.potBefore)} до неё - ≈${b.sizePctOfPot}% банка (${SIZE_CLASS_RU[b.sizeClass]}).${behind} Долю банка бери ОТСЮДА и не пересчитывай её от банка в точке решения: там банк уже включает и эту ставку, и коллы после неё.`,
     );
   }
   for (const b of f.heroBets) {
