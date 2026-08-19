@@ -1080,7 +1080,7 @@
     "stackTipStack": "{stack} BB stack",
     "stackTipDelta": "{sign}{delta} BB this hand",
     "stackTipOpen": "Open the review",
-    "stackTipNoReview": "This hand wasn't reviewed",
+    "stackTipNoReview": "Not worth reviewing this hand",
     "stackTipCurrent": "you are here",
     "lockedTitle": "Review locked",
     "lockedBody": "This tournament's review isn't open yet. The metrics are available on the tournament page - you can unlock the review there with a subscription.",

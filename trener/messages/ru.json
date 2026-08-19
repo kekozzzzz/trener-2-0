@@ -1080,7 +1080,7 @@
     "stackTipStack": "{stack} BB в стеке",
     "stackTipDelta": "{sign}{delta} BB за раздачу",
     "stackTipOpen": "Открыть разбор",
-    "stackTipNoReview": "Эту раздачу не разбирали",
+    "stackTipNoReview": "Разбирать эту раздачу нет смысла",
     "stackTipCurrent": "ты здесь",
     "lockedTitle": "Разбор под замком",
     "lockedBody": "Разбор этого турнира ещё не открыт. Метрики доступны на странице турнира - там же можно открыть разбор по подписке.",

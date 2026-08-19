@@ -561,7 +561,7 @@ export default function DesignPreviewPage() {
               stack: "{stack} BB в стеке",
               delta: "{sign}{delta} за раздачу",
               open: "Открыть разбор",
-              noReview: "Эту раздачу не разбирали",
+              noReview: "Разбирать эту раздачу нет смысла",
               current: "ты здесь",
               legend: "Точки на линии - разобранные раздачи, по ним можно кликнуть",
             }}

@@ -29,7 +29,7 @@ export type StackChartLabels = {
   delta: string;
   /** «Открыть разбор» */
   open: string;
-  /** «Эту раздачу не разбирали» */
+  /** «Разбирать эту раздачу нет смысла» */
   noReview: string;
   /** «ты здесь» */
   current: string;
