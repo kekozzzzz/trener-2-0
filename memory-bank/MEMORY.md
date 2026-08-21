@@ -125,6 +125,7 @@
 - [Выводы по 7 Shorts](project_youtube_shorts_analytics_findings.md) — удержание и RU-аудитория растут по датам публикации; reach ≠ resonance
 - [🔴 Креатив для Reels — автономно](feedback_marketing_content_autonomy.md) — сценарии и хуки сам; деньги и публикация — с подтверждением
 - [🔴 Отбор раздач для контента](feedback_hand_selection_criteria.md) — по сюжету и выводу, не по топу веса
+- [Результат ≠ решение в копирайте](feedback_result_vs_decision_framing.md) — не «где теряешь фишки» (это результат раздачи), а «где решение слабее» (паттерн, не судим по доезду/недобору)
 - [🔴 Называть накопленную сумму перед тратой](feedback_running_total_before_spend.md) — особый риск батч-генерации
 - [Название Shorts отдельно от описания](feedback_youtube_shorts_title.md) — всегда ДВА текста
 - [🔴 Подпись ≠ пересказ ролика](feedback_caption_not_script_retelling.md) — не цитировать сценарий, крючок а не краткое содержание
