@@ -33,10 +33,49 @@ function writeOffset(n: number, dir: string): void {
   fs.renameSync(tmp, offsetFile(dir));
 }
 
+function failuresFile(dir: string): string {
+  return path.join(dir, "poll-failures.json");
+}
+
+// Краткое человекочитаемое описание апдейта — чтобы в тревоге сторожа было видно,
+// КАКОЕ именно нажатие/сообщение не применилось, не только технический update_id.
+function summarizeUpdate(u: TgUpdate): string {
+  if (u.callback_query?.data) return `нажатие «${u.callback_query.data}»`;
+  if (u.message?.text) return `сообщение: ${u.message.text.slice(0, 80)}`;
+  return "апдейт без текста";
+}
+
+// Обработка апдейта упала (чаще всего — временный сбой сети до релея). offset ниже всё
+// равно сдвигается (иначе зациклимся на «ядовитом» апдейте навсегда), а значит сам Telegram
+// это нажатие больше не пришлёт — теряется молча. Записываем факт сюда, файл живёт на ВМ;
+// отдельный сторож на релее (независимый канал, не зависит от того же сломанного пути)
+// читает его и шлёт Артёму тревогу с конкретикой, что понажимать заново. Копим последние
+// 50 — файл не растёт бесконечно, старые сбои уже неактуальны.
+function recordFailure(dir: string, updateId: number, summary: string, err: unknown): void {
+  const file = failuresFile(dir);
+  let failures: Array<{ updateId: number; at: string; summary: string; error: string }> = [];
+  try {
+    failures = JSON.parse(fs.readFileSync(file, "utf8"));
+  } catch {
+    failures = [];
+  }
+  failures.push({
+    updateId,
+    at: new Date().toISOString(),
+    summary,
+    error: err instanceof Error ? err.message : String(err),
+  });
+  if (failures.length > 50) failures = failures.slice(-50);
+  fs.mkdirSync(dir, { recursive: true });
+  const tmp = file + ".tmp";
+  fs.writeFileSync(tmp, JSON.stringify(failures, null, 2), "utf8");
+  fs.renameSync(tmp, file);
+}
+
 // Один проход опроса: тянем апдейты с последнего offset, прогоняем через общий обработчик,
 // двигаем offset за максимальный update_id. Ошибка одного апдейта не валит остальные и
-// НЕ откатывает offset (иначе зациклимся на ядовитом апдейте). offset двигаем, только если
-// что-то пришло.
+// НЕ откатывает offset (иначе зациклимся на ядовитом апдейте) — но теперь хотя бы не теряется
+// молча, см. recordFailure выше. offset двигаем, только если что-то пришло.
 export async function pollTelegramOnce(
   now: Date = new Date(),
   dir: string = getPostQueueDir(),
@@ -51,6 +90,7 @@ export async function pollTelegramOnce(
       processed++;
     } catch (err) {
       console.error(`[poll] ошибка апдейта ${u.update_id}:`, err);
+      recordFailure(dir, u.update_id, summarizeUpdate(u as unknown as TgUpdate), err);
     }
     if (u.update_id > maxId) maxId = u.update_id;
   }

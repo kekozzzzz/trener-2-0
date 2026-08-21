@@ -12,7 +12,7 @@ vi.mock("@/infrastructure/adapters/notify/telegram-api", () => ({
   answerCallbackQuery: vi.fn(),
 }));
 
-import { getUpdates } from "@/infrastructure/adapters/notify/telegram-api";
+import { getUpdates, answerCallbackQuery } from "@/infrastructure/adapters/notify/telegram-api";
 import { addPost, getPost } from "@/infrastructure/posting/store";
 import { pollTelegramOnce, readOffset } from "@/infrastructure/posting/poll";
 
@@ -93,5 +93,23 @@ describe("опрос Telegram (getUpdates)", () => {
 
     expect(getPost("sliv-01", dir)?.status).toBe("PREVIEW_SENT"); // не одобрено
     expect(readOffset(dir)).toBe(201); // апдейт обработан (отклонён), повторять не нужно
+  });
+
+  it("сбой обработки (сеть до релея) не теряется молча — попадает в poll-failures.json", async () => {
+    vi.mocked(getUpdates).mockResolvedValue([
+      { update_id: 300, callback_query: { id: "c4", from: { id: 440359604 }, data: "approve:sliv-01" } },
+    ]);
+    vi.mocked(answerCallbackQuery).mockRejectedValueOnce(new Error("relay timeout"));
+
+    await pollTelegramOnce();
+
+    // offset двигаем — иначе зациклимся на этом же апдейте навсегда.
+    expect(readOffset(dir)).toBe(301);
+
+    const failures = JSON.parse(fs.readFileSync(path.join(dir, "poll-failures.json"), "utf8"));
+    expect(failures).toHaveLength(1);
+    expect(failures[0].updateId).toBe(300);
+    expect(failures[0].summary).toContain("approve:sliv-01");
+    expect(failures[0].error).toContain("relay timeout");
   });
 });
