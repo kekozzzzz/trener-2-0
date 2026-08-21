@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Сканирующая подсветка</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root{
+    --bg:#0E0E0E; --surface:#1A1A1A; --line:#2A2A2A;
+    --text:#F5F5F5; --muted:#8C8C8C; --lime:#D4FF33;
+  }
+  /* Шрифты сайта (Inter + JetBrains Mono) здесь не грузим — это только демо
+     механики подсветки, в самом продукте шрифты уже подключены. Системные
+     аналоги близки по духу и не требуют внешних запросов. */
+  html,body{
+    background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;
+  }
+  body{ padding-bottom:40vh; }
+  .mono{ font-family:ui-monospace,"Cascadia Mono","Consolas","JetBrains Mono",monospace; }
+
+  .statusbar{
+    position:sticky; top:0; z-index:20;
+    background:#0B0B0B; border-bottom:1px solid var(--line);
+    padding:8px 24px; display:flex; align-items:center; justify-content:space-between;
+    font-family:ui-monospace,"Cascadia Mono","Consolas","JetBrains Mono",monospace; font-size:11px; letter-spacing:0.08em; text-transform:uppercase;
+    color:var(--muted);
+  }
+  .statusbar .dot{ display:inline-block; width:6px; height:6px; background:var(--lime); margin-right:8px; }
+
+  /* Зона срабатывания подсветки — только для превью, в проде невидима */
+  .scan-marker{
+    position:sticky; top:186px; z-index:19; pointer-events:none;
+    height:0; border-top:1px dashed rgba(212,255,51,0.35);
+  }
+  .scan-marker span{
+    position:absolute; right:24px; top:-20px;
+    font-family:ui-monospace,"Cascadia Mono","Consolas","JetBrains Mono",monospace; font-size:10px; letter-spacing:0.08em;
+    color:rgba(212,255,51,0.5); text-transform:uppercase;
+  }
+
+  main{ max-width:720px; margin:0 auto; padding:0 24px; }
+  .spacer{ height:70vh; display:flex; align-items:center; }
+  .spacer p{ font-family:ui-monospace,"Cascadia Mono","Consolas","JetBrains Mono",monospace; font-size:12px; color:var(--line); letter-spacing:0.08em; }
+
+  /* Текстовая строка, которая загорается */
+  .glow-line{
+    font-family:ui-monospace,"Cascadia Mono","Consolas","JetBrains Mono",monospace; font-size:13px; letter-spacing:0.08em; text-transform:uppercase;
+    color:var(--muted); padding:24px 0; border-top:1px solid var(--line);
+    transition: color 220ms ease-out;
+  }
+  .glow-line.lit{ color:var(--lime); }
+
+  /* Прямоугольный блок. Два уровня подсветки:
+     — soft (по умолчанию): только аура вокруг, рамка и текст не меняются —
+       для второстепенных блоков (пример, иллюстрация).
+     — strong (data-tier="strong"): рамка загорается лаймом и текст тоже —
+       для того, что реально хотим подчеркнуть (цифра, доказательство). */
+  .glow-block{
+    background:var(--surface); border:1px solid var(--line); padding:32px;
+    transition: border-color 220ms ease-out, box-shadow 220ms ease-out;
+  }
+  .glow-block.lit{
+    box-shadow: 0 0 28px rgba(212,255,51,0.14);
+  }
+  .glow-block[data-tier="strong"].lit{
+    border-color: var(--lime);
+    box-shadow: 0 0 36px rgba(212,255,51,0.24);
+  }
+  .glow-block .label{ font-family:ui-monospace,"Cascadia Mono","Consolas","JetBrains Mono",monospace; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); }
+  .glow-block .title{ margin-top:8px; font-weight:900; font-size:22px; line-height:1.2; }
+  .glow-block[data-tier="strong"].lit .title{ color: var(--lime); }
+
+  footer{ text-align:center; padding:64px 0; font-family:ui-monospace,"Cascadia Mono","Consolas","JetBrains Mono",monospace; font-size:11px; color:var(--line); }
+</style>
+</head>
+<body>
+
+  <div class="statusbar">
+    <span><span class="dot"></span>WHYGRID // ГЛАВНАЯ</span>
+    <span>Числа считает алгоритм · ИИ не вычисляет</span>
+  </div>
+  <div class="scan-marker"><span>зона подсветки — только в превью</span></div>
+
+  <main>
+    <div class="spacer"><p>// прокрути вниз</p></div>
+
+    <p class="glow-line" data-glow>Читаем HH-файлы этих румов — GGPoker, PokerStars, Winamax, 888poker и ещё 5</p>
+
+    <div class="spacer"></div>
+
+    <div class="glow-block" data-glow data-tier="strong">
+      <div class="label">эталонные диапазоны</div>
+      <div class="title">12 открытых чартов — эталон, с которым сверяем</div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <p class="glow-line" data-glow>Все числа уже рассчитаны парсером — LLM только объясняет</p>
+
+    <div class="spacer"></div>
+
+    <div class="glow-block" data-glow>
+      <div class="label">пример раздачи</div>
+      <div class="title">8♠8♥ на баттоне против 3-бета с BB — почему колл, а не фолд?</div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="glow-block" data-glow>
+      <div class="label">разбор турнира</div>
+      <div class="title">Сократовский вопрос всегда перед оценкой</div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <p class="glow-line" data-glow>0 чисел придумано моделью</p>
+
+    <div class="spacer" style="height:20vh"></div>
+  </main>
+
+  <footer>конец превью</footer>
+
+<script>
+  // Зона срабатывания — тонкая полоса под статус-строкой, а не край экрана.
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      entry.target.classList.toggle('lit', entry.isIntersecting);
+    });
+  }, {
+    root: null,
+    // от 186px до 266px от верха вьюпорта — полоса высотой 80px, опущена ниже прошлой версии
+    rootMargin: '-186px 0px -' + (window.innerHeight - 266) + 'px 0px',
+    threshold: 0,
+  });
+
+  document.querySelectorAll('[data-glow]').forEach((el) => observer.observe(el));
+
+  window.addEventListener('resize', () => {
+    location.reload();
+  });
+</script>
+</body>
+</html>
