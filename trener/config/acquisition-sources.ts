@@ -20,6 +20,7 @@ export const ACQUISITION_SOURCES: AcquisitionSource[] = [
   // покерный). Код "618930" больше не выдаётся, старые заходы по нему остаются в
   // истории БД под slug "tiktok" — это нормально, /admin группирует по факту, не по
   // этому списку.
+  { code: "182937", slug: "poker4free-ad", label: "Poker 4 Free (платный закуп)" },
 ];
 
 export function findAcquisitionSourceByCode(code: string): AcquisitionSource | undefined {
