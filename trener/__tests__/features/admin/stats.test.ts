@@ -48,9 +48,15 @@ type AuthEventRow = {
   playerId: string | null;
   country: string | null;
   createdAt: Date;
+  utmSource?: string | null;
 };
 
-function mockDb(opts: { playerDates: Date[]; authEvents: AuthEventRow[] }): PrismaClient {
+function mockDb(opts: {
+  playerDates: Date[];
+  authEvents: AuthEventRow[];
+  landingVisits?: { source: string; createdAt: Date }[];
+}): PrismaClient {
+  const landingVisits = opts.landingVisits ?? [];
   return {
     player: {
       findMany: async () => opts.playerDates.map((d) => ({ createdAt: d })),
@@ -66,9 +72,29 @@ function mockDb(opts: { playerDates: Date[]; authEvents: AuthEventRow[] }): Pris
         }
         return opts.authEvents.filter((e) => e.kind === kind).length;
       },
-      groupBy: async () => [],
+      groupBy: async (args: { where?: { kind?: string } }) => {
+        const rows = args.where?.kind
+          ? opts.authEvents.filter((e) => e.kind === args.where!.kind)
+          : opts.authEvents;
+        const bySource = new Map<string, number>();
+        for (const e of rows) {
+          if (!e.utmSource) continue;
+          bySource.set(e.utmSource, (bySource.get(e.utmSource) ?? 0) + 1);
+        }
+        return [...bySource.entries()].map(([utmSource, n]) => ({
+          utmSource,
+          _count: { _all: n },
+        }));
+      },
     },
-    landingVisit: { groupBy: async () => [] },
+    landingVisit: {
+      groupBy: async () => {
+        const bySource = new Map<string, number>();
+        for (const v of landingVisits) bySource.set(v.source, (bySource.get(v.source) ?? 0) + 1);
+        return [...bySource.entries()].map(([source, n]) => ({ source, _count: { _all: n } }));
+      },
+      findMany: async () => landingVisits,
+    },
     siteVisit: { findMany: async () => [], count: async () => 0 },
     tournament: {
       findMany: async (args: { distinct?: unknown }) => (args.distinct ? [] : []),
@@ -135,19 +161,37 @@ describe("buildAdminStats", () => {
     expect(s.money).toEqual([]);
     expect(s.queue).toEqual({ pending: 0, processing: 0, poisoned: 0, failed: 0 });
 
-    // Источники переходов: список берётся из конфига, без единого захода — нули,
-    // источник из списка не пропадает.
-    expect(s.acquisition.map((a) => a.slug)).toEqual(["gipsyteam", "telegram", "instagram", "youtube"]);
-    expect(s.acquisition[0]).toMatchObject({
-      slug: "gipsyteam",
-      visitsTotal: 0,
-      visits30: 0,
-      registrationsTotal: 0,
-      registrations30: 0,
-    });
+    // Источники переходов: список берётся из конфига, без единого захода — нули
+    // по всем периодам, источник из списка не пропадает.
+    expect(s.acquisition.map((a) => a.slug)).toContain("gipsyteam");
+    const gipsyteam = s.acquisition.find((a) => a.slug === "gipsyteam")!;
+    expect(gipsyteam.visits).toEqual({ today: 0, yesterday: 0, last7: 0, last30: 0, total: 0 });
+    expect(gipsyteam.registrations).toEqual({ today: 0, yesterday: 0, last7: 0, last30: 0, total: 0 });
     // Ссылка строится по непрозрачному коду, а не по человекочитаемому slug
     // (человек не должен угадать источник по виду ссылки).
-    expect(s.acquisition[0].link).not.toContain("gipsyteam");
-    expect(s.acquisition[0].link).toMatch(/\/go\/\d{6}$/);
+    expect(gipsyteam.link).not.toContain("gipsyteam");
+    expect(gipsyteam.link).toMatch(/\/go\/\d{6}$/);
+  });
+
+  it("считает заходы/регистрации по источнику тем же разрезом день/неделя/30 дней/всего", async () => {
+    const db = mockDb({
+      playerDates: [],
+      authEvents: [
+        // 2 регистрации telegram сегодня, 1 вчера (входит в last7, не в today)
+        { kind: "REGISTER", playerId: "p1", country: "RU", createdAt: new Date(T0 + HOUR), utmSource: "telegram" },
+        { kind: "REGISTER", playerId: "p2", country: "RU", createdAt: new Date(T0 + 2 * HOUR), utmSource: "telegram" },
+        { kind: "REGISTER", playerId: "p3", country: "RU", createdAt: new Date(T0 - 3 * HOUR), utmSource: "telegram" },
+      ],
+      landingVisits: [
+        { source: "telegram", createdAt: new Date(T0 + HOUR) }, // сегодня
+        { source: "telegram", createdAt: new Date(T0 - 2 * DAY) }, // last7, не today
+      ],
+    });
+
+    const s = await buildAdminStats(db, NOW);
+    const telegram = s.acquisition.find((a) => a.slug === "telegram")!;
+
+    expect(telegram.visits).toEqual({ today: 1, yesterday: 0, last7: 2, last30: 2, total: 2 });
+    expect(telegram.registrations).toEqual({ today: 2, yesterday: 1, last7: 3, last30: 3, total: 3 });
   });
 });

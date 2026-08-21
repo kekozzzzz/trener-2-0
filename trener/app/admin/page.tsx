@@ -326,14 +326,14 @@ function SourceRow({
         <CopyLinkButton link={src.link} copyLabel={t("sourcesCopy")} copiedLabel={t("sourcesCopied")} />
       </div>
       <p className="mt-2 truncate font-mono text-small text-muted-foreground">{src.link}</p>
-      <div className="mt-4 grid grid-cols-2 gap-4">
-        <Stat label={t("sourcesVisits")} value={src.visitsTotal} accent />
-        <Stat label={t("sourcesRegistrations")} value={src.registrationsTotal} />
-      </div>
-      <p className="mt-4 text-small text-muted-foreground">
-        {t("sourcesVisits30")}: <Num>{src.visits30}</Num> · {t("sourcesRegistrations")}:{" "}
-        <Num>{src.registrations30}</Num>
+      <p className="mt-4 font-mono text-label uppercase tracking-label text-muted-foreground">
+        {t("sourcesVisits")}
       </p>
+      <PeriodRow counts={src.visits} t={t} />
+      <p className="mt-4 font-mono text-label uppercase tracking-label text-muted-foreground">
+        {t("sourcesRegistrations")}
+      </p>
+      <PeriodRow counts={src.registrations} t={t} />
     </div>
   );
 }

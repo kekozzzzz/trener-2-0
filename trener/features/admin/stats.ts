@@ -127,10 +127,8 @@ export type AcquisitionSourceStats = {
   slug: string;
   label: string;
   link: string;
-  visitsTotal: number;
-  visits30: number;
-  registrationsTotal: number;
-  registrations30: number;
+  visits: PeriodCounts;
+  registrations: PeriodCounts;
 };
 
 // ─────────────────────────── Помощники агрегации ─────────────────────────────
@@ -221,9 +219,8 @@ export async function buildAdminStats(db: PrismaClient, now = new Date()): Promi
     llmDay,
     llmMonth,
     visitsTotalRaw,
-    visits30Raw,
+    visitDates30Raw,
     registrationsTotalRaw,
-    registrations30Raw,
     surveysRaw,
   ] = await Promise.all([
     db.player.findMany({
@@ -234,7 +231,7 @@ export async function buildAdminStats(db: PrismaClient, now = new Date()): Promi
     db.player.count({ where: { closedAt: { not: null }, id: notTestPlayer } }),
     db.authEvent.findMany({
       where: { createdAt: { gte: t30 } },
-      select: { kind: true, playerId: true, country: true, createdAt: true },
+      select: { kind: true, playerId: true, country: true, createdAt: true, utmSource: true },
     }),
     db.authEvent.count({
       where: { kind: { in: [...successKinds] }, playerId: notAdminOrTestPlayer },
@@ -288,13 +285,8 @@ export async function buildAdminStats(db: PrismaClient, now = new Date()): Promi
     buildCostReport(db, 24),
     buildCostReport(db, 24 * 30),
     db.landingVisit.groupBy({ by: ["source"], _count: { _all: true } }),
-    db.landingVisit.groupBy({ by: ["source"], where: { createdAt: { gte: t30 } }, _count: { _all: true } }),
+    db.landingVisit.findMany({ where: { createdAt: { gte: t30 } }, select: { source: true, createdAt: true } }),
     db.authEvent.groupBy({ by: ["utmSource"], where: { kind: "REGISTER" }, _count: { _all: true } }),
-    db.authEvent.groupBy({
-      by: ["utmSource"],
-      where: { kind: "REGISTER", createdAt: { gte: t30 } },
-      _count: { _all: true },
-    }),
     db.introSurveyResponse.findMany({
       orderBy: { createdAt: "desc" },
       take: 50,
@@ -393,23 +385,51 @@ export async function buildAdminStats(db: PrismaClient, now = new Date()): Promi
     queueRaw.find((q) => q.status === status)?._count._all ?? 0;
 
   // Источники переходов: по каждому источнику из конфига — заходы и регистрации,
-  // всего и за 30 дней. Источник без единого захода/регистрации просто нулевой,
+  // тем же разрезом (сегодня/вчера/7 дней/30 дней/всего), что и остальные метрики
+  // сводки (PeriodRow в UI). Источник без единого захода/регистрации просто нулевой,
   // не пропадает из списка (Артём должен видеть ссылку и её "0", а не пустоту).
-  const visitCount = (rows: { source: string; _count: { _all: number } }[], slug: string) =>
+  const visitTotal = (rows: { source: string; _count: { _all: number } }[], slug: string) =>
     rows.find((r) => r.source === slug)?._count._all ?? 0;
-  const registrationCount = (
+  const registrationTotal = (
     rows: { utmSource: string | null; _count: { _all: number } }[],
     slug: string,
   ) => rows.find((r) => r.utmSource === slug)?._count._all ?? 0;
+
+  const visitDatesBySlug = new Map<string, Date[]>();
+  for (const v of visitDates30Raw) {
+    (visitDatesBySlug.get(v.source) ?? visitDatesBySlug.set(v.source, []).get(v.source)!).push(
+      v.createdAt,
+    );
+  }
+  // Неотфильтрованные (без исключения владельца/тестовых) — та же семантика,
+  // что у registrationsTotalRaw ниже, чтобы «за 30 дней» и «всего» не расходились.
+  const registerEventsAllBySlug = new Map<string, Date[]>();
+  for (const e of authEvents30) {
+    if (e.kind !== "REGISTER" || !e.utmSource) continue;
+    (
+      registerEventsAllBySlug.get(e.utmSource) ??
+      registerEventsAllBySlug.set(e.utmSource, []).get(e.utmSource)!
+    ).push(e.createdAt);
+  }
+
+  const periodFor = (dates: Date[], total: number): PeriodCounts => ({
+    today: countSince(dates, t0),
+    yesterday: countSince(dates, t1, t0),
+    last7: countSince(dates, t7),
+    last30: dates.length,
+    total,
+  });
+
   const baseUrl = getAppBaseUrl();
   const acquisition: AcquisitionSourceStats[] = ACQUISITION_SOURCES.map((s) => ({
     slug: s.slug,
     label: s.label,
     link: `${baseUrl}/go/${s.code}`,
-    visitsTotal: visitCount(visitsTotalRaw, s.slug),
-    visits30: visitCount(visits30Raw, s.slug),
-    registrationsTotal: registrationCount(registrationsTotalRaw, s.slug),
-    registrations30: registrationCount(registrations30Raw, s.slug),
+    visits: periodFor(visitDatesBySlug.get(s.slug) ?? [], visitTotal(visitsTotalRaw, s.slug)),
+    registrations: periodFor(
+      registerEventsAllBySlug.get(s.slug) ?? [],
+      registrationTotal(registrationsTotalRaw, s.slug),
+    ),
   }));
 
   const surveys: SurveyResponseRow[] = surveysRaw.map((r) => ({
