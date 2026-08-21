@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { PageIntro, BigWordmark } from "@/components/site/detail";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { indexablePage } from "@/lib/seo";
+import { indexablePage, getMetaLocale } from "@/lib/seo";
 import { SUPPORTED_ROOMS } from "@/config/rooms";
 import { RoomSteps } from "@/components/upload/hand-history-guide";
 import { HowToStructuredData } from "@/components/structured-data";
@@ -31,7 +31,7 @@ export async function generateMetadata({
   const room = SUPPORTED_ROOMS.find((r) => r.id === roomId);
   if (!room) return {};
 
-  const t = await getTranslations("UploadGuide");
+  const t = await getTranslations({ locale: await getMetaLocale(), namespace: "UploadGuide" });
   return {
     ...indexablePage(`/how-to-export/${room.id}`),
     title: t(`exportTitle.${room.id}`),

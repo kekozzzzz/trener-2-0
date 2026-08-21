@@ -11,7 +11,13 @@ vi.mock("next-intl/server", async (importActual) => {
   const actual = await importActual<Record<string, unknown>>();
   return {
     ...actual,
-    getTranslations: async (namespace?: string) => {
+    getTranslations: async (arg?: string | { namespace?: string; locale?: string }) => {
+      // next-intl принимает либо голую строку-namespace, либо объект {locale, namespace}
+      // (так вызывает lib/seo.ts getMetaLocale — язык метатегов для ботов-краулеров
+      // не зависит от request-контекста). Мок должен понимать оба вызова, иначе любой
+      // код, перешедший на объектную форму, тихо получал бы пустой словарь (namespace
+      // как ключ объекта в ru.json не находится) и видел бы сырые ключи вместо текста.
+      const namespace = typeof arg === "string" ? arg : arg?.namespace;
       // messages/ru.json содержит и вложенные группы (напр. UploadGuide.networkLabels),
       // поэтому приводим через unknown — мок использует только плоские namespace→ключ→строка.
       const ru = (await import("../messages/ru.json")).default as unknown as Record<

@@ -13,10 +13,10 @@ import { getSession } from "@/features/auth/session";
 import { getSubscriptionState } from "@/features/subscription/access";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
-import { indexablePage } from "@/lib/seo";
+import { indexablePage, getMetaLocale } from "@/lib/seo";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations("Meta");
+  const t = await getTranslations({ locale: await getMetaLocale(), namespace: "Meta" });
   return {
     ...indexablePage("/pricing"),
     title: t("pricingTitle"),

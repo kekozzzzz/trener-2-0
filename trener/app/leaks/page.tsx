@@ -5,11 +5,11 @@ import { PageHeader } from "@/components/page-header";
 import { PageIntro, BigWordmark } from "@/components/site/detail";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { indexablePage } from "@/lib/seo";
+import { indexablePage, getMetaLocale } from "@/lib/seo";
 import { LEAK_WINDOW_DAYS, LEAK_ACTIVE_MIN_DAYS } from "@/config/leaks";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations("Meta");
+  const t = await getTranslations({ locale: await getMetaLocale(), namespace: "Meta" });
   return {
     ...indexablePage("/leaks"),
     title: t("leaksGuideTitle"),

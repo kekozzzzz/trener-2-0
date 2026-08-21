@@ -1,4 +1,8 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
+import { getLocale } from "next-intl/server";
+import { isBotUserAgent } from "@/config/acquisition-sources";
+import { defaultLocale, type Locale } from "@/i18n/config";
 
 // Модель индексации — «бельй список»: в корневом layout (app/layout.tsx) ВЕСЬ сайт по
 // умолчанию закрыт от поисковиков (robots index:false). Поэтому любая НОВАЯ страница,
@@ -27,6 +31,20 @@ export function indexablePage(path: string): Metadata {
     robots: { index: true, follow: true },
     alternates: { canonical: path },
   };
+}
+
+// Язык для МЕТАДАННЫХ (title/description/og:*), а не для содержимого страницы.
+// Превью ссылки в Telegram/WhatsApp/Facebook генерирует КРАУЛЕР получателя, не сам
+// человек, — а краулеры обычно не шлют Accept-Language: ru (или не шлют его вовсе).
+// Без этой проверки обычный getLocale() (детект по Accept-Language) отдавал ботам
+// английский текст по умолчанию (см. i18n/config.ts detectLocale) — превью сайта
+// уезжало на английский в ЛЮБОМ русскоязычном канале, кому бы ссылку ни кидали.
+// Живому человеку без ru в браузере по-прежнему показываем EN — это осознанный
+// выбор бренда для международных игроков, эта проверка его не трогает.
+export async function getMetaLocale(): Promise<Locale> {
+  const userAgent = (await headers()).get("user-agent");
+  if (isBotUserAgent(userAgent)) return defaultLocale;
+  return (await getLocale()) as Locale;
 }
 
 // `noindex` — явно закрыть страницу. Технически избыточно (корень и так закрывает всё),

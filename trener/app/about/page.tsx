@@ -3,10 +3,10 @@ import { getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/page-header";
 import { SiteFooter } from "@/components/site-footer";
 import { PageIntro, BigWordmark } from "@/components/site/detail";
-import { indexablePage } from "@/lib/seo";
+import { indexablePage, getMetaLocale } from "@/lib/seo";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations("Meta");
+  const t = await getTranslations({ locale: await getMetaLocale(), namespace: "Meta" });
   return {
     ...indexablePage("/about"),
     title: t("aboutTitle"),

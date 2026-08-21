@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { indexablePage } from "@/lib/seo";
+import { indexablePage, getMetaLocale } from "@/lib/seo";
 import { getCurrentPlayer } from "@/features/auth/queries";
 import { parseHandHistory } from "@/parser";
 import { tableStateUpTo } from "@/parser/table-state";
@@ -24,7 +24,7 @@ import { TicketCta } from "@/components/site/ticket-cta";
 // Публичная страница-пример: настоящая раздача (Test/GG20260611-1320 …, №59), а не макет.
 // Числа страница считает САМА, парсером, прямо здесь — plans/2026-08-17-публичный-пример-разбора.md.
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations("Meta");
+  const t = await getTranslations({ locale: await getMetaLocale(), namespace: "Meta" });
   return {
     ...indexablePage("/example"),
     title: t("exampleTitle"),

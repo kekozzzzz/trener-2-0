@@ -5,12 +5,12 @@ import { PageHeader } from "@/components/page-header";
 import { PageIntro, BigWordmark } from "@/components/site/detail";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
-import { indexablePage } from "@/lib/seo";
+import { indexablePage, getMetaLocale } from "@/lib/seo";
 import { HandHistoryGuide } from "@/components/upload/hand-history-guide";
 import { SUPPORTED_ROOMS } from "@/config/rooms";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations("Meta");
+  const t = await getTranslations({ locale: await getMetaLocale(), namespace: "Meta" });
   return {
     ...indexablePage("/how-to-export"),
     title: t("howToExportTitle"),

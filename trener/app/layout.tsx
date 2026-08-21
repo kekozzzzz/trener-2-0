@@ -5,6 +5,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { cn } from "@/lib/utils";
 import { getAppBaseUrl } from "@/config/app";
+import { getMetaLocale } from "@/lib/seo";
 import { SiteVisitTracker } from "@/components/site-visit-tracker";
 import { CursorGlow } from "@/components/site/cursor-glow";
 import { ScrollGlow } from "@/components/site/scroll-glow";
@@ -38,8 +39,8 @@ const jetbrainsMono = localFont({
 // «%s — Whygrid» добавляет суффикс к заголовкам вложенных страниц). По умолчанию
 // сайт индексируется; приватные страницы перекрывают это через `noindex` (lib/seo.ts).
 export async function generateMetadata(): Promise<Metadata> {
-  const locale = await getLocale();
-  const t = await getTranslations("Meta");
+  const locale = await getMetaLocale();
+  const t = await getTranslations({ locale, namespace: "Meta" });
   return {
     metadataBase: new URL(getAppBaseUrl()),
     title: {

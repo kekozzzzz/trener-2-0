@@ -5,13 +5,13 @@ import { PageHeader } from "@/components/page-header";
 import { PageIntro, BigWordmark } from "@/components/site/detail";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { indexablePage } from "@/lib/seo";
+import { indexablePage, getMetaLocale } from "@/lib/seo";
 import { ReferenceChartsPanel } from "@/components/charts/reference-charts-panel";
 import { rfiOpenRange } from "@/config/poker/rfi-chart";
 import { percentOf } from "@/config/poker/hand-grid";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations("Meta");
+  const t = await getTranslations({ locale: await getMetaLocale(), namespace: "Meta" });
   return {
     ...indexablePage("/range"),
     title: t("rangeGuideTitle"),

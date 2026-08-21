@@ -1,11 +1,10 @@
-import { indexablePage } from "@/lib/seo";
-import { getLocale } from "next-intl/server";
+import { indexablePage, getMetaLocale } from "@/lib/seo";
 
 // Страница публичная и открыта поиску (решение Артёма 2026-07-06): чарты гуглятся
 // бесплатно где угодно — мы ничего не теряем, а получаем поисковый трафик по запросам
 // вида «пуш фолд чарт» и дверь в продукт («загрузи руки — сравним с этой же нормой»).
 export async function generateMetadata() {
-  const locale = await getLocale();
+  const locale = await getMetaLocale();
   return {
     ...indexablePage("/charts"),
     title: locale === "en" ? "MTT Preflop Charts" : "Префлоп-чарты для MTT",
