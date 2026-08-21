@@ -23,10 +23,19 @@ import { ipv4InAnyRange } from "@/lib/net";
 // релеем реальный адрес отправителя может теряться, поэтому по умолчанию выключен,
 // а основной гарантией остаётся перечитывание платежа.
 
+// x-real-ip первым: релей ставит его сам из $remote_addr, клиент не подделает.
+// x-forwarded-for — только fallback, и ПОСЛЕДНИЙ элемент цепочки (релей
+// $proxy_add_x_forwarded_for дописывает свой IP в конец, а не заменяет; первый
+// элемент — то, что прислал сам клиент, и его можно подделать произвольно).
 function clientIp(req: NextRequest): string | null {
+  const real = req.headers.get("x-real-ip");
+  if (real) return real.trim();
   const xff = req.headers.get("x-forwarded-for");
-  if (xff) return xff.split(",")[0].trim();
-  return req.headers.get("x-real-ip");
+  if (xff) {
+    const parts = xff.split(",").map((p) => p.trim()).filter(Boolean);
+    if (parts.length > 0) return parts[parts.length - 1]!;
+  }
+  return null;
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {

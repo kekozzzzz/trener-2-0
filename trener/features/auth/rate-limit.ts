@@ -58,18 +58,32 @@ export function retryAfterMs(key: string, now: number = Date.now()): number {
   return bucket ? Math.max(0, bucket.resetAt - now) : 0;
 }
 
-// IP клиента за Cloudflare-туннелем. Порядок: cf-connecting-ip (ставит сам
-// Cloudflare) → первый адрес из x-forwarded-for → x-real-ip. Вне HTTP-контекста
-// (тесты, фоновый код) headers() бросает — тогда общий ключ "unknown".
+// IP клиента. Порядок доверия — от неподделываемого к подделываемому:
+// (1) x-real-ip — КЗ-релей ставит его сам из $remote_addr (TCP-адрес соединения
+//     с релеем), клиент этот заголовок переписать не может;
+// (2) cf-connecting-ip — ставит Cloudflare, если когда-нибудь вернёмся к proxied-
+//     режиму (сейчас DNS-only, заголовок не приходит от Cloudflare вообще);
+// (3) x-forwarded-for, ПОСЛЕДНИЙ элемент цепочки — релей использует
+//     $proxy_add_x_forwarded_for, который ДОПИСЫВАЕТ свой IP в конец уже
+//     присланного заголовка, а не заменяет его. Значит первый элемент — это то,
+//     что прислал сам клиент (может быть что угодно), а надёжен только последний.
+// РАНЬШЕ бралось cf-connecting-ip → ПЕРВЫЙ элемент x-forwarded-for → x-real-ip —
+// оба первых источника клиент подделывает произвольным заголовком в запросе,
+// это полностью обходило IP-лимиты на логине/регистрации/сбросе пароля/форме
+// поддержки. Вне HTTP-контекста (тесты, фоновый код) headers() бросает — тогда
+// общий ключ "unknown".
 export async function clientIp(): Promise<string> {
   try {
     const store = await headers();
+    const real = store.get("x-real-ip");
+    if (real) return real.trim();
     const cf = store.get("cf-connecting-ip");
     if (cf) return cf.trim();
     const forwarded = store.get("x-forwarded-for");
-    if (forwarded) return forwarded.split(",")[0]!.trim();
-    const real = store.get("x-real-ip");
-    if (real) return real.trim();
+    if (forwarded) {
+      const parts = forwarded.split(",").map((p) => p.trim()).filter(Boolean);
+      if (parts.length > 0) return parts[parts.length - 1]!;
+    }
   } catch {
     // нет запроса в контексте — отдаём общий ключ
   }

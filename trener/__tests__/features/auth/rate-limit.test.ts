@@ -3,15 +3,22 @@
  *
  * Проверяют чистую логику окна/потолка/сброса напрямую, с управляемым «сейчас»
  * (параметр now) — не завися от флага isAuthRateLimitEnabled, который глушит
- * лимитер в тестовой среде для server actions. clientIp здесь не трогаем: он
- * тянет HTTP-контекст, его поведение покрыто гейтом в actions.
+ * лимитер в тестовой среде для server actions.
  *
  * Ключи во всех кейсах уникальны: Map счётчика живёт на уровне модуля и общая
  * для прогона.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { hitCount, recordHit, clearHits, retryAfterMs } from "@/features/auth/rate-limit";
+
+const { mockHeaders } = vi.hoisted(() => ({ mockHeaders: new Map<string, string>() }));
+
+vi.mock("next/headers", () => ({
+  headers: async () => ({
+    get: (name: string) => mockHeaders.get(name) ?? null,
+  }),
+}));
 
 const WINDOW = 15 * 60 * 1000; // 15 минут
 
@@ -74,5 +81,35 @@ describe("rate-limit счётчик", () => {
     expect(retryAfterMs(key, t0)).toBe(WINDOW);
     expect(retryAfterMs(key, t0 + 60_000)).toBe(WINDOW - 60_000);
     expect(retryAfterMs(key, t0 + WINDOW + 1)).toBe(0);
+  });
+});
+
+describe("clientIp() выбор адреса из заголовков", () => {
+  it("доверяет x-real-ip даже при подделанном x-forwarded-for", async () => {
+    mockHeaders.clear();
+    mockHeaders.set("x-real-ip", "203.0.113.9");
+    mockHeaders.set("x-forwarded-for", "1.2.3.4"); // клиент сам вписал произвольный IP
+    const { clientIp } = await import("@/features/auth/rate-limit");
+    expect(await clientIp()).toBe("203.0.113.9");
+  });
+
+  it("без x-real-ip берёт ПОСЛЕДНИЙ адрес x-forwarded-for (добавленный релеем), не первый (клиентский)", async () => {
+    mockHeaders.clear();
+    mockHeaders.set("x-forwarded-for", "1.2.3.4, 203.0.113.9");
+    const { clientIp } = await import("@/features/auth/rate-limit");
+    expect(await clientIp()).toBe("203.0.113.9");
+  });
+
+  it("без x-real-ip и x-forwarded-for падает на cf-connecting-ip", async () => {
+    mockHeaders.clear();
+    mockHeaders.set("cf-connecting-ip", "203.0.113.9");
+    const { clientIp } = await import("@/features/auth/rate-limit");
+    expect(await clientIp()).toBe("203.0.113.9");
+  });
+
+  it("без всех заголовков отдаёт unknown", async () => {
+    mockHeaders.clear();
+    const { clientIp } = await import("@/features/auth/rate-limit");
+    expect(await clientIp()).toBe("unknown");
   });
 });
