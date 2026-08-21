@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: b173c6fa-0ebc-4a01-ab25-e2a5dc4c712c
-  modified: 2026-08-18T00:00:00.000Z
+  modified: 2026-08-20T19:40:11.778Z
 ---
 
 Вкладка «Статистика» (/admin) — только владельцу (isAdminEmail, остальным 404):

@@ -5,6 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 368315ea-b54a-4c8a-9e2a-e279f8b154de
+  modified: 2026-08-04T16:53:10.576Z
 ---
 
 ОБНОВЛЕНО 2026-06-28: проверено на проде — `SUBSCRIPTION_GATE_ENABLED=true`, **платная стена ВКЛЮЧЕНА** (после go-live ЮKassa). Прежняя заметка «гейта нет, у всех полный доступ» устарела.
@@ -17,4 +18,7 @@ metadata:
 
 **«Потом закроем»:** soft-delete — выставить `subscriptions.deletedAt=now` (или `status=EXPIRED`) у этого игрока; необратимого ничего.
 
-**Закрыто 2026-08-04:** доступ снят — на проде выставлены `status=EXPIRED, deletedAt=2026-08-04T16:50:19Z` для подписки `comp-zebster-bk-ru`. Player и история турниров не тронуты (soft-delete, правило проекта №5); при необходимости выдать снова — обнулить `deletedAt` и вернуть `status=ACTIVE`.
+**Закрыто 2026-08-04:** доступ снят по просьбе Артёма — на проде выставлены `status=EXPIRED,
+deletedAt=2026-08-04T16:50:19Z` для подписки `comp-zebster-bk-ru` (напрямую через SSH-джамп на VM,
+[[feedback_server_ops_self]]). Player и история турниров не тронуты — только подписка, soft-delete
+(правило проекта №5). Вернуть доступ снова — обнулить `deletedAt` и `status=ACTIVE`.

@@ -2,114 +2,151 @@
 
 ## ⚠️ Правила, которые ломают прод и доверие — читать первыми
 
-- [🔴 Не выдавать догадку за факт + сохранять сразу](feedback_save_facts_immediately.md) — проверил цену/замер/лимит → немедленно в конфиг И в память, не «в конце задачи»; перед замером глянь, не измерено ли уже; не докладывай выводом то, что не проверил — Артём принимает решения по этим цифрам
-- [🔴 Смотреть незапушенное ПЕРЕД пушем](feedback_check_unpushed_before_push.md) — push тащит ВСЮ ветку, не мой коммит: перед пушем `git log origin/master..master` и показать Артёму; инцидент 16.07 — «выкатывай» утащило на прод чужой WIP «НЕ деплоить»
-- [🔴 Не деплоить во время разбора](feedback_no_deploy_during_analysis.md) — выкатка рестартит процесс → шаг диалога виснет в PROCESSING на 10 мин; инцидент 06.07
-- [Деплой = пуш в master](project_remote_workspace.md) — сторож на КЗ-релее катит master на прод сам за ~2-4 мин; `[тихо]` в коммите глушит отчёты (только из локальной сессии); ⚠️не писать руками в /root/trener на релее — дерево автодеплоя
-- [Серверные операции — сам](feedback_server_ops_self.md) — прод-операции Клод делает сам (SSH через релей); к прод-БД только на чтение
-- [Уведомление ≠ задача](feedback_notification_not_task.md) — сторожа сообщают ФАКТ и останавливаются: без команд в тексте, без прогонов «на всякий»; решаем вместе за компом
-- [Индекс памяти = суть, не статус](feedback_memory_sync.md) — в индекс «что это + где», статусы/даты/коммиты только в файле темы: статус гниёт молча и врёт следующей сессии (16.07 индекс врал про 4 записи); правь обе копии — локальную и memory-bank/
-- [📌 ДОДЕЛКА: копии памяти разошлись](project_memory_copies_divergence.md) — тело 15 записей различается между локальной и репозиторной копией (Клод за компом и на планшете помнят разное); ⛔копировать скопом нельзя — потеряются факты, сводить руками по списку в файле
-- [Всегда писать ретро](feedback_always_write_retrospective.md) — в конце КАЖДОЙ сессии в retrospectives/
-- [Синхрон маркетинг-витрины](feedback_marketing_catalog_sync.md) — задел промпты/тарифы/функции → обнови 07-что-умеет-продукт.md в whygrid-marketing; из облака — сказать Артёму
+- [🔴 Не выдавать догадку за факт](feedback_save_facts_immediately.md) — проверил → сразу в конфиг И в память; вывод ≠ факт
+- [🔴 Новый факт — проверь ОБРАТНЫЙ случай](feedback_new_fact_check_negative_case.md) — прямой И обратный тест к каждому факту
+- [🔴 «Вес решения» ≠ выигрыш](feedback_weight_bb_not_result.md) — цифру в текст только из реального HH-файла, не из шапки-источника
+- [🔴 Смотреть незапушенное ПЕРЕД пушем](feedback_check_unpushed_before_push.md) — `git log origin/master..master` и показать Артёму; push тащит всю ветку
+- [🔴 Не деплоить во время разбора](feedback_no_deploy_during_analysis.md) — выкатка рестартит процесс, шаг диалога виснет
+- [Деплой = пуш в master](project_remote_workspace.md) — сторож на релее катит сам за ~2-4 мин; `[тихо]` глушит отчёты
+- [Серверные операции — сам](feedback_server_ops_self.md) — прод-операции через SSH-релей; к прод-БД только на чтение
+- [Уведомление ≠ задача](feedback_notification_not_task.md) — сторожа сообщают факт и останавливаются
+- [Индекс памяти = суть, не статус](feedback_memory_sync.md) — статусы только в файле темы; правь обе копии (и memory-bank/)
+- [Сверка копий памяти](project_memory_copies_divergence.md) — ✅сведены 21.08 (0 расхождений, 157/157 файлов); метод+скрипт для повторной сверки, когда снова разъедутся
+- [Всегда писать ретро](feedback_always_write_retrospective.md) — в конце КАЖДОЙ сессии
+- [⛔ Соседние репозитории не трогаем](feedback_marketing_catalog_sync.md) — синхрон витрины отменён; понадобится — Артём скажет
+- [Новый проект = новая сессия](feedback_separate_project_sessions.md) — не вести содержательную работу по несвязанному проекту в текущем чате
 
 ## Как со мной разговаривать
 
-- [Артём: покерный профиль](user_poker_profile.md) — микролимиты GGPoker, думающий игрок
-- [Артём: не программист](user_programming_level.md) — ноль в программировании, объяснять просто
-- [Только русский](feedback_russian_only.md) · [Живой диалог](feedback_genuine_dialogue.md) — не соглашаться автоматически, возражать по основаниям
-- [Ответ после задачи](feedback_response_style.md) — итог в двух словах живым языком, без таблиц
-- [Объяснять перед командами](feedback_explain_before_commands.md) · [Правки на лету](feedback_live_corrections.md) — правки скринами по ходу = рабочий режим, каждая в очередь
-- [Стиль копирайта](feedback_copy_style.md) — живой язык, короткие тире, эталон hands/sliv-01.md · [Стиль названий](feedback_naming_style.md) — без транслита, без GG в имени
-- [Язык карт](feedback_card_language.md) — «олл-ин» не «шов» · [Формат карточки](feedback_card_format.md) — адаптируется к сессии
-- [Итеративный дизайн](feedback_design_iteration.md) — компоненты как есть, правки через /design-preview
-- [Скорость — главный приоритет](feedback_speed_priority.md) — ожидание = уход пользователя; тяжёлое в предпосчёт/кэш
-- [Не экономить на промптах](feedback_no_prompt_cost_cutting.md) · [Hardening перед деплоем](feedback_hardening_before_deploy.md) — после приёмки отдельный проход
+- [Артём: покерный профиль](user_poker_profile.md) · [не программист](user_programming_level.md) — объяснять просто
+- [Только русский](feedback_russian_only.md) · [Живой диалог](feedback_genuine_dialogue.md) — возражать по основаниям
+- [Ответ после задачи](feedback_response_style.md) — живым языком, без таблиц
+- [Объяснять перед командами](feedback_explain_before_commands.md) · [Правки на лету](feedback_live_corrections.md) — скрины по ходу
+- [Стиль копирайта](feedback_copy_style.md) · [Стиль названий](feedback_naming_style.md) — без транслита, без GG в имени
+- [Язык карт](feedback_card_language.md) — «олл-ин» не «шов» · [Формат карточки](feedback_card_format.md)
+- [Итеративный дизайн](feedback_design_iteration.md) — правки через /design-preview
+- [🔴 Сверяй с кодом РЕАЛЬНОЙ страницы](feedback_verify_against_real_product_page.md) — не переиспользуй похожий маркетинговый компонент вместо настоящего UI
+- [Номера клипов в структуре](feedback_clip_numbers_in_structure.md) — всегда «название (номер)» из all-clips/index.md
+- [Скорость — главный приоритет](feedback_speed_priority.md) — ожидание = уход пользователя
+- [Не экономить на промптах](feedback_no_prompt_cost_cutting.md) · [Hardening перед деплоем](feedback_hardening_before_deploy.md)
+- [🔴 ИИ-видео не читает карты](feedback_ai_video_no_legible_cards.md) — для карт hand-board.html, не Seedance
+- [Выбор видео-модели](project_video_model_choice.md) — дефолт Veo 3.1 Lite $0.30/6с; ⛔Seedance 2.5 дороже вчетверо; картинку первым кадром принимают ВСЕ модели
+
+## Инструменты и среда
+
+- [🔴 ffmpeg: нужен -pix_fmt yuv420p](reference_ffmpeg_pixfmt_yuv444_bug.md) — иначе видео не открывается, `format=` не спасает
+- [🔴 Playwright: скриншоты в этой среде ненадёжны](reference_playwright_screenshot_viewport_bug.md) — DPR 0.9 сдвигает кадр; `target`/`clip` иногда пустой чёрный кадр — рабочий фикс: viewport-скрин после ручного scrollTo
+- [🔴 IntersectionObserver ненадёжен для узкой зоны](reference_scroll_zone_intersectionobserver_unreliable.md) — колбэки опаздывают/пропускаются при обычном скролле; фикс — rAF + getBoundingClientRect напрямую
+- [📌 Параллельная сессия в trener/ ломает dev-сервер и браузер](reference_parallel_session_dev_collision.md) — общий `.next` кэш → 404 на чанках; общий профиль Playwright блокируется — не убивать chrome.exe скопом
 
 ## Мозг тренера и модели
 
-- [🔴 A/B моделей](project_gemini_stream_breaks.md) — 16.07: смена модели НЕ решает, 2.5-flash и 3.1-flash-lite врут ОДИНАКОВО, оба «показывать нельзя»; болячки системные (ошибаются там, где факт ЕСТЬ, но надо ПРИМЕНИТЬ) → чек-листом не лечится, нужны СТОРОЖА — ЦИФРЫ В ФАЙЛЕ
-- [GLM → Gemini](project_glm_latency_incident.md) — в бою Gemini 2.5 Flash (env OPENROUTER_MODEL, откат мгновенный); защиты от галлюцинаций LIVE; ⚠️правило: факт есть→в факт, нет→в чек-лист; чек-лист «ПЕРЕЧИТАЙ» РАЗДУТ — не пихать — ВСЁ В ФАЙЛЕ
-- [Мозг тренера](project_trainer_brain_next.md) — COACH_FRAMEWORK в проде; хроника правок + чарты рестила и колла vs пуш — В ФАЙЛЕ
-- [Каталог типов раздач](project_hand_type_catalog.md) — ⚠️16.07 случайно уехал на прод, СНЯТ revert'ом 9fe83f8 (вернуть = снять revert); копим к одному выкату; EV считать нечем (чарты бинарные) — ВСЁ В ФАЙЛЕ
-- [Аудит — шум больше эффекта](feedback_audit_noise_baseline.md) — прогон НЕ приёмка по браку; годен для оценки ТОНА глазами; сравнивать брак — baseline в тот же час + 2-3 повтора
-- [Регресс-прогон после правок промпта](feedback_prompt_regress_run.md) · [Прогонщик аудита](project_coach_audit.md) — локальный, вне git, HH из Test/audit/
-- [Слежка за моделями](project_model_watch.md) — таймер на релее раз в 3 дня → Telegram; молчит, если новостей нет; следит и за пропажей/подорожанием боевой; LIVE 16.07
+- [🔴 A/B моделей](project_gemini_stream_breaks.md) — смена модели НЕ решает, болячки системные → нужны СТОРОЖА
+- [GLM → Gemini](project_glm_latency_incident.md) — 🟢в бою gemini-3.1-flash-lite, откат флагом OPENROUTER_MODEL
+- [Мозг тренера](project_trainer_brain_next.md) — COACH_FRAMEWORK в проде · [Каталог типов раздач](project_hand_type_catalog.md) — ⚠️снят revert'ом 9fe83f8
+- [Дыры в промпте, не модель](project_prompt_holes_fixed.md) — 13 правок 17.07: вранье 39%→8%; урок — промпт-просьба не работает, работает код/факт
+- [Аудит — шум больше эффекта](feedback_audit_noise_baseline.md) — прогон НЕ приёмка по браку, годен для оценки ТОНА
+- [🔴 Эталонный прогон с ЧИСЛАМИ](project_benchmark_runner.md) — `RUN_BENCHMARK=1`, метрики считает код; новый сторож гонять ДО деплоя
+- [Регресс-прогон после правок](feedback_prompt_regress_run.md) · [Прогонщик аудита](project_coach_audit.md) — вне git, HH из Test/audit/
+- [Эталон регресс-раздач](project_regression_hand_benchmark.md) — ✅60 файлов (GG+iPoker) в git, проверены на уровне парсера
+- [📌 Кандидат: Gemini 3.5 Flash-Lite](project_model_candidate_gemini_35_flash_lite.md) · [📌 Qwen 3.7 Flash](project_model_candidate_qwen_37_flash.md) — резерв, НЕ переключать
+- [⛔ Отклонён: Haiku 4.5](project_model_candidate_haiku_45.md) — НЕ предлагать, подтверждено Артёмом
+- [Слежка за моделями](project_model_watch.md) — таймер на релее раз в 3 дня → Telegram
+- [🔑 «Ложный натс» — врал ПАРСЕР](project_false_nuts_parser_lied.md) — натсовость мерилась внутри категории; ⛔сторож на слово «натс» нельзя
 - [Теория покера](project_poker_theory_insights.md) — принципы из разборов, материал для промпта
-- [Цены моделей, кэш и маржа](project_model_prices_and_cache.md) — замерено 16.07, НЕ перепроверять: себестоимость турнира и маржа тарифов; GLM/DeepSeek кэш 0%, gemini-3.1-flash-lite кэш 79% стабильно — ЦИФРЫ В ФАЙЛЕ
-- [Стоимость LLM](project_llm_cost.md) — турнир ~$0.03–0.09; кэш промпта; учёт LlmUsage + /status · [DeepSeek migration](project_deepseek_migration.md) — откат флагом LLM_PROVIDER
-- [Голосовой ввод](project_voice_input_stt.md) — Voxtral через релей; LIVE; учёт затрат в LlmUsage
-- [Длина диалога](project_dynamic_dialogue_length.md) — 1..12 задаёт ИИ флагом complete
+- [✅ Модель, цены, скорость](project_model_prices_and_cache.md) — ВСЕ ЦИФРЫ В ФАЙЛЕ, не перепроверять
+- [Стоимость LLM](project_llm_cost.md) — турнир ~$0.03–0.09; кэш промпта · [DeepSeek migration](project_deepseek_migration.md)
+- [Голосовой ввод](project_voice_input_stt.md) — Voxtral через релей · [Длина диалога](project_dynamic_dialogue_length.md) — 1..12, флаг complete
 
 ## Разборы: отбор раздач, метрики, память об игроке
 
-- [Эталонные чарты](project_training_rfi_chart.md) — RFI (среднее чартов Артёма + публичных MTT 40bb); также [защита BB](project_bb_defense_chart.md), [vs опен](project_vpip_vs_raiser_chart.md), [пуш-фолд Nash](project_push_fold_chart.md), [изоляция](project_iso_vs_limp_chart.md) — все зашиты в config/, в проде
-- [Твои чарты](project_personal_chart_memory.md) — зеркала всех 5 спотов, те же грейдеры; LIVE; коллы не судим; ⛔v2(дельта) отменён
-- [Критические по решению](project_decision_critical_hands.md) — крупный фолд/блеф/недобор; decision-weight 5 каналов + квоты + движок веток; LIVE 11.07 — ДЕТАЛИ В ФАЙЛЕ
-- [Критические по доезду](project_lucky_win_criticals.md) — вскрытые карты, эквити<33% при крупном вложении; LIVE 04.07; только новые загрузки
-- [Трекер ликов](project_leak_tracker.md) — динамика между игровыми днями, 9 детекторов, без LLM; LIVE; блоки в UI спрятаны
-- [Цель на сессию](project_session_goal.md) — из топ-лика окна; /charts публичная + SEO + CTA; блок цели убран со страниц («вернём» — Артём)
-- [Память об игроке](project_trainer_spot_memory.md) — отпечаток спота + похожие раздачи + карточка ученика + дневник coach_notes; ВСЯ LIVE — ДЕТАЛИ В ФАЙЛЕ
-- [Ориентир (self-level)](project_self_level_orientir.md) — самооценка уровня, мягкий приор ТОЛЬКО на тон, затухает; LIVE 11.07
-- [Профиль соперника](project_opponent_profiling.md) — парсер типизирует, ИИ подстраивает, игроку не показываем; псевдонимы oppN; LIVE
-- [Сетка диапазона + глоссарий](project_opponent_range_grid.md) · [Движок эквити](project_range_engine.md) — точное эквити против диапазона с сетки
-- [Ауты и дро](project_clean_outs_draws.md) — грязные ауты/бэкдоры/эквити перебором + запрет выдумывать ауты
-- [Размер ставки и лимпы](project_betsizing_and_limps.md) · [Лик по открывашкам](project_open_leak_and_inline_links.md) · [Характеристика игрока](project_player_characteristic.md) — от 10 турниров
-- [Тренажёр префлопа](project_training_mode.md) — случайные споты, сверка с чартом без LLM; план в plans/
-- [Экран прогресса](project_analysis_progress_screen.md) · [Маркер «просмотрено»](project_viewed_marker.md) — критические диалоги до вердикта = пройден
-- [Зависший диалог](project_dialogue_hang_empty_question.md) — баг 15.07 пустого вопроса; фикс; КАК разблокировать в прод-БД — В ФАЙЛЕ
-- [Вечная крутилка](project_stuck_step_recovery.md) — шаг в карантине больше не крутит «готовим…» бесконечно: показывает «не получилось, повторить» + кнопка перезапуска; задеплоено
-- [Удаление турнира](project_tournament_delete.md) — в UI НЕ делаем (решение Артёма); отбор фиксируется при загрузке; КАК soft-delete вручную — В ФАЙЛЕ
-- [Профит/призовые](project_tournament_results_data.md) — БУДУЩЕЕ: инлайн только у PS, остальным нужен файл-сводка
+- [Чарты](project_training_rfi_chart.md) — RFI, [BB](project_bb_defense_chart.md), [vs опен](project_vpip_vs_raiser_chart.md), [пуш-фолд](project_push_fold_chart.md), [изоляция](project_iso_vs_limp_chart.md); в проде
+- [Твои чарты](project_personal_chart_memory.md) — зеркала 5 спотов; коллы не судим; ⛔v2 отменён
+- [Критические по решению](project_decision_critical_hands.md) — decision-weight, 5 каналов + квоты; LIVE
+- [Критические по доезду](project_lucky_win_criticals.md) — эквити<33% при крупном вложении; LIVE
+- [Трекер ликов](project_leak_tracker.md) — 9 детекторов без LLM; блоки в UI спрятаны
+- [Цель на сессию](project_session_goal.md) — /charts публичная + SEO; блок цели убран со страниц
+- [Память об игроке](project_trainer_spot_memory.md) — отпечаток спота, похожие раздачи, карточка, дневник; LIVE
+- [Ориентир (self-level)](project_self_level_orientir.md) — мягкий приор только на тон; LIVE
+- [Профиль соперника](project_opponent_profiling.md) — псевдонимы oppN, игроку не показываем; LIVE
+- [Сетка диапазона](project_opponent_range_grid.md) · [Движок эквити](project_range_engine.md) — точное эквити с сетки
+- [Эталонный диапазон 3-бета](project_estimated_3bet_range.md) — запасной факт; KQo vs AA=12.7% проверено
+- [Ауты и дро](project_clean_outs_draws.md) — грязные ауты и бэкдоры перебором
+- [Размер ставки и лимпы](project_betsizing_and_limps.md) · [Лик по открывашкам](project_open_leak_and_inline_links.md) · [Характеристика игрока](project_player_characteristic.md)
+- [Тренажёр префлопа](project_training_mode.md) — сверка с чартом без LLM · [Экран прогресса](project_analysis_progress_screen.md) · [Маркер «просмотрено»](project_viewed_marker.md)
+- [Зависший диалог](project_dialogue_hang_empty_question.md) — баг пустого вопроса · [Вечная крутилка](project_stuck_step_recovery.md) — «повторить» + перезапуск
+- [Удаление турнира](project_tournament_delete.md) — в UI НЕ делаем · [Профит/призовые](project_tournament_results_data.md) — БУДУЩЕЕ, инлайн только у PS
 
 ## Парсеры румов
 
-- [PS-семья](project_winamax_888_ps_parsers.md) — Winamax/888/PokerStars + сторож diagnose + S3 нераспознанных; сюда же [Chico и iPoker](project_ipoker_chico_parsers.md) и [PokerPlanets](project_pokerplanets_parser.md) (клон PS, задеплоен 9d9e1bc, гайд ru+en); ⛔убрать app/chart-real
-- [WPN](project_wpn_parser.md) — ACR/PokerKing + роутер + мердж многостольных файлов; образцы Test/samples/wpn/
-- [Тестовые HH](project_test_hh_file.md) — Test/ = реальные файлы вне git (GG/PS/WMX/888/Chico/iPoker/WPN)
-- [Гайд загрузки](project_upload_guide_screenshots.md) — скрины по всем румам в подсказке (кроме Chico); шаги Winamax под новый клиент
+- [🔴 Колл ва-банк ≠ пуш](project_allin_call_vs_push.md) — критерий в parser/aggression.ts, руками не трогать
+- [PS-семья](project_winamax_888_ps_parsers.md) — Winamax/888/PS + [Chico, iPoker](project_ipoker_chico_parsers.md) + [PokerPlanets](project_pokerplanets_parser.md); ⛔убрать app/chart-real
+- [WPN](project_wpn_parser.md) — ACR/PokerKing + роутер + мердж многостольных
+- [Тестовые HH](project_test_hh_file.md) — Test/ = реальные файлы вне git
+- [Гайд загрузки](project_upload_guide_screenshots.md) — скрины по всем румам (кроме Chico)
 
 ## Инфраструктура, деплой, мониторинг
 
-- [Рабочее место / автодеплой](project_remote_workspace.md) — работа с планшета, вкладка «Код»; сторож автодеплоя на релее; ⚠️починки автодеплоя живут ТОЛЬКО на релее, в git их нет — ДЕТАЛИ В ФАЙЛЕ
-- [Процедура деплоя](project_deploy_procedure.md) — ⚠️ВМ из РФ GitHub не достаёт: только бандл через КЗ-релей → merge → build → pm2 restart; [статус](project_deploy_status.md) — whygrid.app через релей, ❗серт до 2026-09-20
-- [LLM из РФ](project_llm_connectivity_block.md) — РЕШЕНО: через релей-nginx (Казахстан) · [Зависание деплоя](project_deploy_pipeline_hang.md) — git fetch без таймаута; фикс
-- [Бот-сторож](project_watchdog_bot.md) — тревога при карантине задачи + утренний дайджест; @kekoz_bot · [Telegram-мост](project_telegram_bridge.md) — управление с телефона, мост на релее 24/7
+- [Рабочее место / автодеплой](project_remote_workspace.md) — ⚠️починки живут ТОЛЬКО на релее, в git их нет
+- [Процедура деплоя](project_deploy_procedure.md) — 🔴health зелёный ≠ выкат доехал, сверять коммит на ВМ; [статус](project_deploy_status.md) — ❗серт до 2026-09-20
+- [🔴 Ложные алерты при выкате](project_deploy_alert_noise.md) — сторож бил тревогу с ПЕРВОЙ неудачи; починено 08.08
+- [📌 Ночные обрывы сети у релея](project_relay_nightly_outage.md) — 2 ночи подряд ~1.5ч, сеть релея не VM; дайджест «failed» = задумано, не баг
+- [🔴 ВМ зависала 9ч (20.08)](project_vm_hang_incident_20260820.md) — pm2-автозапуск починен, лёгкий auto-heal в load-watchdog.sh; полный auto-reboot отложен до повтора
+- [LLM из РФ](project_llm_connectivity_block.md) — решено через релей-nginx · [Зависание деплоя](project_deploy_pipeline_hang.md) — фикс
+- [Бот-сторож](project_watchdog_bot.md) — карантин + дайджест · [Telegram-мост](project_telegram_bridge.md) — на релее
+- [📦 Фреймворк AI-Кофаундер](reference_ai_cofounder_framework.md) — Desktop, куплен 14.08; готовые промпты для авто-отчётов/триажа, брать при надобности, не разворачивать
 - [Мониторинг здоровья](project_health_monitoring.md) — /api/health + UptimeRobot; серт следим сами
-- [Очередь](project_queue_latency.md) — concurrency 10; узкое место — сама LLM · [Рычаги масштабирования](project_scaling_triggers.md) — №1 параллельный воркер
-- [Админка](project_admin_stats.md) — /admin владельцу: регистрации/входы/страны; ⚠️prisma migrate dev портит ручные partial-индексы — SQL чистить руками; 📌 владелец исключён из «Входы»/«Заходы», не запушено
-- [Лимит загрузки nginx](project_nginx_upload_limit.md) — client_max_body_size 50m на обоих; осталось global-error.tsx
-- [База](project_db_setup.md) — PostgreSQL 17 локально, trener_dev · [Инфра-roadmap](project_infra_roadmap.md) — переезд ~лето 2027 → Hetzner+Stripe+R2
-- [Бот-постинг](project_posting_bot.md) — @whygrid_bot; ждёт перевыпуск токена + админство в канале
+- [Очередь](project_queue_latency.md) — concurrency 10 · [Рычаги масштабирования](project_scaling_triggers.md) — №1 параллельный воркер
+- [✅ Аудит внешней утечки](project_security_audit_external_leak.md) — 16-17.08 дыр нет; бакет HH проверен вручную, закрыт; риск на будущее — нет центрального гейта авторизации
+- [Админка](project_admin_stats.md) — ⚠️prisma migrate dev портит ручные partial-индексы; 📌 владелец исключён из «Входы»/«Заходы», не запушено
+- [Лимит загрузки nginx](project_nginx_upload_limit.md) — 50m на обоих; осталось global-error.tsx
+- [Страница техработ при падении](project_maintenance_page.md) — nginx error_page 502/503/504 на релее+ВМ; ✅проверено на ВМ, релей не fault-injected
+- [База](project_db_setup.md) — PostgreSQL 17 · [Инфра-roadmap](project_infra_roadmap.md) — ~2027 на Hetzner · [Бот-постинг](project_posting_bot.md) — ждёт токен
 
 ## Деньги, доступ, юр
 
-- [Тарифы](project_pricing_model.md) — LIVE с 11.07: $7/25 разборов и $21/«безлимит» (fair-use 300), $45 скрыт; ленивый разбор по клику; гейт ВКЛ
-- [ЮKassa](project_payments_yookassa.md) — LIVE, вебхук, возвраты, крон renew ([чек-лист go-live закрыт](project_yookassa_golive.md)); осталось юр-флаги РКН/трансгранич.
-- [Продления инфраструктуры](project_recurring_payments.md) — 🔴релей VDSka, Yandex грант до 08.08→MIR, Porkbun до 2027-06-19 · [Крипта](project_crypto_payments_later.md) — отложено до переезда
-- [Ключи и биллинг LLM](project_payments_blocked.md) — биллинг Anthropic настроен, ключ на проде стоит (Anthropic = запасной, в бою OpenRouter)
-- [Вход по magic link](project_magic_link_auth.md) — passwordless, /enter первичный; LIVE · [Доступ владельца](project_owner_comp_access.md) — admin-байпас; тестер zebster@bk.ru
-- [Загрузка без блока](project_upload_no_block_locked_analysis.md) — грузи сколько угодно, разбор у первого бесплатного; автостарт при открытии турнира
-- [Почта](project_email_and_reset.md) — Unisender Go, 4 письма + крон; LIVE · [support@](project_support_mailbox.md) — Cloudflare Routing, ❗при переезде пересобрать · [Форма поддержки](project_support_form.md) — /support → Telegram; осталось hardening
-- [Юр-статус](project_legal_status.md) — самозанятость оформлена, юр-страницы LIVE
-- [English](project_i18n_english.md) — UI+письма+тренер LIVE; легалка русская; приёмка англ. тренера ОТЛОЖЕНА — НЕ напоминать
-- [SEO](project_seo_metadata.md) — описания+robots+sitemap LIVE; favicon ждёт логотипа
+- [Тарифы](project_pricing_model.md) — $7/25 и $28/безлимит (fair-use 300); бесплатный лимит 1
+- [Сегменты аудитории](project_audience_segments.md) — витрина без лимитов, ⚠️промпты и чарты остаются под микролимиты
+- [ЮKassa](project_payments_yookassa.md) — LIVE ([go-live закрыт](project_yookassa_golive.md)); осталось юр-флаги РКН
+- [Продления инфраструктуры](project_recurring_payments.md) — 🔴релей, Yandex грант, домен · [Крипта](project_crypto_payments_later.md) — отложено
+- [Ключи и биллинг LLM](project_payments_blocked.md) — Anthropic запасной, в бою OpenRouter
+- [Magic link](project_magic_link_auth.md) · [Доступ владельца](project_owner_comp_access.md) — admin-байпас
+- [Загрузка без блока](project_upload_no_block_locked_analysis.md) — разбор у первого бесплатного
+- [Почта](project_email_and_reset.md) — Unisender Go · [support@](project_support_mailbox.md) — ❗при переезде пересобрать · [Форма поддержки](project_support_form.md) — ждёт hardening
+- [Юр-статус](project_legal_status.md) — самозанятость, страницы LIVE · [SEO](project_seo_metadata.md) — техника ОК, причина невидимости = 0 бэклинков; гайд-кластер перелинкован и задеплоен; vc.ru — только идея в бэклоге, не черновик
+- [English](project_i18n_english.md) — UI+письма+тренер LIVE; приёмка англ. тренера ОТЛОЖЕНА, не напоминать
 
 ## Маркетинг и бренд
 
-- [🔴 Где НЕЛЬЗЯ постить](project_distribution_constraint.md) — GipsyTeam и покерные форумы/чаты официально запрещают «тестирую продукт / вот мой инструмент» даже с оговоркой «не реклама»; Артём спрашивал поддержку — исключений нет, его там уже банили. Можно быть участником без продвижения. Наше самоограничение «только знакомые» СНЯТО, политика площадок — НЕТ
-- [Маркетинг](project_marketing.md) — бюджет $300; Директ/VK нельзя (покер в стоп-листе); видео/YouTube отложены (Артём без лица/голоса — НЕ предлагать); контент = ТГ + статьи
-- [Репо для маркетолога](project_marketing_partner_repo.md) — отдельный приватный whygrid-marketing (БЕЗ кода); доступ ещё НЕ выдан
-- [Комьюнити-чат](project_community_chat_growth.md) — ЧЕРНОВИК привлечения (НЕ одобрено): чат + открытый бот-раздатчик разборов
-- [Имя и бренд](project_naming_branding.md) — Whygrid, логотип концепт B; ребрендинг кода впереди
-- [Сканирующая подсветка при скролле](project_scroll_highlight_feature.md) — LIVE на главной с 18.08.2026, два уровня (аура/рамка), переиспользуемый проп scrollGlow
+- [Доверие холодной аудитории](project_trust_mechanics.md) — LIVE: about/example/uptime/changelog/гарантия точности/приватность-сигналы (19.08); ⛔осознанно отклонено: money-back, публичный roadmap, Hendon-Mob-аналог
+- [Сканирующая подсветка при скролле](project_scroll_highlight_feature.md) — LIVE на главной, два уровня (аура/рамка), переиспользуемый проп scrollGlow
+- [Источники переходов](project_acquisition_sources.md) — `/go/<source>` + счётчик
+- [⛔ YouTube: ссылки пока не кликабельны](project_youtube_link_restriction.md) — ни в описании, ни в комментах; ждём порог канала, не предлагать закреп-коммент снова
+- [Выводы по 7 Shorts](project_youtube_shorts_analytics_findings.md) — удержание и RU-аудитория растут по датам публикации; reach ≠ resonance
+- [🔴 Креатив для Reels — автономно](feedback_marketing_content_autonomy.md) — сценарии и хуки сам; деньги и публикация — с подтверждением
+- [🔴 Отбор раздач для контента](feedback_hand_selection_criteria.md) — по сюжету и выводу, не по топу веса
+- [🔴 Называть накопленную сумму перед тратой](feedback_running_total_before_spend.md) — особый риск батч-генерации
+- [Название Shorts отдельно от описания](feedback_youtube_shorts_title.md) — всегда ДВА текста
+- [🔴 Подпись ≠ пересказ ролика](feedback_caption_not_script_retelling.md) — не цитировать сценарий, крючок а не краткое содержание
+- [Ссылка не в каждом посте](feedback_telegram_link_frequency.md) — каждый 3-й; «Один вопрос» никогда
+- [🔴 Темп монтажа Reels](feedback_reel_video_pacing.md) — длина клипа зависит от длины ролика: короткий — длинные планы, ~30с+ — по 1.5-2с; не стоп-кадр в конце
+- [Полный конвейер текст→видео](project_caption_automation_choice.md) — orchestrate.mjs, не Descript/Submagic/CapCut; Артём всё равно смотрит каждый ролик перед публикацией
+- [Piratex — что взято/отложено](project_piratex_reference.md) — приёмы хука+самопроверки в copywriting.md; анализ конкурентов и Apify-тренды ждут Артёма
+- [Проактивно называть мусор](feedback_flag_unused_marketing_files.md) — удалять только по команде
+- [all-clips/ = единственный источник](project_allclips_canonical_folder.md) — оригиналы stock-video не трогать
+- [Бесплатные стоки: Mixkit/Pexels](project_stock_video_free_sources.md) — Mixkit Free/Restricted по 1080p; Pexels 18.08 заработал из среды агента (WebFetch+curl с UA)
+- [Номера клипов по дням](feedback_track_clip_usage_by_number.md) — фиксировать в index.md
+- [📌 Файлы в generated/ пропадали](project_marketing_generated_files_vanish.md) — причина не найдена
+- [Где можно/нельзя постить](project_distribution_constraint.md) — GipsyTeam ОК с одобрения (пост live 19.08); 🔴 vc.ru закрыт навсегда — забанили за тему «азартные игры»
+- [Маркетинг](project_marketing.md) — бюджет $300, Директ/VK нельзя; ⛔TikTok закрыт целиком 15.08 (не предлагать); 📌 Reels → `.business/marketing/reels-handoff-status.md`
+- [🔄 Пивот на рекламу](project_ad_reel_pivot.md) — 07.08: сюжетные Reels на паузу, короткая прямая реклама продукта до появления аудитории
+- [Репо для маркетолога](project_marketing_partner_repo.md) — доступ ещё НЕ выдан
+- [Комьюнити-чат](project_community_chat_growth.md) — ЧЕРНОВИК · [Имя и бренд](project_naming_branding.md) — Whygrid, логотип концепт B
 
 ## Разное
 
-- [Звук уведомлений](reference_sound_notifications.md) — хуки в глобальном settings.json; как менять/убрать
-- [IntersectionObserver ненадёжен для узкой зоны](reference_scroll_zone_intersectionobserver_unreliable.md) — колбэки опаздывают/пропускаются при обычном скролле; фикс — requestAnimationFrame + getBoundingClientRect напрямую
-- [Диск C / NVIDIA](user_disk_c_nvidia_bloat.md) — NVIDIA копит драйверы (77 ГБ/год); rm -rf в deny-листе — спрашивать; 10.07 освобождено 80 ГБ
+- [Звук уведомлений](reference_sound_notifications.md) — хуки в settings.json · [Диск C / NVIDIA](user_disk_c_nvidia_bloat.md) — копит драйверы, rm -rf в deny
 
-<!-- Архив (свершилось, держим для истории, в работе не нужно):
-     project_validation_test.md — план теста спроса по $12/мес; цены давно $7/$21, тест не проводился
-     project_launch_decision.md — решение делать самосервисный сайт; Запрет 6 отменён, сайт работает -->
+<!-- Архив (свершилось, в работе не нужно):
+     project_validation_test.md — план теста спроса по $12/мес; цены давно $7/$21
+     project_launch_decision.md — решение делать самосервисный сайт; Запрет 6 отменён -->
