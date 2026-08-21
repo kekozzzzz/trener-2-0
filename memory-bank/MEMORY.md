@@ -133,6 +133,7 @@
 - [🔴 Темп монтажа Reels](feedback_reel_video_pacing.md) — длина клипа зависит от длины ролика: короткий — длинные планы, ~30с+ — по 1.5-2с; не стоп-кадр в конце
 - [Полный конвейер текст→видео](project_caption_automation_choice.md) — orchestrate.mjs, не Descript/Submagic/CapCut; Артём всё равно смотрит каждый ролик перед публикацией
 - [Piratex — что взято/отложено](project_piratex_reference.md) — приёмы хука+самопроверки в copywriting.md; анализ конкурентов и Apify-тренды ждут Артёма
+- [Идея: сводный отчёт по всей истории](project_full_history_report_idea.md) — вдохновлён конкурентом Baseanalise; НЕ план, требует отдельного обсуждения
 - [Проактивно называть мусор](feedback_flag_unused_marketing_files.md) — удалять только по команде
 - [all-clips/ = единственный источник](project_allclips_canonical_folder.md) — оригиналы stock-video не трогать
 - [Бесплатные стоки: Mixkit/Pexels](project_stock_video_free_sources.md) — Mixkit Free/Restricted по 1080p; Pexels 18.08 заработал из среды агента (WebFetch+curl с UA)
