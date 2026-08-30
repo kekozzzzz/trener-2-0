@@ -164,6 +164,78 @@ describe("parsePokerStarsMtt — формат PokerStars / Chico", () => {
     expect(sniffTournamentKey(buf)).toEqual({ room: "PokerPlanets", tournamentId: "380908" });
   });
 
+  // Sisal — итальянский лицензированный рум, тело раздачи идентично PokerStars.
+  // Отличия: своё имя в заголовке, валюта € (не $) и необязательный тег "[ADM ID: ...]"
+  // между уровнем и датой (выгрузка через поддержку/админку, не самостоятельный экспорт).
+  // Регресс 30.08.2026: без поддержки € в BUY_IN_FROM_HEADER бай-ин не находился →
+  // результат считался в фишках вместо бай-инов (расхождение на два порядка).
+  it("парсит Sisal (валюта €, тег ADM ID в шапке), бай-ин считается верно", () => {
+    // Две раздачи: во второй Seat-стек героя уже отражает выигрыш первой (50000→51300) —
+    // resultBuyins меряет ИМЕННО эту разницу стеков, а не одну раздачу.
+    const hand1 = [
+      "Sisal Hand #1: Tournament #999, €90+€10 EUR Hold'em No Limit - Level VI (600/1200) [ADM ID: ABC123] - 2026/04/10 22:14:14 CET [2026/04/10 16:14:14 ET]",
+      "Table '999 1' 6-max Seat #1 is the button",
+      "Seat 1: SisalHero (50000 in chips)",
+      "Seat 2: SisalFoe (50000 in chips)",
+      "SisalHero: posts the ante 150",
+      "SisalFoe: posts the ante 150",
+      "SisalFoe: posts small blind 600",
+      "SisalHero: posts big blind 1200",
+      "*** HOLE CARDS ***",
+      "Dealt to SisalHero [Ah Ad]",
+      "SisalFoe: raises 1200 to 2400",
+      "SisalHero: raises 2400 to 6000",
+      "SisalFoe: calls 3600",
+      "*** FLOP *** [2h 7c Kd]",
+      "SisalFoe: checks",
+      "SisalHero: bets 5000",
+      "SisalFoe: folds",
+      "Uncalled bet (0) returned to SisalHero",
+      "SisalHero collected 12450 from pot",
+      "*** SUMMARY ***",
+      "Total pot 12450 | Rake 0",
+      "Board [2h 7c Kd]",
+    ].join("\n");
+    const hand2 = [
+      "Sisal Hand #2: Tournament #999, €90+€10 EUR Hold'em No Limit - Level VI (600/1200) [ADM ID: ABC123] - 2026/04/10 22:16:00 CET [2026/04/10 16:16:00 ET]",
+      "Table '999 1' 6-max Seat #2 is the button",
+      "Seat 1: SisalHero (51300 in chips)",
+      "Seat 2: SisalFoe (48700 in chips)",
+      "SisalHero: posts the ante 150",
+      "SisalFoe: posts the ante 150",
+      "SisalHero: posts small blind 600",
+      "SisalFoe: posts big blind 1200",
+      "*** HOLE CARDS ***",
+      "Dealt to SisalHero [2c 7d]",
+      "SisalHero: folds",
+      "*** SUMMARY ***",
+      "Total pot 1950 | Rake 0",
+    ].join("\n");
+    const buf = Buffer.from(hand1 + "\n\n\n" + hand2);
+
+    const r = parsePokerStarsMtt(buf);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.data.room).toBe("Sisal");
+    expect(r.data.externalTournamentId).toBe("999");
+    expect(r.data.name).toBe("€90+€10 EUR Hold'em No Limit");
+    expect(r.data.handsCount).toBe(2);
+    expect(r.data.hands[0].tableSnapshot.seats).toHaveLength(2);
+    expect(r.data.hands[0].chipResult).toBe(1300); // рейз до 6000 + бет 5000 = 11000, анте 150, забрал 12450
+    // Бай-ин 90 из шапки → 50000/90 ≈ 555.56 фишки за бай-ин; прирост стека 1300 → 2.34 бай-ина.
+    // До фикса € в BUY_IN_FROM_HEADER бай-ин не находился (bi=1) → результат вышел бы в 90 раз меньше.
+    expect(r.data.resultBuyins).toBe(2.34);
+
+    // Роутер направляет Sisal в PS-парсер
+    const routed = parseHandHistory(buf);
+    expect(routed.ok).toBe(true);
+    if (!routed.ok) return;
+    expect(routed.data.room).toBe("Sisal");
+
+    // Склейка многостольных файлов: ключ турнира вытаскивается несмотря на бренд Sisal
+    expect(sniffTournamentKey(buf)).toEqual({ room: "PS", tournamentId: "999" });
+  });
+
   // Классический (НЕ-KO) турнир PokerStars: бай-ин из 2 частей "$10+$1", Seat БЕЗ
   // суффикса баунти, room = PokerStars (не Chico). Должен парситься так же.
   it("парсит классический турнир PokerStars без баунти", () => {

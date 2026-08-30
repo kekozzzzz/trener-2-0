@@ -5,31 +5,37 @@ import { assignShownCards, shownCardsByNick } from "../shared/shown-cards";
 import { assignCollected, collectedByNick } from "../shared/collected";
 import { parseHand } from "./hand";
 
-// PS-семья: PokerStars, Chico и PokerPlanets пишут раздачи в одном формате. Отличия
-// только в шапке: Chico — префикс стола CHC_ и Level без римских цифр; PokerPlanets —
-// имя рума в заголовке и форма турнира "Tournament (Название)#id" (у PS — "Tournament
-// #id"), плюс UTF-8 BOM в начале файла. На разбор ТЕЛА ничего из этого не влияет —
-// метим лишь room и накрываем обе формы шапки.
-const HAND_HEADER = /^(?:PokerStars|PokerPlanets) (?:Hand|Game) #\d+: Tournament [#(]/m;
-const HAND_SPLIT = /^(?=(?:PokerStars|PokerPlanets) (?:Hand|Game) #\d+: Tournament [#(])/m;
+// PS-семья: PokerStars, Chico, PokerPlanets и Sisal пишут раздачи в одном формате.
+// Отличия только в шапке: Chico — префикс стола CHC_ и Level без римских цифр;
+// PokerPlanets — имя рума в заголовке и форма турнира "Tournament (Название)#id" (у
+// PS/Sisal — "Tournament #id"), плюс UTF-8 BOM в начале файла; Sisal — своё имя рума
+// в заголовке (вместо "PokerStars") и валюта EUR (€ вместо $), плюс необязательный
+// тег "[ADM ID: ...]" в шапке между уровнем и датой. На разбор ТЕЛА ничего из этого
+// не влияет — метим лишь room и накрываем все формы шапки.
+const HAND_HEADER = /^(?:PokerStars|PokerPlanets|Sisal) (?:Hand|Game) #\d+: Tournament [#(]/m;
+const HAND_SPLIT = /^(?=(?:PokerStars|PokerPlanets|Sisal) (?:Hand|Game) #\d+: Tournament [#(])/m;
 const TOURNAMENT_META = /Tournament (?:#|\(.+?\)#)(\d+), (.+?) - Level/;
 const HAND_TIMESTAMP = /(\d{4})\/(\d{2})\/(\d{2}) (\d{2}):(\d{2}):(\d{2})/g;
 const TABLE_NAME = /^Table '(.+?)'/m;
 const HOLE_CARDS = /^\*\*\* HOLE CARDS \*\*\*/m;
 const DEALT_TO = /^Dealt to (.+?) \[/m; // карты показаны только у героя → так находим его ник
 const FLOP_START = /^\*\*\* FLOP \*\*\*/m;
-const HAND_ID = /^(?:PokerStars|PokerPlanets) (?:Hand|Game) #(\d+):/; // номер раздачи — для дедупа при склейке файлов
-const BUY_IN_FROM_HEADER = /\$(\d+(?:\.\d+)?)\+\$/;
+const HAND_ID = /^(?:PokerStars|PokerPlanets|Sisal) (?:Hand|Game) #(\d+):/; // номер раздачи — для дедупа при склейке файлов
+// Бай-ин из шапки: PS/Chico/PokerPlanets пишут в $, Sisal — в €. Оба знака перед
+// каждой частью суммы (валюта Sisal подтверждена реальным файлом игрока 30.08.2026).
+const BUY_IN_FROM_HEADER = /[$€](\d+(?:\.\d+)?)\+[$€]/;
+const SISAL_HEADER = /^Sisal (?:Hand|Game) #/m;
 
 function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// Рум метим по шапке: PokerPlanets — по имени рума в заголовке раздачи; Chico — по
-// префиксу стола CHC_ ('CHC_<id> <n>'); иначе настоящий PokerStars. На разбор тела
+// Рум метим по шапке: PokerPlanets и Sisal — по имени рума в заголовке раздачи; Chico —
+// по префиксу стола CHC_ ('CHC_<id> <n>'); иначе настоящий PokerStars. На разбор тела
 // ничего из этого не влияет.
 function detectRoom(text: string): string {
   if (/^PokerPlanets (?:Hand|Game) #/m.test(text)) return "PokerPlanets";
+  if (SISAL_HEADER.test(text)) return "Sisal";
   const table = TABLE_NAME.exec(text)?.[1] ?? "";
   return table.startsWith("CHC_") ? "Chico" : "PokerStars";
 }
@@ -81,7 +87,7 @@ export function parsePokerStarsMtt(buffer: Buffer): ParseResult {
   if (!HAND_HEADER.test(text)) {
     return {
       ok: false,
-      error: { type: "UNSUPPORTED_FORMAT", message: "Загрузи турнир PokerStars / Chico / PokerPlanets" },
+      error: { type: "UNSUPPORTED_FORMAT", message: "Загрузи турнир PokerStars / Chico / PokerPlanets / Sisal" },
     };
   }
 

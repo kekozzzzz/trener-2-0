@@ -10,10 +10,10 @@ import { parse888Mtt } from "./poker888";
 // Контракт ParseResult / ParsedTournament для остального кода не меняется.
 const GG_HEADER = /^Poker Hand #(?:RC-GGPoker-\d{8}-\d+|TM\d+): Tournament #/m;
 const WPN_HEADER = /^Game Hand #\d+ - Tournament #\d+ - /m;
-// PS-семья: PokerStars, Chico и PokerPlanets пишут раздачи в одном формате. Отличается
-// только токен рума в шапке и форма ссылки на турнир: PS/Chico — "Tournament #id",
-// PokerPlanets — "Tournament (Название)#id". Обе накрываем "Tournament [#(]".
-const PS_HEADER = /^(?:PokerStars|PokerPlanets) (?:Hand|Game) #\d+: Tournament [#(]/m;
+// PS-семья: PokerStars, Chico, PokerPlanets и Sisal пишут раздачи в одном формате.
+// Отличается только токен рума в шапке и форма ссылки на турнир: PS/Chico/Sisal —
+// "Tournament #id", PokerPlanets — "Tournament (Название)#id". Обе накрываем "Tournament [#(]".
+const PS_HEADER = /^(?:PokerStars|PokerPlanets|Sisal) (?:Hand|Game) #\d+: Tournament [#(]/m;
 const WINAMAX_HEADER = /^Winamax Poker - Tournament /m;
 const POKER888_HEADER = /^\*\*\*\*\* 888poker Hand History /m;
 const IPOKER_HEADER = /<game\s+gamecode="\d+">/; // XML-формат iPoker; турнир — по <tournamentcode>
@@ -70,7 +70,7 @@ export function parseHandHistory(buffer: Buffer): ParseResult {
     error: {
       type: "UNSUPPORTED_FORMAT",
       message:
-        "Формат файла не распознан. Поддерживаются GGPoker, PokerStars / Chico / PokerPlanets, Winamax, 888poker, ACR / PokerKing (WPN) и iPoker.",
+        "Формат файла не распознан. Поддерживаются GGPoker, PokerStars / Chico / PokerPlanets / Sisal, Winamax, 888poker, ACR / PokerKing (WPN) и iPoker.",
     },
   };
 }
@@ -85,7 +85,7 @@ export function parseHandHistory(buffer: Buffer): ParseResult {
 // iPoker — тоже многостольные: один турнир разбит на файлы по столам. Группируем их по
 // (площадка+номер турнира). GG пишет турнир одним файлом — его НЕ группируем.
 const WPN_KEY = /^Game Hand #\d+ - Tournament #(\d+)/m;
-const PS_KEY = /^PokerStars (?:Hand|Game) #\d+: Tournament #(\d+)/m;
+const PS_KEY = /^(?:PokerStars|Sisal) (?:Hand|Game) #\d+: Tournament #(\d+)/m;
 // PokerPlanets: номер турнира стоит после метки в скобках — "Tournament (Название)#id".
 const POKERPLANETS_KEY = /^PokerPlanets (?:Hand|Game) #\d+: Tournament \(.+?\)#(\d+)/m;
 const WINAMAX_KEY = /^Table: '.*\((\d+)\)#[^']*'/m; // номер турнира в имени стола Winamax
