@@ -830,7 +830,15 @@ export function validateCoachNotes(result: { notes?: unknown }): CoachNotesResul
       typeof item.basedOn === "number" && Number.isInteger(item.basedOn) && item.basedOn >= 1
         ? item.basedOn
         : undefined;
-    notes.push({ text: cleanCoachText(item.text, "ru", undefined, undefined, undefined, undefined, undefined, true), basedOn });
+    // Комментарий выше обещает «отбрасываем поштучно, не валим весь ответ» — но без try/catch
+    // одна кривая заметка (латинский бэкстоп/CJK/выдуманная карта) роняла ВЕСЬ дневник, и задача
+    // уходила в карантин после 3 ретраев, теряя заодно все остальные валидные заметки занятия
+    // (карантин 30.08, «ho»). Ловим здесь и пропускаем только бракованный элемент.
+    try {
+      notes.push({ text: cleanCoachText(item.text, "ru", undefined, undefined, undefined, undefined, undefined, true), basedOn });
+    } catch (err) {
+      console.warn("[coach-notes] заметка дневника отброшена бэкстопом:", String(err));
+    }
   }
   return { notes };
 }

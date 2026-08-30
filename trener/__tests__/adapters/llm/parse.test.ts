@@ -12,6 +12,7 @@ import {
   claimsPocketPair,
   heroNoPocketPair,
   stripSycophanticOpener,
+  validateCoachNotes,
 } from "@/infrastructure/adapters/llm/parse";
 
 // Страховка словаря кодом (правки Артёма 2026-07-05): возвратные формы «сбрасываться»,
@@ -339,6 +340,32 @@ describe("статистические термины соперника бра�
     expect(() =>
       cleanCoachText("PFR и WTSD ученика стабильны", "ru", undefined, undefined, undefined, undefined, undefined, true),
     ).not.toThrow();
+  });
+});
+
+// Карантин 30.08: одна бракованная заметка («ho» — латинский бэкстоп) валила ВЕСЬ дневник —
+// try/catch отсутствовал вопреки комментарию «отбрасываем поштучно». Задача уходила в
+// карантин после 3 ретраев, теряя заодно валидные заметки того же занятия.
+describe("validateCoachNotes отбрасывает бракованную заметку, не весь дневник", () => {
+  it("одна заметка со stray-латиницей отбрасывается, остальные сохраняются", () => {
+    const result = validateCoachNotes({
+      notes: [
+        { text: "ученик пересиживает топ-пару на ho ривере", basedOn: undefined },
+        { text: "ученик стабильно недооценивает 3-бет с рук типа AQ", basedOn: undefined },
+      ],
+    });
+    expect(result.notes).toHaveLength(1);
+    expect(result.notes[0].text).toContain("3-бет");
+  });
+
+  it("все заметки чистые — обе сохраняются, брака нет", () => {
+    const result = validateCoachNotes({
+      notes: [
+        { text: "ученик агрессивен на баттоне", basedOn: undefined },
+        { text: "ученик стабильно недооценивает 3-бет", basedOn: undefined },
+      ],
+    });
+    expect(result.notes).toHaveLength(2);
   });
 });
 
