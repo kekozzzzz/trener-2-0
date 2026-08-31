@@ -12,8 +12,8 @@
     "db:seed": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' prisma/seed.ts",
     "db:studio": "prisma studio",
     "seo:ping": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' scripts/ping-indexnow.ts",
-    "notify:parse-fixed": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' scripts/notify-parse-fixed.ts",
-    "notify:feature-launch": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' scripts/notify-feature-launch.ts"
+    "notify:parse-fixed": "ts-node -r tsconfig-paths/register --compiler-options '{\"module\":\"CommonJS\"}' scripts/notify-parse-fixed.ts",
+    "notify:feature-launch": "ts-node -r tsconfig-paths/register --compiler-options '{\"module\":\"CommonJS\"}' scripts/notify-feature-launch.ts"
   },
   "prisma": {
     "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
@@ -49,6 +49,7 @@
     "@vitest/coverage-v8": "^4.1.8",
     "prisma": "^6.0.0",
     "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
     "typescript": "^5.0.0",
     "vitest": "^4.1.8"
   }
