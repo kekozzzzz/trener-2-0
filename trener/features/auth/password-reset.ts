@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "crypto";
 import { getAppBaseUrl } from "@/config/app";
 import { type Locale } from "@/i18n/config";
 import type { EmailMessage } from "@/infrastructure/adapters/email";
+import { renderEmailHtml, renderEmailText } from "@/features/email/layout";
 
 // Сырой токен (живёт только в ссылке из письма) и его SHA-256 (хранится в базе).
 // 32 байта случайности → 64 hex-символа: подобрать перебором невозможно, поэтому
@@ -25,29 +26,25 @@ export function buildResetEmail(to: string, link: string, locale: Locale): Email
   const T = {
     ru: {
       subject: "Сброс пароля — Whygrid",
-      text:
-        `Кто-то запросил сброс пароля для этого аккаунта в Whygrid.\n\n` +
-        `Чтобы задать новый пароль, перейди по ссылке (действует 1 час):\n${link}\n\n` +
-        `Если это был не ты — просто проигнорируй письмо, пароль не изменится.`,
-      html:
-        `<p>Кто-то запросил сброс пароля для этого аккаунта в Whygrid.</p>` +
-        `<p>Чтобы задать новый пароль, перейди по ссылке (действует 1 час):</p>` +
-        `<p><a href="${link}">${link}</a></p>` +
-        `<p>Если это был не ты — просто проигнорируй письмо, пароль не изменится.</p>`,
+      heading: "Сброс пароля",
+      paragraph: "Кто-то запросил сброс пароля для этого аккаунта. Ссылка ниже действует 1 час.",
+      button: "Задать новый пароль →",
+      note: "Не запрашивал? Просто игнорируй письмо — пароль не изменится.",
     },
     en: {
       subject: "Password reset — Whygrid",
-      text:
-        `Someone requested a password reset for this Whygrid account.\n\n` +
-        `To set a new password, open this link (valid for 1 hour):\n${link}\n\n` +
-        `If it wasn't you, just ignore this email — your password won't change.`,
-      html:
-        `<p>Someone requested a password reset for this Whygrid account.</p>` +
-        `<p>To set a new password, open this link (valid for 1 hour):</p>` +
-        `<p><a href="${link}">${link}</a></p>` +
-        `<p>If it wasn't you, just ignore this email — your password won't change.</p>`,
+      heading: "Password reset",
+      paragraph: "Someone requested a password reset for this account. The link below is valid for 1 hour.",
+      button: "Set a new password →",
+      note: "Didn't request this? Just ignore this email — your password won't change.",
     },
   } as const;
   const t = T[locale];
-  return { to, subject: t.subject, text: t.text, html: t.html };
+  const content = {
+    heading: t.heading,
+    paragraphs: [t.paragraph],
+    button: { label: t.button, url: link },
+    note: t.note,
+  };
+  return { to, subject: t.subject, text: renderEmailText(content), html: renderEmailHtml(content) };
 }

@@ -15,12 +15,17 @@ import { mergeSameTournamentFiles } from "./merge-files";
 const ALERT_THROTTLE_MS = 10 * 60 * 1000;
 const lastAlertAt = new Map<string, number>();
 
-function alertAdmin(anomaly: ParseAnomaly): void {
+// Email игрока — прямо в тексте алерта, чтобы Артём мог сразу лично написать
+// (mailto), не заходя в базу. Запрос идёт только после троттлинга по сигнатуре —
+// не дёргаем БД на каждый файл одной и той же незнакомой пачки.
+async function alertAdmin(anomaly: ParseAnomaly, playerId: string): Promise<void> {
   const now = Date.now();
   if (now - (lastAlertAt.get(anomaly.signature) ?? 0) < ALERT_THROTTLE_MS) return;
   lastAlertAt.set(anomaly.signature, now);
+  const player = await prisma.player.findUnique({ where: { id: playerId }, select: { email: true } });
+  const playerLine = player?.email ? `\nИгрок: ${player.email} (mailto:${player.email})` : "";
   void safeNotifyAdmin(
-    `⚠️ Разбор HH требует внимания\nПричина: ${anomaly.reason}\nСигнатура: ${anomaly.signature}`,
+    `⚠️ Разбор HH требует внимания\nПричина: ${anomaly.reason}\nСигнатура: ${anomaly.signature}${playerLine}`,
   );
 }
 
@@ -89,7 +94,7 @@ export async function uploadTournament(input: UploadInput): Promise<UploadResult
   // Метрики кладём в payload задачи — воркер применит их к турниру.
   const parsed = parseHandHistory(fileBuffer);
   const anomaly = diagnoseParse(parsed, fileBuffer);
-  if (anomaly) alertAdmin(anomaly);
+  if (anomaly) await alertAdmin(anomaly, playerId);
 
   if (!parsed.ok) {
     // Файл не распознан/не разобран — откладываем образец под будущий парсер рума.

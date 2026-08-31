@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { PrismaClient } from "@prisma/client";
 import { assessAiAccess, effectivePeriodStart } from "@/features/usage/budget";
 import { getFreeTournamentLimit } from "@/config/plans";
+import { getWinBackGraceDays } from "@/config/lifecycle-emails";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -16,11 +17,13 @@ type Sub = {
   deletedAt: Date | null;
 } | null;
 
+type TournamentEntry = string | { id: string; createdAt: Date };
+
 function mockDb(opts: {
   email: string;
   subscription?: Sub;
   analyzedCount?: number; // турниров уже разобрано за период (счётчик лимита)
-  existingTournamentIds?: string[]; // существующие турниры игрока, по createdAt asc
+  existingTournamentIds?: TournamentEntry[]; // существующие турниры игрока, по createdAt asc
   unlockedTournamentId?: string | null; // какой турнир уже открыт (analysisUnlocked=true)
 }): PrismaClient {
   return {
@@ -32,9 +35,13 @@ function mockDb(opts: {
         analysisUnlocked: opts.unlockedTournamentId != null && where.id === opts.unlockedTournamentId,
       }),
       count: async () => opts.analyzedCount ?? 0,
-      // Имитирует Prisma take: N — реальный код сам режет запрос лимитом бесплатных турниров.
-      findMany: async ({ take }: { take: number }) =>
-        (opts.existingTournamentIds ?? []).slice(0, take).map((id) => ({ id })),
+      // Реальный код больше не режет запрос через take (нужен createdAt всех, чтобы
+      // посчитать порог тишины) — фильтрует сам в JS. Голая строка-id → createdAt «сейчас»
+      // (свежий турнир, не подпадает под «второй шанс» по умолчанию).
+      findMany: async () =>
+        (opts.existingTournamentIds ?? []).map((entry) =>
+          typeof entry === "string" ? { id: entry, createdAt: new Date() } : entry,
+        ),
     },
   } as unknown as PrismaClient;
 }
@@ -155,6 +162,43 @@ describe("assessAiAccess", () => {
     expect(res.allowed).toBe(false);
     if (res.allowed) return;
     expect(res.reason).toBe("PAYWALL");
+  });
+
+  // «Второй шанс» (план 2026-08-31-письма-редизайн-и-возврат-игрока): игрок дошёл ровно
+  // до бесплатного лимита и молчал getWinBackGraceDays() дней — временно +1 бесплатный,
+  // без отдельного гранта/токена в базе.
+  describe("«второй шанс» после периода тишины", () => {
+    const graceDays = getWinBackGraceDays();
+    // Все, кроме последнего, — просто заполнители до лимита (createdAt не важен, если
+    // лимит > 1); последний — единственный, чья свежесть решает исход.
+    const agedSet = (n: number, lastCreatedAt: Date): TournamentEntry[] => [
+      ...Array.from({ length: n - 1 }, (_, i) => `T${i + 1}`),
+      { id: `T${n}`, createdAt: lastCreatedAt },
+    ];
+
+    it("ровно лимит турниров, последний СТАРШЕ порога тишины → новая загрузка снова бесплатна", async () => {
+      const stale = new Date(Date.now() - (graceDays + 1) * DAY_MS);
+      const db = mockDb({ email: "u@x.ru", existingTournamentIds: agedSet(freeLimit, stale) });
+      expect(await assessAiAccess(db, "p")).toEqual({ allowed: true });
+    });
+
+    it("ровно лимит турниров, последний СВЕЖЕЕ порога тишины → как обычно PAYWALL", async () => {
+      const fresh = new Date(Date.now() - (graceDays - 1) * DAY_MS);
+      const db = mockDb({ email: "u@x.ru", existingTournamentIds: agedSet(freeLimit, fresh) });
+      const res = await assessAiAccess(db, "p");
+      expect(res.allowed).toBe(false);
+      if (res.allowed) return;
+      expect(res.reason).toBe("PAYWALL");
+    });
+
+    it("грант уже использован (турниров на 1 больше лимита) → третий снова PAYWALL, бонус не копится", async () => {
+      const stale = new Date(Date.now() - (graceDays + 5) * DAY_MS);
+      const db = mockDb({ email: "u@x.ru", existingTournamentIds: agedSet(freeLimit + 1, stale) });
+      const res = await assessAiAccess(db, "p");
+      expect(res.allowed).toBe(false);
+      if (res.allowed) return;
+      expect(res.reason).toBe("PAYWALL");
+    });
   });
 });
 

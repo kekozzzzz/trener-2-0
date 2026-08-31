@@ -99,9 +99,9 @@ export async function applySucceededPayment(payment: ProviderPayment): Promise<A
             // Сохранённый метод обновляем только если пришёл новый (первая оплата
             // его отдаёт; рекуррентное списание — нет, оставляем прежний).
             paymentMethodId: payment.paymentMethodId ?? existing.paymentMethodId,
-            // Период сдвинулся вперёд → сбрасываем отметку напоминания, чтобы для нового
-            // периода оно сработало снова. При switch (окно не трогаем) — оставляем как есть.
-            ...(keepWindow ? {} : { renewalReminderSentAt: null }),
+            // Период сдвинулся вперёд → сбрасываем отметки напоминаний, чтобы для нового
+            // периода они сработали снова. При switch (окно не трогаем) — оставляем как есть.
+            ...(keepWindow ? {} : { renewalReminderSentAt: null, inactivityReminderSentAt: null }),
             deletedAt: null,
           },
         });

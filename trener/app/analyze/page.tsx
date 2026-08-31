@@ -85,6 +85,7 @@ async function handleUpload(formData: FormData) {
 // Код ошибки из query → ключ в словаре Analyze. Неизвестный код → общий текст ошибки.
 const UPLOAD_ERROR_KEY: Record<string, string> = {
   UNSUPPORTED_FORMAT: "errorUnsupportedFormat",
+  PARSE_FAILED: "errorParseFailed",
   TOO_LARGE: "errorTooLarge",
   RATE_LIMITED: "errorRateLimited",
   PAYWALL: "errorPaywall",
@@ -104,6 +105,22 @@ async function UploadError({ error }: { error: string }) {
           className="mt-2 inline-block font-mono text-label uppercase tracking-label text-primary transition-colors hover:text-foreground"
         >
           {t("viewPlans")}
+        </Link>
+      )}
+      {error === "UNSUPPORTED_FORMAT" && (
+        <Link
+          href="/support"
+          className="mt-2 inline-block font-mono text-label uppercase tracking-label text-primary transition-colors hover:text-foreground"
+        >
+          {t("reportRoomCta")}
+        </Link>
+      )}
+      {error === "PARSE_FAILED" && (
+        <Link
+          href="/support"
+          className="mt-2 inline-block font-mono text-label uppercase tracking-label text-primary transition-colors hover:text-foreground"
+        >
+          {t("contactSupportCta")}
         </Link>
       )}
     </div>

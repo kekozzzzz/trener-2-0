@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "crypto";
 import { getAppBaseUrl } from "@/config/app";
 import { type Locale } from "@/i18n/config";
 import type { EmailMessage } from "@/infrastructure/adapters/email";
+import { renderEmailHtml, renderEmailText } from "@/features/email/layout";
 
 // Закрытие аккаунта — необратимо (мягкое удаление + анонимизация). Подтверждается
 // ссылкой из письма (доступ к ящику = подтверждение владельца), как сброс пароля.
@@ -25,33 +26,27 @@ export function buildClosureEmail(to: string, link: string, locale: Locale): Ema
   const T = {
     ru: {
       subject: "Закрытие аккаунта — Whygrid",
-      text:
-        `Ты запросил закрытие аккаунта в Whygrid.\n\n` +
-        `Чтобы подтвердить, перейди по ссылке и нажми кнопку на странице (ссылка действует 1 час):\n${link}\n\n` +
-        `Закрытие необратимо: доступ к турнирам и истории разборов пропадёт.\n\n` +
-        `Если это был не ты — просто проигнорируй письмо, аккаунт останется на месте.`,
-      html:
-        `<p>Ты запросил закрытие аккаунта в Whygrid.</p>` +
-        `<p>Чтобы подтвердить, перейди по ссылке и нажми кнопку на странице (ссылка действует 1 час):</p>` +
-        `<p><a href="${link}">${link}</a></p>` +
-        `<p>Закрытие необратимо: доступ к турнирам и истории разборов пропадёт.</p>` +
-        `<p>Если это был не ты — просто проигнорируй письмо, аккаунт останется на месте.</p>`,
+      heading: "Закрытие аккаунта",
+      paragraph: "Ты запросил закрытие аккаунта Whygrid. Это необратимо: доступ к турнирам и истории разборов пропадёт.",
+      paragraph2: "Чтобы подтвердить, перейди по ссылке и нажми кнопку на странице (ссылка действует 1 час).",
+      button: "Подтвердить закрытие →",
+      note: "Не запрашивал? Игнорируй письмо — аккаунт останется на месте.",
     },
     en: {
       subject: "Account closure — Whygrid",
-      text:
-        `You've requested to close your Whygrid account.\n\n` +
-        `To confirm, open this link and press the button on the page (the link is valid for 1 hour):\n${link}\n\n` +
-        `Closure is permanent: access to your tournaments and review history will be gone.\n\n` +
-        `If it wasn't you, just ignore this email — your account stays as is.`,
-      html:
-        `<p>You've requested to close your Whygrid account.</p>` +
-        `<p>To confirm, open this link and press the button on the page (the link is valid for 1 hour):</p>` +
-        `<p><a href="${link}">${link}</a></p>` +
-        `<p>Closure is permanent: access to your tournaments and review history will be gone.</p>` +
-        `<p>If it wasn't you, just ignore this email — your account stays as is.</p>`,
+      heading: "Account closure",
+      paragraph: "You've requested to close your Whygrid account. This is permanent: access to your tournaments and review history will be gone.",
+      paragraph2: "To confirm, open the link and press the button on the page (the link is valid for 1 hour).",
+      button: "Confirm closure →",
+      note: "Didn't request this? Ignore this email — your account stays as is.",
     },
   } as const;
   const t = T[locale];
-  return { to, subject: t.subject, text: t.text, html: t.html };
+  const content = {
+    heading: t.heading,
+    paragraphs: [t.paragraph, t.paragraph2],
+    button: { label: t.button, url: link },
+    note: t.note,
+  };
+  return { to, subject: t.subject, text: renderEmailText(content), html: renderEmailHtml(content) };
 }

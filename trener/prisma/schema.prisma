@@ -26,6 +26,7 @@ model Player {
   passwordChangedAt DateTime? @map("password_changed_at") // момент последней смены пароля — для показа в кабинете
   sessionsValidFrom DateTime  @default(now()) @map("sessions_valid_from") // сессии с cookie.iat раньше этой метки недействительны: смена пароля / выход на всех устройствах
   closedAt        DateTime? @map("closed_at")         // момент закрытия и анонимизации
+  winBackEmailSentAt DateTime? @map("win_back_email_sent_at") // дедуп письма «второй турнир бесплатно» (infrastructure/jobs/lifecycle-emails.ts) — не тариф, только рассылка
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
@@ -275,6 +276,7 @@ model Tournament {
   summary        Json?            @map("summary")  // обзор турнира: { overview } — текст с инлайн-токенами ссылок {{h:handId|карты}}; GENERATE_TOURNAMENT_SUMMARY
   status         TournamentStatus @default(UPLOADED)
   analysisUnlocked Boolean        @default(true) @map("analysis_unlocked")  // открыт ли разбор (ИИ): первый бесплатный / активная подписка → true; заперт за подпиской → false. Метрики парсера видны всегда.
+  engagementNudgeSentAt DateTime? @map("engagement_nudge_sent_at") // дедуп письма «разбор ждёт» (infrastructure/jobs/lifecycle-emails.ts) — шлётся раз, если ни одна раздача не открыта
   deletedAt      DateTime?        @map("deleted_at")  // мягкое удаление (запрет 5)
   createdAt      DateTime         @default(now()) @map("created_at")
   updatedAt      DateTime         @updatedAt @map("updated_at")
@@ -495,6 +497,7 @@ model Subscription {
   paymentMethodId        String?            @map("payment_method_id")       // сохранённый токен карты для автосписания (рекуррент)
   paymentProvider        String             @default("yookassa") @map("payment_provider") // за каким адаптером закреплена подписка (роутинг ЮKassa/Stripe)
   renewalReminderSentAt  DateTime?          @map("renewal_reminder_sent_at") // напоминание о скором конце периода уже отправлено (дедуп крона); сбрасывается при продлении
+  inactivityReminderSentAt DateTime?        @map("inactivity_reminder_sent_at") // напоминание о бездействии при активной подписке уже отправлено (дедуп крона); сбрасывается при продлении, как renewalReminderSentAt
   deletedAt              DateTime?          @map("deleted_at")
   createdAt              DateTime           @default(now()) @map("created_at")
   updatedAt              DateTime           @updatedAt @map("updated_at")

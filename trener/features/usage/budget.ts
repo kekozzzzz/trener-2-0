@@ -9,6 +9,7 @@ import {
   getFreeTournamentLimit,
   getSubscriptionPeriodDays,
 } from "@/config/plans";
+import { getWinBackGraceDays } from "@/config/lifecycle-emails";
 import { isAdminEmail } from "@/config/admin";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -123,13 +124,25 @@ export async function assessAiAccess(
   }
 
   // Без активной подписки — бесплатны первые getFreeTournamentLimit() турниров игрока (с диалогом).
-  const freeLimit = getFreeTournamentLimit();
-  const freeTournaments = await db.tournament.findMany({
+  // «Второй шанс» (план 2026-08-31-письма-редизайн-и-возврат-игрока): если игрок дошёл
+  // РОВНО до бесплатного лимита и с даты последнего турнира прошло getWinBackGraceDays()
+  // дней без новых — временно один бесплатный турнир сверху. Не хранится отдельным полем
+  // или токеном — решение Артёма «не будем же сидеть и ждать его»: как только человек
+  // вернётся сам, правило сработает молча, без ошибки и без ожидания ручной разблокировки.
+  const freeLimitBase = getFreeTournamentLimit();
+  const allFree = await db.tournament.findMany({
     where: { playerId, deletedAt: null },
     orderBy: { createdAt: "asc" },
-    take: freeLimit,
-    select: { id: true },
+    select: { id: true, createdAt: true },
   });
+
+  let freeLimit = freeLimitBase;
+  if (allFree.length === freeLimitBase && freeLimitBase > 0) {
+    const lastFree = allFree[allFree.length - 1];
+    const idleDays = (now.getTime() - lastFree.createdAt.getTime()) / DAY_MS;
+    if (idleDays >= getWinBackGraceDays()) freeLimit = freeLimitBase + 1;
+  }
+  const freeTournaments = allFree.slice(0, freeLimit);
 
   // Загрузка нового турнира: свободно, пока бесплатных турниров ещё не набралось.
   if (!opts?.tournamentId) {

@@ -64,7 +64,7 @@
 - [Твои чарты](project_personal_chart_memory.md) — зеркала 5 спотов; коллы не судим; ⛔v2 отменён
 - [Критические по решению](project_decision_critical_hands.md) — decision-weight, 5 каналов + квоты; LIVE
 - [Критические по доезду](project_lucky_win_criticals.md) — эквити<33% при крупном вложении; LIVE
-- [Трекер ликов](project_leak_tracker.md) — 9 детекторов без LLM; блоки в UI спрятаны
+- [Трекер ликов](project_leak_tracker.md) — 8 видов без LLM, расчёт LIVE и работает; UI-блок на /tournaments спрятан (решение Артёма 04.07, код цел)
 - [Цель на сессию](project_session_goal.md) — /charts публичная + SEO; блок цели убран со страниц
 - [Память об игроке](project_trainer_spot_memory.md) — отпечаток спота, похожие раздачи, карточка, дневник; LIVE
 - [Ориентир (self-level)](project_self_level_orientir.md) — мягкий приор только на тон; LIVE
@@ -108,7 +108,7 @@
 - [Тарифы](project_pricing_model.md) — $7/25 и $28/безлимит (fair-use 300); бесплатный лимит 1
 - [Сегменты аудитории](project_audience_segments.md) — витрина без лимитов, ⚠️промпты и чарты остаются под микролимиты
 - [ЮKassa](project_payments_yookassa.md) — LIVE ([go-live закрыт](project_yookassa_golive.md)); осталось юр-флаги РКН
-- [Продления инфраструктуры](project_recurring_payments.md) — 🔴релей, Yandex грант, домен · [Крипта](project_crypto_payments_later.md) — отложено
+- [Продления инфраструктуры](project_recurring_payments.md) — 🔴релей, Yandex грант, домен, Unisender 800₽/мес до 20.09 · [Крипта](project_crypto_payments_later.md) — отложено
 - [Ключи и биллинг LLM](project_payments_blocked.md) — Anthropic запасной, в бою OpenRouter
 - [Magic link](project_magic_link_auth.md) · [Доступ владельца](project_owner_comp_access.md) — admin-байпас
 - [Загрузка без блока](project_upload_no_block_locked_analysis.md) — разбор у первого бесплатного
@@ -125,6 +125,7 @@
 - [Выводы по 7 Shorts](project_youtube_shorts_analytics_findings.md) — удержание и RU-аудитория растут по датам публикации; reach ≠ resonance
 - [🔴 Креатив для Reels — автономно](feedback_marketing_content_autonomy.md) — сценарии и хуки сам; деньги и публикация — с подтверждением
 - [🔴 Отбор раздач для контента](feedback_hand_selection_criteria.md) — по сюжету и выводу, не по топу веса
+- [🔴 Outreach — только через поддержку](feedback_outreach_no_personal_contact.md) — никогда лично известным людям, только официальный канал организации
 - [Результат ≠ решение в копирайте](feedback_result_vs_decision_framing.md) — не «где теряешь фишки» (это результат раздачи), а «где решение слабее» (паттерн, не судим по доезду/недобору)
 - [🔴 Называть накопленную сумму перед тратой](feedback_running_total_before_spend.md) — особый риск батч-генерации
 - [Название Shorts отдельно от описания](feedback_youtube_shorts_title.md) — всегда ДВА текста
