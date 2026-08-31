@@ -29,6 +29,8 @@ export const SUPPORTED_ROOMS: SupportedRoom[] = [
     hasPaths: true,
     hasNote: true,
   },
+  // Sisal — итальянский лицензированный рум на движке PokerStars (формат = клон PokerStars).
+  { id: "sisal", name: "Sisal", short: "Sisal", hasPaths: true, hasNote: true },
   { id: "winamax", name: "Winamax", short: "Winamax", hasPaths: true, hasNote: true },
   { id: "888poker", name: "888poker", short: "888poker", hasPaths: true },
   {

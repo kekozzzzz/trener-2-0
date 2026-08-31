@@ -782,12 +782,15 @@
     "allTournaments": "All tournaments →",
     "recentEmpty": "No tournaments yet. Upload your first - it'll show up here.",
     "errorGeneric": "Error parsing the file",
-    "errorUnsupportedFormat": "Format not recognized. We support GGPoker, PokerStars, Winamax, 888poker, ACR / PokerKing, Red Star Poker and BetOnline.",
+    "errorParseFailed": "The file arrived, but something in it broke our parser - that's on us, and we'll sort it out soon. If it's urgent, tell us.",
+    "errorUnsupportedFormat": "Format not recognized - but the list of rooms is growing fast. We currently read GGPoker, PokerStars, Winamax, 888poker, ACR / PokerKing, Red Star Poker and BetOnline.",
     "errorTooLarge": "The file is over 5 MB - upload a smaller one.",
     "errorRateLimited": "Too many uploads this hour. Wait a bit and try again.",
     "errorPaywall": "You've already reviewed your first tournament for free. Subscribe to review more.",
     "errorLimitReached": "This period's limit is used up - it resets when the new subscription period begins.",
-    "viewPlans": "See plans →"
+    "viewPlans": "See plans →",
+    "reportRoomCta": "Tell us your room - we'll add it →",
+    "contactSupportCta": "Contact us →"
   },
   "UploadButton": {
     "processing": "Processing",
@@ -810,6 +813,7 @@
       "ggpoker": "How to export your GGPoker hand history",
       "pokerstars": "How to export your PokerStars hand history",
       "pokerplanets": "How to export your PokerPlanets hand history",
+      "sisal": "How to export your Sisal hand history",
       "winamax": "How to export your Winamax hand history",
       "888poker": "How to export your 888poker hand history",
       "acr": "How to export your ACR / PokerKing / Black Chip hand history",
@@ -820,6 +824,7 @@
       "ggpoker": "Step by step: how to download your played tournaments from GGPoker via PokerCraft and upload them to Whygrid for a free review.",
       "pokerstars": "Step by step: how to turn on hand-history saving in PokerStars, find the folder, and upload a tournament to Whygrid for a free review.",
       "pokerplanets": "Step by step: how to find hand-history files in PokerPlanets (formerly PokerStars Sochi) and upload a tournament to Whygrid for a free review.",
+      "sisal": "Step by step: how to turn on hand-history saving in Sisal Poker (runs on the PokerStars engine) and upload a tournament to Whygrid for a free review.",
       "winamax": "Step by step: where Winamax keeps hand-history files and how to upload a tournament to Whygrid for a free review.",
       "888poker": "Step by step: where 888poker keeps hand-history files and how to upload a tournament to Whygrid for a free review.",
       "acr": "Step by step: where Americas Cardroom, PokerKing and Black Chip (the WPN network) keep hand-history files and how to upload a tournament to Whygrid for a free review.",
@@ -830,6 +835,7 @@
       "ggpoker": "GGPoker doesn't keep a hand-history folder on your computer - everything lives inside PokerCraft, the built-in stats tool in the client. There's no \"download everything at once\" button either: if you played different formats (tournaments, Spin & Gold), download each section separately.",
       "pokerstars": "PokerStars doesn't save hand histories by default - you turn it on once in the client settings. After that, files pile up in a folder on their own, nothing to download manually.",
       "pokerplanets": "PokerPlanets is the successor to PokerStars Sochi, so hands are written in the same format as PokerStars, and Whygrid reads them the same way. The room is relatively new - if a settings section is named slightly differently than described below, let us know and we'll fix it.",
+      "sisal": "Sisal is a licensed Italian room that runs on the PokerStars engine, so hands are written in the same format and Whygrid reads them the same way. The settings section may be named slightly differently (the client is in Italian) - if a file isn't recognized, let us know and we'll fix it.",
       "winamax": "In the new Winamax client, history saves to disk automatically, no checkbox required - you just need to find the folder. The old client needs it turned on manually.",
       "888poker": "888poker saves hand history to its own folder under Documents - nothing to turn on, files pile up automatically as you play.",
       "acr": "ACR, PokerKing and Black Chip Poker all run on the same WPN (Winning Poker Network) - whichever skin you play, the hand-history files live at the same path.",
@@ -850,7 +856,8 @@
       "acr": ".txt",
       "ipoker": ".xml or .txt",
       "chico": ".txt",
-      "pokerplanets": ".txt"
+      "pokerplanets": ".txt",
+      "sisal": ".txt"
     },
     "notes": {
       "ggpoker": "GGPoker has no \"download everything at once\" button. If you played different formats (tournaments, Spin & Gold), go through each section on the left separately.",
@@ -858,7 +865,8 @@
       "winamax": "In the new client the history is saved to disk automatically - no checkbox needed. The old client has one: User Settings → Game settings → \"Save My Hand History\". Windows hides the AppData folder - in Explorer turn on \"Show hidden items\" (the \"View\" tab), otherwise you won't find it.",
       "ipoker": "The client must be in English - otherwise the history might not save correctly. Windows hides the AppData folder - turn on showing hidden items.",
       "chico": "If some file isn't recognized - let us know and we'll fix it.",
-      "pokerplanets": "PokerPlanets is the former PokerStars Sochi, so the hands are in PokerStars format and we read them. The room is new, so the settings section may be named a bit differently - if a file isn't recognized, let us know."
+      "pokerplanets": "PokerPlanets is the former PokerStars Sochi, so the hands are in PokerStars format and we read them. The room is new, so the settings section may be named a bit differently - if a file isn't recognized, let us know.",
+      "sisal": "Sisal runs on the PokerStars engine (it used to run on the iPoker network) - if the settings section is named differently than described above, let us know and we'll fix it."
     },
     "paths": {
       "pokerstars": [
@@ -883,6 +891,9 @@
       ],
       "pokerplanets": [
         "the folder you set in the client's hand-history settings"
+      ],
+      "sisal": [
+        "the folder you set in the history settings"
       ]
     },
     "steps": {
@@ -944,6 +955,12 @@
         "Find the hand-history section (Hand History / Playing History) and turn on saving history to your computer.",
         "The folder where the client saves the files is shown right there - note it down (or set your own).",
         "Open that folder and grab the tournament .txt files."
+      ],
+      "sisal": [
+        "Open the Sisal Poker client and sign in.",
+        "In the client settings, find the game report / hand history section.",
+        "Turn on saving hand history for tournaments and set the folder to save to.",
+        "Open that folder on your computer and grab the tournament .txt files."
       ]
     }
   },
