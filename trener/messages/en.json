@@ -34,7 +34,7 @@
     "exampleDescription": "Hero holds ace-king, bets the flop with no pair and no draw - the opponent calls all-in with a pair of sixes. The full review: the coach's question, the player's answer, the verdict with real numbers from the algorithm. No signup required.",
     "aboutTitle": "Why I built Whygrid",
     "aboutDescription": "A personal story: why a tracker and one-off coaching sessions didn't help me understand my own mistakes, and how that led to a Socratic coach that asks \"why\" instead of handing you the answer.",
-    "changelogTitle": "Changelog",
+    "changelogTitle": "What's New",
     "changelogDescription": "What actually changed in Whygrid - dated, concrete entries, no vague phrases."
   },
   "HowToExport": {
@@ -368,7 +368,7 @@
     "documents": "Legal",
     "support": "Support",
     "about": "About",
-    "changelog": "Changelog",
+    "changelog": "What's New",
     "uptime": "Status",
     "telegramLabel": "Whygrid Telegram channel",
     "instagramLabel": "Whygrid Instagram"
@@ -644,7 +644,7 @@
     "lastCheck": "Checked: {time}"
   },
   "Changelog": {
-    "sectionTag": "/ Changelog",
+    "sectionTag": "/ What's New",
     "title": "What changed",
     "subtitle": "Only concrete product changes, dated."
   },
