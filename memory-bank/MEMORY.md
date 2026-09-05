@@ -133,6 +133,12 @@
 - [Ссылка не в каждом посте](feedback_telegram_link_frequency.md) — каждый 3-й; «Один вопрос» никогда
 - [🔴 Темп монтажа Reels](feedback_reel_video_pacing.md) — длина клипа зависит от длины ролика: короткий — длинные планы, ~30с+ — по 1.5-2с; не стоп-кадр в конце
 - [Полный конвейер текст→видео](project_caption_automation_choice.md) — orchestrate.mjs, не Descript/Submagic/CapCut; Артём всё равно смотрит каждый ролик перед публикацией
+- [Рилз «твои лимиты»](project_reel_your_stakes.md) — 04.09, тема микролимитных МТТ (не хайроллеры), 11 раундов правок по фактам, финал v11
+- [14 приёмов из референсов → код](project_remotion_reference_techniques_2026_09_04.md) — BuildUp/GhostWord/PointerIcon + grow/outline/type/boxed/elegant в PhraseBeat; референсы оказались НАШИМИ роликами; ⚠️ГЛУБОКАЯ история компонентов (v1-v18 decision-weight, 02-03.09) НЕ синхронизирована в этот файл — есть только в локальной памяти сессии на компьютере Артёма
+- [🔊 Умею слушать звук](project_audio_listening_capability.md) — `listen-audio.mjs`, OpenRouter+Gemini, доли цента за прогон; надёжно на КОРОТКИХ изолированных отрезках, ненадёжно на цельном ролике
+- [🔴 Музыка: без слов, с "разыгранного" момента](feedback_music_selection_criteria.md) — trimBefore пропускает тихое вступление, тайминги битов пересчитывать под сдвиг
+- [🔴 Не называть один рум](feedback_no_single_room_branding.md) — продукт мультирумный, GGPoker убрать из рекламных текстов
+- [Сетки safe zone Reels/Shorts](reference_reels_safe_zone_grid.md) — точные цифры из интернета; риск: правая колонка иконок в НИЖНЕЙ трети кадра
 - [Piratex — что взято/отложено](project_piratex_reference.md) — приёмы хука+самопроверки в copywriting.md; анализ конкурентов и Apify-тренды ждут Артёма
 - [Идея: сводный отчёт по всей истории](project_full_history_report_idea.md) — вдохновлён конкурентом Baseanalise; НЕ план, требует отдельного обсуждения
 - [Проактивно называть мусор](feedback_flag_unused_marketing_files.md) — удалять только по команде
