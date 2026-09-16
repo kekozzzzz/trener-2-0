@@ -42,7 +42,33 @@ export function getEmailCallTimeoutMs(): number {
   return Number.isInteger(raw) && raw > 0 ? raw : DEFAULT_EMAIL_CALL_TIMEOUT_MS;
 }
 
-// Email считается настроенным, только когда есть API-ключ. Иначе — noop-адаптер.
+// Email считается настроенным через Unisender, только когда есть API-ключ.
 export function isEmailConfigured(): boolean {
   return getEmailApiKey() !== "";
+}
+
+// SMTP-канал (почтовый ящик support@whygrid.app, VK WorkSpace/mail.ru) — замена
+// Unisender Go с 2026-09: объём писем (десятки в месяц) не оправдывает платный тариф
+// транзакционного сервиса, а ящик уже оплачен для поддержки. Unisender-адаптер
+// остаётся в дереве как запасной путь (правило 4) — включается обратно, если у SMTP
+// когда-нибудь начнутся проблемы с доставляемостью, без нового деплоя кода.
+export function getSmtpHost(): string {
+  return process.env.EMAIL_SMTP_HOST ?? "";
+}
+
+export function getSmtpPort(): number {
+  const raw = Number(process.env.EMAIL_SMTP_PORT);
+  return Number.isInteger(raw) && raw > 0 ? raw : 465;
+}
+
+export function getSmtpUser(): string {
+  return process.env.EMAIL_SMTP_USER ?? "";
+}
+
+export function getSmtpPassword(): string {
+  return process.env.EMAIL_SMTP_PASSWORD ?? "";
+}
+
+export function isSmtpConfigured(): boolean {
+  return getSmtpHost() !== "" && getSmtpUser() !== "" && getSmtpPassword() !== "";
 }

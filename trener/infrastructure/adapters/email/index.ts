@@ -1,11 +1,16 @@
-import { isEmailConfigured } from "@/config/email";
+import { isEmailConfigured, isSmtpConfigured } from "@/config/email";
 import { unisenderEmailAdapter } from "./unisender";
+import { smtpEmailAdapter } from "./smtp";
 import { noopEmailAdapter } from "./noop";
 import type { EmailMessage, EmailPort } from "./types";
 
-// Unisender Go, если настроен (есть API-ключ), иначе noop (дев без ключа, тесты).
+// Порядок выбора: SMTP (ящик support@whygrid.app) — основной канал с 2026-09; Unisender
+// Go — запасной, если заданы его переменные, но не SMTP (правило 4, переключение без
+// нового деплоя); иначе noop (дев без настроек, тесты).
 export function getEmailAdapter(): EmailPort {
-  return isEmailConfigured() ? unisenderEmailAdapter : noopEmailAdapter;
+  if (isSmtpConfigured()) return smtpEmailAdapter;
+  if (isEmailConfigured()) return unisenderEmailAdapter;
+  return noopEmailAdapter;
 }
 
 // Мягкая отправка для мест, где письмо вторично и не должно ронять основную работу.

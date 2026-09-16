@@ -32,6 +32,7 @@
     "motion": "^12.40.0",
     "next": "^15.0.0",
     "next-intl": "^4.13.1",
+    "nodemailer": "^10.0.10",
     "postcss": "^8.5.15",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -44,6 +45,7 @@
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.0.0",
+    "@types/nodemailer": "^8.0.2",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.2.3",
     "@vitest/coverage-v8": "^4.1.8",
