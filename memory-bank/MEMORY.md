@@ -15,6 +15,7 @@
 - [Всегда писать ретро](feedback_always_write_retrospective.md) — в конце КАЖДОЙ сессии
 - [⛔ Соседние репозитории не трогаем](feedback_marketing_catalog_sync.md) — синхрон витрины отменён; понадобится — Артём скажет
 - [Новый проект = новая сессия](feedback_separate_project_sessions.md) — не вести содержательную работу по несвязанному проекту в текущем чате
+- [🔴 curl не проверяет Server Actions Next.js](feedback_nextjs_server_action_curl_unreliable.md) — тот же HTTP-ответ, но побочный эффект (запись в БД) может тихо не случиться; проверять браузером или тестом на саму функцию
 
 ## Как со мной разговаривать
 
@@ -87,7 +88,7 @@
 
 ## Инфраструктура, деплой, мониторинг
 
-- [Рабочее место / автодеплой](project_remote_workspace.md) — ⚠️починки живут ТОЛЬКО на релее, в git их нет
+- [Рабочее место / автодеплой](project_remote_workspace.md) — ⚠️починки живут ТОЛЬКО на релее, в git их нет; 🔴16.09 починен молчаливый застрой при новом npm-пакете (dirty lockfile на ВМ)
 - [Процедура деплоя](project_deploy_procedure.md) — 🔴health зелёный ≠ выкат доехал, сверять коммит на ВМ; [статус](project_deploy_status.md) — ❗серт до 2026-09-20
 - [🔴 Ложные алерты при выкате](project_deploy_alert_noise.md) — сторож бил тревогу с ПЕРВОЙ неудачи; починено 08.08
 - [📌 Ночные обрывы сети у релея](project_relay_nightly_outage.md) — 2 ночи подряд ~1.5ч, сеть релея не VM; дайджест «failed» = задумано, не баг
@@ -112,7 +113,8 @@
 - [Ключи и биллинг LLM](project_payments_blocked.md) — Anthropic запасной, в бою OpenRouter
 - [Magic link](project_magic_link_auth.md) · [Доступ владельца](project_owner_comp_access.md) — admin-байпас
 - [Загрузка без блока](project_upload_no_block_locked_analysis.md) — разбор у первого бесплатного
-- [Почта](project_email_and_reset.md) — Unisender Go · [support@](project_support_mailbox.md) — ❗при переезде пересобрать · [Форма поддержки](project_support_form.md) — ждёт hardening
+- [🔴 Почта](project_email_and_reset.md) — с 16.09 SMTP через support@ основной, Unisender запасной · [support@](project_support_mailbox.md) — ❗при переезде пересобрать · [Форма поддержки](project_support_form.md) — ждёт hardening
+- [🔴 mail.ru SMTP: From = логин аутентификации](reference_mailru_smtp_from_must_match_auth.md) — 501 sender address must match authenticated user, иначе; веб-интерфейса не касается
 - [Юр-статус](project_legal_status.md) — самозанятость, страницы LIVE · [SEO](project_seo_metadata.md) — техника ОК, причина невидимости = 0 бэклинков; гайд-кластер перелинкован и задеплоен; vc.ru — только идея в бэклоге, не черновик
 - [English](project_i18n_english.md) — UI+письма+тренер LIVE; приёмка англ. тренера ОТЛОЖЕНА, не напоминать
 
@@ -122,7 +124,9 @@
 - [Сканирующая подсветка при скролле](project_scroll_highlight_feature.md) — LIVE на главной, два уровня (аура/рамка), переиспользуемый проп scrollGlow
 - [Источники переходов](project_acquisition_sources.md) — `/go/<source>` + счётчик
 - [⛔ YouTube: ссылки пока не кликабельны](project_youtube_link_restriction.md) — ни в описании, ни в комментах; ждём порог канала, не предлагать закреп-коммент снова
-- [Выводы по 7 Shorts](project_youtube_shorts_analytics_findings.md) — удержание и RU-аудитория растут по датам публикации; reach ≠ resonance
+- [Выводы по Shorts](project_youtube_shorts_analytics_findings.md) — удержание и RU-аудитория растут по датам; 12.09: RFI лучший на Instagram/худший на YouTube — reach ≠ resonance даже между площадками
+- [🔴 Хук — одно правило на обе площадки](feedback_hook_first_seconds_universal.md) — конкретный факт в первые 1-3 сек чинит и пропуски в Instagram, и обрыв кривой на YouTube
+- [Где искать графики удержания](reference_analytics_graph_locations.md) — Instagram: «Вовлечённость»; YouTube: НЕ «Обзор», а «Взаимодействие»; свежему ролику графика ещё нет
 - [🔴 Креатив для Reels — автономно](feedback_marketing_content_autonomy.md) — сценарии и хуки сам; деньги и публикация — с подтверждением
 - [🔴 Отбор раздач для контента](feedback_hand_selection_criteria.md) — по сюжету и выводу, не по топу веса
 - [🔴 Outreach — только через поддержку](feedback_outreach_no_personal_contact.md) — никогда лично известным людям, только официальный канал организации
