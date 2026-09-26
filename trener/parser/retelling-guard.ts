@@ -276,12 +276,24 @@ export function heroFoldedFacingBet(snapshot: TableSnapshot): { street: Street; 
 }
 
 // Текст спорит с фолдом (зовёт коллировать), не назвав порога. Возвращает нужное число или null.
-export function disputesFoldWithoutPrice(text: string, snapshot: TableSnapshot): number | null {
+//
+// `priceAlsoIn` — соседнее поле ТОГО ЖЕ разбора, где названная цена засчитывается наравне.
+// Разбор приходит от модели одним куском, разложенным по полям, и игрок читает его как один
+// текст (страница раздачи печатает optimal и note рядом). Карантин 26.09 родился ровно на этом
+// шве: модель назвала порог («порог окупаемости колла ≈38%») в draftVerdict, а условную фразу
+// «колл мог быть оправдан» оставила в optimal — сторож, глядя на поля по отдельности, забраковал
+// разбор, которого игрок так и не увидел, три попытки подряд. Требование остаётся прежним:
+// спорь с фолдом только с ценой в руках — но цену ищем во всём разборе, а не в одном поле.
+export function disputesFoldWithoutPrice(
+  text: string,
+  snapshot: TableSnapshot,
+  priceAlsoIn?: string,
+): number | null {
   const spot = heroFoldedFacingBet(snapshot);
   if (!spot) return null;
 
   // Порог назван? Считаем попаданием любой процент рядом с расчётом парсера (±2 на округление).
-  const percents = [...text.matchAll(/(\d{1,3})\s*%/g)].map((m) => Number(m[1]));
+  const percents = [...`${text}\n${priceAlsoIn ?? ""}`.matchAll(/(\d{1,3})\s*%/g)].map((m) => Number(m[1]));
   if (percents.some((p) => Math.abs(p - spot.equityPct) <= 2)) return null;
 
   for (const sentence of text.split(/(?<=[.!?])\s+/)) {

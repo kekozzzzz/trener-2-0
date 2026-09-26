@@ -601,9 +601,11 @@ function assertBetSize(text: string, snapshot?: TableSnapshot): string {
 // (optimal и вердикт): именно там родился совет заплатить 25 BB в банк 6 BB с парой десяток.
 // Промпт это запрещает дважды, модель запрет проигнорировала — значит нужен код (см. подробности
 // в parser/retelling-guard.ts). Спорить не запрещено: назови порог, который парсер уже посчитал.
-function assertFoldDispute(text: string, snapshot?: TableSnapshot): string {
+// `priceAlsoIn` — соседнее поле того же разбора: игрок читает разбор целиком, поэтому порог,
+// названный в соседнем поле, засчитывается (см. disputesFoldWithoutPrice).
+function assertFoldDispute(text: string, snapshot?: TableSnapshot, priceAlsoIn?: string): string {
   if (!snapshot) return text;
-  const need = disputesFoldWithoutPrice(text, snapshot);
+  const need = disputesFoldWithoutPrice(text, snapshot, priceAlsoIn);
   if (need !== null) {
     throw new Error(
       `LLM спорит с фолдом игрока, не назвав цену колла: по пот-оддсам нужно ≈${need}% эквити, а порог в тексте не назван`,
@@ -700,6 +702,7 @@ export function validateHandAnalysis(
       optimal: assertFoldDispute(
         cleanCoachText(result.optimal, request.locale, cards, fix, heroFirst, noShowdown, noPair, undefined, request.tableSnapshot.heroCards),
         request.tableSnapshot,
+        result.draftVerdict,
       ),
       optimalAction: parseOptimalAction(result.optimalAction),
       question: cleanCoachText(result.question, request.locale, cards, fix, heroFirst, undefined, noPair, undefined, request.tableSnapshot.heroCards),
@@ -717,10 +720,12 @@ export function validateHandAnalysis(
     optimal: assertFoldDispute(
       cleanCoachText(result.optimal, request.locale, cards, fix, heroFirst, noShowdown, noPair, undefined, request.tableSnapshot.heroCards),
       request.tableSnapshot,
+      result.note,
     ),
     note: assertFoldDispute(
       cleanCoachText(result.note, request.locale, cards, fix, heroFirst, noShowdown, noPair, undefined, request.tableSnapshot.heroCards),
       request.tableSnapshot,
+      result.optimal,
     ),
   };
 }

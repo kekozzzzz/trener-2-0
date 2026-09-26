@@ -236,6 +236,22 @@ describe("disputesFoldWithoutPrice — спорить с фолдом тольк
     expect(spot!.equityPct).toBeGreaterThanOrEqual(43);
     expect(spot!.equityPct).toBeLessThanOrEqual(47);
   });
+
+  // Карантин 26.09 (задача 8517cb7e): порог назван в соседнем поле разбора, спорная фраза — в
+  // этом. Игрок читает разбор одним текстом, так что цена названа; брак был ложным и стоил
+  // игроку всей раздачи (три попытки подряд).
+  it("НЕ бракует, когда цена названа в соседнем поле того же разбора", () => {
+    const optimal = "Твой фолд выглядит дисциплинированным, но колл мог быть оправдан против блефующего соперника.";
+    const draftVerdict = "Порог окупаемости колла составляет ≈45%.";
+    expect(disputesFoldWithoutPrice(optimal, FOLD_VS_OVERBET)).toBeGreaterThan(0);
+    expect(disputesFoldWithoutPrice(optimal, FOLD_VS_OVERBET, draftVerdict)).toBeNull();
+  });
+
+  it("бракует, если цены нет НИ в одном поле разбора", () => {
+    const optimal = "Твой фолд выглядит поспешным.";
+    const draftVerdict = "Стоит подумать, как часто он блефует такой ставкой.";
+    expect(disputesFoldWithoutPrice(optimal, FOLD_VS_OVERBET, draftVerdict)).toBeGreaterThan(0);
+  });
 });
 
 // Щель, найденная прогоном 09.08: вердикт уже называл цену, а разбор всё ещё звал платить
