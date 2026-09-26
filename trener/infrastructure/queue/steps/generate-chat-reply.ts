@@ -1,4 +1,5 @@
 import type { StepHandler } from "../types";
+import { llmMeta } from "./llm-meta";
 import type { TableSnapshot } from "@/parser/types";
 import type { ChatReplyRequest } from "@/infrastructure/adapters/llm/types";
 import type { Locale } from "@/i18n/config";
@@ -87,7 +88,7 @@ export const generateChatReplyStep: StepHandler = async (task, db) => {
     playerCard: await getPlayerCard(db, tournament.playerId, tournament.playedAt),
   };
 
-  const result = await getLlmAdapter().generateChatReply(request, { playerId: tournament.playerId });
+  const result = await getLlmAdapter().generateChatReply(request, llmMeta(task, tournament.playerId));
 
   await db.chatMessage.create({
     data: { handId, author: "SYSTEM", text: result.reply },

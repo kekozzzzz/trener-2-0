@@ -373,7 +373,12 @@ export type PlayerCharacteristicResult = {
 
 // Контекст вызова для учёта расходов: чей это запрос (атрибуция строки в llm_usage).
 // Опционален — фейковый адаптер и тесты его игнорируют; реальные шаги очереди передают.
-export type LlmCallMeta = { playerId: string };
+//
+// previousRejection — за что сторож забраковал ПРОШЛУЮ попытку этой же задачи. Адаптер
+// дописывает причину в конец пользовательского промпта, чтобы повтор был зрячим: раньше
+// повтор шёл тем же запросом и не знал, что не так, поэтому три попытки давали один и тот же
+// брак (карантин 26.09). Только браки содержания — сбой связи сюда не попадает (см. errors.ts).
+export type LlmCallMeta = { playerId: string; previousRejection?: string };
 
 export interface LlmPort {
   generateHandAnalysis(request: HandAnalysisRequest, meta?: LlmCallMeta): Promise<HandAnalysisResult>;

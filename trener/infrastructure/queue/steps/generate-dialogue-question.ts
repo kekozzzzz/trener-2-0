@@ -1,4 +1,5 @@
 import type { StepHandler } from "../types";
+import { llmMeta } from "./llm-meta";
 import type { TableSnapshot } from "@/parser/types";
 import type { NextQuestionRequest } from "@/infrastructure/adapters/llm/types";
 import type { Locale } from "@/i18n/config";
@@ -118,7 +119,7 @@ export const generateDialogueQuestionStep: StepHandler = async (task, db) => {
     repeatedLeak: repeatedLeakFor(currentFp, playerCard),
   };
 
-  let result = await getLlmAdapter().generateNextQuestion(request, { playerId: tournament.playerId });
+  let result = await getLlmAdapter().generateNextQuestion(request, llmMeta(task, tournament.playerId));
 
   // ── Новичку нельзя отвечать вердиктом на «не знаю» ──────────────────────────────────────────
   // Прогон 2026-07-17 с симулятором-новичком: 15 диалогов из 15 — игрок ответил «я же новичок,
@@ -133,7 +134,7 @@ export const generateDialogueQuestionStep: StepHandler = async (task, db) => {
   if (result.complete && playerIsStuck(history) && !alreadyHelped(history)) {
     result = await getLlmAdapter().generateNextQuestion(
       { ...request, forceHelp: true },
-      { playerId: tournament.playerId },
+      llmMeta(task, tournament.playerId),
     );
   }
 

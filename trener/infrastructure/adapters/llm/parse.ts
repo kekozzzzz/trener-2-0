@@ -16,6 +16,7 @@ import type { Locale } from "@/i18n/config";
 import type { TableSnapshot } from "@/parser/types";
 import { heroFirstPostflop } from "@/parser/action-order";
 import { misreportedFold, misstatedBetSize, disputesFoldWithoutPrice } from "@/parser/retelling-guard";
+import { ContentRejectedError } from "./errors";
 
 // Claude/DeepSeek иногда оборачивают JSON в markdown-код-блок несмотря на инструкцию — снимаем его.
 export function extractJson(text: string): string {
@@ -456,7 +457,7 @@ export function cleanCoachText(
   heroCards?: string[],
 ): string {
   if (CJK_RE.test(text)) {
-    throw new Error("LLM вернул CJK-иероглифы в тексте для игрока");
+    throw new ContentRejectedError("LLM вернул CJK-иероглифы в тексте для игрока");
   }
   // длинное тире запрещено словарём — всегда короткое с пробелами
   let out = text.replace(/\s*—\s*/g, " - ");
@@ -516,7 +517,7 @@ export function cleanCoachText(
         (c) => !allowedCards.has(c[0].toUpperCase() + c[1].toLowerCase()),
       );
       if (letterCard) {
-        throw new Error(`LLM назвал карту вне снимка: «${letterCard}»`);
+        throw new ContentRejectedError(`LLM назвал карту вне снимка: «${letterCard}»`);
       }
     }
     // Сокращение «65k»/«65к» (тысячи фишек) → «65 тыс.» (регресс 2026-07-14: иначе «65k» бракуется).
@@ -543,7 +544,7 @@ export function cleanCoachText(
     out = out.replace(/\bPlayers?\s*\d*/gi, "соперник");
     const stray = firstStrayLatin(out, internalDiary);
     if (stray !== null) {
-      throw new Error(`LLM вернул латиницу в тексте для игрока: «${stray}»`);
+      throw new ContentRejectedError(`LLM вернул латиницу в тексте для игрока: «${stray}»`);
     }
   }
   // Автофикс масти карманной карты Hero ДО браковки: выдуманную масть однозначной карты Hero
@@ -561,23 +562,23 @@ export function cleanCoachText(
   if (allowedCards) {
     const bad = strayCard(out, allowedCards);
     if (bad !== null) {
-      throw new Error(`LLM назвал карту вне снимка: «${bad}»`);
+      throw new ContentRejectedError(`LLM назвал карту вне снимка: «${bad}»`);
     }
   }
   // Перевранный порядок хода (соперники поставлены до Hero, хотя Hero ходит первым постфлоп) —
   // брак, очередь ретраит (Правило 1: порядок считает парсер). Флаг включает адаптер/валидатор
   // только когда парсер уверен, что Hero первый (heroFirstPostflop) — иначе «перед тобой» законно.
   if (heroFirstPostflop && violatesActionOrder(out)) {
-    throw new Error("LLM переврал порядок хода: соперники поставлены до Hero, хотя Hero ходит первым постфлоп");
+    throw new ContentRejectedError("LLM переврал порядок хода: соперники поставлены до Hero, хотя Hero ходит первым постфлоп");
   }
   // Выдуманное вскрытие: тренер утверждает конкретную руку соперника, хотя никто не вскрывался.
   // Флаг ставит вызывающий (валидатор/адаптер) по снимку — noShowdownInHand.
   if (noShowdown && inventsShowdown(out)) {
-    throw new Error("LLM выдумал вскрытие: утверждает руку соперника, хотя карт никто не показал");
+    throw new ContentRejectedError("LLM выдумал вскрытие: утверждает руку соперника, хотя карт никто не показал");
   }
   // Выдуманная карманная пара: тренер приписывает Hero пару/сет-майнинг при разномастных картах.
   if (noPocketPair && claimsPocketPair(out)) {
-    throw new Error("LLM выдумал карманную пару: приписал Hero пару или сет-майнинг, хотя карты разного ранга");
+    throw new ContentRejectedError("LLM выдумал карманную пару: приписал Hero пару или сет-майнинг, хотя карты разного ранга");
   }
   return out;
 }
@@ -592,7 +593,7 @@ function assertBetSize(text: string, snapshot?: TableSnapshot): string {
   if (!snapshot) return text;
   const bad = misstatedBetSize(text, snapshot);
   if (bad !== null) {
-    throw new Error(`LLM выдумал размер ставки: назвал «${bad}», а ставки такого размера в раздаче не было`);
+    throw new ContentRejectedError(`LLM выдумал размер ставки: назвал «${bad}», а ставки такого размера в раздаче не было`);
   }
   return text;
 }
@@ -607,7 +608,7 @@ function assertFoldDispute(text: string, snapshot?: TableSnapshot, priceAlsoIn?:
   if (!snapshot) return text;
   const need = disputesFoldWithoutPrice(text, snapshot, priceAlsoIn);
   if (need !== null) {
-    throw new Error(
+    throw new ContentRejectedError(
       `LLM спорит с фолдом игрока, не назвав цену колла: по пот-оддсам нужно ≈${need}% эквити, а порог в тексте не назван`,
     );
   }
@@ -660,7 +661,7 @@ export function validateHandAnalysis(
   request: HandAnalysisRequest,
 ): HandAnalysisResult {
   if (typeof result.played !== "string" || typeof result.optimal !== "string") {
-    throw new Error("LLM вернул разбор без обязательных полей played/optimal");
+    throw new ContentRejectedError("LLM вернул разбор без обязательных полей played/optimal");
   }
 
   // Допустимые карты раздачи — чтобы поймать выдуманные масти/карты в тексте (Правило 1).
@@ -689,13 +690,13 @@ export function validateHandAnalysis(
   const playedText = cleanCoachText(result.played, request.locale, cards, fix, heroFirst, noShowdown, noPair, undefined, request.tableSnapshot.heroCards);
   const badFold = misreportedFold(playedText, request.tableSnapshot);
   if (badFold !== null) {
-    throw new Error(`LLM переврал пересказ раздачи: написал, что ${badFold} сбросил, хотя парсер видит его действие без фолда`);
+    throw new ContentRejectedError(`LLM переврал пересказ раздачи: написал, что ${badFold} сбросил, хотя парсер видит его действие без фолда`);
   }
   assertBetSize(playedText, request.tableSnapshot);
 
   if (request.importanceLevel === "CRITICAL") {
     if (typeof result.question !== "string" || typeof result.draftVerdict !== "string") {
-      throw new Error("LLM вернул CRITICAL-разбор без question/draftVerdict");
+      throw new ContentRejectedError("LLM вернул CRITICAL-разбор без question/draftVerdict");
     }
     return {
       played: playedText,
@@ -713,7 +714,7 @@ export function validateHandAnalysis(
   }
 
   if (typeof result.note !== "string") {
-    throw new Error(`LLM вернул ${request.importanceLevel}-разбор без note`);
+    throw new ContentRejectedError(`LLM вернул ${request.importanceLevel}-разбор без note`);
   }
   return {
     played: playedText,
@@ -749,7 +750,7 @@ export function validateVerdict(
   snapshot?: TableSnapshot,
 ): VerdictResult {
   if (typeof result.verdict !== "string") {
-    throw new Error("LLM вернул вердикт без поля verdict");
+    throw new ContentRejectedError("LLM вернул вердикт без поля verdict");
   }
   const cleaned = assertFoldDispute(
     cleanCoachText(result.verdict, locale, allowedCards, heroFix, heroFirstPostflop, noShowdown, undefined, undefined, snapshot?.heroCards),
@@ -770,7 +771,7 @@ export function validateNextQuestion(
   const complete = result.complete === true;
   // При complete=true вопрос не нужен (диалог завершён) — поле может отсутствовать.
   if (!complete && typeof result.question !== "string") {
-    throw new Error("LLM вернул ответ без поля question");
+    throw new ContentRejectedError("LLM вернул ответ без поля question");
   }
   const cleaned =
     typeof result.question === "string"
@@ -806,7 +807,7 @@ export function validateChatReply(
   snapshot?: TableSnapshot, // см. validateVerdict — сторож выдуманного размера ставки
 ): ChatReplyResult {
   if (typeof result.reply !== "string") {
-    throw new Error("LLM вернул ответ без поля reply");
+    throw new ContentRejectedError("LLM вернул ответ без поля reply");
   }
   return { reply: cleanCoachText(result.reply, locale, allowedCards, heroFix, heroFirstPostflop, noShowdown, undefined, undefined, snapshot?.heroCards) };
 }
@@ -816,7 +817,7 @@ export function validateTournamentSummary(
   locale: Locale = "ru",
 ): TournamentSummaryResult {
   if (typeof result.overview !== "string") {
-    throw new Error("LLM вернул обзор турнира без overview");
+    throw new ContentRejectedError("LLM вернул обзор турнира без overview");
   }
   return { overview: cleanCoachText(result.overview, locale) };
 }
@@ -825,7 +826,7 @@ export function validateTournamentSummary(
 // Кривые элементы отбрасываем поштучно (не валим весь ответ), тексты чистим словарём.
 export function validateCoachNotes(result: { notes?: unknown }): CoachNotesResult {
   if (!Array.isArray(result.notes)) {
-    throw new Error("LLM вернул дневник без массива notes");
+    throw new ContentRejectedError("LLM вернул дневник без массива notes");
   }
   const notes: CoachNotesResult["notes"] = [];
   for (const raw of result.notes) {
@@ -853,7 +854,7 @@ export function validatePlayerCharacteristic(
   locale: Locale = "ru",
 ): PlayerCharacteristicResult {
   if (typeof result.characteristic !== "string") {
-    throw new Error("LLM вернул характеристику без поля characteristic");
+    throw new ContentRejectedError("LLM вернул характеристику без поля characteristic");
   }
   return { characteristic: cleanCoachText(result.characteristic, locale) };
 }

@@ -3,6 +3,6 @@
 import "./bootstrap";
 
 export { enqueue, CRITICAL_ANALYSIS_PRIORITY } from "./enqueue";
-export { runWorkerOnce, reapStuckTasks, drainQueue } from "./worker";
+export { runWorkerOnce, reapStuckTasks, drainQueue, requeuePoisonedAnalyses } from "./worker";
 export { kickWorker } from "./kick";
 export { registerStep } from "./registry";

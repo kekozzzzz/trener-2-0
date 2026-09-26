@@ -1,7 +1,7 @@
 import type { PrismaClient } from "@prisma/client";
 import type { RawTask, WorkerResult } from "./types";
 import { getHandler } from "./registry";
-import { getStuckProcessingThresholdMs } from "@/config/queue";
+import { getStuckProcessingThresholdMs, getPoisonRetryDelayMs, getPoisonRetryRounds } from "@/config/queue";
 import { safeNotifyAdmin } from "@/infrastructure/adapters/notify";
 import { recheckCardReadinessAfterPoison } from "./steps/generate-hand-analysis";
 
@@ -196,4 +196,35 @@ async function claimTask(db: PrismaClient): Promise<RawTask | null> {
     // Возвращаем строку с уже увеличенным attempt (UPDATE применён внутри той же TX).
     return { ...row, attempt: row.attempt + 1 };
   });
+}
+
+// Отложенный повтор карантинной задачи РАЗБОРА раздачи (пороги — config/queue.ts).
+//
+// Зачем: брак содержания часто вероятностный, и повторный заход спустя паузу нередко проходит
+// сам. Игроку страница раздачи обещает «вернёмся к ней позже» — это обещание выполняет вот эта
+// функция, а не кнопка: платящий игрок не должен ничего нажимать (решение Артёма 26.09).
+//
+// Две вещи НЕ обнуляем сознательно:
+//   error   — он нужен ЗРЯЧЕМУ повтору: причину брака шаг передаст модели (steps/llm-meta.ts);
+//   attempt — по нему считаем сделанные заходы, поэтому отдельная колонка в БД не понадобилась.
+// Из-за этого каждый заход = одна попытка: первая же неудача снова отправит задачу в карантин.
+//
+// Только GENERATE_HAND_ANALYSIS: у интерактивных шагов (вопрос/вердикт/чат) игрок сидит перед
+// экраном и там своя кнопка «повторить» (features/queue-recovery), ждать 20 минут им незачем.
+export async function requeuePoisonedAnalyses(db: PrismaClient): Promise<number> {
+  const rounds = getPoisonRetryRounds();
+  if (rounds <= 0) return 0;
+
+  const { count } = await db.task.updateMany({
+    where: {
+      status: "POISONED",
+      type: "GENERATE_HAND_ANALYSIS",
+      // updated_at — момент ухода в карантин (его бьёт тот же UPDATE), значит пауза считается
+      // от последней неудачи, а не от создания задачи.
+      updatedAt: { lt: new Date(Date.now() - getPoisonRetryDelayMs()) },
+      attempt: { lt: MAX_ATTEMPTS + rounds },
+    },
+    data: { status: "PENDING", runAfter: new Date() },
+  });
+  return count;
 }

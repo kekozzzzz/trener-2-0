@@ -1044,7 +1044,10 @@
     "coolerCaptionPreflop": "Money went in preflop with {equity}% - the opponent got there. A cooler, not a mistake.",
     "coolerCaptionFlop": "Money went in on the flop with {equity}% - the opponent got there. A cooler, not a mistake.",
     "coolerCaptionTurn": "Money went in on the turn with {equity}% - the opponent got there. A cooler, not a mistake.",
-    "coolerCaptionRiver": "Money went in on the river with {equity}% - the opponent got there. A cooler, not a mistake."
+    "coolerCaptionRiver": "Money went in on the river with {equity}% - the opponent got there. A cooler, not a mistake.",
+    "analysisFailedTitle": "Couldn't review this one",
+    "analysisFailedNote": "We couldn't put this hand's review together - that's a glitch on our side, not something in your play. We'll come back to it.",
+    "analysisFailed": "Didn't work"
   },
   "FocusSlot": {
     "startHereTitle": "Start here",
@@ -1124,7 +1127,9 @@
     "workerFailed": "Couldn't start the worker",
     "stepFailed": "Something hiccuped on our side - this step didn't come through. That's on us, not you.",
     "retry": "Try again",
-    "retrying": "Trying again"
+    "retrying": "Trying again",
+    "failedTitle": "The review didn't come through",
+    "failedBody": "We couldn't put this hand's review together - that's a glitch on our side, not something in your play. We'll come back to it."
   },
   "Chat": {
     "placeholder": "Ask something about this hand...",

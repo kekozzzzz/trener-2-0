@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import type { PrismaClient } from "@prisma/client";
 import type { StepHandler } from "../types";
+import { llmMeta } from "./llm-meta";
 import type { TableSnapshot } from "@/parser/types";
 import type { HandAnalysisRequest } from "@/infrastructure/adapters/llm/types";
 import type { Locale } from "@/i18n/config";
@@ -67,7 +68,7 @@ export const generateHandAnalysisStep: StepHandler = async (task, db) => {
       repeatedLeak: repeatedLeakFor(hand.spot as { marks?: { kind: string }[] } | null, playerCard),
     };
 
-    const result = await getLlmAdapter().generateHandAnalysis(request, { playerId: tournament.playerId });
+    const result = await getLlmAdapter().generateHandAnalysis(request, llmMeta(task, tournament.playerId));
 
     await db.$transaction(async (tx) => {
       await tx.hand.update({

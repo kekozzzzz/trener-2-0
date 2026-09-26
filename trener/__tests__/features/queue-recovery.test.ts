@@ -19,6 +19,7 @@ import {
   isChatReplyFailed,
   isTournamentParseFailed,
   requeuePoisonedTasks,
+  handsWithFailedAnalysis,
   DIALOGUE_STEPS,
 } from "@/features/queue-recovery/queries";
 
@@ -94,5 +95,47 @@ describe("перезапуск застрявшего шага", () => {
 
     expect(count).toBe(0);
     expect(await isDialogueStepFailed("keep", db)).toBe(true); // осталась в карантине
+  });
+});
+
+// ── Раздачи с провалившимся разбором (план 2026-09-26) ───────────────────────
+// Раньше такая раздача молча исчезала со страницы турнира, а по прямой ссылке отдавала 404.
+// Теперь страница показывает честную строку, и ей нужен вот этот список.
+
+describe("handsWithFailedAnalysis", () => {
+  it("находит раздачу, чей разбор в карантине", async () => {
+    await makePoisoned("GENERATE_HAND_ANALYSIS", { handId: "11111111-1111-1111-1111-111111111111" });
+
+    const failed = await handsWithFailedAnalysis(["11111111-1111-1111-1111-111111111111"], db);
+
+    expect(failed.has("11111111-1111-1111-1111-111111111111")).toBe(true);
+  });
+
+  it("раздачу, которая ещё считается, не помечает провалившейся", async () => {
+    await enqueue(db, { type: "GENERATE_HAND_ANALYSIS", payload: { handId: "22222222-2222-2222-2222-222222222222" } });
+
+    const failed = await handsWithFailedAnalysis(["22222222-2222-2222-2222-222222222222"], db);
+
+    expect(failed.size).toBe(0);
+  });
+
+  it("не путает с карантином другого шага по той же раздаче", async () => {
+    await makePoisoned("GENERATE_VERDICT", { handId: "33333333-3333-3333-3333-333333333333" });
+
+    const failed = await handsWithFailedAnalysis(["33333333-3333-3333-3333-333333333333"], db);
+
+    expect(failed.size).toBe(0);
+  });
+
+  it("чужие раздачи в ответ не подмешивает", async () => {
+    await makePoisoned("GENERATE_HAND_ANALYSIS", { handId: "44444444-4444-4444-4444-444444444444" });
+
+    const failed = await handsWithFailedAnalysis(["55555555-5555-5555-5555-555555555555"], db);
+
+    expect(failed.size).toBe(0);
+  });
+
+  it("на пустом списке в базу не ходит", async () => {
+    expect((await handsWithFailedAnalysis([], db)).size).toBe(0);
   });
 });

@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import type { StepHandler } from "../types";
+import { llmMeta } from "./llm-meta";
 import type { CoachNotesRequest } from "@/infrastructure/adapters/llm/types";
 import { getLlmAdapter } from "@/infrastructure/adapters/llm";
 import { getPlayerCard, invalidatePlayerCardCache } from "@/features/memory/player-card";
@@ -68,7 +69,7 @@ export const updateCoachNotesStep: StepHandler = async (task, db) => {
     maxNotes: COACH_NOTES_MAX,
   };
 
-  const result = await getLlmAdapter().generateCoachNotes(request, { playerId });
+  const result = await getLlmAdapter().generateCoachNotes(request, llmMeta(task, playerId));
 
   const notes = mergeCoachNotes(existing, result, today, counted);
 

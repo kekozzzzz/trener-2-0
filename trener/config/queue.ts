@@ -27,3 +27,26 @@ export function getStuckProcessingThresholdMs(): number {
   const raw = Number(process.env.QUEUE_STUCK_TIMEOUT_MS);
   return Number.isInteger(raw) && raw > 0 ? raw : DEFAULT_STUCK_PROCESSING_MS;
 }
+
+// Отложенный повтор задачи, ушедшей в карантин (POISONED). Брак содержания часто
+// ВЕРОЯТНОСТНЫЙ: на одном и том же споте модель то сползает в запрещённую формулировку, то нет
+// (карантин 26.09 — четыре брака подряд, пятый заход чистый). Пара заходов спустя паузу
+// подбирают такой случай сами, без участия игрока, которому страница обещает «вернёмся позже».
+//
+// Пауза короткая (решение Артёма 26.09): тревога о карантине падает в Telegram сразу, настоящую
+// поломку всё равно чиню руками, а держать игрока в ожидании час незачем. Правило 3 — в .env.
+const DEFAULT_POISON_RETRY_DELAY_MS = 20 * 60_000;
+export function getPoisonRetryDelayMs(): number {
+  const raw = Number(process.env.QUEUE_POISON_RETRY_DELAY_MS);
+  return Number.isInteger(raw) && raw > 0 ? raw : DEFAULT_POISON_RETRY_DELAY_MS;
+}
+
+// Сколько отложенных заходов даём СВЕРХ обычных попыток. Каждый заход — одна попытка: attempt
+// при возврате НЕ обнуляем, поэтому первая же неудача снова отправляет задачу в карантин, а
+// число уже сделанных заходов видно прямо в attempt — отдельная колонка в БД не нужна.
+// 0 — выключить отложенный повтор совсем.
+const DEFAULT_POISON_RETRY_ROUNDS = 2;
+export function getPoisonRetryRounds(): number {
+  const raw = Number(process.env.QUEUE_POISON_RETRY_ROUNDS);
+  return Number.isInteger(raw) && raw >= 0 && raw <= 10 ? raw : DEFAULT_POISON_RETRY_ROUNDS;
+}

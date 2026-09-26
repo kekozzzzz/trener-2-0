@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { ParsingWaitClient } from "./parsing-wait-client";
 import { AutoUnlockClient } from "./auto-unlock-client";
 import { AnalysisProgress } from "./analysis-progress";
+import { handsWithFailedAnalysis } from "@/features/queue-recovery/queries";
 import { SelfLevelLine } from "./self-level";
 import { IntroSurveyLine } from "./intro-survey";
 import { isValidSelfLevel, isSelfLevelActive } from "@/config/self-level";
@@ -406,6 +407,13 @@ export default async function TournamentPage({
     select: { id: true, tableData: true },
   });
 
+  // Разбор мог уйти в карантин — тогда раздача НЕ «в работе»: её больше никто не считает, и
+  // показывать крутилку про «появятся выше» нечестно. Раньше такая раздача молча исчезала со
+  // страницы вместе с блоком «Разбираем сейчас» (план 2026-09-26).
+  const failedAnalysisIds = await handsWithFailedAnalysis(pendingHands.map((h) => h.id));
+  const reviewingHands = pendingHands.filter((h) => !failedAnalysisIds.has(h.id));
+  const failedHands = pendingHands.filter((h) => failedAnalysisIds.has(h.id));
+
   // Обзор турнира (GENERATE_TOURNAMENT_SUMMARY) — может быть ещё не готов (null).
   // overview содержит инлайн-токены ссылок {{h:handId|карты}} (см. renderOverview).
   const summary = tournament.summary as { overview?: string } | null;
@@ -677,14 +685,14 @@ export default async function TournamentPage({
 
         <CoolersSection coolers={coolerHands} t={t} />
 
-        {processing && pendingHands.length > 0 && (
+        {processing && reviewingHands.length > 0 && (
           <div className="mt-16">
             <h2 className="text-h2">{t("reviewingNowTitle")}</h2>
             <p className="mt-2 text-small text-muted-foreground">
               {t("reviewingNowNote")}
             </p>
             <div className="mt-8 space-y-4">
-              {pendingHands.map((hand) => {
+              {reviewingHands.map((hand) => {
                 const snap = hand.tableData as unknown as TableSnapshot;
                 const label = heroDecisionLabel(snap);
                 return (
@@ -701,6 +709,39 @@ export default async function TournamentPage({
                     <span className="flex shrink-0 items-center gap-2 font-mono text-label uppercase tracking-label text-muted-foreground">
                       {t("reviewing")}
                       <LoadingDots />
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Разбор не получился (карантин). Показываем ВСЕГДА, не только пока турнир считается:
+            раньше такая раздача исчезала вместе с блоком выше, и для игрока это выглядело как
+            «сайт потерял раздачу». Кнопки нет намеренно (решение Артёма 26.09) — платящий игрок
+            не должен ничего нажимать, к раздаче вернётся сама очередь (requeuePoisonedAnalyses). */}
+        {failedHands.length > 0 && (
+          <div className="mt-16">
+            <h2 className="text-h2">{t("analysisFailedTitle")}</h2>
+            <p className="mt-2 text-small text-muted-foreground">{t("analysisFailedNote")}</p>
+            <div className="mt-8 space-y-4">
+              {failedHands.map((hand) => {
+                const snap = hand.tableData as unknown as TableSnapshot;
+                const label = heroDecisionLabel(snap);
+                return (
+                  <div
+                    key={hand.id}
+                    className="flex items-center justify-between gap-4 border border-border bg-card p-6 opacity-70"
+                  >
+                    <div className="flex min-w-0 items-center gap-4">
+                      <HoleCards cards={snap.heroCards ?? []} />
+                      {label && (
+                        <span className="truncate text-small text-muted-foreground">{label}</span>
+                      )}
+                    </div>
+                    <span className="shrink-0 font-mono text-label uppercase tracking-label text-muted-foreground">
+                      {t("analysisFailed")}
                     </span>
                   </div>
                 );

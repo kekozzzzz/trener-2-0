@@ -18,6 +18,7 @@ import { buildChatReplyPrompt, buildChatReplySystemPrompt } from "@/config/promp
 import { buildTournamentSummaryPrompt, buildTournamentSummarySystemPrompt } from "@/config/prompts/tournament-summary";
 import { buildPlayerCharacteristicPrompt, buildPlayerCharacteristicSystemPrompt } from "@/config/prompts/player-characteristic";
 import { buildCoachNotesPrompt, buildCoachNotesSystemPrompt } from "@/config/prompts/coach-notes";
+import { withRejectionNote } from "@/config/prompts/retry-note";
 import { recordLlmUsage } from "@/features/usage/llm-usage";
 import { heroFirstPostflop } from "@/parser/action-order";
 import { validateCoachNotes,
@@ -115,7 +116,7 @@ function getClient(): Anthropic {
 async function callClaude(
   system: string,
   prompt: string,
-  ctx: { step: string; playerId?: string },
+  ctx: { step: string; playerId?: string; previousRejection?: string },
   temperature?: number,
 ): Promise<unknown> {
   const client = getClient();
@@ -132,7 +133,7 @@ async function callClaude(
     // досэмпливала числа (см. openrouter.ts TEMP_PRECISE/TEMP_DIALOGUE). undefined = дефолт SDK.
     ...(temperature !== undefined ? { temperature } : {}),
     system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
-    messages: [{ role: "user", content: prompt }],
+    messages: [{ role: "user", content: withRejectionNote(prompt, ctx.previousRejection) }],
   });
 
   // Учёт расхода (вторично — recordLlmUsage не бросает): берём реальный usage из ответа,
@@ -171,7 +172,7 @@ export const anthropicLlmAdapter: LlmPort = {
   async generateHandAnalysis(request: HandAnalysisRequest, meta?: LlmCallMeta): Promise<HandAnalysisResult> {
     const parsed = await callClaude(buildHandAnalysisSystemPrompt(request.locale, { ...spotScope(request.tableSnapshot), socratic: request.importanceLevel === "CRITICAL" }), buildHandAnalysisPrompt(request), {
       step: "HAND_ANALYSIS",
-      playerId: meta?.playerId,
+      ...meta,
     }, TEMP_PRECISE);
     return validateHandAnalysis(parsed as Partial<HandAnalysisResult>, request);
   },
@@ -179,7 +180,7 @@ export const anthropicLlmAdapter: LlmPort = {
   async generateNextQuestion(request: NextQuestionRequest, meta?: LlmCallMeta): Promise<NextQuestionResult> {
     const parsed = await callClaude(buildDialogueQuestionSystemPrompt(request.locale, { ...spotScope(request.tableSnapshot) }), buildDialogueQuestionPrompt(request), {
       step: "DIALOGUE_QUESTION",
-      playerId: meta?.playerId,
+      ...meta,
     }, TEMP_DIALOGUE);
     return validateNextQuestion(parsed as Partial<NextQuestionResult>, request.locale, allowedCardSet(request.tableSnapshot), heroSuitFixMap(request.tableSnapshot), heroFirstPostflop(request.tableSnapshot));
   },
@@ -187,7 +188,7 @@ export const anthropicLlmAdapter: LlmPort = {
   async generateVerdict(request: VerdictRequest, meta?: LlmCallMeta): Promise<VerdictResult> {
     const parsed = await callClaude(buildVerdictSystemPrompt(request.locale, { ...spotScope(request.tableSnapshot) }), buildVerdictPrompt(request), {
       step: "VERDICT",
-      playerId: meta?.playerId,
+      ...meta,
     }, TEMP_PRECISE);
     return validateVerdict(parsed as Partial<VerdictResult>, request.locale, allowedCardSet(request.tableSnapshot), heroSuitFixMap(request.tableSnapshot), heroFirstPostflop(request.tableSnapshot), noShowdownInHand(request.tableSnapshot), request.tableSnapshot);
   },
@@ -195,7 +196,7 @@ export const anthropicLlmAdapter: LlmPort = {
   async generateChatReply(request: ChatReplyRequest, meta?: LlmCallMeta): Promise<ChatReplyResult> {
     const parsed = await callClaude(buildChatReplySystemPrompt(request.locale, { ...spotScope(request.tableSnapshot) }), buildChatReplyPrompt(request), {
       step: "CHAT_REPLY",
-      playerId: meta?.playerId,
+      ...meta,
     }, TEMP_DIALOGUE);
     return validateChatReply(parsed as Partial<ChatReplyResult>, request.locale, allowedCardSet(request.tableSnapshot), heroSuitFixMap(request.tableSnapshot), heroFirstPostflop(request.tableSnapshot), noShowdownInHand(request.tableSnapshot), request.tableSnapshot);
   },
@@ -206,7 +207,7 @@ export const anthropicLlmAdapter: LlmPort = {
   ): Promise<TournamentSummaryResult> {
     const parsed = await callClaude(buildTournamentSummarySystemPrompt(request.locale), buildTournamentSummaryPrompt(request), {
       step: "TOURNAMENT_SUMMARY",
-      playerId: meta?.playerId,
+      ...meta,
     }, TEMP_PRECISE);
     return validateTournamentSummary(parsed as Partial<TournamentSummaryResult>, request.locale);
   },
@@ -214,7 +215,7 @@ export const anthropicLlmAdapter: LlmPort = {
   async generateCoachNotes(request: CoachNotesRequest, meta?: LlmCallMeta): Promise<CoachNotesResult> {
     const parsed = await callClaude(buildCoachNotesSystemPrompt(request.maxNotes), buildCoachNotesPrompt(request), {
       step: "COACH_NOTES",
-      playerId: meta?.playerId,
+      ...meta,
     }, TEMP_PRECISE);
     return validateCoachNotes(parsed as { notes?: unknown });
   },
@@ -225,7 +226,7 @@ export const anthropicLlmAdapter: LlmPort = {
   ): Promise<PlayerCharacteristicResult> {
     const parsed = await callClaude(buildPlayerCharacteristicSystemPrompt(request.locale), buildPlayerCharacteristicPrompt(request), {
       step: "PLAYER_CHARACTERISTIC",
-      playerId: meta?.playerId,
+      ...meta,
     }, TEMP_PRECISE);
     return validatePlayerCharacteristic(parsed as Partial<PlayerCharacteristicResult>, request.locale);
   },

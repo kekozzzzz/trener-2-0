@@ -4,6 +4,7 @@ import { getTranslations, getLocale } from "next-intl/server";
 import Link from "next/link";
 import { getDialogue } from "@/features/dialogue/queries";
 import { getChat } from "@/features/chat/queries";
+import { handsWithFailedAnalysis } from "@/features/queue-recovery/queries";
 import { bigBlindFromSnapshot } from "@/parser/big-blind";
 import type { TableSnapshot } from "@/parser/types";
 import { requireSession } from "@/features/auth/session";
@@ -112,6 +113,25 @@ export default async function HandDialoguePage({
             <p className="mt-4 max-w-2xl text-body text-muted-foreground">
               {t("lockedBody")}
             </p>
+            <div className="mt-8 font-mono text-label uppercase tracking-label">
+              <Link href={`/tournament/${id}`} className="text-muted-foreground transition-colors hover:text-foreground">
+                {t("backToTournament")}
+              </Link>
+            </div>
+          </section>
+        </main>
+      );
+    }
+    // Разбор ушёл в карантин — это не «такой страницы нет», а наш сбой. 404 здесь врал игроку:
+    // раздача существует, просто мы не смогли её объяснить. Кнопки «повторить» намеренно нет
+    // (решение Артёма 26.09) — к раздаче вернётся сама очередь, requeuePoisonedAnalyses.
+    if ((await handsWithFailedAnalysis([handId])).size > 0) {
+      return (
+        <main>
+          <PageHeader />
+          <section className="mx-auto site-wrap px-8 py-16">
+            <h1 className="text-h1">{t("failedTitle")}</h1>
+            <p className="mt-4 max-w-2xl text-body text-muted-foreground">{t("failedBody")}</p>
             <div className="mt-8 font-mono text-label uppercase tracking-label">
               <Link href={`/tournament/${id}`} className="text-muted-foreground transition-colors hover:text-foreground">
                 {t("backToTournament")}

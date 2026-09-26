@@ -18,6 +18,7 @@ import { buildChatReplyPrompt, buildChatReplySystemPrompt } from "@/config/promp
 import { buildTournamentSummaryPrompt, buildTournamentSummarySystemPrompt } from "@/config/prompts/tournament-summary";
 import { buildPlayerCharacteristicPrompt, buildPlayerCharacteristicSystemPrompt } from "@/config/prompts/player-characteristic";
 import { buildCoachNotesPrompt, buildCoachNotesSystemPrompt } from "@/config/prompts/coach-notes";
+import { withRejectionNote } from "@/config/prompts/retry-note";
 import { recordLlmUsage } from "@/features/usage/llm-usage";
 import { validateCoachNotes,
   allowedCardSet,
@@ -127,13 +128,17 @@ async function rawCall(
 async function callOpenRouter(
   system: string,
   prompt: string,
-  ctx: { step: string; playerId?: string },
+  ctx: { step: string; playerId?: string; previousRejection?: string },
   reasoning?: Reasoning,
   temperature?: number,
 ): Promise<unknown> {
+  // Зрячий повтор: причину брака прошлой попытки дописываем в КОНЕЦ ПОЛЬЗОВАТЕЛЬСКОГО промпта.
+  // В системный класть нельзя — он кэшируется (×0.25), правка там сбрасывает кэш и поднимает
+  // счёт за каждый запрос роли. Хвостом в конце: последнее указание модель держит лучше всего.
+  const userPrompt = withRejectionNote(prompt, ctx.previousRejection);
   let lastErr: unknown;
   for (let attempt = 0; attempt < 2; attempt++) {
-    const { text, usage, finishReason, providerError } = await rawCall(system, prompt, reasoning, temperature);
+    const { text, usage, finishReason, providerError } = await rawCall(system, userPrompt, reasoning, temperature);
     if (ctx.playerId) {
       const cached = Number((usage.prompt_tokens_details as { cached_tokens?: number } | undefined)?.cached_tokens ?? 0);
       const promptTokens = Number(usage.prompt_tokens ?? 0);
@@ -188,7 +193,7 @@ export const openRouterLlmAdapter: LlmPort = {
     const parsed = await callOpenRouter(
       buildHandAnalysisSystemPrompt(request.locale, { ...spotScope(request.tableSnapshot), socratic: request.importanceLevel === "CRITICAL" }),
       buildHandAnalysisPrompt(request),
-      { step: "HAND_ANALYSIS", playerId: meta?.playerId },
+      { step: "HAND_ANALYSIS", ...meta },
       undefined,
       TEMP_PRECISE,
     );
@@ -199,7 +204,7 @@ export const openRouterLlmAdapter: LlmPort = {
     const parsed = await callOpenRouter(
       buildDialogueQuestionSystemPrompt(request.locale, { ...spotScope(request.tableSnapshot) }),
       buildDialogueQuestionPrompt(request),
-      { step: "DIALOGUE_QUESTION", playerId: meta?.playerId },
+      { step: "DIALOGUE_QUESTION", ...meta },
       undefined,
       TEMP_DIALOGUE,
     );
@@ -210,7 +215,7 @@ export const openRouterLlmAdapter: LlmPort = {
     const parsed = await callOpenRouter(
       buildVerdictSystemPrompt(request.locale, { ...spotScope(request.tableSnapshot) }),
       buildVerdictPrompt(request),
-      { step: "VERDICT", playerId: meta?.playerId },
+      { step: "VERDICT", ...meta },
       undefined,
       TEMP_PRECISE,
     );
@@ -221,7 +226,7 @@ export const openRouterLlmAdapter: LlmPort = {
     const parsed = await callOpenRouter(
       buildChatReplySystemPrompt(request.locale, { ...spotScope(request.tableSnapshot) }),
       buildChatReplyPrompt(request),
-      { step: "CHAT_REPLY", playerId: meta?.playerId },
+      { step: "CHAT_REPLY", ...meta },
       undefined,
       TEMP_DIALOGUE,
     );
@@ -235,7 +240,7 @@ export const openRouterLlmAdapter: LlmPort = {
     const parsed = await callOpenRouter(
       buildTournamentSummarySystemPrompt(request.locale),
       buildTournamentSummaryPrompt(request),
-      { step: "TOURNAMENT_SUMMARY", playerId: meta?.playerId },
+      { step: "TOURNAMENT_SUMMARY", ...meta },
       undefined,
       TEMP_PRECISE,
     );
@@ -246,7 +251,7 @@ export const openRouterLlmAdapter: LlmPort = {
     const parsed = await callOpenRouter(
       buildCoachNotesSystemPrompt(request.maxNotes),
       buildCoachNotesPrompt(request),
-      { step: "COACH_NOTES", playerId: meta?.playerId },
+      { step: "COACH_NOTES", ...meta },
       undefined,
       TEMP_PRECISE,
     );
@@ -260,7 +265,7 @@ export const openRouterLlmAdapter: LlmPort = {
     const parsed = await callOpenRouter(
       buildPlayerCharacteristicSystemPrompt(request.locale),
       buildPlayerCharacteristicPrompt(request),
-      { step: "PLAYER_CHARACTERISTIC", playerId: meta?.playerId },
+      { step: "PLAYER_CHARACTERISTIC", ...meta },
       undefined,
       TEMP_PRECISE,
     );

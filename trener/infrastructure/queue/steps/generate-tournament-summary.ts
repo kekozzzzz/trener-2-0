@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import type { StepHandler } from "../types";
+import { llmMeta } from "./llm-meta";
 import type { BBThreeBetLeakHand, FourBetLeakHand, IsoLeakHand, LimpExample, LimpLeak, OpenLeakHand, OpenShoveLeakHand, SqueezeLeakHand, TournamentSummaryHand, VsOpenThreeBetLeakHand } from "@/infrastructure/adapters/llm/types";
 import type { TableSnapshot } from "@/parser/types";
 import type { Locale } from "@/i18n/config";
@@ -312,7 +313,7 @@ export const generateTournamentSummaryStep: StepHandler = async (task, db) => {
     isoLeak,
     squeezeLeak,
     fourBetLeak,
-  }, { playerId: tournament.playerId });
+  }, llmMeta(task, tournament.playerId));
 
   const overview = resolveHandTokens(result.overview, cardHands);
   const summary = { overview };

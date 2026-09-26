@@ -64,3 +64,28 @@ export const isChatReplyFailed = (handId: string, db: Db = prisma): Promise<bool
 // загрузке, но ветка ошибки БД такое открывает).
 export const isTournamentParseFailed = (tournamentId: string, db: Db = prisma): Promise<boolean> =>
   hasPoisonedTask(db, PARSE_STEP_TYPES, "tournamentId", tournamentId);
+
+// Раздачи, чей РАЗБОР ушёл в карантин. Нужны странице турнира и странице раздачи: такая
+// раздача раньше просто исчезала из карточки (блок «Разбираем сейчас» скрывается, когда
+// турнир досчитан), а по прямой ссылке отдавала 404 — для игрока это выглядело как «сайт
+// потерял мою раздачу». Теперь показываем честную строку (план 2026-09-26).
+//
+// Карантинных задач в базе единицы (за 30 дней до 26.09 — одна), поэтому выбираем их целиком
+// и пересекаем в памяти: это проще сырого SQL с IN по JSON-полю и не требует полного клиента.
+export async function handsWithFailedAnalysis(
+  handIds: string[],
+  db: Db = prisma,
+): Promise<Set<string>> {
+  if (handIds.length === 0) return new Set();
+  const rows = await db.task.findMany({
+    where: { status: "POISONED", type: "GENERATE_HAND_ANALYSIS" },
+    select: { payload: true },
+  });
+  const wanted = new Set(handIds);
+  const failed = new Set<string>();
+  for (const row of rows) {
+    const handId = (row.payload as { handId?: string } | null)?.handId;
+    if (handId && wanted.has(handId)) failed.add(handId);
+  }
+  return failed;
+}

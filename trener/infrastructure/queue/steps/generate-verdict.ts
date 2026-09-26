@@ -1,4 +1,5 @@
 import type { StepHandler } from "../types";
+import { llmMeta } from "./llm-meta";
 import type { TableSnapshot } from "@/parser/types";
 import type { VerdictRequest } from "@/infrastructure/adapters/llm/types";
 import type { Locale } from "@/i18n/config";
@@ -108,7 +109,7 @@ export const generateVerdictStep: StepHandler = async (task, db) => {
     repeatedLeak: repeatedLeakFor(hand.spot as { marks?: { kind: string }[] } | null, playerCard),
   };
 
-  const result = await getLlmAdapter().generateVerdict(request, { playerId: tournament.playerId });
+  const result = await getLlmAdapter().generateVerdict(request, llmMeta(task, tournament.playerId));
 
   await db.dialogue.update({
     where: { handId },

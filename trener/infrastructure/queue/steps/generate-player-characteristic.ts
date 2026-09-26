@@ -1,4 +1,5 @@
 import type { StepHandler } from "../types";
+import { llmMeta } from "./llm-meta";
 import type { CountedTournament } from "@/features/profile/aggregate";
 import { aggregatePlayerCharacteristic } from "@/features/profile/aggregate";
 import { getLlmAdapter } from "@/infrastructure/adapters/llm";
@@ -70,7 +71,7 @@ export const generatePlayerCharacteristicStep: StepHandler = async (task, db) =>
       styleCounts: facts.styleCounts,
       openLeak: facts.openLeak,
     },
-    { playerId },
+    llmMeta(task, playerId),
   );
 
   const data = {
