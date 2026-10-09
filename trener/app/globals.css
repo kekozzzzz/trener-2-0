@@ -256,6 +256,36 @@
   .ticker-run, .ticker-run-back { animation: none; }
 }
 
+/* ── Знак логотипа: один проход лайма по часовой стрелке ─────────────────────
+   Решение Артёма 2026-10-09 (design-system §5 п.6, plans/2026-10-09-анимация-логотипа.md):
+   при загрузке страницы и при наведении, ОДИН раз, без цикла (бесконечные анимации
+   по-прежнему запрещены). Путь: верх-право (дом) → низ-право → низ-лево → верх-лево →
+   верх-право. 1.2 с = старт 12% + три хода по 25% + возврат 13%. Ячейка либо «лайм»
+   (заливка 1, обводка 0), либо «обводка» (заливка 0, обводка 1) - в покое вид прежний.
+   Два набора keyframes (-h для наведения): с тем же именем CSS не перезапустит проход. */
+.wm-cell { animation-duration: 1.2s; animation-timing-function: linear; animation-iteration-count: 1; }
+.wm-tr { animation-name: wm-tr; }
+.wm-br { animation-name: wm-br; }
+.wm-bl { animation-name: wm-bl; }
+.wm-tl { animation-name: wm-tl; }
+.wm:hover .wm-tr { animation-name: wm-tr-h; }
+.wm:hover .wm-br { animation-name: wm-br-h; }
+.wm:hover .wm-bl { animation-name: wm-bl-h; }
+.wm:hover .wm-tl { animation-name: wm-tl-h; }
+
+@keyframes wm-tr   { 0%, 12% { fill-opacity: 1; stroke-opacity: 0; } 12.01%, 87% { fill-opacity: 0; stroke-opacity: 1; } 87.01%, 100% { fill-opacity: 1; stroke-opacity: 0; } }
+@keyframes wm-tr-h { 0%, 12% { fill-opacity: 1; stroke-opacity: 0; } 12.01%, 87% { fill-opacity: 0; stroke-opacity: 1; } 87.01%, 100% { fill-opacity: 1; stroke-opacity: 0; } }
+@keyframes wm-br   { 0%, 12% { fill-opacity: 0; stroke-opacity: 1; } 12.01%, 37% { fill-opacity: 1; stroke-opacity: 0; } 37.01%, 100% { fill-opacity: 0; stroke-opacity: 1; } }
+@keyframes wm-br-h { 0%, 12% { fill-opacity: 0; stroke-opacity: 1; } 12.01%, 37% { fill-opacity: 1; stroke-opacity: 0; } 37.01%, 100% { fill-opacity: 0; stroke-opacity: 1; } }
+@keyframes wm-bl   { 0%, 37% { fill-opacity: 0; stroke-opacity: 1; } 37.01%, 62% { fill-opacity: 1; stroke-opacity: 0; } 62.01%, 100% { fill-opacity: 0; stroke-opacity: 1; } }
+@keyframes wm-bl-h { 0%, 37% { fill-opacity: 0; stroke-opacity: 1; } 37.01%, 62% { fill-opacity: 1; stroke-opacity: 0; } 62.01%, 100% { fill-opacity: 0; stroke-opacity: 1; } }
+@keyframes wm-tl   { 0%, 62% { fill-opacity: 0; stroke-opacity: 1; } 62.01%, 87% { fill-opacity: 1; stroke-opacity: 0; } 87.01%, 100% { fill-opacity: 0; stroke-opacity: 1; } }
+@keyframes wm-tl-h { 0%, 62% { fill-opacity: 0; stroke-opacity: 1; } 62.01%, 87% { fill-opacity: 1; stroke-opacity: 0; } 87.01%, 100% { fill-opacity: 0; stroke-opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .wm-cell, .wm:hover .wm-cell { animation: none !important; }
+}
+
 /* ── Свет за курсором и отзывчивые карточки ─────────────────────────────────
    Приёмы из стороннего макета (Артём 2026-08-09). Это свет и микродвижение,
    а не новые формы: скруглений у элементов интерфейса не прибавилось,
